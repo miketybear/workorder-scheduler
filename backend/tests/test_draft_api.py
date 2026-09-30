@@ -1,4 +1,5 @@
 import asyncio
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -10,6 +11,10 @@ from app.auth.sessions import SESSION_COOKIE, issue_session
 from app.config import integration_settings
 from app.db.models import AccessGrant, Draft, MaximoConnection
 from app.main import create_app
+from app.maximo.detail import current_snapshot
+from app.maximo.reader import WorkOrder
+from app.scheduling.drafts import WorkOrderKey
+from app.scheduling.routes import snapshot_token
 
 pytestmark = pytest.mark.integration
 
@@ -82,6 +87,18 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                     "workorder_id": "100",
                     "discipline": "MECH",
                     "changes": changes,
+                    "request_id": str(uuid4()),
+                    "baseline_token": snapshot_token(
+                        current_snapshot(
+                            WorkOrderKey(connections[0].id, "TEST", "100"),
+                            WorkOrder.model_validate(
+                                record(
+                                    bdpocdiscipline="MECH", worktype="PM" if case == "pm" else "CM"
+                                )
+                            ),
+                            frozenset({"TECH"}),
+                        )
+                    ),
                 }
                 response = await client.post(
                     "/api/drafts",
@@ -113,15 +130,54 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                 assert restored.json()["items"][0]["changes_valid_now"] is True
                 detail = await client.get(
                     "/api/work-orders/detail",
-                    params={key: value for key, value in payload.items() if key != "changes"},
+                    params={
+                        key: value
+                        for key, value in payload.items()
+                        if key in {"connection_id", "site_id", "workorder_id", "discipline"}
+                    },
                 )
                 assert detail.status_code == 200
                 assert detail.json()["allowed_pics"] == ["TECH"]
                 assert detail.json()["revision"] is None
+                headers = {"X-CSRF-Token": csrf}
+                duplicate = await client.post("/api/drafts", json=payload, headers=headers)
+                assert duplicate.json() == response.json()
+                altered = {**payload, "changes": {"estdur": "10"}}
+                assert (
+                    await client.post("/api/drafts", json=altered, headers=headers)
+                ).status_code == 409
+                stale = {**payload, "request_id": str(uuid4()), "baseline_token": "0" * 64}
+                assert (
+                    await client.post("/api/drafts", json=stale, headers=headers)
+                ).status_code == 409
+                listing = await client.get(
+                    "/api/drafts",
+                    params={"connection_id": payload["connection_id"], "discipline": "MECH"},
+                )
+                assert listing.status_code == 200, listing.text
+                assert len(listing.json()["items"]) == 1
+                updated = {
+                    **payload,
+                    "request_id": str(uuid4()),
+                    "version": 1,
+                    "changes": {"estdur": "10"},
+                }
+                saved = await client.put(url, json=updated, headers=headers)
+                assert saved.status_code == 200, saved.text
+                assert saved.json()["version"] == 2
+                assert (await client.put(url, json=updated, headers=headers)).json() == saved.json()
+                updated["request_id"] = str(uuid4())
+                assert (await client.put(url, json=updated, headers=headers)).status_code == 409
+                assert (
+                    await client.delete(url, params={"version": 1}, headers=headers)
+                ).status_code == 409
                 client.cookies.set(SESSION_COOKIE, other_token)
                 before = len(calls)
                 assert (await client.get(url)).status_code == 404
                 assert len(calls) == before
+                assert (
+                    await client.put(url, json=updated, headers={"X-CSRF-Token": csrf})
+                ).status_code == 403
                 client.cookies.set(SESSION_COOKIE, token)
                 moved = True
                 response = await client.get(url)
@@ -132,5 +188,25 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                 before = len(calls)
                 assert (await client.get(url)).status_code == 404
                 assert len(calls) == before
+                assert (await client.put(url, json=updated, headers=headers)).status_code == 404
+                assert (
+                    await client.delete(url, params={"version": 2}, headers=headers)
+                ).status_code == 404
+                async with sessions.begin() as db:
+                    db.add(
+                        AccessGrant(
+                            user_id=user.id,
+                            connection_id=connections[0].id,
+                            discipline="MECH",
+                            capability="write",
+                        )
+                    )
+                assert (
+                    await client.delete(url, params={"version": 2}, headers=headers)
+                ).status_code == 204
+                assert (await client.get(url)).status_code == 404
+                assert (
+                    await client.post("/api/drafts", json=payload, headers=headers)
+                ).status_code == 404
 
     asyncio.run(scenario(), loop_factory=asyncio.SelectorEventLoop)

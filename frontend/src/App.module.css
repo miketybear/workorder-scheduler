@@ -70,3 +70,8 @@
 .statusBadge[data-status="WMATL"], .statusBadge[data-status="WMAT"] { background: #f9e4c9; color: #794700; }
 .statusBadge[data-status="INPRG"] { background: #d6f1d9; color: #236039; }
 .statusBadge[data-status="CLOSE"] { background: var(--ground); border-color: var(--ink); }
+
+.draftEditor { margin: 1.5rem 0; padding: 1.25rem; border: 1px solid #2e817d; border-radius: 12px; }
+.draftEditor fieldset { border: 0; padding: 0; }
+.draftEditor button { margin: .5rem; }
+.modified { background: #d7eeeb; border-left: 3px solid #2e817d; padding-left: .5rem; }

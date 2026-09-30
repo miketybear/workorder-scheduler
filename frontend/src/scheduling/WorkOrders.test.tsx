@@ -4,10 +4,12 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { getAuthSummary, type Session } from '../api/client';
 import { columns, RetrievalError, retrieveWorkOrders, type WorkOrder } from '../api/workOrders';
 import { WorkOrders } from './WorkOrders';
+import { getDetail } from '../api/drafts';
 
 vi.mock('../api/client', () => ({ getAuthSummary: vi.fn(), loginUrl: '/api/auth/login' }));
 vi.mock('../api/workOrders', async (original) => ({ ...await original<object>(), retrieveWorkOrders: vi.fn() }));
-afterEach(() => vi.resetAllMocks());
+vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), getDetail: vi.fn() }));
+afterEach(() => { vi.resetAllMocks(); vi.restoreAllMocks(); });
 const session: Session = { user: { id: 'user', name: 'Planner', is_admin: false }, grants: [
   { connection_id: 'one', label: 'Onshore test', system: 'onshore', environment: 'test', discipline: 'MECH', capability: 'read' },
   { connection_id: 'two', label: 'Offshore test', system: 'offshore', environment: 'test', discipline: 'MECH', capability: 'write' },
@@ -73,4 +75,27 @@ it('clears results and controls when session is no longer valid', async () => {
   await screen.findByText('Đăng nhập Microsoft');
   expect(screen.queryByText('WO-REAL')).not.toBeInTheDocument();
   expect(screen.queryByText('Retrieve WO')).not.toBeInTheDocument();
+});
+
+it('protects edits on scope and filter changes and preserves them across unchanged session checks', async () => {
+  const select = await setup();
+  fireEvent.change(select, { target: { value: JSON.stringify(['two', 'MECH']) } });
+  vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
+  vi.mocked(getDetail).mockResolvedValue({ item: row, baseline_token: 'a'.repeat(64), allowed_pics: ['TECH'],
+    baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedtechname: null, estdur: '8',
+      targstartdate: null, targcompdate: row.targcompdate } });
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  fireEvent.click(await screen.findByText('WO-REAL'));
+  fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
+  vi.spyOn(window, 'confirm').mockReturnValue(false);
+  fireEvent.change(select, { target: { value: JSON.stringify(['one', 'MECH']) } });
+  expect(select).toHaveValue(JSON.stringify(['two', 'MECH']));
+  fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-09-02T00:00:00+07:00' } });
+  expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01T00:00:00+07:00');
+  await act(async () => { fireEvent(window, new Event('focus')); });
+  expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
+  vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: { ...session, grants: [session.grants[0]] } });
+  await act(async () => { fireEvent(window, new Event('focus')); });
+  expect(screen.queryByLabelText('Est. Duration')).not.toBeInTheDocument();
+  expect(screen.queryByText('WO-REAL')).not.toBeInTheDocument();
 });

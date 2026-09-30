@@ -120,6 +120,15 @@ class DraftItem(Base):
     changes: Mapped[dict] = mapped_column(JSONB)
 
 
+class DraftSubmission(Base):
+    __tablename__ = "draft_submission"
+    actor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id"), primary_key=True)
+    request_id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    request_hash: Mapped[str] = mapped_column(String(64))
+    result: Mapped[dict] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class UploadBatch(Base):
     __tablename__ = "upload_batch"
     __table_args__ = (UniqueConstraint("actor_id", "idempotency_key", name="uq_batch_idempotency"),)

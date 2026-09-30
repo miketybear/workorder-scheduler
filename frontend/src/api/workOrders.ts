@@ -10,7 +10,7 @@ export const columns = [
   ['workorderid', 'WOID'],
 ] as const;
 type Field = typeof columns[number][0];
-export type WorkOrder = Record<Field, string | null> & { siteid: string; wopriority: number | null };
+export type WorkOrder = Record<Field, string | null> & { siteid: string; wonum: string; workorderid: string; worktype: string; status: string; targcompdate: string; wopriority: number | null };
 export type WorkOrderFilter = { connection_id: string; discipline: string; target_from: string; target_before: string };
 
 export class RetrievalError extends Error {
@@ -46,15 +46,24 @@ export async function retrieveWorkOrders(filter: WorkOrderFilter, signal: AbortS
       !Array.isArray(body.items) || body.count !== body.items.length) throw new Error('Phản hồi dữ liệu không hợp lệ.');
   const keys = new Set<string>();
   return body.items.map((raw: unknown) => {
-    if (!object(raw) || typeof raw.siteid !== 'string' || !raw.siteid || raw.bdpocdiscipline !== filter.discipline ||
+    const row = parseWorkOrder(raw, filter.discipline);
+    const key = JSON.stringify([row.siteid, row.workorderid]);
+    if (keys.has(key)) throw new Error('Phản hồi chứa WO trùng định danh.');
+    keys.add(key);
+    return row;
+  });
+}
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+export function parseWorkOrder(raw: unknown, discipline: string): WorkOrder {
+    if (!isRecord(raw) || typeof raw.siteid !== 'string' || !raw.siteid || raw.bdpocdiscipline !== discipline ||
         !columns.every(([field]) => raw[field] === null || typeof raw[field] === 'string') ||
         !['wonum', 'workorderid', 'worktype', 'status', 'targcompdate'].every((field) => typeof raw[field] === 'string' && raw[field]) ||
         !(raw.wopriority === null || (typeof raw.wopriority === 'number' && Number.isInteger(raw.wopriority)))) {
       throw new Error('Phản hồi WO không hợp lệ.');
     }
-    const key = JSON.stringify([raw.siteid, raw.workorderid]);
-    if (keys.has(key)) throw new Error('Phản hồi chứa WO trùng định danh.');
-    keys.add(key);
-    return raw as WorkOrder;
-  });
+  return raw as WorkOrder;
 }
