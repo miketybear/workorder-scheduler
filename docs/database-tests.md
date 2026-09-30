@@ -1,0 +1,46 @@
+# PostgreSQL integration tests
+
+Đã kiểm tra ngày 2026-09-29 với PostgreSQL 17 trong Docker Desktop.
+Không dùng database chung hoặc production. `compose.test.yaml` chỉ mở loopback port 55432,
+lưu dữ liệu tạm trong RAM; dừng/recreate container có thể làm mất dữ liệu test.
+
+1. Tạo `.cache/postgres-test.env` ở root với `WOS_TEST_DB_PASSWORD=<mật khẩu test riêng>`.
+2. Tạo `backend/.env.integration` với `WOS_ENVIRONMENT=test` và
+   `WOS_DATABASE_URL=postgresql+psycopg://scheduler_test:<mật khẩu đã URL-encode>@127.0.0.1:55432/scheduler_test`.
+   Hai file được ignore; không đưa secret vào Git.
+3. Chạy từ root:
+
+```sh
+docker compose -f compose.test.yaml --env-file .cache/postgres-test.env up -d --wait
+```
+
+4. Chạy từ `backend/`:
+
+```sh
+uv run --env-file .env.integration alembic upgrade head
+uv run --env-file .env.integration alembic check
+uv run pytest --run-db-tests -p no:cacheprovider --tb=short
+```
+
+Tests chỉ chấp nhận environment test, host 127.0.0.1, port 55432 và DB scheduler_test.
+Biến môi trường có ưu tiên hơn file; không chạy trong terminal đang đặt cấu hình production.
+Các tests dùng transaction/savepoint và rollback dữ liệu synthetic sau mỗi trường hợp.
+Tests dùng SelectorEventLoop để psycopg async hoạt động trên Windows.
+
+Đã kiểm tra upgrade từ DB trống, downgrade về base, upgrade lại và `alembic check`
+không phát hiện lệch giữa model/schema. Downgrade xóa bảng: chỉ thực hiện trên DB test trống.
+Đây không phải kiểm thử backup/restore, tải đồng thời hay độ bền qua mất điện/restart DB.
+
+Session API đọc grants mới mỗi request; logout kiểm tra CSRF rồi xóa session.
+Session chỉ lưu hash của token; Secure cookie cần HTTPS. Callback Entra tạo session sau xác thực; xem [cấu hình SSO](entra-setup.md).
+
+Draft service nhận snapshot từ reader tin cậy phía server, kiểm tra quyền và discipline
+hiện tại trước khi trả dữ liệu nháp. Chưa có API/UI lưu nháp hoặc reader Maximo thật.
+
+Upload persistence commit state + audit intent trước khi trả quyền điều khiển cho caller;
+caller tương lai phải kiểm tra lại scope/revision trước khi gửi Maximo. Recovery chỉ đổi
+sending bị bỏ dở thành unknown, không gửi lại. Chỉ chạy recovery sau khi xác nhận worker
+cũ đã dừng; chưa có worker lease hoặc bộ đối soát Maximo.
+
+Audit trigger chặn UPDATE/DELETE/TRUNCATE, kể cả trên bảng rỗng. DB owner vẫn có thể
+gỡ trigger; tách runtime role và migration owner là việc còn lại trước production.
