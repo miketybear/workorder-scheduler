@@ -1,6 +1,6 @@
 # PostgreSQL integration tests
 
-Đã kiểm tra ngày 2026-09-29 với PostgreSQL 17 trong Docker Desktop.
+Đã kiểm tra lại ngày 2026-10-01 với PostgreSQL 17 trong Docker Desktop.
 Không dùng database chung hoặc production. `compose.test.yaml` chỉ mở loopback port 55432,
 lưu dữ liệu tạm trong RAM; dừng/recreate container có thể làm mất dữ liệu test.
 
@@ -35,7 +35,10 @@ Session API đọc grants mới mỗi request; logout kiểm tra CSRF rồi xóa
 Session chỉ lưu hash của token; Secure cookie cần HTTPS. Callback Entra tạo session sau xác thực; xem [cấu hình SSO](entra-setup.md).
 
 Draft service nhận snapshot từ reader tin cậy phía server, kiểm tra quyền và discipline
-hiện tại trước khi trả dữ liệu nháp. Chưa có API/UI lưu nháp hoặc reader Maximo thật.
+hiện tại trước khi trả dữ liệu nháp. API/UI lưu/mở/cập nhật/xóa/list nháp đã nối; reader dùng HTTP giả trong tests.
+Migration 0004 lưu biên nhận chống gửi trùng, cùng transaction với thay đổi nháp.
+Kiểm thử đồng thời dùng các connection/transaction PostgreSQL riêng, commit để kiểm tra lock waiting,
+rồi xóa đúng các bản ghi synthetic của test; không dùng dữ liệu ngoài database test riêng.
 
 Upload persistence commit state + audit intent trước khi trả quyền điều khiển cho caller;
 caller tương lai phải kiểm tra lại scope/revision trước khi gửi Maximo. Recovery chỉ đổi

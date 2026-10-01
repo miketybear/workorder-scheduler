@@ -41,8 +41,9 @@ app/config.py, app/main.py, auth/policy.py, scheduling/changes.py, db/models.py,
 migrations and tests now exist, including auth/sessions.py, scheduling/drafts.py and audit/uploads.py.
 Session storage/logout, Entra flow persistence and internal draft/upload persistence have PostgreSQL tests.
 Entra code flow and scoped Maximo WO list API are implemented with offline HTTP tests.
-Scoped detail/PIC and draft create/restore APIs exist. Live tenant/Maximo verification,
-stale-edit preconditions, draft UI and upload orchestration remain pending. See ../docs/entra-setup.md and ../docs/maximo-reader.md.
+Scoped detail/PIC and draft create/list/restore/update/delete APIs exist, with baseline tokens,
+version checks and durable duplicate receipts (migration 0004). Draft UI is connected.
+Live tenant/Maximo verification, WO revision/ETag and upload orchestration remain pending. See ../docs/entra-setup.md and ../docs/maximo-reader.md.
 
 ## Identity and authorization
 

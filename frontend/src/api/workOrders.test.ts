@@ -32,3 +32,7 @@ it('requires explicit offset and increasing bounded interval', () => {
   expect(() => validateRange(filter.target_before, filter.target_from)).toThrow();
   expect(() => validateRange(filter.target_from, filter.target_before)).not.toThrow();
 });
+
+it.each(['2026-02-30T08:00:00+07:00', '2026-02-29T08:00:00+07:00', '2026-09-31T08:00:00+07:00', '2026-09-01T24:00:00+07:00'])('rejects invalid calendar date %s', (start) => {
+  expect(() => validateRange(start, filter.target_before)).toThrow();
+});

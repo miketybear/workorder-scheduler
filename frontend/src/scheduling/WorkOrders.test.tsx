@@ -18,6 +18,9 @@ const row = { ...Object.fromEntries(columns.map(([field]) => [field, null])),
   siteid: 'SITE-A', wonum: 'WO-REAL', workorderid: '100', bdpocdiscipline: 'MECH',
   status: 'APPR', worktype: 'CM', targcompdate: '2026-09-30T23:00:00+07:00', wopriority: 0,
 } as WorkOrder;
+const editorDetail = { item: row, baseline_token: 'a'.repeat(64), allowed_pics: ['TECH'],
+  baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedtechname: null, estdur: '8',
+    targstartdate: null, targcompdate: row.targcompdate } };
 
 async function setup() {
   vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session });
@@ -98,4 +101,53 @@ it('protects edits on scope and filter changes and preserves them across unchang
   await act(async () => { fireEvent(window, new Event('focus')); });
   expect(screen.queryByLabelText('Est. Duration')).not.toBeInTheDocument();
   expect(screen.queryByText('WO-REAL')).not.toBeInTheDocument();
+});
+
+async function editWorkOrder() {
+  const select = await setup();
+  fireEvent.change(select, { target: { value: JSON.stringify(['two', 'MECH']) } });
+  vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
+  vi.mocked(getDetail).mockResolvedValue(editorDetail);
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  fireEvent.click(await screen.findByText('WO-REAL'));
+  fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
+}
+
+it('keeps edits hidden during a failed auth check and restores them after a successful retry', async () => {
+  await editWorkOrder();
+  vi.mocked(getAuthSummary).mockRejectedValueOnce(new Error('Offline'));
+  await act(async () => { fireEvent(window, new Event('focus')); });
+  expect(screen.getByLabelText('Est. Duration')).not.toBeVisible();
+  expect(screen.getByRole('alert')).toHaveTextContent('Nội dung sửa đang được giữ ẩn');
+  await act(async () => { fireEvent.click(screen.getByText('Kiểm tra lại phiên')); });
+  expect(screen.getByLabelText('Est. Duration')).toBeVisible();
+  expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
+  expect(screen.queryByText('WO-REAL')).not.toBeInTheDocument();
+});
+
+it('rechecks current work order state before revealing the editor and blocks a changed baseline', async () => {
+  await editWorkOrder();
+  vi.mocked(getDetail).mockResolvedValue({ ...editorDetail, baseline_token: 'b'.repeat(64),
+    item: { ...row, estdur: '12' }, baseline: { ...editorDetail.baseline, estdur: '12' } });
+  await act(async () => { fireEvent(window, new Event('focus')); });
+  expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
+  expect(screen.getByText('Lưu nháp')).toBeDisabled();
+  expect(screen.getByRole('table', { name: 'Thay đổi trước / sau' })).toHaveTextContent('Maximo hiện tại');
+  expect(screen.getByRole('table', { name: 'Thay đổi trước / sau' })).toHaveTextContent('12');
+});
+
+it('clears the editor when the work order moves out of scope during recheck', async () => {
+  await editWorkOrder();
+  vi.mocked(getDetail).mockRejectedValue(new RetrievalError(404, 'WO không còn trong quyền truy cập'));
+  await act(async () => { fireEvent(window, new Event('focus')); });
+  expect(screen.queryByLabelText('Est. Duration')).not.toBeInTheDocument();
+  expect(screen.getByText('Đăng nhập Microsoft')).toBeInTheDocument();
+});
+
+it('reopens the same work order after explicitly discarding edits', async () => {
+  await editWorkOrder();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  fireEvent.click(screen.getByText('WO-REAL'));
+  expect(await screen.findByLabelText('Est. Duration')).toHaveValue('8');
+  expect(getDetail).toHaveBeenCalledTimes(2);
 });

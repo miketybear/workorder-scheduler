@@ -4,12 +4,13 @@ from uuid import uuid4
 import httpx
 import pytest
 from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from test_maximo import config, record
 from test_postgres import database, seed
 
 from app.auth.sessions import SESSION_COOKIE, issue_session
 from app.config import integration_settings
-from app.db.models import AccessGrant, Draft, MaximoConnection
+from app.db.models import AccessGrant, Draft, DraftSubmission, LoginSession, MaximoConnection, User
 from app.main import create_app
 from app.maximo.detail import current_snapshot
 from app.maximo.reader import WorkOrder
@@ -20,7 +21,7 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.parametrize(
-    "case", ["success", "csrf", "viewer", "pic", "pm", "moved", "closed", "unknown-field"]
+    "case", ["success", "csrf", "viewer", "pic", "pm", "moved", "closed", "unknown-field", "stale"]
 )
 def test_draft_creation_uses_current_upstream_and_permissions(case):
     async def scenario():
@@ -64,6 +65,7 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                                 bdpocdiscipline="OTHER" if moved or case == "moved" else "MECH",
                                 worktype="PM" if case == "pm" else "CM",
                                 status="CLOSE" if case == "closed" else "APPR",
+                                estdur=10 if case == "stale" else 8,
                             )
                         ]
                     },
@@ -111,6 +113,7 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                     "viewer": 404,
                     "moved": 502,
                     "closed": 409,
+                    "stale": 409,
                 }.get(case, 422)
                 assert response.status_code == expected, response.text
                 async with sessions() as db:
@@ -156,6 +159,12 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                 )
                 assert listing.status_code == 200, listing.text
                 assert len(listing.json()["items"]) == 1
+                assert (
+                    await client.get(
+                        "/api/drafts",
+                        params={"connection_id": str(connections[1].id), "discipline": "MECH"},
+                    )
+                ).status_code == 404
                 updated = {
                     **payload,
                     "request_id": str(uuid4()),
@@ -182,6 +191,12 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                 moved = True
                 response = await client.get(url)
                 assert response.status_code == 502 and "TECH" not in response.text
+                assert (
+                    await client.put(url, json={**updated, "version": 2}, headers=headers)
+                ).status_code == 502
+                assert (
+                    await client.delete(url, params={"version": 2}, headers=headers)
+                ).status_code == 502
                 moved = False
                 async with sessions.begin() as db:
                     await db.execute(delete(AccessGrant).where(AccessGrant.user_id == user.id))
@@ -208,5 +223,109 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                 assert (
                     await client.post("/api/drafts", json=payload, headers=headers)
                 ).status_code == 404
+
+    asyncio.run(scenario(), loop_factory=asyncio.SelectorEventLoop)
+
+
+def test_concurrent_create_and_update_use_separate_transactions():
+    async def scenario():
+        settings = integration_settings()
+        engine = create_async_engine(
+            settings.database_url.get_secret_value(),
+            hide_parameters=True,
+            connect_args={"connect_timeout": 3},
+        )
+        sessions = async_sessionmaker(engine, expire_on_commit=False)
+        actors = []
+        connection_ids = []
+        try:
+            user, admin, connections = await seed(sessions)
+            actors = [user.id, admin.id]
+            connection_ids = [connection.id for connection in connections]
+            async with sessions.begin() as db:
+                (
+                    await db.get(MaximoConnection, connections[0].id)
+                ).base_url = "https://maximo.invalid/maximo"
+                token, csrf = await issue_session(db, user)
+            settings.maximo = {connections[0].id: config(crew_groups={"MECH": "CREW"})}
+            app = create_app(settings)
+            app.state.sessions = sessions
+
+            def upstream(request):
+                assert request.method == "GET"
+                member = (
+                    [{"persongroup": "CREW", "persongroupteam": [{"respparty": "TECH"}]}]
+                    if request.url.path.endswith("mxpersongroup")
+                    else [record(bdpocdiscipline="MECH")]
+                )
+                return httpx.Response(200, json={"member": member})
+
+            app.state.maximo_client_factory = lambda: httpx.AsyncClient(
+                transport=httpx.MockTransport(upstream)
+            )
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="https://test.example"
+            ) as client:
+                client.cookies.set(SESSION_COOKIE, token)
+                key = {
+                    "connection_id": str(connections[0].id),
+                    "site_id": "TEST",
+                    "workorder_id": "100",
+                    "discipline": "MECH",
+                }
+                current = await client.get("/api/work-orders/detail", params=key)
+                assert current.status_code == 200
+                payload = {
+                    **key,
+                    "baseline_token": current.json()["baseline_token"],
+                    "request_id": str(uuid4()),
+                    "changes": {"estdur": "9"},
+                }
+                headers = {"X-CSRF-Token": csrf}
+                responses = await asyncio.gather(
+                    *[client.post("/api/drafts", json=payload, headers=headers) for _ in range(2)]
+                )
+                assert [response.status_code for response in responses] == [201, 201]
+                assert responses[0].json() == responses[1].json()
+                async with sessions() as db:
+                    assert (
+                        await db.scalar(
+                            select(func.count()).select_from(Draft).where(Draft.owner_id == user.id)
+                        )
+                        == 1
+                    )
+                url = "/api/drafts/" + responses[0].json()["draft_id"]
+                responses = await asyncio.gather(
+                    *[
+                        client.put(
+                            url,
+                            json={
+                                **payload,
+                                "request_id": str(uuid4()),
+                                "version": 1,
+                                "changes": {"estdur": duration},
+                            },
+                            headers=headers,
+                        )
+                        for duration in ["10", "11"]
+                    ]
+                )
+                assert sorted(response.status_code for response in responses) == [200, 409]
+                assert (await client.get(url)).json()["version"] == 2
+        finally:
+            # This test commits to exercise actual lock waiting; remove only its own rows.
+            if actors:
+                async with sessions.begin() as db:
+                    await db.execute(
+                        delete(DraftSubmission).where(DraftSubmission.actor_id.in_(actors))
+                    )
+                    await db.execute(delete(Draft).where(Draft.owner_id.in_(actors)))
+                    await db.execute(delete(LoginSession).where(LoginSession.user_id.in_(actors)))
+                    await db.execute(delete(AccessGrant).where(AccessGrant.user_id.in_(actors)))
+                    await db.execute(delete(User).where(User.id.in_(actors)))
+                    await db.execute(
+                        delete(MaximoConnection).where(MaximoConnection.id.in_(connection_ids))
+                    )
+            await engine.dispose()
 
     asyncio.run(scenario(), loop_factory=asyncio.SelectorEventLoop)

@@ -95,7 +95,7 @@ Không retry tự động. Các lỗi upstream được rút gọn, không đưa
 
 Paging thông thường không phải snapshot nguyên tử: Maximo thay đổi giữa trang có thể gây
 thiếu dòng dù đã chặn trùng. Cần kiểm chứng stable paging và tải thực tế trên test trước UAT.
-Việc lấy WO hiện tại cho draft/upload, revision/ETag và crew PIC còn nằm trong backlog.
+Reader detail và crew PIC đã triển khai với fixtures; revision/ETag và kiểm chứng Maximo thật còn nằm trong backlog.
 
 Tham khảo hợp đồng tổng quát của IBM: [filtering](https://ibm-maximo-dev.github.io/maximo-restapi-documentation/query/filtering/)
 và [paging](https://ibm-maximo-dev.github.io/maximo-restapi-documentation/query/sort_and_paging/).
@@ -119,11 +119,9 @@ Tài liệu này không chứng minh cấu hình riêng của hai hệ thống M
   baseline, changes, current, allowed_pics, baseline_changed và changes_valid_now.
   Không tự thay baseline cũ bằng dữ liệu mới. Reader lỗi hoặc mất scope không trả nội dung nháp.
 
-Lưu nháp không gửi mutation Maximo. Chưa có sửa/xóa/list draft, deduplicate POST nháp,
-UI editor/restore hoặc revision/conditional upload. POST lặp tạo draft mới; client không tự retry.
-Baseline khi tạo là trạng thái server vừa đọc lúc lưu, chưa có cơ chế phát hiện stale edit từ UI;
-phải bổ sung precondition trước khi nối editor/triển khai upload. Scope read-before-save không
-phải khóa nguyên tử với Maximo. Mở nháp có thể bị từ chối nếu WO đã đóng.
+Giới hạn ở mốc 2026-09-30: chưa có UI/stale-edit/deduplication. Các phần này đã bổ sung ngày
+2026-10-01; xem [hợp đồng nháp hiện tại](drafts.md). Revision/conditional upload vẫn chưa có.
+Scope read-before-save không phải khóa nguyên tử với Maximo. Mở nháp có thể bị từ chối nếu WO đã đóng.
 
 Kiểm thử synthetic HTTP + PostgreSQL: 129 backend tests qua; chưa xác minh hợp đồng Maximo
 thật. Không thêm runtime dependency hoặc migration trong mốc này.

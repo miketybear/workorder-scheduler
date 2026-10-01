@@ -35,8 +35,9 @@ frontend/
 ```
 
 Overview, session/login/logout controls and an explicitly synthetic /demo route exist.
-A read-only /work-orders route consumes the scoped backend list API with session checks.
-Live SSO/Maximo verification, persisted draft UI and uploads remain pending.
+The /work-orders route consumes the scoped list/detail/draft APIs, with one-WO editing,
+before/after preview, save/restore/delete and current session/scope checks.
+Live SSO/Maximo verification, spreadsheet-style bulk editing and uploads remain pending.
 
 ## API and authentication
 

@@ -1,6 +1,6 @@
 # TODO — Work Order Scheduler
 
-Cập nhật: 2026-09-30.
+Cập nhật: 2026-10-01.
 
 ## Cách sử dụng
 
@@ -145,14 +145,14 @@ Phụ thuộc: 3, 4, 5; có thể dựng UI với fixture trước.
 - [ ] Tạo layout desktop, nhãn hệ thống/môi trường, trạng thái phiên và bộ lọc có quyền.
 - [ ] Chọn cách dựng bảng sau thử nghiệm keyboard editing/paste và số lượng WO thực tế.
 - [ ] Hiển thị các cột tương đương bảng Work Order Scheduler của workbook.
-- [ ] Cho sửa schedstart/schedfinish/assignedtechname/estdur.
-- [ ] Cho chọn đổi target; khóa PM/CFT và giải thích tại ô.
+- [x] Cho sửa schedstart/schedfinish/assignedtechname/estdur trong editor từng WO (2026-10-01).
+- [x] Cho chọn đổi target; khóa PM/CFT và giải thích tại editor (2026-10-01).
 - [ ] Áp cùng ngày cho nhiều dòng được chọn; vẫn validate từng WO.
-- [ ] Hiển thị modified cells, reset về baseline và before/after preview.
+- [x] Hiển thị trường đã sửa, reset về baseline và before/after preview trong editor từng WO (2026-10-01).
 - [ ] Thiết kế date input/display theo timezone nghiệp vụ đã xác minh.
-- [ ] Lưu/khôi phục draft theo owner + scope; không tự chia sẻ draft giữa người dùng.
-- [ ] Bảo vệ edits khi đổi filter/hệ thống; không hiển thị nhầm dữ liệu connection cũ.
-- [ ] Validate cả frontend và backend; backend là nguồn quyết định.
+- [x] Lưu/khôi phục draft một WO theo owner + scope; không chia sẻ giữa người dùng (2026-10-01).
+- [x] Bảo vệ edits khi đổi filter/hệ thống; không hiển thị nhầm dữ liệu connection cũ (2026-10-01).
+- [x] Validate cả frontend và backend; backend là nguồn quyết định (2026-10-01).
 - [ ] Kiểm thử bàn phím, focus, nhãn control và trạng thái loading/empty/error.
 
 Nghiệm thu: thao tác giống bảng Excel, nháp không thay đổi Maximo; khôi phục nháp không vượt
@@ -277,7 +277,8 @@ Chưa nối UI, crew/detail, revision hoặc upload. Xem [Maximo reader](maximo-
 - [x] Phân biệt loading, empty, error, chưa đăng nhập và chưa có quyền.
 - [x] 18 frontend tests, typecheck, lint và production build qua.
 - [ ] Kiểm thử live login/retrieve và desktop UI với dữ liệu Maximo test.
-- [ ] API chi tiết WO, crew/PIC, revision/ETag để tiếp tục sửa/lưu nháp.
+- [x] API chi tiết WO, crew/PIC với synthetic tests (2026-09-30).
+- [ ] Revision/ETag đã xác minh trên Maximo test.
 
 Bảng chỉ giữ dữ liệu trong RAM; kiểm tra lại phiên mỗi phút khi không đang retrieve,
 khi quay lại cửa sổ và khi tab hiện lại. Hiện xóa bảng khi kiểm tra lại để tránh giữ scope cũ;
@@ -291,7 +292,28 @@ người dùng cần retrieve lại. Các kiểm thử frontend dùng mock, khô
 - [x] GET draft owner-only; kiểm tra scope hiện tại, báo baseline đổi và thay đổi không hợp lệ.
 - [x] 129 backend tests, Ruff lint/format qua; PostgreSQL test đã chạy.
 - [ ] Xác minh crew relationship, child paging và field identity trên Maximo test.
-- [ ] Thêm precondition stale-edit, revision/ETag và UI chỉnh sửa/lưu/mở nháp.
-- [ ] List/update/delete draft và xử lý duplicate submission trước khi hoàn thiện UX.
+- [x] Thêm precondition stale-edit và UI chỉnh sửa/lưu/mở nháp một WO (2026-10-01).
+- [x] List/update/delete draft, version checks và durable duplicate submission (2026-10-01).
+- [ ] Revision/ETag và điều kiện upload đã xác minh trên Maximo test.
 
-API nháp chưa nối UI; không có mutation Maximo. Xem maximo-reader.md cho contract và giới hạn.
+API nháp đã nối UI ngày 2026-10-01; không có mutation Maximo. Xem [hợp đồng nháp](drafts.md) cho giới hạn.
+
+
+## Hoàn thiện nháp và editor — 2026-10-01
+
+- [x] Baseline token từ detail và so sánh fresh WO khi tạo/cập nhật nháp; stale edit trả 409.
+- [x] API list/update/delete; owner + grants + upstream checks, version lock và CSRF.
+- [x] Durable receipts cho duplicate create/update; giữ receipt sau xóa, không tạo lại nháp đã xóa.
+- [x] Kiểm thử PostgreSQL đồng thời: create trùng thành một nháp, update cùng version chỉ một thành công.
+- [x] UI editor một WO, PIC crew, lịch/duration, target có intent, PM/CFT lock và before/after/reset.
+- [x] Lưu/mở/cập nhật/xóa nháp từ /work-orders; lỗi lưu giữ edits và retry cùng request ID.
+- [x] Bảo vệ đổi filter/system; recheck session + WO trước hiện lại edits; mất quyền/phiên xóa dữ liệu.
+- [x] Chặn ngày lịch không tồn tại và nhận diện duration/offset khác cách viết nhưng cùng giá trị.
+- [x] 131 backend tests, 46 frontend tests, Ruff/TypeScript/ESLint/build và Alembic schema check qua.
+- [ ] Browser E2E và kiểm chứng Maximo/Entra thật.
+- [ ] Chặn navigation Back trong SPA; sửa/paste/áp ngày nhiều dòng và nháp nhiều WO.
+- [ ] Chốt retention/cleanup cho draft_submission và nháp với IT.
+
+Không đánh dấu mục 6 hoặc UAT hoàn tất: UI hiện dùng editor từng WO, chưa phải grid chỉnh sửa
+nhiều dòng. Không có remote mutation; baseline token không thay thế conditional write của Maximo.
+Hợp đồng và hướng dẫn: [drafts.md](drafts.md).

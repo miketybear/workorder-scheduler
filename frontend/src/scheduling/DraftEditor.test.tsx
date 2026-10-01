@@ -30,6 +30,7 @@ it('preserves edits after a failed save and retries with the same request ID; su
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   expect(vi.mocked(saveDraft).mock.calls[0][3]).toBe(vi.mocked(saveDraft).mock.calls[1][3]);
   expect(props.onDirty).toHaveBeenLastCalledWith(false);
+  expect(screen.getByText('Lưu nháp')).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Est. Duration'), { target: { value: '10' } });
   fireEvent.click(screen.getByText('Lưu nháp'));
   await waitFor(() => expect(saveDraft).toHaveBeenCalledTimes(3));
@@ -100,4 +101,22 @@ it('clears access after a denied save', async () => {
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
   fireEvent.click(screen.getByText('Lưu nháp'));
   await waitFor(() => expect(props.onDenied).toHaveBeenCalled());
+});
+
+it('treats equivalent durations and timezone instants as unchanged', async () => {
+  vi.mocked(getDetail).mockResolvedValue(detail);
+  render(<DraftEditor {...props} />);
+  fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '08.00' } });
+  fireEvent.change(screen.getByLabelText('Scheduled Finish'), { target: { value: '2026-09-30T09:00:00Z' } });
+  expect(screen.getByText('Lưu nháp')).toBeDisabled();
+  expect(props.onDirty).toHaveBeenLastCalledWith(false);
+});
+
+it('rejects calendar dates that JavaScript would silently normalize', async () => {
+  vi.mocked(getDetail).mockResolvedValue(detail);
+  render(<DraftEditor {...props} />);
+  fireEvent.change(await screen.findByLabelText('Scheduled Finish'), { target: { value: '2026-09-31T16:00:00+07:00' } });
+  fireEvent.click(screen.getByText('Lưu nháp'));
+  expect(screen.getByRole('alert')).toHaveTextContent('Nhập ngày giờ ISO');
+  expect(saveDraft).not.toHaveBeenCalled();
 });

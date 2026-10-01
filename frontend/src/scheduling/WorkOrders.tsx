@@ -17,6 +17,7 @@ export function WorkOrders() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [selection, setSelection] = useState<EditorSelection | null>(null);
+  const [editorGeneration, setEditorGeneration] = useState(0);
   const [rechecked, setRechecked] = useState<Detail | null>(null);
   const selected = useRef<{ selection: EditorSelection; scope: Scope } | null>(null);
   const [drafts, setDrafts] = useState<DraftSummary[] | null>(null);
@@ -25,6 +26,7 @@ export function WorkOrders() {
   const authIdentity = useRef('');
   const onDirty = useCallback((value: boolean) => { dirty.current = value; }, []);
   const pending = useRef<AbortController | null>(null);
+  const refreshSession = useRef<(() => void) | null>(null);
   const grant = session?.grants.find((item) => JSON.stringify([item.connection_id, item.discipline]) === scope);
 
   const editorScope = useMemo(() => ({ connection_id: grant?.connection_id ?? '', discipline: grant?.discipline ?? '' }), [grant?.connection_id, grant?.discipline]);
@@ -37,6 +39,13 @@ export function WorkOrders() {
   }, []);
   function discard() {
     return !dirty.current || window.confirm('Có thay đổi chưa lưu. Bỏ các thay đổi này?');
+  }
+  function choose(next: EditorSelection) {
+    if (!discard()) return;
+    dirty.current = false;
+    setRechecked(null);
+    setSelection(next);
+    setEditorGeneration((previous) => previous + 1);
   }
   function clearResults() {
     setSelection(null); setRechecked(null); setDrafts(null); setNextOffset(null); dirty.current = false;
@@ -68,8 +77,9 @@ export function WorkOrders() {
           authIdentity.current = identity; setSession(auth.session); setAvailable(auth.available); setChecking(false);
         }
       }).catch((cause: unknown) => { if (!signal.aborted) {
-        if (cause instanceof RetrievalError && [401, 403, 404].includes(cause.status)) { onDenied(); setChecking(false); }
-        setError('Chưa xác minh được quyền và dữ liệu hiện tại. Nội dung sửa đang được giữ ẩn; quay lại cửa sổ để thử lại.');
+        if (cause instanceof RetrievalError && [401, 403, 404].includes(cause.status)) {
+          onDenied(); setChecking(false); setError(cause.message);
+        } else setError('Chưa xác minh được quyền và dữ liệu hiện tại. Nội dung sửa đang được giữ ẩn; kiểm tra lại phiên để tiếp tục.');
       } });
     }
     function visibility() {
@@ -77,11 +87,13 @@ export function WorkOrders() {
         authRequest?.abort(); pending.current?.abort(); pending.current = null; setBusy(false); setChecking(true);
       } else refresh();
     }
+    refreshSession.current = refresh;
     refresh();
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', visibility);
     const timer = window.setInterval(() => { if (!document.hidden && !pending.current) refresh(); }, 60000);
     return () => {
+      refreshSession.current = null;
       authRequest?.abort(); pending.current?.abort(); window.clearInterval(timer);
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', visibility);
@@ -99,7 +111,7 @@ export function WorkOrders() {
   }, []);
 
   async function browseDrafts(offset = 0) {
-    if (!grant || !discard()) return;
+    if (!grant) return;
     const controller = new AbortController(); pending.current?.abort(); pending.current = controller;
     setBusy(true); setError('');
     try {
@@ -141,7 +153,9 @@ export function WorkOrders() {
     <Link to="/" className={styles.back}>← Tổng quan</Link>
     <div className={styles.pageTitle}><h1>Work Orders</h1><span className={styles.badge}>Lập lịch / Nháp</span></div>
     <p className={styles.notice}>Dữ liệu lấy qua API theo quyền được cấp. Lưu nháp không thay đổi Maximo; upload chưa mở.</p>
+    <p>Bấm số WO để mở phần lập lịch. Mỗi nháp lưu thay đổi của một WO; người có quyền đọc chỉ xem được dữ liệu.</p>
     {error && <p role="alert" className={styles.error}>{error}</p>}
+    {error && <button onClick={() => refreshSession.current?.()}>Kiểm tra lại phiên</button>}
     {checking && <p role="status">Đang kiểm tra quyền truy cập…</p>}
     <div hidden={checking}>{!session ? <p>
       Cần đăng nhập để xem WO. {available && <a href={loginUrl}>Đăng nhập Microsoft</a>}
@@ -166,12 +180,10 @@ export function WorkOrders() {
       {grant && <button disabled={busy} onClick={() => void browseDrafts()}>Danh sách nháp</button>}
       {drafts !== null && <section aria-label="Danh sách nháp">
         <h2>Nháp của tôi</h2>{drafts.length === 0 && <p>Không có nháp trong trang này.</p>}
-        {drafts.map((draft) => <p key={draft.draft_id}><button onClick={() => {
-          if (discard()) { dirty.current = false; setRechecked(null); setSelection({ draftId: draft.draft_id }); }
-        }}>Mở {draft.wonum} · {draft.site_id} · v{draft.version}</button></p>)}
+        {drafts.map((draft) => <p key={draft.draft_id}><button onClick={() => choose({ draftId: draft.draft_id })}>Mở {draft.wonum} · {draft.site_id} · v{draft.version}</button></p>)}
         {nextOffset !== null && <button disabled={busy} onClick={() => void browseDrafts(nextOffset)}>Trang nháp tiếp</button>}
       </section>}
-      {selection && grant && <DraftEditor key={JSON.stringify(selection)} selection={selection} scope={editorScope}
+      {selection && grant && <DraftEditor key={editorGeneration} selection={selection} scope={editorScope}
         verifiedDetail={rechecked} writable={grant.capability === 'write'} suspended={checking} onDirty={onDirty} onDenied={onDenied}
         onClose={() => { if (discard()) { setSelection(null); setDrafts(null); dirty.current = false; } }} />}
       {busy && <p role="status">Đang lấy và kiểm tra đầy đủ các trang dữ liệu…</p>}
@@ -182,7 +194,7 @@ export function WorkOrders() {
             <th scope="col">Upload?</th><th scope="col">Change Target?</th><th scope="col">Site</th></tr></thead>
             <tbody>{rows.map((row) => <tr key={JSON.stringify([scope, row.siteid, row.workorderid])}>
               {columns.map(([field]) => <td key={field} className={field === 'description' ? styles.descriptionCell : undefined}>
-                {field === 'wonum' && grant ? <button onClick={() => { if (discard()) { dirty.current = false; setRechecked(null); setSelection({ key: { ...editorScope, site_id: row.siteid, workorder_id: row.workorderid } }); } }}>{row.wonum}</button> : field === 'status' ? <span className={styles.statusBadge} data-status={row.status}>{row.status}</span> :
+                {field === 'wonum' && grant ? <button onClick={() => choose({ key: { ...editorScope, site_id: row.siteid, workorder_id: row.workorderid } })}>{row.wonum}</button> : field === 'status' ? <span className={styles.statusBadge} data-status={row.status}>{row.status}</span> :
                   field === 'wolo10' ? (row.wolo10 === null ? '—' : `${row.wolo10}%`) :
                     field === 'wopriority_description' ? `${row.wopriority_description ?? '—'} (${row.wopriority ?? '—'})` : row[field] ?? '—'}
               </td>)}

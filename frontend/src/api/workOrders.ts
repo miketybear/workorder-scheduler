@@ -1,4 +1,5 @@
 import { config } from '../config';
+import { isAwareDate } from './dates';
 
 export const columns = [
   ['wolo10', '% Complete'], ['bdpocdiscipline', 'Discipline'], ['wonum', 'Work Order'],
@@ -18,9 +19,8 @@ export class RetrievalError extends Error {
 }
 
 export function validateRange(start: string, end: string): void {
-  const aware = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
   const duration = Date.parse(end) - Date.parse(start);
-  if (!aware.test(start) || !aware.test(end) || !Number.isFinite(duration) || duration <= 0 || duration > 366 * 86400000) {
+  if (!isAwareDate(start) || !isAwareDate(end) || duration <= 0 || duration > 366 * 86400000) {
     throw new Error('Nhập ngày giờ ISO có múi giờ; mốc cuối phải sau mốc đầu, tối đa 366 ngày.');
   }
 }

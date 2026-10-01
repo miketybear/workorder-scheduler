@@ -11,8 +11,10 @@ Prioritize correct, attributable updates and discipline isolation.
 The repository has a runnable foundation and a synthetic scheduling preview.
 Database-backed sessions, internal draft storage and upload/audit state persistence are implemented.
 Entra login/callback and session UI are implemented with offline tests; live tenant verification,
-live Maximo verification, draft editing UI and remote uploads remain pending.
-Scoped WO detail/PIC and draft create/restore APIs are implemented with synthetic tests.
+live Maximo verification and remote uploads remain pending.
+Scoped WO detail/PIC and draft create/list/restore/update/delete APIs are implemented with synthetic tests.
+Draft baseline preconditions, version checks and durable duplicate submission receipts are implemented.
+The /work-orders UI supports one-WO draft editing, preview, save/restore and session rechecks.
 A scoped read-only WO list API and bounded Maximo reader have synthetic HTTP/PostgreSQL tests.
 The /work-orders UI consumes that API with scope selection and stale-response cancellation;
 live verification is pending.

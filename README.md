@@ -7,7 +7,8 @@ retrieve WO từ Maximo, chỉnh sửa kế hoạch, xem thay đổi và upload 
 cho phát triển local. Bảng `/demo` dùng dữ liệu hoàn toàn giả lập, cho sửa ngày và xem before/after.
 Đã có lưu session, dịch vụ nội bộ lưu nháp và trạng thái upload/audit trên PostgreSQL.
 Đã có luồng Entra, giao diện phiên đăng nhập và API đọc WO có scope; chưa xác minh tenant/Maximo thật.
-Route /work-orders đã nối API chỉ đọc; /demo vẫn dùng dữ liệu giả. Đã có API tạo/mở nháp; chưa có UI lưu nháp hoặc upload Maximo.
+Route /work-orders đã nối API danh sách/chi tiết và nháp; bấm số WO để sửa lịch, PIC, duration,
+xem before/after và lưu/mở/cập nhật/xóa nháp một WO. /demo vẫn dùng dữ liệu giả. Upload Maximo chưa triển khai.
 
 ## Phạm vi đã chốt
 
@@ -27,6 +28,7 @@ Route /work-orders đã nối API chỉ đọc; /demo vẫn dùng dữ liệu gi
 - [Danh sách công việc chi tiết](docs/todos.md)
 - [Trạng thái và bằng chứng kiểm tra](docs/implementation-status.md)
 - [Lý do chọn dependency](docs/dependencies.md)
+- [Lập lịch và quản lý nháp](docs/drafts.md)
 - [Hướng dẫn chung cho coding agent](AGENTS.md)
 - [Backend](backend/AGENTS.md) / [Frontend](frontend/AGENTS.md)
 
@@ -120,7 +122,7 @@ npm run build
 minh Entra/Maximo hoạt động. `/api/auth/session` yêu cầu session DB hợp lệ;
 session được cấp qua callback Entra đã xác thực; không có tài khoản demo bypass. Logout yêu cầu CSRF token.
 
-HTTPS, xác minh SSO thật, connector Maximo, API/UI draft/audit và hướng dẫn vận hành production
+HTTPS, xác minh SSO/Maximo thật, upload/history và hướng dẫn vận hành production
 được theo dõi riêng trong backlog.
 
 Kiểm thử PostgreSQL riêng: xem [hướng dẫn database test](docs/database-tests.md).
@@ -131,5 +133,6 @@ Connector chỉ đọc và mapping VBA: [Maximo reader](docs/maximo-reader.md).
 
 Mở `/work-orders` để retrieve theo quyền sau khi cấu hình Entra, grants và Maximo.
 Nhập mốc đầu/cuối ISO có offset, ví dụ `2026-09-01T00:00:00+07:00` và
-`2026-10-01T00:00:00+07:00` (chỉ dùng offset đã xác nhận). Bảng chỉ đọc; dữ liệu bị xóa
-khi đổi bộ lọc hoặc kiểm tra lại quyền. Không dùng session giả để truy cập route này.
+`2026-10-01T00:00:00+07:00` (chỉ dùng offset đã xác nhận). Bấm số WO để mở phần lập lịch; chỉ grant write được sửa/lưu/xóa nháp. Xem [hướng dẫn nháp](docs/drafts.md).
+Bảng danh sách được xóa khi kiểm tra lại phiên; nội dung sửa được giữ nếu quyền và WO vẫn được xác minh.
+Không dùng session giả để truy cập route này.

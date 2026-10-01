@@ -2,11 +2,22 @@ import { useEffect, useRef, useState } from 'react';
 import { deleteDraft, editableFields, getDetail, openDraft, saveDraft,
   type Changes, type Detail, type EditableField, type Identity, type Restored, type Saved, type Scope } from '../api/drafts';
 import { RetrievalError } from '../api/workOrders';
+import { isAwareDate } from '../api/dates';
 import styles from '../App.module.css';
 
 const labels: Record<EditableField, string> = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish',
   assignedtechname: 'Assigned PIC', estdur: 'Est. Duration', targstartdate: 'Target Start', targcompdate: 'Target Finish' };
 const target = (field: EditableField) => field === 'targstartdate' || field === 'targcompdate';
+function equalField(field: EditableField, value: string, original: string | null): boolean {
+  if (value === (original ?? '')) return true;
+  if (original === null) return false;
+  if (field === 'estdur' && /^\d+(\.\d+)?$/.test(value) && /^\d+(\.\d+)?$/.test(original)) {
+    const normalize = (number: string) => number.replace(/^0+(?=\d)/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+    return normalize(value) === normalize(original);
+  }
+  return field !== 'estdur' && field !== 'assignedtechname' && isAwareDate(value) && isAwareDate(original) &&
+    Date.parse(value) === Date.parse(original);
+}
 export type EditorSelection = { key: Identity } | { draftId: string };
 
 export function DraftEditor({ selection, scope, writable, suspended, verifiedDetail, onDirty, onDenied, onClose }: {
@@ -21,14 +32,15 @@ export function DraftEditor({ selection, scope, writable, suspended, verifiedDet
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loaded, setLoaded] = useState(false);
-  const committed = useRef('{}');
+  const [committed, setCommitted] = useState('{}');
   const pending = useRef<AbortController | null>(null);
   const retry = useRef<{ fingerprint: string; id: string } | null>(null);
   const pics = verifiedDetail?.allowed_pics ?? detail?.allowed_pics ?? [];
   const blocked = restoreBlocked || (!!detail && !!verifiedDetail && verifiedDetail.baseline_token !== detail.baseline_token) || (!!changes.assignedtechname && !pics.includes(changes.assignedtechname));
   const changed = editableFields.filter((field) => changes[field] !== undefined && changes[field] !== detail?.baseline[field]);
 
-  useEffect(() => { onDirty(JSON.stringify(changes) !== committed.current); }, [changes, onDirty]);
+  const unsaved = JSON.stringify(changes) !== committed;
+  useEffect(() => { onDirty(unsaved); }, [unsaved, onDirty]);
   useEffect(() => {
     if (suspended || loaded) return;
     const controller = new AbortController();
@@ -38,7 +50,7 @@ export function DraftEditor({ selection, scope, writable, suspended, verifiedDet
       if (controller.signal.aborted) return;
       setDetail(value); setLoaded(true);
       if ('changes' in value) {
-        setSaved(value); setChanges(value.changes); committed.current = JSON.stringify(value.changes);
+        setSaved(value); setChanges(value.changes); setCommitted(JSON.stringify(value.changes));
         setBlocked(value.baseline_changed || !value.changes_valid_now);
       }
     }).catch((cause: unknown) => {
@@ -57,7 +69,7 @@ export function DraftEditor({ selection, scope, writable, suspended, verifiedDet
     setNotice(''); setError('');
     setChanges((previous) => {
       const next = { ...previous };
-      if (value === (detail?.baseline[field] ?? '')) delete next[field]; else next[field] = value;
+      if (equalField(field, value, detail?.baseline[field] ?? null)) delete next[field]; else next[field] = value;
       return next;
     });
   }
@@ -70,7 +82,7 @@ export function DraftEditor({ selection, scope, writable, suspended, verifiedDet
         if (!/^\d+(\.\d+)?$/.test(value) || !Number.isFinite(Number(value))) return 'Duration phải là số không âm.';
       } else if (field === 'assignedtechname') {
         if (!pics.includes(value)) return 'Chọn PIC thuộc crew được cấp.';
-      } else if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) {
+      } else if (!isAwareDate(value)) {
         return 'Nhập ngày giờ ISO có offset, ví dụ 2026-10-01T08:00:00+07:00.';
       }
     }
@@ -82,7 +94,7 @@ export function DraftEditor({ selection, scope, writable, suspended, verifiedDet
     return '';
   }
   async function mutate(remove = false) {
-    if (!detail || busy || suspended) return;
+    if (!detail || busy || suspended || !writable || (!remove && blocked)) return;
     if (remove && !window.confirm('Xóa nháp đã lưu này?')) return;
     const problem = remove ? '' : validation();
     if (problem) { setError(problem); return; }
@@ -99,7 +111,7 @@ export function DraftEditor({ selection, scope, writable, suspended, verifiedDet
         if (retry.current?.fingerprint !== fingerprint) retry.current = { fingerprint, id: crypto.randomUUID() };
         const result = await saveDraft(key, changes, detail.baseline_token, retry.current.id, saved, controller.signal);
         if (!controller.signal.aborted) {
-          committed.current = JSON.stringify(changes); setSaved(result); onDirty(false); retry.current = null;
+          setCommitted(JSON.stringify(changes)); setSaved(result); onDirty(false); retry.current = null;
           setNotice('Đã lưu nháp trên server. Maximo chưa thay đổi.');
         }
       }
@@ -130,12 +142,14 @@ export function DraftEditor({ selection, scope, writable, suspended, verifiedDet
         <div className={styles.filters}>{editableFields.map((field) => <label key={field} className={changed.includes(field) ? styles.modified : undefined}>
           {labels[field]}{field === 'assignedtechname' ? <select value={changes[field] ?? detail.baseline[field] ?? ''} onChange={(e) => change(field, e.target.value)}>
             <option value={detail.baseline[field] ?? ''}>{detail.baseline[field] ?? 'Chọn PIC'}</option>
+            {changes.assignedtechname && changes.assignedtechname !== detail.baseline.assignedtechname && !pics.includes(changes.assignedtechname) &&
+              <option value={changes.assignedtechname}>{changes.assignedtechname} (không còn trong crew)</option>}
             {pics.filter((pic) => pic !== detail.baseline[field]).map((pic) => <option key={pic}>{pic}</option>)}
           </select> : <input value={changes[field] ?? detail.baseline[field] ?? ''} disabled={target(field) && !changes.change_target}
             inputMode={field === 'estdur' ? 'decimal' : 'text'} onChange={(e) => change(field, e.target.value)} />}
         </label>)}</div>
         <button onClick={() => { setChanges({}); setError(''); setNotice(''); }}>Reset về baseline</button>
-        <button className={styles.primary} disabled={changed.length === 0} onClick={() => void mutate()}>{busy ? 'Đang lưu…' : 'Lưu nháp'}</button>
+        <button className={styles.primary} disabled={changed.length === 0 || !unsaved} onClick={() => void mutate()}>{busy ? 'Đang lưu…' : 'Lưu nháp'}</button>
       </fieldset>
       <h3>Thay đổi trước / sau</h3>
       <table aria-label="Thay đổi trước / sau"><thead><tr><th>Trường</th><th>Trước</th><th>Sau</th>{blocked && <th>Maximo hiện tại</th>}</tr></thead>
