@@ -10,8 +10,11 @@ editing and uploading Maximo work-order schedules for approximately 10 concurren
 Prioritize correct, attributable updates and discipline isolation.
 The repository has a runnable foundation and a synthetic scheduling preview.
 Database-backed sessions, internal draft storage and upload/audit state persistence are implemented.
-Entra login/callback and session UI are implemented with offline tests; live tenant verification,
-live Maximo verification and remote uploads remain pending.
+Entra login/callback and session UI have offline tests and a successful local live login.
+Read-only PERSON.ct_discipline lookup on Onshore test is verified; PERSON-derived read grants,
+stable identity binding and authorization audit are implemented (migration 0005).
+Onshore test E&I WO list/detail and crew PIC reads are verified locally.
+Broader live scopes/tenant verification and remote uploads remain pending.
 Scoped WO detail/PIC and draft create/list/restore/update/delete APIs are implemented with synthetic tests.
 Draft baseline preconditions, version checks and durable duplicate submission receipts are implemented.
 The /work-orders UI supports one-WO draft editing, preview, save/restore and session rechecks.
@@ -29,7 +32,11 @@ Implementation status and dependencies are tracked in [docs/todos.md](docs/todos
 - Integration: Maximo 7.6.1.3 OSLC REST API using a dedicated integration account.
 - Hosting: existing Ubuntu server with Docker; Docker Compose and HTTPS are the deployment design.
 - Onshore and Offshore are independent Maximo systems, not test/production aliases.
-- Test server hostname and credentials have not yet been supplied.
+- Onshore test URL supplied: http://bd-maxdev.biendongpoc.vn/maximo; no VPN required and
+  no server certificate installed, per the project owner. OSLC contract, test credentials,
+  and Ubuntu routing remain pending. The project owner authorized test-only HTTP on 2026-10-01:
+  opt-in allow_http_for_test=true, DB connection environment=test and non-production application
+  configuration are required. HTTPS certificate verification and Entra HTTPS remain mandatory.
 
 These are the agreed architecture direction. Tooling defaults in component instructions are
 engineering choices for implementation, not claims about installed software. Resolve exact
@@ -108,6 +115,9 @@ Only explicitly configured connections are selectable; clients cannot supply arb
 - Small, focused functions and modules; no speculative abstractions, flags or compatibility shims.
 - Validate external boundaries; use explicit domain errors rather than broad exception swallowing.
 - Comments explain why; remove stale guidance and keep docs aligned with implementation.
+- After every completed task, update docs/todos.md before reporting completion. Record the date,
+  completed scope, verification evidence and remaining limitations; check off only verified work.
+  Include the TODO update in the task's commit when committing changes.
 - Automated tests must cover authorization, update rules, dates, conflicts and upload recovery.
   Mock Maximo for the fast suite; use only designated test infrastructure for live integration tests.
 - For documentation-only edits, verify links, consistency and removal of template placeholders.

@@ -66,7 +66,7 @@ def query_parameters(settings: MaximoSettings, discipline: str, start: datetime,
         raise MaximoReadError("Invalid date range")
     where = (
         f'bdpocdiscipline={json.dumps(discipline)} and istask=0 and parent!="*"'
-        f" and status in {json.dumps(settings.open_statuses)}"
+        f" and status in {json.dumps(settings.open_statuses, separators=(',', ':'))}"
         f" and targcompdate>={json.dumps(start.isoformat())}"
         f" and targcompdate<{json.dumps(end.isoformat())}"
     )

@@ -168,6 +168,11 @@ async def callback(request: Request):
         if not user.active:
             return failure
         user.display_name = name
+        # This signed claim locates PERSON; tenant/object ID remain the identity keys.
+        login_name = result["id_token_claims"].get("preferred_username")
+        user.login_name = (
+            login_name if isinstance(login_name, str) and len(login_name) <= 320 else None
+        )
         old = request.cookies.get(SESSION_COOKIE)
         if old:
             await db.execute(delete(LoginSession).where(LoginSession.token_hash == token_hash(old)))

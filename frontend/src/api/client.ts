@@ -9,7 +9,7 @@ export async function getLiveness(signal?: AbortSignal): Promise<boolean> {
 
 export type Session = {
   user: { id: string; name: string; is_admin: boolean };
-  grants: { connection_id: string; label: string; system: 'onshore' | 'offshore'; environment: 'test' | 'production'; discipline: string; capability: 'read' | 'write' }[];
+  grants: { connection_id: string; label: string; system: 'onshore' | 'offshore'; environment: 'test' | 'production'; timezone: string; discipline: string; capability: 'read' | 'write' }[];
 };
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -31,6 +31,7 @@ export async function getAuthSummary(signal?: AbortSignal): Promise<{ available:
       typeof body.user.name !== 'string' || typeof body.user.is_admin !== 'boolean' ||
       !Array.isArray(body.grants) || !body.grants.every((grant: unknown) => record(grant) &&
         typeof grant.connection_id === 'string' && typeof grant.label === 'string' &&
+        typeof grant.timezone === 'string' && grant.timezone.length > 0 &&
         ['onshore', 'offshore'].includes(String(grant.system)) &&
         ['test', 'production'].includes(String(grant.environment)) &&
         typeof grant.discipline === 'string' && ['read', 'write'].includes(String(grant.capability)))) {

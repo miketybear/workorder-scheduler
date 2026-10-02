@@ -16,7 +16,7 @@ from app.maximo.reader import MaximoReadError
 from app.maximo.routes import router as maximo_router
 from app.scheduling.routes import router as scheduling_router
 
-SCHEMA_REVISION = "0004_draft_submission"
+SCHEMA_REVISION = "0005_person_access"
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

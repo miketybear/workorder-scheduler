@@ -1,6 +1,8 @@
 # Cấu hình Entra SSO
 
-Luồng login/callback/session/logout đã triển khai, chưa xác minh trên tenant thật.
+Luồng login/callback/session/logout đã triển khai. Đăng nhập/callback thật trên Windows local
+đã xác minh ngày 2026-10-02. Chủ dự án xác nhận logout/login lại đúng;
+expiry, chính sách tenant và staging còn cần nghiệm thu.
 Không cần cấu hình Entra để chạy bảng demo; login khi thiếu cấu hình trả 503.
 Staging/production không khởi động nếu thiếu Entra; cấu hình thiếu một phần luôn bị từ chối.
 
@@ -18,7 +20,56 @@ User mới có identity theo tenant ID + object ID, không có grants và không
 Không dùng email, roles hoặc nhóm từ browser làm bằng chứng quyền WO.
 Đường cấp admin/grants có audit vẫn chưa triển khai; chưa tự seed quyền quản trị.
 
-## Backend settings
+## Theo dõi thu thập — 2026-10-02
+
+Đã nhận tenant/client ID và xác minh login/callback thật trên Windows local.
+Điền thông tin không bí mật dưới đây khi chủ dự án/IT cung cấp.
+
+| Thông tin | Trạng thái / yêu cầu |
+| --- | --- |
+| App registration và đầu mối IT | Chủ dự án báo đã tạo app registration (2026-10-02); chưa đối chiếu cấu hình portal |
+| Directory (tenant) ID | `f9e06204-6d4e-4c6b-935b-52a3151e25a8` — chủ dự án cung cấp 2026-10-02 |
+| Application (client) ID | `6a8601d2-efd9-42e4-b19b-c507f384c069` — chủ dự án cung cấp 2026-10-02 |
+| Tên miền HTTPS cho môi trường kiểm thử | Chọn Windows local HTTPS (2026-10-02); staging chưa có tên miền |
+| Redirect URI | Local: `https://localhost:5173/api/auth/callback`; login/callback thật thành công 2026-10-02 |
+| Phạm vi tài khoản | Yêu cầu single-tenant theo thiết kế; chưa kiểm tra portal |
+| Credential | Client secret trong backend `.env` được Git ignore; token exchange/callback thành công 2026-10-02; chưa nhận ngày hết hạn; không ghi giá trị |
+| Người/nhóm được đăng nhập | Chưa nhận; xác nhận assignment và chính sách MFA/Conditional Access với IT |
+| Tài khoản kiểm thử | Chưa nhận user Object ID và scope connection/discipline/read/write; email chỉ để liên hệ |
+| Logout | Hiện chỉ logout phiên ứng dụng; chưa hỗ trợ Entra front-channel logout |
+
+Bước tiếp theo: chốt WO grants/Maximo test và kiểm thử logout, expiry, chính sách tenant.
+Đã chuẩn bị chứng chỉ tin cậy, HTTPS frontend/API và PostgreSQL riêng trên Windows;
+xem [hướng dẫn local Windows](entra-local-windows.md). MSAL đã đọc discovery tenant thật;
+login trả 303 tới đúng tenant/callback, có PKCE và flow cookie Secure/HttpOnly.
+Chủ dự án báo browser login thành công; DB local xác nhận một user đúng tenant và một phiên
+còn hạn, user active, không có admin hoặc WO grants. Chưa xác nhận có MFA challenge hoặc
+kiểm thử các chính sách chặn đăng nhập.
+Chủ dự án xác nhận logout/login lại hoạt động đúng; SSO không hỏi lại mật khẩu là
+hành vi được chấp nhận. Chưa kiểm chứng riêng cookie cũ bị từ chối trong browser.
+Không gửi client secret, password hoặc token trong chat.
+Thông tin credential bàn giao qua kênh quản lý secret và chỉ nạp vào backend.
+
+### Tạo app kiểm thử
+
+1. Đăng nhập Entra admin center bằng tài khoản công ty; kiểm tra đúng tenant.
+2. Vào **Entra ID → App registrations → New registration**.
+3. Tên đề xuất: **Work Order Scheduler - Test**; chọn tài khoản trong tenant công ty
+   (**Single tenant** / **Accounts in this organizational directory only**).
+4. Nếu màn hình có Redirect URI tùy chọn, để trống khi chưa chốt hostname HTTPS;
+   bổ sung platform **Web** và callback chính xác sau. Không nhập hostname giả.
+5. Chọn **Register**, lấy **Directory (tenant) ID** và **Application (client) ID**
+   từ **Overview**. Chưa cần tạo secret trong bước thu thập ban đầu.
+
+Nếu không có quyền tạo app, nhờ quản trị Entra thực hiện các bước trên.
+Tạo app chưa đồng nghĩa đã cấu hình hoặc kiểm thử đăng nhập.
+
+Hướng dẫn: [đăng ký ứng dụng với Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app).
+
+Tham khảo Microsoft: [cấu hình MSAL và application ID](https://learn.microsoft.com/en-us/entra/identity-platform/msal-client-application-configuration),
+[quy tắc redirect URI](https://learn.microsoft.com/en-us/entra/identity-platform/reply-url).
+
+## Nạp cấu hình backend
 
 Đặt các biến dưới trong môi trường backend hoặc `backend/.env` (được Git ignore):
 

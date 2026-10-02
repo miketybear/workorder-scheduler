@@ -60,6 +60,7 @@ def test_paging_maps_workbook_fields_and_reapplies_scope():
         assert "apikey" not in str(request.url)
         assert 'bdpocdiscipline="E&I"' in request.url.params["oslc.where"]
         assert 'parent!="*"' in request.url.params["oslc.where"]
+        assert 'status in ["APPR","SCHED","WMATL"]' in request.url.params["oslc.where"]
         assert request.url.params["oslc.orderBy"] == "+siteid,+workorderid"
         if len(calls) == 1:
             return httpx.Response(

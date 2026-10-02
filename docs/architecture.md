@@ -51,6 +51,11 @@ Mỗi access grant gồm người dùng, connection Maximo, discipline và capab
 Vai trò mặc định đề xuất: Viewer chỉ đọc, Planner đọc/sửa/upload, Admin quản lý quyền/cấu hình.
 Admin không mặc nhiên được xem WO của mọi discipline.
 
+Quyết định 2026-10-02: connection Onshore test dùng PERSON.ct_discipline làm nguồn grant read.
+Backend dùng signed preferred_username trong domain công ty để tìm personid, giữ tenant/object ID
+làm identity và binding duy nhất theo connection. Kiểm tra nguồn trước/sau đọc, revoke khi không
+xác minh được; null không cấp quyền. Xem [quyền từ PERSON](person-access.md).
+
 Mọi đường đọc đều được giới hạn: danh sách, chi tiết, tìm kiếm, tổng số, bản nháp,
 lịch sử và kết quả upload. Các chức năng báo cáo/export sau này phải dùng cùng policy.
 Backend áp điều kiện quyền vào truy vấn upstream và kiểm tra kết quả trả về.

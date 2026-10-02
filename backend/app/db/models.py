@@ -27,6 +27,7 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID]
     object_id: Mapped[uuid.UUID]
+    login_name: Mapped[str | None] = mapped_column(String(320))
     display_name: Mapped[str] = mapped_column(String(200))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -64,6 +65,32 @@ class AccessGrant(Base):
     )
     discipline: Mapped[str] = mapped_column(String(50))
     capability: Mapped[str] = mapped_column(String(10))
+
+
+class MaximoPersonBinding(Base):
+    __tablename__ = "maximo_person_binding"
+    __table_args__ = (
+        UniqueConstraint("connection_id", "person_id", name="uq_connection_person_owner"),
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("app_user.id", ondelete="RESTRICT"), primary_key=True
+    )
+    connection_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("maximo_connection.id", ondelete="RESTRICT"), primary_key=True
+    )
+    person_id: Mapped[str] = mapped_column(String(50))
+
+
+class AuthorizationEvent(Base):
+    __tablename__ = "authorization_event"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    actor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id", ondelete="RESTRICT"))
+    connection_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("maximo_connection.id", ondelete="RESTRICT")
+    )
+    event: Mapped[str] = mapped_column(String(30))
+    details: Mapped[dict] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class LoginSession(Base):

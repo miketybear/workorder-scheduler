@@ -21,7 +21,21 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.parametrize(
-    "case", ["success", "csrf", "viewer", "pic", "pm", "moved", "closed", "unknown-field", "stale"]
+    "case",
+    [
+        "success",
+        "csrf",
+        "viewer",
+        "pic",
+        "pm",
+        "moved",
+        "closed",
+        "unknown-field",
+        "stale",
+        "http-test",
+        "http-production",
+        "missing-crew",
+    ],
 )
 def test_draft_creation_uses_current_upstream_and_permissions(case):
     async def scenario():
@@ -31,6 +45,11 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                 (
                     await db.get(MaximoConnection, connections[0].id)
                 ).base_url = "https://maximo.invalid/maximo"
+                if case.startswith("http-"):
+                    connection = await db.get(MaximoConnection, connections[0].id)
+                    connection.base_url = "http://maximo.invalid/maximo"
+                    if case == "http-production":
+                        connection.environment = "production"
                 if case == "viewer":
                     grant = await db.scalar(
                         select(AccessGrant).where(AccessGrant.user_id == user.id)
@@ -40,6 +59,16 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                 other_token, _ = await issue_session(db, admin)
             settings = integration_settings()
             settings.maximo = {connections[0].id: config(crew_groups={"MECH": "CREW"})}
+            if case == "missing-crew":
+                settings.maximo[connections[0].id].crew_groups = {}
+            if case.startswith("http-"):
+                settings.maximo = {
+                    connections[0].id: config(
+                        collection_url="http://maximo.invalid/maximo/oslc/os/oslcmxwodetail",
+                        allow_http_for_test=True,
+                        crew_groups={"MECH": "CREW"},
+                    )
+                }
             app = create_app(settings)
             app.state.sessions = sessions
             moved = False
@@ -114,15 +143,32 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                     "moved": 502,
                     "closed": 409,
                     "stale": 409,
+                    "http-test": 201,
+                    "http-production": 503,
+                    "missing-crew": 502,
                 }.get(case, 422)
                 assert response.status_code == expected, response.text
                 async with sessions() as db:
                     assert await db.scalar(select(func.count()).select_from(Draft)) == (
-                        1 if case == "success" else 0
+                        1 if case in {"success", "http-test"} else 0
                     )
-                if case in {"csrf", "viewer", "unknown-field"}:
+                if case in {"csrf", "viewer", "unknown-field", "http-production"}:
                     assert calls == []
-                if case != "success":
+                if case == "missing-crew":
+                    key = {
+                        name: payload[name]
+                        for name in ("connection_id", "site_id", "workorder_id", "discipline")
+                    }
+                    detail = await client.get("/api/work-orders/detail", params=key)
+                    assert detail.status_code == 200
+                    assert detail.json()["pics_configured"] is False
+                    assert detail.json()["allowed_pics"] == []
+                    assert detail.json()["item"]["workorderid"] == "100"
+                    denied = await client.get(
+                        "/api/work-orders/detail", params={**key, "discipline": "OTHER"}
+                    )
+                    assert denied.status_code == 404
+                if case not in {"success", "http-test"}:
                     return
                 url = "/api/drafts/" + response.json()["draft_id"]
                 restored = await client.get(url)

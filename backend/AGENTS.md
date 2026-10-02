@@ -43,7 +43,10 @@ Session storage/logout, Entra flow persistence and internal draft/upload persist
 Entra code flow and scoped Maximo WO list API are implemented with offline HTTP tests.
 Scoped detail/PIC and draft create/list/restore/update/delete APIs exist, with baseline tokens,
 version checks and durable duplicate receipts (migration 0004). Draft UI is connected.
-Live tenant/Maximo verification, WO revision/ETag and upload orchestration remain pending. See ../docs/entra-setup.md and ../docs/maximo-reader.md.
+Local Entra login and Onshore test mxperson reads are verified; PERSON-derived read grants
+and authorization audit use migration 0005. Onshore test E&I WO list/detail and crew reads
+are verified locally; broader live scopes and tenant policy checks,
+WO revision/ETag and uploads remain pending. See ../docs/person-access.md and ../docs/entra-setup.md.
 
 ## Identity and authorization
 
@@ -72,6 +75,10 @@ Live tenant/Maximo verification, WO revision/ETag and upload orchestration remai
   Reference retrieval uses discipline, target completion range, parent filtering and istask=0.
   Validate status domains and parent semantics on the actual installation.
 - Use JSON serialization, encoded query parameters, complete pagination and bounded timeouts.
+- HTTPS is the default. The project owner authorized test-only HTTP: require explicit registry
+  allow_http_for_test=true, DB connection environment=test and a non-production application.
+  Apply configured_connection checks to every Maximo-facing API before/after network I/O.
+  Never disable HTTPS certificate verification or relax Entra HTTPS for this exception.
   Follow only upstream links that remain within the configured trusted connection.
 - Read actual field metadata/nullability and preserve record identity across systems/sites.
 - POST with x-method-override: PATCH is the existing VBA behavior; confirm support on test.

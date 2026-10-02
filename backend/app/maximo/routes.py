@@ -6,8 +6,10 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import AwareDatetime
 from sqlalchemy import select
 
+from app.auth.person_access import sync_person_access
 from app.auth.sessions import SESSION_COOKIE, resolve_session
 from app.db.models import AccessGrant, MaximoConnection
+from app.maximo.connections import configured_connection
 from app.maximo.reader import MaximoReadError, read_open_orders
 
 router = APIRouter(prefix="/api")
@@ -52,14 +54,10 @@ async def list_work_orders(
     token = request.cookies.get(SESSION_COOKIE)
     if not token:
         raise HTTPException(401, "Sign-in required")
+    await sync_person_access(request, token)
     async with request.app.state.sessions() as db:
         connection = await authorized_connection(db, token, connection_id, discipline)
-    settings = request.app.state.settings.maximo.get(connection_id)
-    if settings is None:
-        raise HTTPException(503, "Maximo connection is not configured")
-    expected_collection = connection.base_url.rstrip("/") + "/oslc/os/oslcmxwodetail"
-    if settings.collection_url != expected_collection:
-        raise HTTPException(503, "Maximo connection configuration mismatch")
+    settings = configured_connection(request.app.state.settings, connection)
     try:
         async with request.app.state.maximo_client_factory() as client:
             orders = await read_open_orders(
@@ -68,10 +66,10 @@ async def list_work_orders(
     except MaximoReadError as error:
         raise HTTPException(502, str(error), headers={"Cache-Control": "no-store"}) from None
     # A retrieval may span many pages. Recheck revocation in a fresh DB session before release.
+    await sync_person_access(request, token)
     async with request.app.state.sessions() as db:
         connection = await authorized_connection(db, token, connection_id, discipline)
-        if settings.collection_url != connection.base_url.rstrip("/") + "/oslc/os/oslcmxwodetail":
-            raise HTTPException(503, "Maximo connection configuration mismatch")
+        configured_connection(request.app.state.settings, connection)
     return {
         "connection_id": str(connection_id),
         "discipline": discipline,

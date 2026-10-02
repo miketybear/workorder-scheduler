@@ -1,6 +1,6 @@
 # Trạng thái triển khai — foundation
 
-Cập nhật: 2026-10-01. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
+Cập nhật: 2026-10-02. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 
 ## Đã triển khai
 
@@ -15,8 +15,8 @@ Cập nhật: 2026-10-01. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 
 ## Bằng chứng kiểm tra
 
-- Backend: 131 tests qua (97 fast + 34 PostgreSQL integration scenarios); không gọi Maximo/Entra.
-- Frontend: 46 tests (UI + API boundary); TypeScript và ESLint qua; Vite production build thành công.
+- Backend: 194 tests qua (HTTP mocks + PostgreSQL integration scenarios); suite không gọi Maximo/Entra thật.
+- Frontend: 52 tests (UI + API boundary); TypeScript và ESLint qua; Vite production build thành công.
 - Ruff lint/format qua.
 - Alembic upgrade từ DB trống, downgrade về base và upgrade lại qua trên PostgreSQL 17 test; schema/model không lệch.
 - `docker compose config --quiet` qua với credential giả chỉ để validate cấu hình.
@@ -31,17 +31,40 @@ Kiểm tra UI đã thực hiện trong panel trình duyệt hẹp; chưa thay th
 
 - Docker Desktop và PostgreSQL test đã chạy. Full application image builds chưa xác minh.
 - Container image digest/scan, backup/restore và khả năng chạy Ubuntu chưa xác minh.
-- Chưa có cấu hình Entra, hostname/credential test Maximo, grants thực tế và timezone đã xác nhận.
-- Entra login/callback đã có; chưa xác minh tenant thật. Đã có scoped API list WO; đã có detail/create/restore draft; chưa có history, upload Maximo hoặc đối soát upstream.
+- Entra local và Onshore test đã cấu hình; đọc WO list/detail và 25 PIC E&I_N thành công,
+  grant E&I chỉ xem từ PERSON và timezone Asia/Ho_Chi_Minh đã xác nhận. Offshore chưa kiểm chứng.
+- Entra login/callback thật đã xác minh trên Windows local; logout/expiry, chính sách tenant và staging còn pending. Đã có scoped API list WO; đã có detail/create/restore draft; chưa có history, upload Maximo hoặc đối soát upstream.
 - Draft đã có API/UI tạo/list/mở/cập nhật/xóa theo owner, stale-edit/version checks và duplicate receipts; audit vẫn là dịch vụ nội bộ. Recovery chỉ chuyển sending cũ sang unknown.
 - Chưa tách DB runtime role/migration owner; chưa kiểm thử worker concurrency hay crash durability.
 - Chưa có E2E với backend nghiệp vụ, kiểm thử 10 phiên, CI hay triển khai production.
 
 ## Bước tiếp theo
 
-1. Xác minh Entra login với app registration; triển khai đường quản trị grants có audit.
-2. Đối chiếu reader detail/crew/PIC với Maximo test; xác minh revision/ETag và timezone nghiệp vụ.
+1. Kiểm thử Entra logout/expiry và chính sách tenant; triển khai đường quản trị grants có audit.
+2. Mở rộng kiểm chứng detail/crew/PIC ngoài E&I Onshore test; xác minh revision/ETag.
 3. Kiểm thử browser E2E cho nháp, hoàn thiện sửa nhiều dòng và triển khai upload có audit/đối soát.
+
+## Entra login live local — 2026-10-02
+
+Chủ dự án xác nhận đăng nhập browser thành công trên HTTPS localhost. Truy vấn chỉ đọc
+PostgreSQL development riêng xác nhận một user đúng tenant, active, một session còn hạn,
+không có admin và không có WO grants. Callback chỉ tạo session sau token exchange/JWT validation.
+Đây là bằng chứng login/callback/session live cơ bản, không phải toàn bộ UAT Entra.
+Chưa kiểm thử logout/expiry, sai tenant live, assignment, Conditional Access hoặc nhiều phiên;
+chưa xác nhận MFA challenge. Không thêm/cấp quyền, không gọi Maximo hoặc chạy lại bộ tests.
+Hướng dẫn: [Windows local](entra-local-windows.md).
+
+## PERSON discipline — 2026-10-02
+
+Đã triển khai nguồn grant read từ `mxperson.ct_discipline`, signed Entra login bỏ domain
+biendongpoc.vn, binding duy nhất per connection và authorization audit append-only (migration 0005).
+186 backend tests/Ruff qua, Alembic upgrade/schema check qua ở DB test và local SSO,
+backend restart và HTTPS readiness 200. GET Maximo test mxperson HTTP 200: duongvq có E&I,
+NHATNH có ct_discipline trống. Onshore test connection đã tạo có audit; chưa cấp grant cho chủ dự án.
+Chủ dự án sau đó điền E&I và re-login, giao diện hiển thị E&I; DB local xác nhận signed login,
+binding nhatnh, đúng một grant E&I/read, không admin, có audit binding/grant.
+Login → PERSON → grant đã được kiểm chứng live cơ bản; chưa WO retrieve thật hoặc E2E nháp.
+Xem [hợp đồng và giới hạn](person-access.md).
 
 ## Cập nhật bảng theo Excel
 
@@ -116,3 +139,26 @@ Bảo vệ đổi scope/filter và liên kết; Back của browser chưa có blo
 PostgreSQL tests dùng HTTP Maximo giả; test đồng thời dùng transaction riêng đã xác minh một nháp
 cho duplicate create và một cập nhật cho hai request cùng version. Không phải E2E/Maximo live.
 Không thêm runtime dependency. Xem [hướng dẫn nháp](drafts.md) và [database tests](database-tests.md).
+
+## Thu thập Maximo test — 2026-10-01
+
+Chủ dự án cung cấp http://bd-maxdev.biendongpoc.vn và xác nhận môi trường test.
+Chủ dự án xác nhận Onshore test, context path /maximo, không cần VPN và server chưa cài chứng chỉ.
+Credential và OSLC contract còn chờ xác nhận; chủ dự án đã chọn HTTP riêng cho test.
+DNS từ Windows phân giải được; HEAD HTTP root trả 403; HTTPS lỗi xác minh chứng chỉ.
+Chưa kiểm tra từ Ubuntu hoặc gọi OSLC/authentication; chưa gửi credential hoặc ghi Maximo.
+Chi tiết trong [checklist tích hợp](integration-intake.md).
+
+
+## HTTP chỉ cho Maximo test — 2026-10-01
+
+Chủ dự án cho phép HTTP riêng cho Onshore test. Maximo registry có allow_http_for_test=false
+mặc định; HTTP cần opt-in true, DB connection environment=test và ứng dụng không ở production.
+Guard chung áp cho list/detail/PIC và các API nháp trước/sau network I/O. Production startup
+và runtime từ chối HTTP; không đổi yêu cầu HTTPS của Entra hoặc TLS verification của HTTPX.
+
+107 fast + 40 PostgreSQL tests qua (147 tổng), Ruff lint/format qua. Tests mới kiểm tra opt-in,
+production config/metadata, reclassification khi đang retrieve, HTTP detail/PIC/nháp và paging
+không đổi origin/scheme. Frontend không đổi; không chạy lại frontend tests cho thay đổi này.
+Không thêm dependency hoặc migration. Chưa gửi API key tới server test thật; OSLC contract,
+credentials/grants/timezone và đường mạng Ubuntu còn pending.

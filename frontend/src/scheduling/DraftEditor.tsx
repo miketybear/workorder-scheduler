@@ -48,7 +48,7 @@ export function DraftEditor({ selection, scope, writable, suspended, verifiedDet
     const promise: Promise<Detail | Restored> = 'key' in selection ? getDetail(selection.key, controller.signal) : openDraft(selection.draftId, scope, controller.signal);
     promise.then((value) => {
       if (controller.signal.aborted) return;
-      setDetail(value); setLoaded(true);
+      setDetail(value); setLoaded(true); setError('');
       if ('changes' in value) {
         setSaved(value); setChanges(value.changes); setCommitted(JSON.stringify(value.changes));
         setBlocked(value.baseline_changed || !value.changes_valid_now);
@@ -130,7 +130,8 @@ export function DraftEditor({ selection, scope, writable, suspended, verifiedDet
     {detail && <>
       {saved && <p>Nháp phiên bản {saved.version}</p>}
       {blocked && <p role="alert">Dữ liệu gốc hoặc PIC đã thay đổi. Nháp được giữ để đối chiếu; mở WO từ bảng để tạo nháp mới sau khi kiểm tra.</p>}
-      <fieldset disabled={!writable || busy || suspended || blocked}>
+      {detail.pics_configured === false && <p>Chưa cấu hình crew/PIC cho discipline này. Có thể xem chi tiết WO; chưa thể chỉnh sửa hoặc lưu nháp.</p>}
+      <fieldset disabled={!writable || busy || suspended || blocked || detail.pics_configured === false}>
         <legend>Lập lịch · ngày giờ ISO có offset</legend>
         <label><input type="checkbox" checked={!!changes.change_target} disabled={['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase())}
           onChange={(event) => setChanges((previous) => {

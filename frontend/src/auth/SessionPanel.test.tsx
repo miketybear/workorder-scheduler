@@ -32,7 +32,7 @@ describe('session access', () => {
   it('clears old identity when session expires', async () => {
     vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: {
       user: { id: 'user', name: 'Planner', is_admin: false },
-      grants: [{ connection_id: 'one', label: 'Onshore test', system: 'onshore', environment: 'test', discipline: 'MECH', capability: 'write' }],
+      grants: [{ connection_id: 'one', label: 'Onshore test', system: 'onshore', environment: 'test', timezone: 'Asia/Ho_Chi_Minh', discipline: 'MECH', capability: 'write' }],
     } });
     render(<SessionPanel />);
     await screen.findByText(/Onshore test/);

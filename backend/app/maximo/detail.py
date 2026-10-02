@@ -1,5 +1,6 @@
 import json
 import re
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -66,7 +67,9 @@ async def read_pics(
     def validate(raw):
         if raw.get("persongroup") != group:
             raise MaximoReadError("Crew outside requested scope")
-        if raw.get("persongroupteam_collectionref") or raw.get("persongroupteam_responseInfo"):
+        if raw.get("persongroupteam_collectionref"):
+            return raw, group
+        if raw.get("persongroupteam_responseInfo"):
             raise MaximoReadError("Crew response is incomplete")
         team = raw.get("persongroupteam")
         if not isinstance(team, list) or len(team) > settings.max_rows:
@@ -82,7 +85,69 @@ async def read_pics(
     groups = await read_collection(client, crew_settings, params, validate)
     if len(groups) != 1:
         raise MaximoReadError("Configured crew group not found")
-    return groups[0]
+    result = groups[0]
+    if isinstance(result, frozenset):
+        return result
+    relation = trusted_team_relation(result, crew_settings.collection_url)
+    team_settings = crew_settings.model_copy(update={"collection_url": relation})
+
+    def validate_person(raw):
+        name = raw.get("respparty")
+        href = raw.get("localref", raw.get("href"))
+        if not isinstance(name, str) or not name.strip() or len(name) > 200:
+            raise MaximoReadError("Invalid crew member")
+        if not isinstance(href, str):
+            raise MaximoReadError("Invalid crew identity")
+        target, base = urlsplit(href), urlsplit(relation)
+        if (
+            target.scheme not in {"http", "https"}
+            or target.username
+            or target.password
+            or not target.path.startswith(base.path + "/")
+            or target.query
+            or target.fragment
+            or "\\" in href
+            or any(ord(char) < 32 for char in href)
+            or not re.fullmatch(r"[A-Za-z0-9_~-]+", target.path[len(base.path) + 1 :])
+        ):
+            raise MaximoReadError("Invalid crew identity")
+        return name, (group, target.path)
+
+    people = await read_collection(
+        client,
+        team_settings,
+        {"lean": "1", "oslc.select": "respparty", "oslc.pageSize": str(settings.page_size)},
+        validate_person,
+    )
+    return frozenset(people)
+
+
+def trusted_team_relation(raw: dict, collection_url: str) -> str:
+    parent, relation = raw.get("href"), raw.get("persongroupteam_collectionref")
+    if not isinstance(parent, str) or not isinstance(relation, str):
+        raise MaximoReadError("Invalid crew relation")
+    base, resource, target = urlsplit(collection_url), urlsplit(parent), urlsplit(relation)
+    if (
+        any("\\" in value or any(ord(char) < 32 for char in value) for value in (parent, relation))
+        or resource.scheme not in {"http", "https"}
+        or resource.username
+        or resource.password
+        or resource.query
+        or resource.fragment
+        or not resource.path.startswith(base.path + "/")
+        or not re.fullmatch(r"[A-Za-z0-9_~-]+", resource.path[len(base.path) + 1 :])
+        or target.scheme not in {"http", "https"}
+        or target.username
+        or target.password
+        or target.query
+        or target.fragment
+        or target.path
+        not in {resource.path + "/persongroupteam", resource.path + "/allpersongroupteam"}
+    ):
+        raise MaximoReadError("Unsafe crew relation")
+    # Maximo test can advertise its production public URL. Use only validated resource
+    # path segments as identifiers; credentials always stay on the configured test origin.
+    return str(httpx.URL(collection_url).copy_with(path=target.path))
 
 
 def current_snapshot(key: WorkOrderKey, order, pics: frozenset[str]) -> CurrentWorkOrder:

@@ -58,6 +58,7 @@ class MaximoSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
     collection_url: str
     api_key: SecretStr
+    allow_http_for_test: bool = Field(default=False, strict=True)
     timeout_seconds: int = Field(default=15, ge=1, le=60)
     retrieval_timeout_seconds: int = Field(default=120, ge=1, le=300)
     page_size: int = Field(default=200, ge=1, le=1000)
@@ -67,6 +68,18 @@ class MaximoSettings(BaseModel):
     # Explicit per-connection domain values, to be confirmed on the designated test system.
     open_statuses: list[str] = Field(min_length=1, max_length=30)
     crew_groups: dict[str, str] = Field(default_factory=dict)
+    person_login_domain: str | None = None
+
+    @field_validator("person_login_domain")
+    @classmethod
+    def company_login_domain(cls, value: str | None) -> str | None:
+        import re
+
+        if value is None:
+            return None
+        if not re.fullmatch(r"[a-z0-9]+(?:[.-][a-z0-9]+)+", value):
+            raise ValueError("A lowercase company login domain is required")
+        return value
 
     @field_validator("crew_groups")
     @classmethod
@@ -86,7 +99,7 @@ class MaximoSettings(BaseModel):
     def trusted_collection(cls, value: str) -> str:
         url = urlsplit(value)
         if (
-            url.scheme != "https"
+            url.scheme not in {"https", "http"}
             or not url.hostname
             or url.username
             or url.password
@@ -98,8 +111,14 @@ class MaximoSettings(BaseModel):
             or "/./" in url.path
             or not url.path.rstrip("/").endswith("/oslc/os/oslcmxwodetail")
         ):
-            raise ValueError("An HTTPS WO collection URL without credentials/query is required")
+            raise ValueError("A WO collection URL without credentials/query is required")
         return value.rstrip("/")
+
+    @model_validator(mode="after")
+    def require_http_opt_in(self):
+        if urlsplit(self.collection_url).scheme == "http" and not self.allow_http_for_test:
+            raise ValueError("HTTP Maximo requires explicit allow_http_for_test=true")
+        return self
 
     @field_validator("api_key")
     @classmethod
@@ -138,6 +157,11 @@ class Settings(BaseSettings):
     def require_production_identity(self):
         if self.environment in {"staging", "production"} and self.entra is None:
             raise ValueError("Entra configuration is required outside local development/test")
+        if self.environment == "production" and any(
+            urlsplit(connection.collection_url).scheme == "http"
+            for connection in self.maximo.values()
+        ):
+            raise ValueError("Production application settings require HTTPS Maximo connections")
         return self
 
     @field_validator("database_url")

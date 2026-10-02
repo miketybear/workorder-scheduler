@@ -5,6 +5,7 @@ import { columns, RetrievalError, retrieveWorkOrders, type WorkOrder } from '../
 import styles from '../App.module.css';
 import { DraftEditor, type EditorSelection } from './DraftEditor';
 import { getDetail, openDraft, listDrafts, type Detail, type DraftSummary, type Scope } from '../api/drafts';
+import { startOfDay } from '../api/dates';
 
 export function WorkOrders() {
   const [session, setSession] = useState<Session | null>(null);
@@ -14,6 +15,8 @@ export function WorkOrders() {
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [rows, setRows] = useState<WorkOrder[] | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [selection, setSelection] = useState<EditorSelection | null>(null);
@@ -28,6 +31,12 @@ export function WorkOrders() {
   const pending = useRef<AbortController | null>(null);
   const refreshSession = useRef<(() => void) | null>(null);
   const grant = session?.grants.find((item) => JSON.stringify([item.connection_id, item.discipline]) === scope);
+  const statuses = useMemo(() => [...new Set(rows?.map((row) => row.status) ?? [])].sort(), [rows]);
+  const visibleRows = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase('vi');
+    return rows?.filter((row) => (!statusFilter || row.status === statusFilter) &&
+      (!query || [row.wonum, row.description, row.location].some((value) => value?.toLocaleLowerCase('vi').includes(query)))) ?? [];
+  }, [rows, search, statusFilter]);
 
   const editorScope = useMemo(() => ({ connection_id: grant?.connection_id ?? '', discipline: grant?.discipline ?? '' }), [grant?.connection_id, grant?.discipline]);
 
@@ -52,6 +61,7 @@ export function WorkOrders() {
     pending.current?.abort();
     pending.current = null;
     setRows(null);
+    setSearch(''); setStatusFilter('');
     setBusy(false);
     setError('');
   }
@@ -133,7 +143,7 @@ export function WorkOrders() {
     setBusy(true);
     try {
       const items = await retrieveWorkOrders({ connection_id: grant.connection_id, discipline: grant.discipline,
-        target_from: start.trim(), target_before: end.trim() }, controller.signal);
+        target_from: startOfDay(start, grant.timezone), target_before: startOfDay(end, grant.timezone) }, controller.signal);
       if (!controller.signal.aborted && pending.current === controller) setRows(items);
     } catch (cause) {
       if (!controller.signal.aborted && pending.current === controller) {
@@ -169,14 +179,14 @@ export function WorkOrders() {
             return <option key={key} value={key}>{item.label} · {item.system} · {item.environment} · {item.discipline}</option>;
           })}
         </select></label>
-        <label>Target Finish từ<input required value={start} placeholder="2026-09-01T00:00:00+07:00"
+        <label>Target Finish từ<input type="date" required value={start}
           onChange={(event) => { if (discard()) { clearResults(); setStart(event.target.value); } }} /></label>
-        <label>Target Finish trước<input required value={end} placeholder="2026-10-01T00:00:00+07:00"
+        <label>Target Finish trước<input type="date" required value={end}
           onChange={(event) => { if (discard()) { clearResults(); setEnd(event.target.value); } }} /></label>
         <button className={styles.primary} disabled={!grant || busy}>{busy ? 'Đang lấy WO…' : 'Retrieve WO'}</button>
       </form>
-      <p className={styles.tableHint}>Nhập ngày giờ ISO có múi giờ đã xác nhận; mốc cuối không bao gồm. Ngày trong bảng giữ nguyên offset từ Maximo. Nội dung sửa được giữ khi kiểm tra lại phiên nếu tài khoản và quyền không đổi; dữ liệu bị xóa khi phiên hết hạn hoặc quyền thay đổi.</p>
-      {grant && <p>{grant.label} · {grant.system} · {grant.environment} / {grant.discipline}</p>}
+      <p className={styles.tableHint}>Bấm biểu tượng lịch để chọn ngày. Khoảng lọc tính từ 00:00 ngày đầu đến trước 00:00 ngày cuối{grant ? ` theo ${grant.timezone}` : ''}; muốn lấy hết một ngày, chọn mốc cuối là ngày kế tiếp. Nội dung sửa được giữ khi kiểm tra lại phiên nếu tài khoản và quyền không đổi; dữ liệu bị xóa khi phiên hết hạn hoặc quyền thay đổi.</p>
+      {grant && <p>{grant.label} · {grant.system} · {grant.environment} / {grant.discipline} · {grant.capability === 'read' ? 'Chỉ xem' : 'Có thể chỉnh sửa và lưu nháp'}</p>}
       {grant && <button disabled={busy} onClick={() => void browseDrafts()}>Danh sách nháp</button>}
       {drafts !== null && <section aria-label="Danh sách nháp">
         <h2>Nháp của tôi</h2>{drafts.length === 0 && <p>Không có nháp trong trang này.</p>}
@@ -189,10 +199,23 @@ export function WorkOrders() {
       {busy && <p role="status">Đang lấy và kiểm tra đầy đủ các trang dữ liệu…</p>}
       {rows !== null && <>
         <p role="status">{rows.length === 0 ? 'Không có WO trong phạm vi và khoảng ngày đã chọn.' : `${rows.length} WO đã lấy đầy đủ.`}</p>
-        {rows.length > 0 && <div className={`${styles.tableWrap} ${styles.schedulerTable}`} tabIndex={0} role="region" aria-label="WO từ Maximo">
+        {rows.length > 0 && <>
+          <div className={styles.filters} role="search" aria-label="Lọc WO đã tải">
+            <label>Tìm WO, mô tả hoặc Tag Name<input type="search" value={search}
+              onChange={(event) => setSearch(event.target.value)} /></label>
+            <label>Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="">Tất cả status đã tải</option>
+              {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+            </select></label>
+            <button disabled={!search && !statusFilter} onClick={() => { setSearch(''); setStatusFilter(''); }}>Xóa bộ lọc bảng</button>
+          </div>
+          <p role="status">Hiển thị {visibleRows.length} / {rows.length} WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.</p>
+          {visibleRows.length === 0 && <p>Không có WO khớp bộ lọc bảng. Xóa bộ lọc để xem lại dữ liệu đã tải.</p>}
+        </>}
+        {visibleRows.length > 0 && <div className={`${styles.tableWrap} ${styles.schedulerTable}`} tabIndex={0} role="region" aria-label="WO từ Maximo">
           <table><thead><tr>{columns.map(([field, title]) => <th scope="col" key={field}>{title}</th>)}
             <th scope="col">Upload?</th><th scope="col">Change Target?</th><th scope="col">Site</th></tr></thead>
-            <tbody>{rows.map((row) => <tr key={JSON.stringify([scope, row.siteid, row.workorderid])}>
+            <tbody>{visibleRows.map((row) => <tr key={JSON.stringify([scope, row.siteid, row.workorderid])}>
               {columns.map(([field]) => <td key={field} className={field === 'description' ? styles.descriptionCell : undefined}>
                 {field === 'wonum' && grant ? <button onClick={() => choose({ key: { ...editorScope, site_id: row.siteid, workorder_id: row.workorderid } })}>{row.wonum}</button> : field === 'status' ? <span className={styles.statusBadge} data-status={row.status}>{row.status}</span> :
                   field === 'wolo10' ? (row.wolo10 === null ? '—' : `${row.wolo10}%`) :

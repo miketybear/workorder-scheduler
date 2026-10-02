@@ -28,6 +28,10 @@ pytestmark = pytest.mark.integration
         "anonymous",
         "raw-query",
         "host-mismatch",
+        "http-test",
+        "http-production-connection",
+        "http-production-app",
+        "http-reclassified",
     ],
 )
 def test_retrieval_api_enforces_scope_and_revocation(monkeypatch, case):
@@ -38,8 +42,21 @@ def test_retrieval_api_enforces_scope_and_revocation(monkeypatch, case):
                 async with sessions.begin() as db:
                     connection = await db.get(MaximoConnection, connections[0].id)
                     connection.base_url = "https://maximo.invalid/maximo"
+                    if case.startswith("http-"):
+                        connection.base_url = "http://maximo.invalid/maximo"
+                    if case == "http-production-connection":
+                        connection.environment = "production"
             settings = integration_settings()
             settings.maximo = {connections[0].id: config()}
+            if case.startswith("http-"):
+                settings.maximo = {
+                    connections[0].id: config(
+                        collection_url="http://maximo.invalid/maximo/oslc/os/oslcmxwodetail",
+                        allow_http_for_test=True,
+                    )
+                }
+            if case == "http-production-app":
+                settings.environment = "production"
             if case == "missing-config":
                 settings.maximo = {}
             app = create_app(settings)
@@ -51,6 +68,11 @@ def test_retrieval_api_enforces_scope_and_revocation(monkeypatch, case):
                 if case == "revoked":
                     async with sessions.begin() as db:
                         await db.execute(delete(AccessGrant).where(AccessGrant.user_id == user.id))
+                if case == "http-reclassified":
+                    async with sessions.begin() as db:
+                        (
+                            await db.get(MaximoConnection, connections[0].id)
+                        ).environment = "production"
                 return httpx.Response(
                     200,
                     json={
@@ -90,15 +112,21 @@ def test_retrieval_api_enforces_scope_and_revocation(monkeypatch, case):
                     "missing-config": 503,
                     "host-mismatch": 503,
                     "raw-query": 422,
+                    "http-test": 200,
+                    "http-production-connection": 503,
+                    "http-production-app": 503,
+                    "http-reclassified": 503,
                 }.get(case, 404)
                 assert response.status_code == expected
-                if case == "allowed":
+                if case in {"allowed", "http-test"}:
                     assert response.json()["count"] == 1
                     assert response.headers["Cache-Control"] == "no-store"
                     assert response.json()["connection_id"] == str(connections[0].id)
                 else:
                     assert "DEMO" not in response.text
                 assert "synthetic-test-key" not in response.text
-                assert len(calls) == (1 if case in {"allowed", "revoked"} else 0)
+                assert len(calls) == (
+                    1 if case in {"allowed", "revoked", "http-test", "http-reclassified"} else 0
+                )
 
     asyncio.run(scenario(), loop_factory=asyncio.SelectorEventLoop)

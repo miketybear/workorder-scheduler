@@ -107,6 +107,7 @@ async def current_grants(db: AsyncSession, user_id: uuid.UUID) -> list[dict]:
             "label": connection.label,
             "system": connection.system,
             "environment": connection.environment,
+            "timezone": connection.timezone,
             "discipline": grant.discipline,
             "capability": grant.capability,
         }
@@ -115,10 +116,13 @@ async def current_grants(db: AsyncSession, user_id: uuid.UUID) -> list[dict]:
 
 
 async def session_info(request: Request, response: Response):
+    from app.auth.person_access import sync_person_access
+
     response.headers["Cache-Control"] = "no-store"
     token = request.cookies.get(SESSION_COOKIE)
     if not token:
         raise HTTPException(401, "Sign-in required")
+    await sync_person_access(request, token)
     async with request.app.state.sessions() as db:
         identity = await resolve_session(db, token)
         grants = await current_grants(db, identity.user_id)

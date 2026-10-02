@@ -39,6 +39,74 @@ def test_detail_identity_and_missing_work_order(fault):
 
 
 @pytest.mark.parametrize(
+    "fault", [None, "path", "userinfo", "query", "traversal", "child", "paging"]
+)
+def test_crew_relation_stays_on_configured_origin_and_reads_all_pages(fault):
+    async def scenario():
+        settings = config(crew_groups={"E&I": "CREW-EI"})
+        parent = "https://advertised.invalid/maximo/oslc/os/mxpersongroup/_CREW"
+        relation = parent + "/allpersongroupteam"
+        if fault == "path":
+            relation = parent + "/otherteam"
+        elif fault == "userinfo":
+            relation = relation.replace("advertised.invalid", "user@advertised.invalid")
+        elif fault == "query":
+            relation += "?savedQuery=all"
+        elif fault == "traversal":
+            parent = parent.replace("_CREW", "..")
+            relation = parent + "/allpersongroupteam"
+        calls = []
+
+        def handler(request):
+            calls.append(request)
+            assert request.url.host == "maximo.invalid"
+            assert request.headers["apikey"] == "synthetic-test-key"
+            if request.url.path.endswith("/mxpersongroup"):
+                return httpx.Response(
+                    200,
+                    json={
+                        "member": [
+                            {
+                                "persongroup": "CREW-EI",
+                                "href": parent,
+                                "persongroupteam": [{"respparty": "INCOMPLETE-INLINE"}],
+                                "persongroupteam_collectionref": relation,
+                            }
+                        ]
+                    },
+                )
+            page = request.url.params.get("pageno", "1")
+            localref = parent + "/allpersongroupteam/" + page
+            if fault == "child":
+                localref = parent + "/otherteam/1"
+            info = {} if page == "2" else {"nextPage": "?pageno=2"}
+            if fault == "paging":
+                info = {
+                    "nextPage": "https://evil.invalid/maximo/oslc/os/mxpersongroup/_CREW/allpersongroupteam?pageno=2"
+                }
+            return httpx.Response(
+                200,
+                json={
+                    "member": [
+                        {"respparty": "TECH" + page, "localref": localref, "href": "#fragment"}
+                    ],
+                    "responseInfo": info,
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await read_pics(client, settings, "E&I")
+            assert result == frozenset({"TECH1", "TECH2"})
+            assert len(calls) == 3
+
+    if fault:
+        with pytest.raises(MaximoReadError):
+            asyncio.run(scenario())
+    else:
+        asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
     "fault", [None, "group", "missing-team", "truncated", "member", "unconfigured"]
 )
 def test_crew_group_is_server_configured_and_response_checked(fault):

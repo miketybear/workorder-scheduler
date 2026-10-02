@@ -44,6 +44,7 @@ def test_login_callback_scope_and_replay(monkeypatch, outcome):
                     "oid": str(user.object_id),
                     "aud": str(config.client_id),
                     "name": "Verified user",
+                    "preferred_username": "planner@company.invalid",
                 }
             }
             if outcome == "tenant":
@@ -81,7 +82,9 @@ def test_login_callback_scope_and_replay(monkeypatch, outcome):
                         flow.expires_at = datetime.now(UTC) - timedelta(seconds=1)
                 if outcome == "browser":
                     client.cookies.delete(entra.FLOW_COOKIE)
-                query = "?state=correct&code=private-code"
+                query = (
+                    "?state=correct&code=private-code&preferred_username=attacker@company.invalid"
+                )
                 if outcome == "duplicate":
                     query += "&state=other"
                 response = await client.get("/api/auth/callback" + query)
@@ -102,6 +105,10 @@ def test_login_callback_scope_and_replay(monkeypatch, outcome):
                         assert info["grants"][0]["discipline"] == "MECH"
                     async with sessions() as db:
                         assert await db.get(LoginSession, token_hash(old)) is None
+                        stored_user = await db.scalar(
+                            select(User).where(User.object_id == result["id_token_claims"]["oid"])
+                        )
+                        assert stored_user.login_name == "planner@company.invalid"
                 if outcome != "browser":
                     calls = redeem.call_count
                     client.cookies.set(entra.FLOW_COOKIE, browser, domain="test.example", path="/")

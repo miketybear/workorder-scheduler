@@ -9,10 +9,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
+from app.auth.person_access import sync_person_access
 from app.auth.sessions import SESSION_COOKIE, resolve_session, verify_csrf
 from app.db.models import AccessGrant, Draft, DraftItem, DraftSubmission
 from app.maximo.detail import current_snapshot, read_detail, read_pics
-from app.maximo.routes import authorized_connection
+from app.maximo.routes import authorized_connection, configured_connection
 from app.scheduling.changes import ScheduleChanges, build_changes
 from app.scheduling.drafts import WorkOrderKey, create_draft, load_draft, require_scope
 
@@ -55,22 +56,19 @@ class DraftRequest(BaseModel):
 
 async def checked_settings(request, key, discipline, *, write=False, csrf=False):
     token = request.cookies.get(SESSION_COOKIE)
+    await sync_person_access(request, token)
     async with request.app.state.sessions() as db:
         identity = await resolve_session(db, token)
         if csrf:
             verify_csrf(identity, request.headers.get("X-CSRF-Token"))
         connection = await authorized_connection(db, token, key.connection_id, discipline)
         await require_scope(db, identity.user_id, key, discipline, write=write)
-    settings = request.app.state.settings.maximo.get(key.connection_id)
-    if (
-        settings is None
-        or settings.collection_url != connection.base_url.rstrip("/") + "/oslc/os/oslcmxwodetail"
-    ):
-        raise HTTPException(503, "Maximo connection is not configured")
-    return identity, settings
+    return identity, configured_connection(request.app.state.settings, connection)
 
 
-async def retrieve_snapshot(request, key, discipline, *, write=False, csrf=False):
+async def retrieve_snapshot(
+    request, key, discipline, *, write=False, csrf=False, require_pics=True
+):
     identity, settings = await checked_settings(request, key, discipline, write=write, csrf=csrf)
     async with request.app.state.maximo_client_factory() as client:
         order = await read_detail(client, settings, key, discipline)
@@ -82,7 +80,12 @@ async def retrieve_snapshot(request, key, discipline, *, write=False, csrf=False
             or order.parent not in (None, "")
         ):
             raise HTTPException(409, "Work order is no longer eligible for scheduling")
-        pics = await read_pics(client, settings, discipline)
+        # Viewing WO state does not require a crew mapping; draft operations always do.
+        pics = (
+            await read_pics(client, settings, discipline)
+            if require_pics or discipline in settings.crew_groups
+            else frozenset()
+        )
     await checked_settings(request, key, discipline, write=write, csrf=csrf)
     return identity, order, current_snapshot(key, order, pics)
 
@@ -104,12 +107,14 @@ async def detail(
     ):
         raise HTTPException(422, "Unsupported or duplicate query parameter")
     _, order, current = await retrieve_snapshot(
-        request, WorkOrderKey(connection_id, site_id, workorder_id), discipline
+        request, WorkOrderKey(connection_id, site_id, workorder_id), discipline, require_pics=False
     )
     return {
         "connection_id": str(connection_id),
         "item": order.model_dump(mode="json"),
         "allowed_pics": sorted(current.allowed_pics),
+        "pics_configured": discipline
+        in request.app.state.settings.maximo[connection_id].crew_groups,
         "revision": None,
         "baseline_token": snapshot_token(current),
         "baseline": current.baseline.model_dump(mode="json"),

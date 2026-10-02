@@ -6,7 +6,8 @@ retrieve WO từ Maximo, chỉnh sửa kế hoạch, xem thay đổi và upload 
 **Trạng thái:** đã có backend FastAPI, frontend React, migrations và Compose
 cho phát triển local. Bảng `/demo` dùng dữ liệu hoàn toàn giả lập, cho sửa ngày và xem before/after.
 Đã có lưu session, dịch vụ nội bộ lưu nháp và trạng thái upload/audit trên PostgreSQL.
-Đã có luồng Entra, giao diện phiên đăng nhập và API đọc WO có scope; chưa xác minh tenant/Maximo thật.
+Đã xác minh Entra login/callback local và đọc PERSON Maximo test; chưa xác minh WO retrieve thật.
+Quyền read có thể lấy từ [PERSON.ct_discipline](docs/person-access.md) theo Entra login đã xác thực.
 Route /work-orders đã nối API danh sách/chi tiết và nháp; bấm số WO để sửa lịch, PIC, duration,
 xem before/after và lưu/mở/cập nhật/xóa nháp một WO. /demo vẫn dùng dữ liệu giả. Upload Maximo chưa triển khai.
 
@@ -34,7 +35,8 @@ xem before/after và lưu/mở/cập nhật/xóa nháp một WO. /demo vẫn dù
 
 ## Thông tin cần bổ sung khi tích hợp
 
-Hostname test do chủ dự án cung cấp; cấu hình Entra app registration; tài khoản tích hợp
+Đã nhận host Onshore test và chọn HTTP riêng cho test; xem [checklist tích hợp](docs/integration-intake.md).
+Còn cần cấu hình Entra app registration; tài khoản tích hợp
 và quyền object structure; ánh xạ người dùng/discipline/hệ thống; DNS và chứng chỉ HTTPS.
 Bàn giao credential qua kênh quản lý secret, không đưa vào tài liệu hoặc mã nguồn.
 
@@ -128,6 +130,7 @@ HTTPS, xác minh SSO/Maximo thật, upload/history và hướng dẫn vận hàn
 Kiểm thử PostgreSQL riêng: xem [hướng dẫn database test](docs/database-tests.md).
 
 Cấu hình và giới hạn đăng nhập: [Entra SSO](docs/entra-setup.md).
+Kiểm thử HTTPS/Entra trên máy Windows: [hướng dẫn local](docs/entra-local-windows.md).
 
 Connector chỉ đọc và mapping VBA: [Maximo reader](docs/maximo-reader.md).
 

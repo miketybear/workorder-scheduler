@@ -55,6 +55,7 @@ def test_session_api_logout_requires_csrf_and_revokes_session():
                 assert response.json()["user"]["id"] == str(user.id)
                 grant = response.json()["grants"][0]
                 assert grant["discipline"] == "MECH"
+                assert grant["timezone"] == "Asia/Ho_Chi_Minh"
                 assert "base_url" not in grant and "secret_reference" not in grant
                 assert (await client.post("/api/auth/logout")).status_code == 403
                 assert (await client.get("/api/auth/session")).status_code == 200
