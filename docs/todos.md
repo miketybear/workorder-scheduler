@@ -493,4 +493,6 @@ Không thay đổi quyền tài khoản hoặc gọi mutation Maximo.
       TypeScript/ESLint/build qua. Các kiểm chứng live chỉ đọc Onshore test E&I.
 - [x] Xác minh .env/credential DB/PFX được ignore; scan candidate source không chứa
       secret Entra, API key, password DB hoặc password PFX đang dùng.
-- [ ] Commit/push và xác minh HEAD bằng origin/main; không force push.
+- [x] Commit triển khai `4239159` đã push origin/main; xác minh HEAD bằng origin/main,
+      không force push. GitHub connector xác nhận repository thuộc tài khoản đang kết nối.
+      Ghi nhận kết quả trong commit tài liệu tiếp theo.
