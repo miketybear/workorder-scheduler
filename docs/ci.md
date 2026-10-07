@@ -27,7 +27,9 @@ Token workflow chỉ có `contents: read`; checkout không lưu Git credential c
 sau. Một lần chạy mới hủy lần cũ cùng branch/PR, mỗi job có timeout. Không dùng
 `pull_request_target`. Không bỏ qua job theo đường dẫn để trạng thái CI luôn đủ ba job.
 
-Sau khi commit/push workflow, xem kết quả trong tab Actions của repository. Việc có file
+Workflow đã commit/push trong [dd9cae6](https://github.com/miketybear/workorder-scheduler/commit/dd9cae6d00a7aa99d955e05d3dcee3725cc294ae),
+được GitHub connector xác nhận ngày 2026-10-07. Cần xem job results trong tab Actions;
+combined commit statuses rỗng không xác nhận Actions pass hoặc chưa chạy. Việc có file
 workflow và kiểm tra tương đương ở local chưa chứng minh GitHub runner chạy thành công.
 Branch protection/required checks cần được cấu hình riêng nếu chủ dự án muốn bắt buộc CI
 trước merge; task này không thay đổi settings của repository.
@@ -35,7 +37,7 @@ trước merge; task này không thay đổi settings của repository.
 Kiểm chứng 2026-10-07: actionlint 1.7.12, backend 136 fast + 100 PostgreSQL tests,
 Ruff lint/format, frontend 138 tests/12 files, ESLint, TypeScript/build đều qua trên
 Windows local. Vòng migrations của CI qua trên database tạm mới ở PostgreSQL test;
-hai schema checks không lệch, database tạm đã xóa. Chưa chạy workflow trên GitHub/Linux.
+hai schema checks không lệch, database tạm đã xóa. Kết quả chạy GitHub/Linux chưa xác minh.
 
 Nguồn đối chiếu: [GitHub PostgreSQL services](https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers),
 [checkout](https://github.com/actions/checkout), [setup-node](https://github.com/actions/setup-node),

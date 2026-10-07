@@ -15,8 +15,8 @@ Cập nhật: 2026-10-07. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 - [CI GitHub Actions](ci.md) cho push/PR/thủ công: backend fast, PostgreSQL migrations
   và integration, frontend lint/typecheck/test/build; action SHA được khóa, không cần
   Entra/Maximo secrets. Python 3.12.14, uv 0.11.9 và Node 26.0.0 giữ baseline đã kiểm tra.
-  Actionlint 1.7.12 và kiểm tra tương đương local qua ngày 2026-10-07; workflow chưa push
-  hoặc chạy trên GitHub runner.
+  Actionlint 1.7.12 và kiểm tra tương đương local qua ngày 2026-10-07; workflow đã commit/push
+  dd9cae6 được GitHub connector xác nhận, kết quả GitHub runner chưa xác minh.
 - Carbon Gray 10 / Gray 100 cho sáng/tối, nút chuyển trên header và lưu preference.
   IBM Plex Sans 400/500/600 được phục vụ nội bộ cùng giấy phép OFL; màu chữ, tag,
   các ô nháp và native date picker theo theme. Chuyển theme không remount bảng/panel.
@@ -91,9 +91,15 @@ Kiểm tra UI đã thực hiện trong panel trình duyệt hẹp; chưa thay th
 
 ## Bước tiếp theo
 
-1. Hoàn thiện quản trị qua UI/bootstrap admin và chính sách tenant; Planner đã có API/CLI có audit.
-2. Mở rộng kiểm chứng detail/crew/PIC ngoài E&I Onshore test; xác minh revision/ETag.
-3. Mở rộng browser E2E ngoài scope Onshore E&I; hoàn thiện sửa nhiều dòng và upload có audit/đối soát.
+Đối soát toàn bộ mục 1–6 ngày 2026-10-07: xem [99 mục và kế hoạch có phụ thuộc](checklist-review.md).
+Trong 44 checkbox gốc chưa tick: 12 đã làm, 21 một phần, 9 chưa đủ kiểm chứng, 2 chưa triển khai.
+Checkbox hiện tại đã tách theo phạm vi; không dùng số checkbox mới để so tỷ lệ với bản cũ.
+
+1. Kiểm thử tác vụ nhóm 100–200 WO và keyboard-only/focus; sửa/paste/Undo/preview đã có implementation.
+2. Xác minh ba job CI đã push, clean Ubuntu/images/runtime versions; local checks không thay runner results.
+3. Bootstrap admin/UI quản trị, roster và runtime DB role/retention theo đầu vào IT/chủ dự án.
+4. Đối chiếu metadata/read contract/web-VBA, mở rộng scopes và tenant/staging policy.
+5. Chốt WO test/write contract/ETag trước upload orchestration, audit/read-back/unknown recovery.
 
 ## Planner và nháp live — 2026-10-02
 

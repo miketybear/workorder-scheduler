@@ -6,7 +6,8 @@ retrieve WO từ Maximo, chỉnh sửa kế hoạch, xem thay đổi và upload 
 **Trạng thái:** đã có backend FastAPI, frontend React, migrations và Compose
 cho phát triển local. Bảng `/demo` dùng dữ liệu hoàn toàn giả lập, cho sửa ngày và xem before/after.
 Đã có lưu session, dịch vụ nội bộ lưu nháp và trạng thái upload/audit trên PostgreSQL.
-Đã xác minh Entra login/callback local và đọc PERSON Maximo test; chưa xác minh WO retrieve thật.
+Đã xác minh Entra login/callback local và GET PERSON/WO list/detail/crew Onshore test E&I;
+nháp đơn live đã kiểm tra, các scope khác và write contract còn chưa nghiệm thu.
 Quyền read có thể lấy từ [PERSON.ct_discipline](docs/person-access.md) theo Entra login đã xác thực.
 Route /work-orders đã nối API danh sách/chi tiết và nháp; bấm số WO để sửa lịch, PIC, duration,
 xem before/after và lưu/mở/cập nhật/xóa nháp một hoặc nhiều WO (tối đa 200).
@@ -36,6 +37,7 @@ Múi giờ kết nối vẫn dùng để tính ngày nhưng không hiện nhãn;
 
 - [Kiến trúc và quy tắc nghiệp vụ](docs/architecture.md)
 - [Danh sách công việc chi tiết](docs/todos.md)
+- [Đối soát checklist 1–6 và kế hoạch tiếp theo](docs/checklist-review.md)
 - [Trạng thái và bằng chứng kiểm tra](docs/implementation-status.md)
 - [Lý do chọn dependency](docs/dependencies.md)
 - [CI trên GitHub Actions](docs/ci.md)
@@ -46,8 +48,9 @@ Múi giờ kết nối vẫn dùng để tính ngày nhưng không hiện nhãn;
 ## Thông tin cần bổ sung khi tích hợp
 
 Đã nhận host Onshore test và chọn HTTP riêng cho test; xem [checklist tích hợp](docs/integration-intake.md).
-Còn cần cấu hình Entra app registration; tài khoản tích hợp
-và quyền object structure; ánh xạ người dùng/discipline/hệ thống; DNS và chứng chỉ HTTPS.
+App registration/callback local và API key test đã dùng thành công. Còn cần IT đối chiếu
+tenant policy, tài khoản tích hợp/quyền tối thiểu, metadata/write contract và các scope
+khác; staging DNS/HTTPS, Ubuntu routing và roster planner chưa nghiệm thu.
 Bàn giao credential qua kênh quản lý secret, không đưa vào tài liệu hoặc mã nguồn.
 
 ## Chạy local không cần Maximo

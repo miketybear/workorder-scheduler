@@ -24,12 +24,14 @@ Không nhận raw OSLC, host, next-page URL hoặc tham số thừa/trùng từ 
 
 Response gồm connection_id, discipline, count và items. Mỗi item có siteid + workorderid;
 kết hợp connection_id tạo identity đầy đủ. count chỉ là số item được xác minh, không dùng
-totalCount do upstream gửi. Mọi trang phải thành công trước khi trả kết quả. Không cache WO.
+totalCount do upstream gửi. Mọi trang phải thành công trước khi trả kết quả. Backend không cache WO;
+frontend giữ snapshot RAM theo chính sách [workspace/nháp](drafts.md).
 Quyền/session và cấu hình connection được kiểm tra lại sau khi lấy hết các trang.
 
 Sau retrieve, bảng có tìm kiếm theo WO/mô tả/Tag Name và lọc status trong tập đã tải.
 Số hiển thị/tổng giúp phân biệt lọc bảng với khoảng ngày retrieve. Gõ tìm kiếm không gọi
-Maximo; đổi connection/ngày hoặc retrieve lại xóa bộ lọc và dữ liệu cũ.
+Maximo; đổi identity/grants/connection xóa workspace cũ. Snapshot RAM giữ bộ lọc qua route/nguồn;
+Cập nhật thủ công giữ filter/edits theo [hành vi hiện tại](drafts.md).
 
 ## Cấu hình server
 
@@ -107,7 +109,8 @@ Không retry tự động. Các lỗi upstream được rút gọn, không đưa
 
 Paging thông thường không phải snapshot nguyên tử: Maximo thay đổi giữa trang có thể gây
 thiếu dòng dù đã chặn trùng. Cần kiểm chứng stable paging và tải thực tế trên test trước UAT.
-Reader detail và crew PIC đã triển khai với fixtures; revision/ETag và kiểm chứng Maximo thật còn nằm trong backlog.
+Reader detail và crew PIC đã triển khai với fixtures, live Onshore E&I qua ngày 02/10;
+revision/ETag, paging lớn và các scope/hệ thống khác còn nằm trong backlog.
 
 Tham khảo hợp đồng tổng quát của IBM: [filtering](https://ibm-maximo-dev.github.io/maximo-restapi-documentation/query/filtering/)
 và [paging](https://ibm-maximo-dev.github.io/maximo-restapi-documentation/query/sort_and_paging/).
@@ -157,7 +160,8 @@ Tùy chọn mặc định tắt; không tự đổi HTTPS thành HTTP hoặc t�
 
 Mỗi entry trong WOS_MAXIMO cần đặt `"allow_http_for_test": true` (boolean JSON) khi collection_url
 là HTTP. Collection URL dự kiến theo reader là
-http://bd-maxdev.biendongpoc.vn/maximo/oslc/os/oslcmxwodetail; endpoint này chưa được xác minh live.
+http://bd-maxdev.biendongpoc.vn/maximo/oslc/os/oslcmxwodetail; GET list/detail Onshore E&I
+đã xác minh live ngày 02/10, chưa xác minh write contract.
 Entry vẫn keyed theo connection UUID trong DB, dùng API key nhập trực tiếp ở cấu hình server
 được ignore/secret injection. Không dán API key vào chat hoặc tài liệu.
 

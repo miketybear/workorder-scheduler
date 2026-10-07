@@ -1,20 +1,21 @@
 # Thu thập thông tin tích hợp
 
-Cập nhật: 2026-10-02. Đã kiểm tra sơ bộ DNS/HTTP/TLS từ máy Windows hiện tại;
-chưa xác minh API Maximo, authentication hoặc đường mạng từ Ubuntu.
+Cập nhật: 2026-10-07. Onshore test đã xác minh GET WO/PERSON/crew E&I và nháp nội bộ
+trên Windows local; write contract, scopes khác/Offshore và đường mạng Ubuntu còn pending.
+Đối soát đầy đủ: [checklist 1–6](checklist-review.md). Các mốc theo ngày bên dưới là lịch sử.
 
 ## Thông tin tối thiểu để bắt đầu Maximo test
 
 | Thông tin | Người cung cấp | Trạng thái |
 |---|---|---|
 | Host, context path, hệ thống và môi trường test | Chủ dự án | Onshore test: `http://bd-maxdev.biendongpoc.vn/maximo`; xác nhận ngày 2026-10-01 |
-| OSLC object structure/API URL và quyền expose thực tế | IT/Maximo admin | Chưa xác minh live |
-| Đầu mối cấp integration account/API key test; phương thức authentication | IT/Maximo admin | Chủ dự án xác nhận có API key test (2026-10-02); chưa nạp key hoặc xác minh authentication live |
-| Kênh bàn giao secret và secret reference để cấu hình server | IT | Chưa cung cấp |
-| Discipline codes, crew groups và PIC mapping | Maximo admin/planner | Chủ dự án cung cấp ảnh Value/Description: DECK, DNC, RES, MECH, PROD, E&I (2026-10-02); crew/PIC chưa xác minh |
-| Timezone nghiệp vụ, quy tắc giờ mặc định và khoảng lọc cuối ngày | Planner | Chủ dự án xác nhận `Asia/Ho_Chi_Minh` (2026-10-02); quy tắc giờ mặc định/clear date chưa chốt |
+| OSLC object structure/API URL và quyền expose thực tế | IT/Maximo admin | GET oslcmxwodetail/mxpersongroup/mxperson Onshore E&I qua ngày 02/10; metadata đầy đủ/systemid và write contract chưa xác minh |
+| Đầu mối cấp integration account/API key test; phương thức authentication | IT/Maximo admin | Key do chủ dự án nhập server-side; GET live thành công 02/10; account chuyên dụng/quyền tối thiểu/vòng đời key chưa đối chiếu IT |
+| Kênh bàn giao secret và secret reference để cấu hình server | IT | Key local nằm trong .env ignore, DB có secret_reference; quy trình bàn giao/rotation và secret manager staging chưa chốt |
+| Discipline codes, crew groups và PIC mapping | Maximo admin/planner | Có DECK/DNC/RES/MECH/PROD/E&I và mapping Onshore; live 25 PIC E&I_N qua 02/10; scope khác chưa kiểm chứng |
+| Timezone nghiệp vụ, quy tắc giờ mặc định và khoảng lọc cuối ngày | Planner | Asia/Ho_Chi_Minh, offset và mốc cuối loại trừ đã dùng live; giờ mặc định/clear/null write semantics chưa chốt |
 | Site, WOID và WONUM của WO test được chỉ định; loại CM/PM/CFT cần kiểm tra | Planner/Maximo admin | Chưa cung cấp |
-| Quyền được cấp: đọc trước; WO nào được phép ghi và trường nào được thay đổi | Chủ dự án/Maximo admin | Chưa cung cấp |
+| Quyền được cấp: đọc trước; WO nào được phép ghi và trường nào được thay đổi | Chủ dự án/Maximo admin | Read và Planner nháp Onshore E&I đã xác minh; chưa có WO/ủy quyền ghi Maximo test được chỉ định |
 | Ubuntu test, routing, DNS, TLS và CA nội bộ | IT/chủ dự án | Chủ dự án xác nhận không cần VPN, server test chưa cài chứng chỉ; đường mạng từ Ubuntu chưa xác minh |
 
 Onshore và Offshore là hai hệ thống độc lập. Ghi riêng URL, scope, account và kết quả
@@ -47,18 +48,19 @@ capability read/write. Credential Entra được bàn giao riêng qua kênh qu�
 Xem [Entra setup](entra-setup.md). Entra assignment không tự cấp quyền WO.
 
 Entra login/callback local đã thành công; chủ dự án xác nhận logout/login lại đúng
-ngày 2026-10-02. Tài khoản hiện chưa có WO grants. Bước thu thập tiếp theo:
+ngày 2026-10-02. PERSON-derived read và scoped Planner Onshore E&I đã được cấp/kiểm chứng
+sau đó cùng ngày. Phạm vi hiện đã xác minh:
 
 | Phạm vi tài khoản kiểm thử | Trạng thái |
 | --- | --- |
 | Identity | Dùng tenant/object ID backend đã xác thực khi đăng nhập; không yêu cầu email làm khóa quyền |
 | Connection | Chủ dự án chọn Onshore test (2026-10-02): `http://bd-maxdev.biendongpoc.vn/maximo` |
 | Discipline | Nguồn `mxperson.ct_discipline`; chủ dự án điền E&I cho NHATNH, login lại hiển thị E&I; DB xác nhận grant read (2026-10-02) |
-| Capability | Chủ dự án chọn chỉ xem (`read`) ngày 2026-10-02 |
-| Cấp quyền | Đã đồng bộ đúng một grant E&I/read từ PERSON với binding/audit, không admin (2026-10-02) |
+| Capability | Khởi đầu read; sau đó có Planner permission đúng Onshore/E&I intersect PERSON, đã thử cấp/thu hồi và nháp live ngày 02/10 |
+| Cấp quyền | PERSON binding/grant và Planner permission có audit; không cấp admin hoặc remote upload |
 
-Scope được chốt chưa thay thế cấu hình connector: API URL/key test, timezone và metadata
-Maximo vẫn cần thu thập/kiểm chứng. Quyền write cho phép chỉnh sửa/lưu nháp theo API hiện có;
+API URL/key test/timezone và GET WO/PIC trong scope này đã xác minh; metadata đầy đủ,
+scope khác và hợp đồng write vẫn cần kiểm chứng. Quyền write cho phép chỉnh sửa/lưu nháp theo API hiện có;
 remote upload chưa triển khai.
 
 Danh mục từ ảnh chủ dự án (cột Value dùng làm mã):
@@ -77,11 +79,13 @@ Settings validation xác nhận registry đúng URL test, key không rỗng, HTT
 ứng dụng development và Entra vẫn cấu hình đầy đủ; không in key. Đã restart backend nạp registry.
 UUID `aab45085-e84f-4273-82d2-960b1f26c3da` đã tạo trong DB local với audit,
 thêm `person_login_domain=biendongpoc.vn`; xem [PERSON access](person-access.md).
-Collection path `/oslc/os/oslcmxwodetail` và open statuses dùng hợp đồng tham chiếu hiện có,
-chưa xác minh live. HTTP test opt-in đã được chủ dự án cho phép trước đó; chỉ đọc,
+Collection path `/oslc/os/oslcmxwodetail` đã GET live thành công; configured statuses
+được dùng trong query nhưng domain từng mã chưa đối chiếu đầy đủ. HTTP test opt-in đã được
+chủ dự án cho phép trước đó; chỉ đọc,
 không mở cấu hình production. GET mxperson thật đã qua: duongvq có E&I, NHATNH có
 ct_discipline ban đầu trống. Chủ dự án cập nhật E&I, đăng nhập lại; DB xác nhận binding
-nhatnh và E&I/read cùng audit. Không cấp grants từ ví dụ duongvq; WO/crew chưa gọi live.
+nhatnh và E&I/read cùng audit. Không cấp grants từ ví dụ duongvq. Sau đó WO/detail/crew
+E&I đã đọc live và nháp đơn create/restore/update/delete đã kiểm chứng; xem [Planner](planner-access.md).
 
 ## Kiểm chứng sau khi nhận thông tin
 

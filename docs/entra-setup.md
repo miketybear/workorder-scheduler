@@ -18,7 +18,8 @@ Staging/production không khởi động nếu thiếu Entra; cấu hình thiế
 quyền đọc WO qua Entra. WO grants nằm trong PostgreSQL theo connection + discipline.
 User mới có identity theo tenant ID + object ID, không có grants và không có admin.
 Không dùng email, roles hoặc nhóm từ browser làm bằng chứng quyền WO.
-Đường cấp admin/grants có audit vẫn chưa triển khai; chưa tự seed quyền quản trị.
+Planner grants có API/CLI audit; xem [Planner access](planner-access.md).
+Bootstrap admin đầu tiên/UI quản trị còn chưa triển khai; không tự seed quyền quản trị.
 
 ## Theo dõi thu thập — 2026-10-02
 
@@ -35,15 +36,17 @@ Không dùng email, roles hoặc nhóm từ browser làm bằng chứng quyền 
 | Phạm vi tài khoản | Yêu cầu single-tenant theo thiết kế; chưa kiểm tra portal |
 | Credential | Client secret trong backend `.env` được Git ignore; token exchange/callback thành công 2026-10-02; chưa nhận ngày hết hạn; không ghi giá trị |
 | Người/nhóm được đăng nhập | Chưa nhận; xác nhận assignment và chính sách MFA/Conditional Access với IT |
-| Tài khoản kiểm thử | Chưa nhận user Object ID và scope connection/discipline/read/write; email chỉ để liên hệ |
+| Tài khoản kiểm thử | Một identity Entra đã xác thực có PERSON binding và Planner Onshore test/E&I; roster/scopes còn lại chưa nhận; email không dùng làm proof quyền |
 | Logout | Hiện chỉ logout phiên ứng dụng; chưa hỗ trợ Entra front-channel logout |
 
-Bước tiếp theo: chốt WO grants/Maximo test và kiểm thử logout, expiry, chính sách tenant.
+Bước tiếp theo: đối chiếu portal/assignment/MFA/Conditional Access, expiry/logout live,
+staging HTTPS và roster/scopes còn lại; xem [kế hoạch sau đối soát](checklist-review.md).
 Đã chuẩn bị chứng chỉ tin cậy, HTTPS frontend/API và PostgreSQL riêng trên Windows;
 xem [hướng dẫn local Windows](entra-local-windows.md). MSAL đã đọc discovery tenant thật;
 login trả 303 tới đúng tenant/callback, có PKCE và flow cookie Secure/HttpOnly.
-Chủ dự án báo browser login thành công; DB local xác nhận một user đúng tenant và một phiên
-còn hạn, user active, không có admin hoặc WO grants. Chưa xác nhận có MFA challenge hoặc
+Ở mốc login đầu tiên, chủ dự án báo browser login thành công; DB local xác nhận một user
+đúng tenant và một phiên còn hạn, user active, chưa có admin hoặc WO grants. Sau đó cùng
+ngày 02/10 đã có PERSON read/Planner Onshore E&I; vẫn không cấp admin. Chưa xác nhận MFA challenge hoặc
 kiểm thử các chính sách chặn đăng nhập.
 Chủ dự án xác nhận logout/login lại hoạt động đúng; SSO không hỏi lại mật khẩu là
 hành vi được chấp nhận. Chưa kiểm chứng riêng cookie cũ bị từ chối trong browser.

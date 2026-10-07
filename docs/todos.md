@@ -4,11 +4,14 @@ Cập nhật: 2026-10-07.
 
 ## Cách sử dụng
 
-- [x] là đã hoàn thành và có bằng chứng; [ ] là chưa làm, kể cả khi thiết kế đã mô tả.
+- [x] là đã hoàn thành trong phạm vi ghi ngay tại mục và có bằng chứng; [ ] là còn việc
+  hoặc chưa đủ bằng chứng nghiệm thu. Mục gộp được tách để không che phần đã làm/chưa làm.
 - Mỗi nhóm có phụ thuộc và tiêu chí nghiệm thu. Hoàn thành mã chưa đồng nghĩa hoàn thành UAT.
 - Ghi ngày, bằng chứng kiểm tra và hạn chế khi đánh dấu hoàn thành.
 - P0: cần cho bản đầu; P1: mở rộng sau khi luồng chính ổn định.
 - Không lưu hostname production chưa được cung cấp, API key hay client secret trong file này.
+- Các ghi nhận theo ngày là lịch sử tại thời điểm đó, không phải trạng thái hiện tại.
+  Mục 1–6 đã đối soát ngày 2026-10-07; xem [đối soát từng mục và kế hoạch](checklist-review.md).
 
 ## 0. Bootstrap tài liệu — hoàn thành
 
@@ -30,30 +33,47 @@ xem [bằng chứng kiểm tra](implementation-status.md). Chưa có kết nối
 Phụ thuộc: chủ dự án/IT cung cấp thông tin. Có thể làm scaffolding và mock song song về tiến độ.
 
 - [x] Chuẩn bị [checklist thu thập thông tin tích hợp](integration-intake.md) và yêu cầu thông tin
-      khởi đầu từ chủ dự án (2026-10-01). Đã nhận host test; chưa nhận credential/API URL đầy đủ.
+      khởi đầu từ chủ dự án (2026-10-01); Onshore read-only đã xác minh sau đó ngày 2026-10-02.
 
 - [x] Nhận base host `http://bd-maxdev.biendongpoc.vn`, xác nhận môi trường test (2026-10-01).
 - [x] Xác nhận context path `/maximo`, test đại diện Onshore, không cần VPN (2026-10-01).
-- [ ] Xác minh OSLC API URL/object structures thực tế; chưa có thông tin Offshore test.
+- [x] Xác minh GET Onshore test `oslcmxwodetail`, `mxpersongroup` và `mxperson`
+      (2026-10-02): WO list/detail, 25 PIC E&I_N và PERSON discipline; chưa xác minh write contract.
+- [ ] Nhận URL/object structures Offshore test và kiểm chứng riêng; không suy rộng từ Onshore.
 - [x] Chủ dự án chọn HTTP riêng cho test (2026-10-01); opt-in trong registry, chỉ DB connection test,
       ứng dụng production không dùng HTTP. HTTPS/Entra vẫn yêu cầu TLS hợp lệ.
 - [x] Kiểm tra sơ bộ không credential từ Windows: DNS phân giải, HEAD HTTP root trả 403,
       HTTPS lỗi xác minh chứng chỉ (2026-10-01); xem [bằng chứng/giới hạn](integration-intake.md).
 - [ ] Xác nhận routing từ Ubuntu tới test Maximo, DNS, TLS và CA nội bộ.
-- [ ] Cấp tài khoản tích hợp test, API key và quyền tối thiểu cho WO/person group.
-- [ ] Bàn giao secret qua kênh bảo mật; không tái sử dụng key trong workbook vào mã nguồn.
-- [ ] Xác minh object structure oslcmxwodetail và mxpersongroup, các field/relationship được expose.
-- [ ] Xác minh resource href, workorderid, siteid, orgid và cách định danh bản ghi.
+- [x] Nhận/nạp API key test do chủ dự án nhập vào `.env` server-side được ignore;
+      GET WO/PERSON/crew thật thành công (2026-10-02), không lấy key từ workbook/source.
+- [ ] Xác nhận tài khoản tích hợp chuyên dụng, chủ sở hữu key, quyền tối thiểu và vòng đời key với IT.
+- [ ] Chốt kênh bàn giao/rotation secret và secret manager cho staging/production.
+- [x] Xác minh đọc field WO/detail và relationship `persongroupteam/respparty` trên
+      Onshore E&I (2026-10-02); lỗi status serialization/crew child đã được xử lý và kiểm thử.
+- [ ] Đối chiếu metadata đầy đủ, nhất là `lochierarchy.systemid` còn thiếu trong mẫu live,
+      và relationship/field ở các discipline/hệ thống khác.
+- [x] Xác minh identity đọc Onshore: connection UUID + siteid + workorderid; mở detail
+      P13457392/BD1 và nháp live (2026-10-02). WONUM không dùng làm khóa toàn cục.
+- [ ] Xác minh resource href dùng cho mutation và orgid/contract write; reader hiện không lấy hai field này.
 - [ ] Xác minh status domain APPR/SCHED/WMATL/WMAT/DFAPPR trên từng hệ thống.
 - [ ] Kiểm tra parent!="*" và istask=0 có đúng tập WO cần lấy.
 - [ ] Xác định giới hạn page size, next-page links, sort và tổng số bản ghi.
-- [ ] Xác nhận discipline codes, crew groups và ánh xạ PIC hợp lệ.
+- [x] Nhận 6 discipline codes/timezone và mapping crew Onshore từ chủ dự án;
+      E&I → E&I_N đã đọc 25 PIC live (2026-10-02).
+- [ ] Kiểm chứng crew/PIC live cho MECH/RES/DECK/PROD/DNC và Offshore, chưa coi mapping tham chiếu là nghiệm thu.
 - [ ] Xác minh các field optional, null, độ dài PIC, đơn vị/độ chính xác estdur.
-- [ ] Chốt timezone nghiệp vụ, ngày/giờ mặc định, clear date/PIC và khoảng lọc cuối ngày.
+- [x] Chốt timezone Onshore `Asia/Ho_Chi_Minh`; date input có offset, lọc từ bao gồm
+      đến mốc cuối loại trừ; retrieve tháng 10 được 117 WO (2026-10-07). Xem [reader](maximo-reader.md).
+- [ ] Chốt giờ mặc định, clear date/PIC/null và đơn vị/độ chính xác duration cho write contract;
+      UI hiện không hỗ trợ clear thành null, Finish tính bằng giờ liên tục chưa phải lịch ca.
 - [ ] Kiểm chứng POST + x-method-override: PATCH bằng WO test được chỉ định.
 - [ ] Kiểm chứng ETag/If-Match hoặc cơ chế conditional update được hỗ trợ.
-- [ ] Ghi nhận lỗi authentication/authorization/validation thường gặp, có redaction.
-- [ ] Tạo fixtures đã khử thông tin nhạy cảm và field-mapping document từ kết quả kiểm chứng.
+- [x] Ghi nhận lỗi live HTTP 400/BMXAA8744E do status list và xử lý redaction lỗi upstream;
+      HTTP mock tests bao phủ lỗi authentication/authorization/validation (2026-10-02/07).
+- [ ] Thu thập thêm lỗi hợp đồng thực tế đã redaction cho từng hệ thống; không tạo lỗi ghi trên WO chưa chỉ định.
+- [x] Có field-mapping từ VBA và fixtures synthetic inline trong tests; không chứa workbook keys.
+- [ ] Bổ sung fixtures đã redaction lấy từ response live cùng metadata/contract đã đối chiếu.
 
 Nghiệm thu: có hợp đồng request/response đã kiểm chứng, identity WO, quy tắc ngày và phạm vi
 quyền API rõ ràng. Không dùng hostname giả để đánh dấu hoàn thành.
@@ -65,15 +85,21 @@ Phụ thuộc: tài liệu đã hoàn thiện. Không cần credential thật.
 - [x] Khởi tạo Git và .gitignore nếu chủ dự án tiếp tục triển khai trong thư mục hiện tại;
       hoàn thành git init ngày 2026-09-25; đã có commits và remote GitHub, main đồng bộ origin/main
       sau push commit 82900f3 ngày 2026-10-01.
-- [ ] Chọn/pin Python, Node.js, PostgreSQL và dependency versions tương thích, còn được hỗ trợ.
+- [x] Pin Python 3.12.14, Node 26.0.0, uv 0.11.9; dependency lockfiles và local checks
+      qua (2026-10-07), CI dùng cùng baseline. Đây là bằng chứng tương thích local.
+- [ ] Đánh giá vòng đời hỗ trợ runtime/dependency và pin digest images chung; PostgreSQL
+      còn tag `17-alpine`, chưa nghiệm thu full application images/clean Ubuntu install.
 - [x] Scaffold backend theo backend/AGENTS.md; pyproject.toml, uv.lock và app factory.
 - [x] Scaffold React/Vite/TypeScript strict; package.json và package-lock.json.
 - [x] Thiết lập settings tập trung, kiểm tra cấu hình và .env.example không có secret.
 - [x] Tạo health/readiness endpoints; không đưa thông tin credential vào response.
 - [x] Thiết lập Ruff, pytest, typecheck, frontend lint/test/build scripts.
 - [x] Thêm workflow GitHub Actions cho backend/frontend và PostgreSQL migrations/tests
-      (2026-10-07); actionlint và kiểm tra tương đương local qua. Chưa chạy trên GitHub runner;
+      (2026-10-07); actionlint và kiểm tra tương đương local qua. Kết quả GitHub runner chưa xác minh;
       xem [CI](ci.md) và bằng chứng cuối checklist.
+- [x] CI đã commit/push trong `dd9cae6`; GitHub connector xác nhận commit tồn tại
+      (đối soát 2026-10-07), local main khớp origin/main.
+- [ ] Xác minh kết quả cả ba job trên GitHub Ubuntu runner; commit đã push chưa chứng minh CI qua.
 - [x] Ghi lệnh chạy local và các kiểm tra thật sự chạy được vào README.
 
 Nghiệm thu: môi trường sạch cài bằng lockfile và chạy frontend/backend với dữ liệu mock;
@@ -88,18 +114,28 @@ Phụ thuộc: 2; refinement từ 1.
 
 - [x] Tạo model/migration User, AccessGrant và MaximoConnection (2026-09-25).
 - [x] Triển khai lưu Session hash/expiry và logout với CSRF (2026-09-29).
-- [x] Nối Session với callback MSAL + JWT validation (2026-09-29); chờ kiểm thử tenant thật.
+- [x] Nối Session với callback MSAL + JWT validation; local tenant login/callback thật
+      qua ngày 2026-10-02. MFA/Conditional Access/staging vẫn chờ nghiệm thu ở mục 4.
 - [x] Thiết kế Draft/DraftItem với owner, scope, baseline, revision và proposed changes (2026-09-29).
 - [x] Schema UploadBatch/UploadItem/AuditEvent, item UUID và unique idempotency theo actor.
-- [ ] Orchestrator kiểm tra request hash khi submit lặp; liên kết retry attempts và correlation logs.
+- [x] Submit nháp đơn/nhóm kiểm tra request hash, actor + request_id, version và durable
+      receipts (0004); duplicate/concurrency tests PostgreSQL qua (2026-10-07).
+- [ ] Upload orchestrator kiểm tra request hash khi submit lặp, liên kết retry attempts
+      và correlation logs; schema/state service chưa phải remote upload orchestrator.
 - [x] Đặt unique/index theo connection + site + workorderid; không dùng WONUM làm khóa toàn cục.
-- [ ] Lưu connection config và secret reference; không lưu secret dạng rõ trong business tables.
+- [x] DB lưu connection metadata/base_url/timezone/enabled/secret_reference; API key
+      ở registry server-side, không nằm trong business tables. Onshore connection có audit
+      đã dùng live (2026-10-02); secret manager resolver theo reference còn chưa triển khai.
 - [x] Tạo/review migration 0001_identity; sinh PostgreSQL SQL offline thành công (2026-09-25).
-- [x] Áp dụng migrations 0001/0002 và kiểm thử constraints trên PostgreSQL 17 test (2026-09-29).
+- [x] Áp dụng migrations tới 0007; upgrade/check/downgrade/upgrade/check trên DB tạm
+      và 100 PostgreSQL tests qua (2026-10-07). DB ứng dụng không bị downgrade.
 - [x] State machine sending/unknown và hàm chuyển sending quá hạn thành unknown.
 - [ ] Nối recovery vào worker lifecycle/lease và kiểm thử crash khi gửi Maximo thật.
 - [ ] Xác định retention cho draft, session và audit cùng IT/chủ dự án.
-- [ ] Thiết kế quyền DB để người dùng ứng dụng không sửa/xóa lịch sử audit.
+- [x] Trigger append-only chặn UPDATE/DELETE/TRUNCATE ở audit_event/authorization_event;
+      PostgreSQL tests qua (2026-10-07).
+- [ ] Tách DB runtime role/migration owner và kiểm thử đặc quyền để runtime không gỡ trigger/xóa audit;
+      DB owner hiện vẫn có thể gỡ bảo vệ.
 
 Nghiệm thu: migration áp dụng được trên DB trống; constraints và state transitions có test;
 audit tách khỏi log kỹ thuật và không chứa credential.
@@ -183,21 +219,36 @@ audit tách khỏi log kỹ thuật và không chứa credential.
 
 Phụ thuộc: 2, 3; app registration từ IT.
 
-- [ ] Nhận tenant ID, client ID, phương thức credential, callback/logout URI và nhóm được truy cập.
-- [ ] Đăng ký ứng dụng single-tenant và cấu hình quyền đăng nhập với IT.
+- [x] Nhận tenant/client ID, client secret server-side và callback HTTPS localhost;
+      login/callback/session thật qua (2026-10-02). Logout hiện chỉ kết thúc phiên ứng dụng.
+- [ ] Chốt nhóm/người được đăng nhập, expiry/rotation credential và URI logout/staging với IT.
+- [x] Chủ dự án đã tạo app registration và cấu hình callback local hoạt động (2026-10-02).
+- [ ] Đối chiếu single-tenant/Web, assignment và chính sách tenant trên portal cùng IT.
 - [x] Triển khai login/callback/logout bằng MSAL + PyJWT; state/nonce/PKCE và JWT validation.
-- [ ] Xác minh login thật, MFA/Conditional Access và TLS/proxy với IT.
+- [x] Xác minh login/callback/session thật và local HTTPS tin cậy; chủ dự án xác nhận
+      logout/login lại (2026-10-02).
+- [ ] Nghiệm thu MFA/Conditional Access, blocked account, cookie cũ/expiry live và TLS/proxy staging với IT.
 - [x] Session server-side, expiry, Secure/HttpOnly cookie và CSRF logout (2026-09-29).
-- [ ] Áp CSRF cho mọi API mutation nghiệp vụ khi triển khai.
+- [x] CSRF cho mọi API mutation hiện có: logout, nháp đơn/nhóm, delete, Planner admin,
+      Settings; backend/frontend tests qua (2026-10-07). Upload tương lai phải áp cùng policy.
 - [x] Ánh xạ identity theo tenant ID + object ID; user mới không có WO grants/admin.
-- [ ] Xây quyền Viewer/Planner/Admin và scoped grants theo connection + discipline.
-- [ ] Thiết lập đường cấp admin đầu tiên có kiểm soát; admin không tự được xem mọi WO.
-- [ ] Nhận danh sách planner và grants thực tế cho từng hệ thống.
-- [ ] Áp policy dùng chung cho list/detail/draft/history/upload/status/count.
-- [ ] Từ chối ID ngoài scope mà không lộ sự tồn tại hoặc nội dung.
-- [ ] Xử lý thu hồi quyền, đổi discipline WO và cache/session đang tồn tại.
-- [ ] Ghi audit khi thay đổi grants.
-- [ ] Kiểm thử phiên hết hạn, sai tenant, giả mạo scope, guessed IDs và revoked grants.
+- [x] Viewer read/Planner write/Admin configuration theo policy server; PlannerPermission
+      intersect PERSON discipline (0006), không nhận role/discipline quyền từ client.
+- [x] Admin không bypass WO grants; test admin không grant bị từ chối (2026-10-07).
+- [ ] Thiết lập bootstrap admin đầu tiên có kiểm soát; CLI Planner hiện không cấp admin.
+- [x] Một identity chủ dự án có Planner Onshore test/E&I, cấp/thu hồi live có audit (2026-10-02).
+- [ ] Nhận/duyệt roster planner/grants cho các người dùng, discipline và hệ thống còn lại.
+- [x] Shared checks session/PERSON/configured connection/grants cho list/detail/PIC,
+      nháp đơn/nhóm, markers và counts hiện có; kiểm tra lại sau I/O/trước lưu.
+- [ ] Áp policy đúng scope cho history/upload/job status khi xây các API này; hiện chưa có endpoint.
+- [x] Guessed IDs/out-of-scope/owner mismatch bị từ chối không trả nội dung WO/nháp;
+      backend PostgreSQL + HTTP mocks qua (2026-10-07).
+- [x] Thu hồi grant/PERSON đổi discipline/WO chuyển scope được recheck fail closed;
+      UI xóa cache theo actor/scope hoặc ẩn nội dung khi xác minh lỗi; tests qua (2026-10-07).
+- [x] Authorization audit cho connection/PERSON binding/grants và Planner changes;
+      actor/before/after/reason/source cùng transaction, append-only (0005/0006).
+- [x] Tests synthetic phiên hết hạn, sai tenant, scope giả, guessed IDs, revoked grants
+      và revocation giữa network I/O qua (2026-10-07); không thay nghiệm thu tenant live.
 
 Nghiệm thu: planner discipline A không đọc hoặc sửa dữ liệu B qua UI, direct API, draft,
 history hay upload; quyền Onshore không tự cấp quyền Offshore.
@@ -207,7 +258,9 @@ history hay upload; quyền Onshore không tự cấp quyền Offshore.
 Phụ thuộc: 1, 2, 4; có thể phát triển trước bằng fixtures.
 
 - [x] Registry runtime theo connection UUID, timeout riêng; metadata/nhãn từ DB.
-- [ ] Cấu hình registry/grants thật và UI quản trị có audit.
+- [x] Registry/grants thật Onshore test/E&I, connection audit, Planner API/CLI có audit;
+      Settings chọn connection đã được cấp quyền (2026-10-02/06).
+- [ ] UI quản trị connection/grants có audit và mở rộng registry/scopes ngoài Onshore E&I.
 - [x] Cài HTTP client với header API key, TLS verification và log đã redaction.
 - [x] Áp scope server-side; encode filter values, không nối raw query từ người dùng.
 - [x] Map trường VBA: progress, discipline, wonum, description, worktype, location, system,
@@ -219,7 +272,9 @@ Phụ thuộc: 1, 2, 4; có thể phát triển trước bằng fixtures.
 - [x] Filter target date có offset, status domain cấu hình và discipline được cấp quyền.
 - [x] Tìm kiếm WO/mô tả/Tag Name và lọc status trong tập WO đã tải (2026-10-02);
       timezone/range Onshore test đã xác nhận, server search/paging UI chưa triển khai.
-- [ ] Lấy danh sách crew/PIC theo cấu hình discipline.
+- [x] Lấy crew/PIC theo mapping server; đọc đủ child pages với bounds/identity checks,
+      25 PIC E&I_N live và synthetic tests qua (2026-10-02/07).
+- [ ] Nghiệm thu crew/PIC các discipline khác/Offshore và child paging lớn trên test.
 - [x] Xử lý upstream unavailable/API key hết hiệu lực, không trả stale data ngoài quyền.
 - [ ] Đối chiếu tập WO web/VBA với cùng hệ thống, bộ lọc và thời điểm trên test.
 
@@ -230,18 +285,30 @@ lỗi upstream không bị hiển thị thành danh sách rỗng thành công.
 
 Phụ thuộc: 3, 4, 5; có thể dựng UI với fixture trước.
 
-- [ ] Tạo layout desktop, nhãn hệ thống/môi trường, trạng thái phiên và bộ lọc có quyền.
-- [ ] Chọn cách dựng bảng sau thử nghiệm keyboard editing/paste và số lượng WO thực tế.
-- [ ] Hiển thị các cột tương đương bảng Work Order Scheduler của workbook.
-- [x] Cho sửa schedstart/schedfinish/assignedtechname/estdur trong editor từng WO (2026-10-01).
+- [x] Layout desktop bảng gọn/panel đơn/nhóm, nhãn scope/system/environment, phiên,
+      bộ lọc từ grant server; viewport desktop/hẹp đã kiểm tra live (2026-10-05/07).
+- [x] Chọn native HTML table + panel theo thiết kế chủ dự án duyệt; sửa ô/paste/Undo,
+      synthetic chọn/lọc 100 WO và live retrieve 117 WO (2026-10-05/07).
+- [ ] Nghiệm thu tác vụ sửa/paste/keyboard nhóm 100–200 WO và hiệu năng; số dòng retrieve
+      không phải bằng chứng thao tác nhóm lớn đã qua. Chưa cần chốt thêm grid dependency.
+- [x] Dữ liệu nghiệp vụ tương đương workbook được map vào bảng 7 cột + panel 17 field
+      theo thiết kế đã duyệt; discipline ở scope, System ID/WOID giữ nội bộ, không tái tạo 21 cột nguyên mẫu.
+- [x] Sửa Start/PIC/Duration; Finish read-only tính Start + giờ duration khi Start/Duration
+      thay đổi, editor đơn và nhóm (2026-10-05/07). Không tự viết lại lịch khi chỉ sửa PIC.
 - [x] Cho chọn đổi target; khóa PM/CFT và giải thích tại editor (2026-10-01).
-- [ ] Áp cùng ngày cho nhiều dòng được chọn; vẫn validate từng WO.
-- [x] Hiển thị trường đã sửa, reset về baseline và before/after preview trong editor từng WO (2026-10-01).
-- [ ] Thiết kế date input/display theo timezone nghiệp vụ đã xác minh.
-- [x] Lưu/khôi phục draft một WO theo owner + scope; không chia sẻ giữa người dùng (2026-10-01).
+- [x] Áp Scheduled Start/PIC/Duration cho dòng chọn, giữ ngoại lệ từng WO/Undo/paste;
+      server validate từng WO và lưu toàn nhóm trong một transaction (2026-10-05/07).
+- [x] Modified fields/reset/before-after preview đơn và nhóm; cần preview trước lưu nhóm.
+- [x] Date input/display/serialization theo timezone connection đã chốt Onshore;
+      tests offset/calendar/fractional duration/cross-midnight qua (2026-10-07).
+- [x] Lưu/restore/update/delete nháp đơn/nhóm theo owner + scope, tối đa 200 WO;
+      baseline/version/duplicate receipt kiểm tra trên server, nháp không ghi Maximo.
 - [x] Bảo vệ edits khi đổi filter/hệ thống; không hiển thị nhầm dữ liệu connection cũ (2026-10-01).
 - [x] Validate cả frontend và backend; backend là nguồn quyết định (2026-10-01).
-- [ ] Kiểm thử bàn phím, focus, nhãn control và trạng thái loading/empty/error.
+- [x] Controls có labels/status/alert và panel focus/Escape; UI tests labels,
+      loading/empty/error, giữ edits khi lỗi và session rechecks qua (2026-10-07).
+- [ ] Kiểm chứng keyboard-only Tab/Shift+Tab/Enter/Escape, focus return/containment và
+      khả năng tiếp cận toàn luồng trên browser; hiện chưa có bộ kiểm thử đủ để tick nghiệm thu.
 
 Nghiệm thu: thao tác giống bảng Excel, nháp không thay đổi Maximo; khôi phục nháp không vượt
 scope hiện tại; preview phản ánh chính xác payload sẽ gửi.
@@ -1090,7 +1157,8 @@ Giới hạn: PostgreSQL dùng scheduler_test cô lập; Maximo/Entra giả tron
       PostgreSQL test riêng; hai lần schema check không lệch. Xóa đúng database tạm sau
       kiểm tra; không downgrade DB ứng dụng hoặc database test đang chứa dữ liệu.
       Tài liệu CI/README/status cập nhật; diff và liên kết nội bộ qua.
-- [ ] Commit/push workflow và xác minh lần chạy đầu trên GitHub Ubuntu runner.
+- [x] Đối soát 2026-10-07: CI commit `dd9cae6` tồn tại trên GitHub; local main khớp origin/main.
+- [ ] Xác minh kết quả cả ba job trên GitHub Ubuntu runner; chưa có đủ bằng chứng job success.
 - [ ] Cấu hình required checks/branch protection nếu chủ dự án chọn chính sách merge này.
 
 Giới hạn: kiểm chứng thực thi hiện trên Windows local với PostgreSQL 17 trong Docker;
@@ -1098,3 +1166,23 @@ Giới hạn: kiểm chứng thực thi hiện trên Windows local với Postgre
       không đổi repository settings, không gọi Maximo/Entra thật hoặc ghi dữ liệu nghiệp vụ.
       UAT 10 phiên, ETag/conditional update và remote upload vẫn pending.
       Hướng dẫn/phạm vi: [CI](ci.md).
+
+## Đối soát toàn bộ checklist 1–6 — 2026-10-07
+
+- [x] Đối chiếu 99 checkbox gốc (55 đã tick, 44 chưa tick) với mã, migrations, tests và
+      ghi nhận live trong repo. Trong 44 mục chưa tick: 12 đã làm, 21 một phần,
+      9 chưa đủ kiểm chứng, 2 chưa triển khai; bảng từng mục ở [đối soát](checklist-review.md).
+- [x] Tick phần đã có bằng chứng, tách các mục gộp implementation/local live với UAT,
+      scopes khác/Offshore và write contract; cập nhật CSRF/Planner/audit/PIC/nháp nhóm,
+      timezone/Finish suy ra và migrations tới 0007. Không dùng mocks để tick yêu cầu live.
+- [x] Đối chiếu Git hiện tại và GitHub connector: CI đã commit/push trong dd9cae6;
+      combined commit statuses rỗng không chứng minh Actions chưa chạy hoặc đã thành công.
+      Vì chưa có job results, kết quả runner vẫn pending; task đối soát không commit/push thêm.
+- [x] Lập kế hoạch có phụ thuộc/tiêu chí nghiệm thu: nhóm lớn/keyboard, CI/images,
+      admin/roster, runtime DB role/retention, read contract/scopes, tenant/staging và write contract.
+      Đồng bộ README/intake/Entra/reader/status/CI; diff, links và coverage 99 hàng qua.
+
+Giới hạn: chỉ sửa tài liệu, không chạy lại application tests; dùng bằng chứng 2026-10-07
+      ở task CI (236 backend + 138 frontend, lint/typecheck/build, migrations DB tạm).
+      Không gọi Maximo/Entra hoặc thay credential/grants/dữ liệu; live evidence từ các
+      task trước, không phải kiểm chứng mới. Mục 7–10 giữ nguyên phạm vi.
