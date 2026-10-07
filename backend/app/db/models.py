@@ -30,7 +30,7 @@ class User(Base):
     login_name: Mapped[str | None] = mapped_column(String(320))
     display_name: Mapped[str] = mapped_column(String(200))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_admin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -113,6 +113,16 @@ class AuthorizationEvent(Base):
         ForeignKey("maximo_connection.id", ondelete="RESTRICT")
     )
     event: Mapped[str] = mapped_column(String(30))
+    details: Mapped[dict] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AdminAuthorityEvent(Base):
+    __tablename__ = "admin_authority_event"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id", ondelete="RESTRICT"))
+    operator: Mapped[str] = mapped_column(String(200))
+    reason: Mapped[str] = mapped_column(String(500))
     details: Mapped[dict] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

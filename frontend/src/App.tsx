@@ -7,6 +7,7 @@ import { SessionPanel } from './auth/SessionPanel';
 import { WorkOrders } from './scheduling/WorkOrders';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Settings } from './components/Settings';
+import { Admin, AdminLink } from './components/Admin';
 
 function Overview() {
   const [status, setStatus] = useState('Đang kiểm tra…');
@@ -43,10 +44,11 @@ export function App() {
   const workOrdersActive = useLocation().pathname === '/work-orders';
   return <div className={styles.shell}>
     <header className={styles.header}><Link to="/" className={styles.brand}>WORKORDER <b>/ Scheduler</b></Link>
-      <div className={styles.headerActions}><span className={styles.badge}>Bản phát triển · Lập lịch & nháp</span><Link to="/settings">Settings</Link><ThemeToggle /></div></header>
+      <div className={styles.headerActions}><span className={styles.badge}>Bản phát triển · Lập lịch & nháp</span><Link to="/settings">Settings</Link><AdminLink /><ThemeToggle /></div></header>
     <main><Routes><Route path="/" element={<Overview />} /><Route path="/demo" element={<DemoScheduler />} />
       <Route path="/work-orders" element={null} />
       <Route path="/settings" element={<Settings />} />
+      <Route path="/admin" element={<Admin />} />
       <Route path="*" element={<p>Không tìm thấy trang. <Link to="/">Về tổng quan</Link></p>} /></Routes>
       <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} /></div></main>
     <footer>Work Order Scheduler <span>Onshore + Offshore · Nội bộ</span></footer>

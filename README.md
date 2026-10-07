@@ -41,8 +41,15 @@ Múi giờ kết nối vẫn dùng để tính ngày nhưng không hiện nhãn;
 - [Trạng thái và bằng chứng kiểm tra](docs/implementation-status.md)
 - [Lý do chọn dependency](docs/dependencies.md)
 - [CI trên GitHub Actions](docs/ci.md)
+- [Kiểm tra container và Linux](docs/container-checks.md)
+- [Nhóm 100/200 WO và phím/focus](docs/large-batch-keyboard-tests.md)
+- [Quản trị Planner và bootstrap admin](docs/planner-access.md)
+- [Quyền DB và retention](docs/database-operations.md)
+- [Hồ sơ nghiệm thu cùng IT](docs/it-acceptance.md)
+- [Write contract và ETag trước upload](docs/maximo-write-contract.md)
 - [Lập lịch và quản lý nháp](docs/drafts.md)
 - [Hướng dẫn chung cho coding agent](AGENTS.md)
+- [Cấu hình Main và ba sub-agent Codex](docs/codex-agents.md)
 - [Backend](backend/AGENTS.md) / [Frontend](frontend/AGENTS.md)
 
 ## Thông tin cần bổ sung khi tích hợp
@@ -98,8 +105,11 @@ production HTTPS. Database/backend không expose port ra host.
 
 1. Docker daemon phải đang chạy.
 2. Sao chép `.env.example` ở root thành `.env`.
-3. Đặt `POSTGRES_PASSWORD` và `WOS_DATABASE_URL` với cùng mật khẩu. Host DB là `db`.
-   URL-encode ký tự đặc biệt trong phần password của URL; không commit `.env`.
+3. Đặt `POSTGRES_PASSWORD` cho DB administrator; tạo migration owner và runtime role
+   riêng theo [quy trình DB](docs/database-operations.md). Nạp DSN owner vào
+   `WOS_MIGRATION_DATABASE_URL`, DSN runtime vào `WOS_DATABASE_URL`; host DB là `db`.
+   Provision roles/grants trước khi chạy toàn stack; Compose không tự tạo các role này.
+   URL-encode ký tự đặc biệt trong password; không commit `.env`.
 4. Chạy:
 
 ```sh

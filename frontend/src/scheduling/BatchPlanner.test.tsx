@@ -81,7 +81,7 @@ it('applies group duration, supports undo, and requires preview before atomic sa
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
   await screen.findByText('Đã lưu nháp 2 WO · v1. Maximo chưa thay đổi.');
   expect(vi.mocked(saveBatch).mock.calls[0][1]).toHaveLength(2);
-  expect(props.onDirty).toHaveBeenLastCalledWith(false);
+  await vi.waitFor(() => expect(props.onDirty).toHaveBeenLastCalledWith(false));
 });
 
 it('preserves edits and request identity after an uncertain network outcome', async () => {

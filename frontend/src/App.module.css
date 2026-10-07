@@ -91,6 +91,13 @@
 .accountContext { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
 .settingsSection { max-width: 800px; padding: 24px; background: var(--layer); }
 .settingsSection fieldset { border: 0; padding: 0; margin: 24px 0 0; min-width: 0; }
+.adminForm { display: grid; gap: 16px; }
+.adminForm > label { display: grid; gap: 8px; max-width: 680px; color: var(--muted); }
+.adminForm textarea { resize: vertical; }
+.adminActions { display: flex; flex-wrap: wrap; gap: 12px; }
+.adminRoster { margin-top: 24px; padding: 24px; background: var(--layer); }
+.adminRoster .tableWrap { max-height: 55vh; overflow: auto; }
+.adminRoster th small { display: block; font-weight: 400; color: var(--muted); overflow-wrap: anywhere; }
 .connectionOption { display: flex; align-items: start; gap: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--line); cursor: pointer; }
 .connectionOption > span { display: grid; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
 .connectionOption small { color: var(--muted); }

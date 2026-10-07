@@ -156,5 +156,11 @@ Panel nhóm đã có áp lịch/PIC/duration, sửa từng dòng, Undo và previ
 Dán Excel theo 3 cột Start, PIC, Duration; Start dùng YYYY-MM-DDTHH:mm, Finish tự tính,
 ô trống giữ nguyên. Bulk target edit chưa mở. Formula Finish thuộc UI; backend vẫn kiểm tra
 ngày, duration và quyền nhưng chưa bắt buộc công thức này cho mọi API client.
+2026-10-07: nhóm 100/200 WO synthetic đã qua UI tests, PostgreSQL atomic save/restore/update,
+replay, lỗi baseline/PIC/version và thu hồi giữa I/O. Browser Chromium có phím/focus,
+paste/Undo/preview/save/reopen; phiên bản conflict khóa lưu và giữ edits. Panel quản lý
+vòng Tab, focus return và focus sau Save; route ẩn gỡ listener. Xem [bằng chứng](large-batch-keyboard-tests.md).
+Không thêm dependency; browser API mocks chưa thay thế E2E policy với backend thật.
+
 Revision/ETag, upload/audit/history, browser E2E rộng và kiểm thử khoảng 10 phiên
 vẫn nằm trong [backlog](todos.md).

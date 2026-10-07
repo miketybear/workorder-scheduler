@@ -157,7 +157,12 @@ def test_planner_intersects_scope_and_revocation_is_durable():
             user, admin, connections = await seed(sessions)
             connection = connections[0]
             settings = integration_settings()
-            settings.maximo = {connection.id: config(person_login_domain="biendongpoc.vn")}
+            settings.entra = entra_settings().model_copy(update={"tenant_id": user.tenant_id})
+            settings.maximo = {
+                connection.id: config(
+                    person_login_domain="biendongpoc.vn", crew_groups={"MECH": "CREW"}
+                )
+            }
             change = PlannerChange(
                 user_id=user.id,
                 connection_id=connection.id,
@@ -237,10 +242,16 @@ def test_planner_api_requires_admin_csrf_and_valid_scope(case, expected):
         async with database() as sessions:
             user, admin, connections = await seed(sessions)
             settings = integration_settings()
-            settings.maximo = {connections[0].id: config(person_login_domain="biendongpoc.vn")}
+            settings.entra = entra_settings().model_copy(update={"tenant_id": user.tenant_id})
+            settings.maximo = {
+                connections[0].id: config(
+                    person_login_domain="biendongpoc.vn", crew_groups={"MECH": "CREW"}
+                )
+            }
             if case == "unmanaged":
                 settings.maximo = {}
             async with sessions.begin() as db:
+                (await db.get(User, admin.id)).tenant_id = user.tenant_id
                 token, csrf = await issue_session(db, user if case == "viewer" else admin)
             app = create_app(settings)
             app.state.sessions = sessions

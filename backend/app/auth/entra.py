@@ -156,7 +156,6 @@ async def callback(request: Request):
                 object_id=object_id,
                 display_name=name,
                 active=True,
-                is_admin=False,
             )
             .on_conflict_do_nothing(index_elements=["tenant_id", "object_id"])
         )

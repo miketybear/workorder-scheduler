@@ -28,6 +28,25 @@ Bằng chứng: các quyết định trong trao đổi với chủ dự án và 
 Trạng thái tại thời điểm bootstrap: chỉ có tài liệu. Foundation được triển khai sau đó;
 xem [bằng chứng kiểm tra](implementation-status.md). Chưa có kết nối Maximo thật.
 
+## 0.1. Cấu hình agent Codex — hoàn thành 2026-10-07
+
+- [x] Thiết lập native project config: Main GPT-6.1 Sol / Medium; ba custom agent
+      frontend GPT-6 Luna / Medium, backend GPT-6.1 Sol / Medium,
+      reviewer GPT-6 Astra / High; tối đa ba sub-agent đồng thời.
+- [x] Bổ sung routing vào AGENTS.md: task nhỏ Main tự làm; substantial FE/BE giao
+      theo phạm vi, FE+BE độc lập chạy song song; kiến trúc, bug khó/lặp lại và
+      final large review giao reviewer. Reviewer mặc định review-only/read-only.
+- [x] Thêm [hướng dẫn sử dụng](codex-agents.md) và liên kết trong README.
+
+Bằng chứng: Python tomllib parse đủ bốn TOML và kiểm tra đúng role/model/effort;
+Codex CLI 0.160.1 app-server strict config + config/read nạp project trusted,
+xác nhận Main Sol/medium và agents enabled/max concurrent = 3. model/list có đủ
+ba model và effort tương ứng; debug prompt-input xác nhận AGENTS routing mới
+được nạp. Đã kiểm tra liên kết local, placeholder và git diff --check.
+Phạm vi là cấu hình/tài liệu; không chạy lượt model/sub-agent live hay suite ứng dụng.
+Danh mục model không chứng minh một lượt gọi model thành công. Chat đang chạy giữ
+model/effort riêng; dùng chat mới trong project và chọn Sol/Medium khi cần.
+
 ## 1. P0 — Thu thập cấu hình và kiểm chứng hợp đồng Maximo
 
 Phụ thuộc: chủ dự án/IT cung cấp thông tin. Có thể làm scaffolding và mock song song về tiến độ.
@@ -87,19 +106,25 @@ Phụ thuộc: tài liệu đã hoàn thiện. Không cần credential thật.
       sau push commit 82900f3 ngày 2026-10-01.
 - [x] Pin Python 3.12.14, Node 26.0.0, uv 0.11.9; dependency lockfiles và local checks
       qua (2026-10-07), CI dùng cùng baseline. Đây là bằng chứng tương thích local.
-- [ ] Đánh giá vòng đời hỗ trợ runtime/dependency và pin digest images chung; PostgreSQL
-      còn tag `17-alpine`, chưa nghiệm thu full application images/clean Ubuntu install.
+- [x] Pin verified manifest digests Python/uv/Node/nginx/PostgreSQL trong Dockerfiles,
+      Compose/test và CI; build backend/web Linux, health/readiness/nginx config qua (2026-10-07).
+      Frozen clean sync + 244 backend tests/migration round-trip trên Linux qua;
+      [phạm vi](container-checks.md) chưa thay full Compose/Ubuntu staging.
+- [ ] Đánh giá/nâng security patch runtime/dependency lifecycle, scan OS/Python images,
+      SBOM và chính sách refresh digest; baseline Python 3.12.14 hiện được giữ để sửa CI.
 - [x] Scaffold backend theo backend/AGENTS.md; pyproject.toml, uv.lock và app factory.
 - [x] Scaffold React/Vite/TypeScript strict; package.json và package-lock.json.
 - [x] Thiết lập settings tập trung, kiểm tra cấu hình và .env.example không có secret.
 - [x] Tạo health/readiness endpoints; không đưa thông tin credential vào response.
 - [x] Thiết lập Ruff, pytest, typecheck, frontend lint/test/build scripts.
 - [x] Thêm workflow GitHub Actions cho backend/frontend và PostgreSQL migrations/tests
-      (2026-10-07); actionlint và kiểm tra tương đương local qua. Kết quả GitHub runner chưa xác minh;
+      (2026-10-07); actionlint và kiểm tra tương đương local qua. Kết quả runner đã đọc;
       xem [CI](ci.md) và bằng chứng cuối checklist.
 - [x] CI đã commit/push trong `dd9cae6`; GitHub connector xác nhận commit tồn tại
       (đối soát 2026-10-07), local main khớp origin/main.
-- [ ] Xác minh kết quả cả ba job trên GitHub Ubuntu runner; commit đã push chưa chứng minh CI qua.
+- [x] Đọc run/job logs 37590200157: frontend Ubuntu success; hai backend jobs failure tại
+      uv Python download. Sửa dùng setup-python SHA pinned, giữ 3.12.14/uv 0.11.9 (2026-10-07).
+- [ ] Commit/push bản sửa và xác minh cả ba job success trên GitHub Ubuntu runner.
 - [x] Ghi lệnh chạy local và các kiểm tra thật sự chạy được vào README.
 
 Nghiệm thu: môi trường sạch cài bằng lockfile và chạy frontend/backend với dữ liệu mock;
@@ -134,8 +159,10 @@ Phụ thuộc: 2; refinement từ 1.
 - [ ] Xác định retention cho draft, session và audit cùng IT/chủ dự án.
 - [x] Trigger append-only chặn UPDATE/DELETE/TRUNCATE ở audit_event/authorization_event;
       PostgreSQL tests qua (2026-10-07).
-- [ ] Tách DB runtime role/migration owner và kiểm thử đặc quyền để runtime không gỡ trigger/xóa audit;
-      DB owner hiện vẫn có thể gỡ bảo vệ.
+- [x] Triển khai provisioning runtime/migration owner và test đặc quyền trên DB mới
+      riêng (2026-10-07): runtime không DDL/TEMP/TRUNCATE/gỡ audit/nâng admin hoặc xóa receipts/uploads.
+- [ ] IT áp role/DSN tách biệt và nghiệm thu trên staging; owner vẫn có thể gỡ bảo vệ,
+      không dùng owner credentials cho backend. Compose đã tách DSN, chưa provision staging.
 
 Nghiệm thu: migration áp dụng được trên DB trống; constraints và state transitions có test;
 audit tách khỏi log kỹ thuật và không chứa credential.
@@ -235,7 +262,9 @@ Phụ thuộc: 2, 3; app registration từ IT.
 - [x] Viewer read/Planner write/Admin configuration theo policy server; PlannerPermission
       intersect PERSON discipline (0006), không nhận role/discipline quyền từ client.
 - [x] Admin không bypass WO grants; test admin không grant bị từ chối (2026-10-07).
-- [ ] Thiết lập bootstrap admin đầu tiên có kiểm soát; CLI Planner hiện không cấp admin.
+- [x] Bootstrap first-admin có dry-run/execute, stable identity/tenant, serialize và audit
+      append-only 0008; chủ dự án chọn bản thân và cấp local có audit (2026-10-07), không thêm WO grants.
+- [ ] IT duyệt operator/authority workflow và nghiệm thu bootstrap trên staging.
 - [x] Một identity chủ dự án có Planner Onshore test/E&I, cấp/thu hồi live có audit (2026-10-02).
 - [ ] Nhận/duyệt roster planner/grants cho các người dùng, discipline và hệ thống còn lại.
 - [x] Shared checks session/PERSON/configured connection/grants cho list/detail/PIC,
@@ -260,7 +289,10 @@ Phụ thuộc: 1, 2, 4; có thể phát triển trước bằng fixtures.
 - [x] Registry runtime theo connection UUID, timeout riêng; metadata/nhãn từ DB.
 - [x] Registry/grants thật Onshore test/E&I, connection audit, Planner API/CLI có audit;
       Settings chọn connection đã được cấp quyền (2026-10-02/06).
-- [ ] UI quản trị connection/grants có audit và mở rộng registry/scopes ngoài Onshore E&I.
+- [x] UI `/admin` xem roster/connection đã cấu hình và cấp/thu hồi scoped Planner
+      có audit/CSRF/session recheck; synthetic tests qua (2026-10-07).
+- [ ] UI cấu hình connection/identity lifecycle và mở rộng registry/scopes ngoài Onshore E&I;
+      Planner UI không sửa URL/secret/authority hoặc tạo roster chưa duyệt.
 - [x] Cài HTTP client với header API key, TLS verification và log đã redaction.
 - [x] Áp scope server-side; encode filter values, không nối raw query từ người dùng.
 - [x] Map trường VBA: progress, discipline, wonum, description, worktype, location, system,
@@ -289,8 +321,11 @@ Phụ thuộc: 3, 4, 5; có thể dựng UI với fixture trước.
       bộ lọc từ grant server; viewport desktop/hẹp đã kiểm tra live (2026-10-05/07).
 - [x] Chọn native HTML table + panel theo thiết kế chủ dự án duyệt; sửa ô/paste/Undo,
       synthetic chọn/lọc 100 WO và live retrieve 117 WO (2026-10-05/07).
-- [ ] Nghiệm thu tác vụ sửa/paste/keyboard nhóm 100–200 WO và hiệu năng; số dòng retrieve
-      không phải bằng chứng thao tác nhóm lớn đã qua. Chưa cần chốt thêm grid dependency.
+- [x] Kiểm thử synthetic nhóm 100/200 WO: sửa nhóm/ngoại lệ, paste lỗi/hợp lệ, Undo/reset,
+      preview/lưu/mở lại và stale/version/revoked/delayed responses (2026-10-07).
+      Chromium local có số đo thao tác; [bằng chứng/phạm vi](large-batch-keyboard-tests.md).
+- [ ] Nghiệm thu monthly-load live, độ trễ Maximo và 10 planner; chưa có performance SLO
+      được chốt. Chưa cần thêm grid dependency theo kiểm tra synthetic hiện có.
 - [x] Dữ liệu nghiệp vụ tương đương workbook được map vào bảng 7 cột + panel 17 field
       theo thiết kế đã duyệt; discipline ở scope, System ID/WOID giữ nội bộ, không tái tạo 21 cột nguyên mẫu.
 - [x] Sửa Start/PIC/Duration; Finish read-only tính Start + giờ duration khi Start/Duration
@@ -307,8 +342,11 @@ Phụ thuộc: 3, 4, 5; có thể dựng UI với fixture trước.
 - [x] Validate cả frontend và backend; backend là nguồn quyết định (2026-10-01).
 - [x] Controls có labels/status/alert và panel focus/Escape; UI tests labels,
       loading/empty/error, giữ edits khi lỗi và session rechecks qua (2026-10-07).
-- [ ] Kiểm chứng keyboard-only Tab/Shift+Tab/Enter/Escape, focus return/containment và
-      khả năng tiếp cận toàn luồng trên browser; hiện chưa có bộ kiểm thử đủ để tick nghiệm thu.
+- [x] Chromium synthetic xác minh Tab/Shift+Tab/Enter/Escape/Space, vòng Tab và focus return
+      cho panel đơn/nhóm/chooser; giữ edits qua Settings, radio ArrowDown/Tab/Enter qua.
+      Sửa focus sau Save và khóa lưu sau version conflict; 151 frontend tests qua (2026-10-07).
+- [ ] Nghiệm thu keyboard-only toàn ứng dụng, screen reader/zoom/high contrast và browser khác;
+      các mốc focus trong harness không thay thế toàn bộ accessibility UAT.
 
 Nghiệm thu: thao tác giống bảng Excel, nháp không thay đổi Maximo; khôi phục nháp không vượt
 scope hiện tại; preview phản ánh chính xác payload sẽ gửi.
@@ -619,8 +657,9 @@ trong task này. Hướng dẫn: [Planner access](planner-access.md).
       Preview từng WO, undo trước lưu, nháp nhiều WO; chọn tất cả chỉ trong tập kết quả đã tải.
 - [x] Triển khai backend/UI nháp nhiều WO (2026-10-05); validate scope,
       crew/PIC, ngày và baseline/version riêng từng WO, hiển thị lỗi theo dòng.
-- [ ] Kiểm thử tác vụ 100+ WO với dữ liệu synthetic, sửa nhóm và ngoại lệ, keyboard/paste,
-      thu hồi quyền/stale responses; upload/reconciliation vẫn là task riêng.
+- [x] Kiểm thử synthetic 100/200 WO, sửa nhóm/ngoại lệ, paste/Undo/preview/save/restore,
+      thu hồi quyền/stale/version/delayed responses và phím/focus Chromium (2026-10-07);
+      [bằng chứng](large-batch-keyboard-tests.md). Upload/reconciliation vẫn là task riêng.
 
 Nguồn thiết kế: [SAP Fiori Mass Editing](https://www.sap.com/design-system/fiori-design-web/v1-84/foundations/best-practices/global-patterns/object-handling/mass-editing).
 Ở bước đề xuất ngày 2026-10-02 chỉ cập nhật backlog và kiểm tra liên kết nội bộ.
@@ -1142,6 +1181,9 @@ Giới hạn: PostgreSQL dùng scheduler_test cô lập; Maximo/Entra giả tron
 
 ## CI cho backend/frontend và PostgreSQL — 2026-10-07
 
+Checkpoint ban đầu trước khi đọc Actions logs; kết quả runner và bản sửa tiếp được ghi
+trong mục “Nhóm 100/200 WO, keyboard/focus và CI/container” bên dưới.
+
 - [x] Thêm `.github/workflows/ci.yml` cho push, pull request và chạy thủ công; ba job
       độc lập trên Ubuntu 24.04: backend fast, PostgreSQL migration/integration, frontend.
       Dùng lockfile frozen/npm ci, token chỉ đọc, checkout không lưu credential,
@@ -1158,7 +1200,8 @@ Giới hạn: PostgreSQL dùng scheduler_test cô lập; Maximo/Entra giả tron
       kiểm tra; không downgrade DB ứng dụng hoặc database test đang chứa dữ liệu.
       Tài liệu CI/README/status cập nhật; diff và liên kết nội bộ qua.
 - [x] Đối soát 2026-10-07: CI commit `dd9cae6` tồn tại trên GitHub; local main khớp origin/main.
-- [ ] Xác minh kết quả cả ba job trên GitHub Ubuntu runner; chưa có đủ bằng chứng job success.
+- [ ] Xác minh cả ba job success trên GitHub Ubuntu sau bản sửa setup-python;
+      run trước sửa đã đọc: frontend success, hai backend failure. Xem cập nhật tiếp bên dưới.
 - [ ] Cấu hình required checks/branch protection nếu chủ dự án chọn chính sách merge này.
 
 Giới hạn: kiểm chứng thực thi hiện trên Windows local với PostgreSQL 17 trong Docker;
@@ -1186,3 +1229,83 @@ Giới hạn: chỉ sửa tài liệu, không chạy lại application tests; d�
       ở task CI (236 backend + 138 frontend, lint/typecheck/build, migrations DB tạm).
       Không gọi Maximo/Entra hoặc thay credential/grants/dữ liệu; live evidence từ các
       task trước, không phải kiểm chứng mới. Mục 7–10 giữ nguyên phạm vi.
+
+## Nhóm 100/200 WO, keyboard/focus và CI/container — 2026-10-07
+
+- [x] Hoàn tất phần synthetic của ưu tiên 1 trong đối soát: 100/200 WO group apply,
+      row exceptions, Reset/Undo, paste CRLF hợp lệ/lỗi cuối nhóm, preview/save/reopen;
+      stale baseline/version, invalid PIC, thu hồi grant giữa I/O và delayed response.
+      PostgreSQL kiểm tra không có Draft/DraftItem/receipt một phần khi lỗi, replay/update/owner.
+- [x] Sửa vòng Tab/Shift+Tab, focus khi mở/đóng/chooser→editor và sau Save disabled;
+      giữ focus đúng khi thay panel bằng WO khác, gỡ listeners khi route ẩn và giữ edits.
+      Version409 nhóm khóa lưu lại cho tới mở lại đối chiếu; không xóa edits.
+- [x] Reviewer GPT-6 Astra/high rà soát read-only theo AGENTS mới: không có finding
+      blocking/policy/API; finding P3 focus trả về WO cũ đã sửa và reviewer xác nhận.
+- [x] 244 backend tests (136 fast + 108 PostgreSQL) qua trên Windows và Docker Linux;
+      Ruff lint/format qua. Frontend clean npm ci, 151 tests/14 files, lint/typecheck/build qua.
+      Chromium 154, viewport 1600×1000: native phím/focus/paste/Undo/preview/save/reopen,
+      giữ edits Settings và radio ArrowDown/Tab/Enter qua; 27 synthetic API calls, không errors.
+      [Bằng chứng và số đo](large-batch-keyboard-tests.md); không gọi Maximo/Entra thật.
+- [x] Đọc Actions runs 37588420363/37590200157 và job logs run mới nhất: frontend Ubuntu
+      success, hai backend fail vì uv0.11.9 thiếu Python3.12.14 Linux download. Setup-python
+      v7.0.0 khóa SHA xác minh, đọc Python pin; frozen sync cấm download để dùng đúng binary.
+- [x] Khóa base image digests đã xác minh; backend/web builds qua. Backend UID10001,
+      live/readiness DB-schema-only trả ok; nginx -t qua. Migration upgrade/check/downgrade/
+      upgrade/check và 244 tests qua trên PostgreSQL tạm Linux riêng, không publish host port.
+- [x] Vá riêng source-map-js transitive dev 1.2.1 → 1.2.2 theo GHSA-68fv-2mgg-jv7q;
+      package.json không đổi, không thêm dependency runtime. Clean install/build và npm audit
+      0 advisories qua. [Container/CI evidence](container-checks.md), [CI](ci.md).
+- [ ] Commit/push bản sửa rồi xác minh corrected GitHub Ubuntu run; hiện chưa có run cho working tree này.
+- [ ] Monthly-load/10 planner live, toàn bộ keyboard-only/accessibility UAT, runtime lifecycle/
+      security patch review và image scans, full staging Compose/HTTPS còn pending.
+
+Giới hạn: browser APIs hoàn toàn giả; PostgreSQL là test infrastructure cô lập. Không ghi
+      Maximo, thay credential/grants thật, deploy, commit/push hoặc đổi repository settings.
+      Container tạm được dọn, images local-check giữ local. Các thay đổi AGENTS/README/.codex
+      và docs/codex-agents.md từ chat khác được giữ nguyên. Ưu tiên tiếp: CI run sau push;
+      sau đó bootstrap/admin UI và roster tid/oid được duyệt, DB roles/retention, read scopes/
+      tenant staging và write contract theo [kế hoạch](checklist-review.md).
+
+
+## Admin, DB roles và hồ sơ IT/write contract — 2026-10-07
+
+- [x] GET admin roster đúng configured tenant/PERSON connections, current authority,
+      no-store và không trả host/secret; PUT Planner kiểm tra crew discipline khi cấp,
+      cho revoke assignment cũ. `/admin` phân biệt assignment và quyền DB gần nhất;
+      session/identity recheck, CSRF, fail-closed và delayed read/error reconciliation.
+- [x] Bootstrap first-admin dry-run/execute, exact tid/oid/active user, transaction lock,
+      authority + global append-only audit 0008; user mới default admin=false. Chủ dự án
+      chọn bản thân; local DB Entra 55433 additive 0007→0008 + Alembic check qua,
+      preview đối chiếu rồi execute cho identity đã login. Đọc lại admin=true, đúng một
+      authority audit; một WO grant/một Planner assignment vẫn nguyên như trước.
+- [x] Provisioning roles trên DB riêng mới: runtime không sở hữu DB/schema/function,
+      không membership/DDL/TEMP/TRUNCATE/nâng admin/gỡ hoặc sửa/xóa audit. Có test login
+      runtime thật, unsafe ownership/prior ACL/default grants/future objects; không xóa
+      receipts/uploads. Compose tách owner/runtime DSNs; CI đảm bảo psql test client.
+- [x] Cleanup chỉ expired auth flow/session, dry-run mặc định, execute opt-in; tests giữ
+      các phiên/flows còn hạn. Local dry-run thấy 6 session/0 flow hết hạn, không xóa.
+      Không chọn thời hạn hoặc purge nháp/receipts/audit khi chưa được IT duyệt.
+- [x] Chuẩn bị [hồ sơ IT](it-acceptance.md), roster mẫu, read/tenant/staging acceptance,
+      [DB/retention runbook](database-operations.md) và [write contract](maximo-write-contract.md).
+      Ghi single-resource href/orgid/token, exact ETag, stale/concurrent rejection,
+      read-back, dates/null/PIC/duration/target và durable intent trước mọi test mutation.
+      Collection ETag/baseline hash không được coi là revision WO; upload vẫn chưa có.
+- [x] Kiểm chứng: 254 backend tests (136 fast + 118 PostgreSQL) qua; Ruff lint/format;
+      0008 isolated downgrade/upgrade và Alembic drift clean. Role test cuối qua sau
+      native psql portability + SQL cleanup. Frontend 160 tests/16 files, lint/typecheck/
+      production build qua. Reviewer Astra/high rà soát và xác nhận sửa các blockers
+      schema/function ownership, default privileges và admin refresh/auth failure.
+      Compose config với DSNs synthetic, actionlint và links/placeholders/diff checks qua.
+- [ ] IT phê duyệt roster khoảng 10 người, operator/staging, DB provisioning thật và
+      thời hạn retention/replay/backup/restore; secret manager/reference resolver chưa có.
+- [ ] Nghiệm thu read đầy đủ các discipline/Offshore, web/workbook cùng snapshot,
+      Ubuntu routing, tenant portal/MFA/assignment/guest và HTTPS staging.
+- [ ] Chỉ định WO CM/PM/CFT + quyền ghi test; xác minh write contract/ETag live trước
+      sender/upload. Không tick các mục live từ synthetic evidence.
+
+Giới hạn: không gọi mutation Maximo hoặc gửi email IT, không deploy/commit/push.
+Thay đổi dữ liệu thật chỉ là additive migration/admin bootstrap local được chủ dự án
+chọn; không thay WO/Planner grants, không chạy role provisioning hoặc cleanup execute
+trên DB thật. Không có browser live admin test hoặc corrected GitHub runner cho working tree.
+Các thay đổi batch/CI/agent có sẵn được giữ nguyên; các mốc tests Linux trước là lịch sử,
+không phải Linux rerun cho admin mới.

@@ -14,6 +14,11 @@ là lần chạy 2026-10-07 ở task CI: **136 fast + 100 PostgreSQL backend**, 
 Ruff/ESLint/TypeScript/build và migrations round-trip trên DB tạm đều qua.
 Bằng chứng live được ghi nhận ngày 02–07/10, không phải lần đo live mới của task đối soát.
 
+Bảng 99 hàng bên dưới là snapshot của lần đối soát ban đầu. Tiến triển sau đối soát:
+ưu tiên 1 synthetic/bàn phím đã qua; ưu tiên 2 đã đọc CI failure và sửa local, pin/build
+images/Linux tests qua. Xem [cập nhật tiếp](#tiến-triển-sau-đối-soát) và todos hiện tại;
+không thay các số thống kê lịch sử bằng checkbox mới tách.
+
 ## Cách đọc
 
 - “Đã làm”: đủ bằng chứng trong phạm vi ghi ở hàng đó; code/mock tests không tự chứng minh live.
@@ -31,10 +36,12 @@ Bằng chứng live được ghi nhận ngày 02–07/10, không phải lần đ
 - Mục 2: Python/Node/uv và lockfiles đã pin, CI đã có; lifecycle/image digests và lần chạy
   GitHub/Linux đầu chưa qua.
 - Mục 3: connection metadata/secret_reference đã lưu; request hash/receipts nháp và
-  append-only audit đã có. Upload orchestration, worker lease và runtime DB role còn thiếu.
+  append-only audit đã có. Upload orchestration/worker lease còn thiếu; runtime DB role
+  có provisioning sau đối soát, áp dụng staging còn chờ IT.
 - Mục 4: CSRF mutations hiện có, Viewer/Planner/Admin behavior, scope/owner isolation,
   revoke/cache clearing, grant audit và tests authorization đã có. Bootstrap admin/UI
-  quản trị, roster, tenant policy rộng và history/upload APIs còn thiếu.
+  roster đầy đủ, tenant policy rộng và history/upload APIs còn thiếu; admin bootstrap/UI
+  có implementation sau đối soát nhưng staging chưa nghiệm thu.
 - Mục 5: crew/PIC reader và live E&I đã có; registry/grants thật đã dùng. Chưa có UI
   quản trị, ETag hoặc đối chiếu web/VBA.
 - Mục 6: layout desktop, native table/panels, dữ liệu nghiệp vụ, áp lịch nhóm,
@@ -103,8 +110,8 @@ Nguồn đối chiếu: [models](../backend/app/db/models.py), [0002](../backend
 | 3.10 | Áp dụng migrations 0001/0002 và kiểm thử constraints trên PostgreSQL 17 test (2026-09-29). | [x] | **Đã làm.** Không chỉ 0001/0002: 0001–0007 đã qua migrations/schema check trên DB tạm ngày 07/10. |
 | 3.11 | State machine sending/unknown và hàm chuyển sending quá hạn thành unknown. | [x] | **Đã làm.** audit/uploads.py có transitions + recover_stale_sends; unknown không được tự retry, tests state/PostgreSQL qua. |
 | 3.12 | Nối recovery vào worker lifecycle/lease và kiểm thử crash khi gửi Maximo thật. | [ ] | **Chưa triển khai.** main.py lifespan chưa có worker/lease/reconciliation; chưa có live send/crash recovery. |
-| 3.13 | Xác định retention cho draft, session và audit cùng IT/chủ dự án. | [ ] | **Chưa triển khai.** Chưa có retention được IT chốt hoặc cleanup policy cho draft/receipts/session/audit; login chỉ dọn flow tại login. |
-| 3.14 | Thiết kế quyền DB để người dùng ứng dụng không sửa/xóa lịch sử audit. | [ ] | **Một phần.** Trigger append-only và tests audit đã có; runtime role/migration owner chưa tách, owner còn có thể gỡ trigger. |
+| 3.13 | Xác định retention cho draft, session và audit cùng IT/chủ dự án. | [ ] | **Một phần sau đối soát.** Có cleanup dry-run/execute chỉ expired auth; retention draft/receipts/audit và backup vẫn cần IT duyệt. |
+| 3.14 | Thiết kế quyền DB để người dùng ứng dụng không sửa/xóa lịch sử audit. | [ ] | **Một phần sau đối soát.** Có SQL runtime/owner, privileges tests DB/roles tạm và Compose tách DSN; IT chưa áp staging, owner còn có thể gỡ trigger. |
 
 ## 4. Entra SSO và phân quyền
 
@@ -134,7 +141,7 @@ Nguồn đối chiếu: [Entra](entra-setup.md), [PERSON](person-access.md), [Pl
 | 4.20 | Áp CSRF cho mọi API mutation nghiệp vụ khi triển khai. | [ ] | **Đã làm.** CSRF cho toàn bộ mutations hiện có: logout, drafts/batches/delete, admin Planner, settings; CLI đặc quyền không phải browser endpoint. |
 | 4.21 | Ánh xạ identity theo tenant ID + object ID; user mới không có WO grants/admin. | [x] | **Đã làm.** Stable tid/oid identity, new user không grants/admin; tests callback new/tenant/disabled. |
 | 4.22 | Xây quyền Viewer/Planner/Admin và scoped grants theo connection + discipline. | [ ] | **Đã làm.** policy.py, PlannerPermission, PERSON-derived effective grants và is_admin; read/write/admin hành vi đã có, không cần cột role dạng enum. |
-| 4.23 | Thiết lập đường cấp admin đầu tiên có kiểm soát; admin không tự được xem mọi WO. | [ ] | **Một phần.** Admin không bypass có tests; manage_planner.py không cấp admin, bootstrap admin đầu tiên chưa có. |
+| 4.23 | Thiết lập đường cấp admin đầu tiên có kiểm soát; admin không tự được xem mọi WO. | [ ] | **Đã triển khai sau đối soát.** bootstrap_admin.py dry-run/execute, stable identity/configured tenant, serialized first-admin-only, global immutable audit 0008 và không cấp WO grant; staging operator cần IT chốt. |
 | 4.24 | Nhận danh sách planner và grants thực tế cho từng hệ thống. | [ ] | **Một phần.** Một identity Onshore E&I Planner đã được duyệt/cấp/thu hồi live; chưa có roster khoảng 10 người/các hệ thống còn lại. |
 | 4.25 | Áp policy dùng chung cho list/detail/draft/history/upload/status/count. | [ ] | **Một phần.** Session/PERSON/connection/scope checks dùng chung cho API hiện có; history/upload/job status chưa có API để áp policy. |
 | 4.26 | Từ chối ID ngoài scope mà không lộ sự tồn tại hoặc nội dung. | [ ] | **Đã làm.** Scope/owner checks dùng generic 404 và không trả WO/draft ngoài quyền; test_maximo_postgres/test_draft_api/test_batch_api. |
@@ -149,7 +156,7 @@ Nguồn đối chiếu: [reader contract](maximo-reader.md), [reader](../backend
 | Mã gốc | Mục gốc | Cũ | Kết quả đối soát / bằng chứng và phần thiếu |
 | --- | --- | --- | --- |
 | 5.1 | Registry runtime theo connection UUID, timeout riêng; metadata/nhãn từ DB. | [x] | **Đã làm.** config.py + configured_connection; registry keyed UUID và metadata từ DB. |
-| 5.2 | Cấu hình registry/grants thật và UI quản trị có audit. | [ ] | **Một phần.** Registry/connection/grant/Planner audit live Onshore E&I đã có; UI quản trị và scope khác chưa có. Settings chỉ chọn connection hợp lệ. |
+| 5.2 | Cấu hình registry/grants thật và UI quản trị có audit. | [ ] | **Một phần sau đối soát.** Registry/grant/Planner Onshore E&I live đã có; admin UI quản lý Planner và roster có tests. UI đổi registry/URL/secret và scopes khác vẫn pending. |
 | 5.3 | Cài HTTP client với header API key, TLS verification và log đã redaction. | [x] | **Đã làm.** main.py HTTPX với TLS verification, trust_env=False/no redirects; reader rút gọn lỗi. |
 | 5.4 | Áp scope server-side; encode filter values, không nối raw query từ người dùng. | [x] | **Đã làm.** reader query_parameters + routes allowlist, mandatory discipline/grants; raw query/client arbitrary host bị từ chối. |
 | 5.5 | Map trường VBA: progress, discipline, wonum, description, worktype, location, system, | [x] | **Đã làm.** SELECT/WorkOrder + frontend columns map dữ liệu workbook; systemid live thiếu là giới hạn contract còn mở ở mục 1. |
@@ -203,6 +210,25 @@ cùng tiến độ khi có đầu vào tương ứng; **7** chỉ thực hiện 
 đủ điều kiện. Nghiệm thu 10 phiên và rollout Ubuntu vẫn thuộc mục 8–9, không đánh dấu
 hoàn thành trong lần đối soát này.
 
+## Tiến triển sau đối soát
+
+2026-10-07: ưu tiên 1 hoàn tất trong phạm vi synthetic — 100/200 WO group/row/paste/
+Undo/preview/save/restore; PostgreSQL atomic failures/revocation/replay/version; Chromium
+phím/focus đơn/nhóm/chooser/Settings. 244 backend và 151 frontend tests qua.
+Full keyboard-only, screen reader và monthly-load/10 planner live vẫn mở;
+[bằng chứng](large-batch-keyboard-tests.md). Reviewer xác nhận đã sửa finding P3 opener cũ.
+
+Ưu tiên 2: đọc run 37590200157 cho 9e4cf58, frontend Ubuntu success; backend jobs fail
+tại uv python install do catalog thiếu 3.12.14 Linux. Working tree dùng setup-python
+v7.0.0 SHA pinned, giữ baseline; actionlint, Linux frozen sync/244 tests/migrations,
+backend/web builds và health/nginx config qua. Khóa manifest digests, vá riêng transitive
+dev source-map-js 1.2.2; npm audit0. Corrected GitHub run cần commit/push; lifecycle/
+security patch review, image scans và staging còn mở. [CI](ci.md), [containers](container-checks.md).
+
+Đầu vào ưu tiên 3–7 vẫn theo bảng kế hoạch: trusted admin/roster tid/oid và grant scopes,
+retention/DB quyền, Maximo read/Offshore contract, tenant/staging và WO test/write contract.
+Không lấy kết quả synthetic hoặc Linux local làm bằng chứng các nghiệm thu live này.
+
 ## Sửa các mô tả lỗi thời
 
 - Các dòng “chưa nhận API key/chưa gọi WO/crew/chưa có grants” ở intake, reader và Entra
@@ -215,3 +241,11 @@ hoàn thành trong lần đối soát này.
   Combined status trả danh sách rỗng, không có Actions job results; không suy ra workflow chưa chạy hoặc đã qua.
 - Không tick các mục chỉ có code/mocks khi yêu cầu gốc là kiểm chứng live hoặc UAT.
 
+
+
+2026-10-07 sau đối soát: bootstrap/UI Planner/roster synthetic và SQL tách DB roles có
+implementation/tests; admin local đã cấp theo lựa chọn chủ dự án, không thêm WO grants.
+254 backend/160 frontend tests qua, 0008 roundtrip/schema check trên DB tạm; runtime
+privileges dùng DB/roles tạm thực. Retention business/secret resolver, roster/IT/staging,
+read đầy đủ và write/ETag live giữ mở. [Hồ sơ nghiệm thu](it-acceptance.md) và
+[write gate](maximo-write-contract.md) là đầu vào trước upload, không phải hợp đồng đã duyệt.

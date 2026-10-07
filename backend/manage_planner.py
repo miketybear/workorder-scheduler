@@ -14,6 +14,8 @@ from app.db.models import User
 
 async def run(args):
     settings = Settings()
+    if not settings.entra or settings.entra.tenant_id != args.tenant:
+        raise ValueError("Operator action requires the configured Entra tenant")
     engine = create_async_engine(settings.database_url.get_secret_value(), hide_parameters=True)
     try:
         async with async_sessionmaker(engine).begin() as db:

@@ -29,11 +29,18 @@ HTTPX is now runtime for the Maximo reader (see addition below); Playwright rema
   no parallel JWT library. Native cryptography uses cffi/pycparser. All versions locked in uv.lock.
   Maintenance: track Microsoft MSAL, PyJWT and cryptography advisories when updating locks.
 
-Python baseline is 3.12.14; local validation uses Node 26.0.0. Docker image tags are explicit
-but some track a minor/major series. Resolve approved image digests and scan images before
-production. A lockfile is reproducibility evidence, not a security review.
+Python baseline is 3.12.14; local validation uses Node 26.0.0. Docker base images now have
+verified manifest digests (2026-10-07); [build/smoke evidence](container-checks.md).
+Lifecycle/security patch review and full image scans remain pending before production.
+A lockfile is reproducibility evidence, not a security review.
 
 2026-09-29 Maximo reader: promote HTTPX from test-only to runtime. Async HTTPS streaming,
 TLS verification, timeouts, connection management and mock transport are used on every
 Maximo page request; these cannot reasonably fit in 30 clear lines. HTTPX/httpcore/AnyIO,
 certifi and h11 are already locked for tests; no second async HTTP client is introduced.
+
+2026-10-07 development patch: source-map-js 1.2.1 → 1.2.2, a transitive build-tool
+dependency, fixes [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q).
+Only that package-lock entry changed; no new dependency or parallel library. Clean npm ci,
+151 frontend tests, lint/typecheck/build and npm audit with zero advisories passed.
+Playwright harness uses the existing Codex bundled package; not added to app dependencies.

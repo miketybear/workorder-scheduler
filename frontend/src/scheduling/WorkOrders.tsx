@@ -12,6 +12,7 @@ import { chosenPlan, effectiveOrder, updatePlans } from './planning';
 import type { PlanningMarker } from '../api/workOrders';
 import { activeGrant } from '../auth/activeGrant';
 import { config } from '../config';
+import { usePanelFocus } from './usePanelFocus';
 
 type Source = 'maximo' | 'drafts';
 type SourceSnapshot = {
@@ -65,7 +66,6 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
   const draftRevision = useRef(0);
   const authIdentity = useRef('');
   const onDirty = useCallback((value: boolean) => { dirty.current = value; }, []);
-  const focusChooser = useCallback((element: HTMLElement | null) => { element?.focus(); }, []);
   const onDraftReady = useCallback((draft: DraftNotice) => {
     draftRevision.current += 1;
     for (const source of ['maximo', 'drafts'] as const) {
@@ -106,6 +106,7 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
 
   const editorScope = useMemo(() => ({ connection_id: grant?.connection_id ?? '', discipline: grant?.discipline ?? '' }), [grant]);
   const panelOpen = active && !checking && !!(selection || batch || chooser);
+  const workspace = usePanelFocus(panelOpen, chooser ?? selection ?? batch);
 
   useEffect(() => {
     if (!panelOpen) return;
@@ -383,7 +384,7 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
     }
   }
 
-  return <>
+  return <div ref={workspace} tabIndex={-1}>
     <Link to="/" className={styles.back}>← Tổng quan</Link>
     <div className={styles.pageTitle}><h1>Work Orders</h1><span className={styles.badge}>Lập lịch / Nháp</span></div>
     <p className={styles.notice}>Nháp được lưu trên server và đánh dấu ngay trên WO. Ô có nhãn Nháp là kế hoạch đã lưu; Status vẫn từ Maximo. Bấm WO để mở kế hoạch và đối chiếu. Upload chưa mở.</p>
@@ -415,7 +416,7 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
           <button disabled={busy || nextOffset === null} onClick={() => void browseDrafts(nextOffset ?? 0)}>Trang tiếp</button></>}
       </div>}
       {grant && view === 'maximo' && rows === null && !busy && <p>Chưa Retrieve WO cho khoảng ngày này. Chọn ngày và bấm Retrieve WO để tải bảng.</p>}
-      {chooser && grant && <section ref={focusChooser} role="dialog" tabIndex={-1} aria-label="Chọn nháp của WO"
+      {chooser && grant && <section role="dialog" tabIndex={-1} aria-label="Chọn nháp của WO"
         onKeyDown={(event) => { if (event.key === 'Escape') closePanel(); }} className={`${styles.draftEditor} ${styles.sidePanel}`}>
         <div className={styles.panelHeading}><h2>{chooser.wonum} · chọn nháp</h2><button onClick={closePanel}>Đóng</button></div>
         <p>WO này có nhiều kế hoạch đã lưu. Chọn kế hoạch để mở đúng phiên bản.</p>
@@ -496,5 +497,5 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
         </>}
       </>}
     </>}</div>
-  </>;
+  </div>;
 }

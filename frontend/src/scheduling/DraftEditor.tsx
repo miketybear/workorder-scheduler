@@ -30,7 +30,6 @@ export function DraftEditor({ selection, scope, writable, suspended, verifiedDet
   const [loaded, setLoaded] = useState(false);
   const [committed, setCommitted] = useState('{}');
   const panel = useRef<HTMLElement>(null);
-  useEffect(() => { panel.current?.focus(); }, []);
   const pending = useRef<AbortController | null>(null);
   const retry = useRef<{ fingerprint: string; id: string } | null>(null);
   const pics = verifiedDetail?.allowed_pics ?? detail?.allowed_pics ?? [];

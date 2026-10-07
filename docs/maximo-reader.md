@@ -154,6 +154,10 @@ thật. Không thêm runtime dependency hoặc migration trong mốc này.
 
 ## HTTP riêng cho Onshore test — 2026-10-01
 
+Nghiệm thu đầy đủ read/tenant/staging theo [hồ sơ IT](it-acceptance.md).
+Revision trong snapshot vẫn là `None`; GET collection không cung cấp ETag của từng WO.
+Xem [write contract trước upload](maximo-write-contract.md) để kiểm chứng resource/token.
+
 Chủ dự án xác nhận Onshore test dùng http://bd-maxdev.biendongpoc.vn/maximo, không VPN,
 chưa cài chứng chỉ, và cho phép HTTP riêng cho test. API key truyền qua HTTP không được mã hóa.
 Tùy chọn mặc định tắt; không tự đổi HTTPS thành HTTP hoặc tắt kiểm tra chứng chỉ HTTPS.

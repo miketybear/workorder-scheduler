@@ -1,6 +1,6 @@
 # Quyền Planner và kiểm thử nháp
 
-Cập nhật 2026-10-02. Migration `0006_planner_permission` lưu quyền Planner riêng theo
+Cập nhật 2026-10-07. Migration `0006_planner_permission` lưu quyền Planner riêng theo
 user + connection + discipline. PERSON vẫn quyết định discipline hiện tại. Chỉ khi có
 permission khớp và PERSON được xác minh thành công, grant mới là `write`; mặc định là `read`.
 Admin không tự có quyền xem/sửa WO. Quyền này hiện mở sửa/lưu/xóa nháp; upload chưa triển khai.
@@ -10,7 +10,40 @@ Admin không tự có quyền xem/sửa WO. Quyền này hiện mở sửa/lưu/
 API `PUT /api/admin/planner-permissions` yêu cầu session admin đang hoạt động và
 `X-CSRF-Token`. Body gồm `user_id`, `connection_id`, `discipline`, `enabled` và `reason`.
 Các ID được kiểm tra ở server; chỉ hỗ trợ connection đã bật nguồn PERSON.
-Không có UI quản trị hoặc bootstrap admin trong task này.
+GET `/api/admin/roster` yêu cầu admin đang hoạt động trong tenant được cấu hình và
+trả users, configured PERSON connections, Planner assignments và grants DB gần nhất;
+không trả secret/host và dùng no-store. PUT chỉ cấp discipline có crew mapping;
+thu hồi vẫn được phép với assignment cũ khi discipline bị bỏ hoặc user/connection inactive.
+Admin UI tại `/admin` xác minh session, dùng CSRF, yêu cầu lý do tối đa 500 ký tự,
+giữ ý định khi lỗi và tải lại trạng thái sau mutation. Grant DB là kết quả PERSON
+gần nhất, không phải bảo đảm access hiện tại; enable chờ lần xác minh PERSON tiếp theo.
+
+## Admin đầu tiên
+
+Chủ dự án chọn bản thân là admin đầu tiên ngày 2026-10-07. Công cụ chỉ xử lý Entra
+identity đang active đã tồn tại ở tenant cấu hình; không tạo user hoặc WO grants.
+Migration `0008_admin_authority` thêm audit toàn cục append-only riêng, không gắn
+connection giả. Bootstrap được serialize bằng advisory transaction lock và bị từ chối
+khi bất kỳ admin đã tồn tại. Runtime DB không được sửa is_admin hoặc insert audit bootstrap.
+
+Từ backend, trong shell operator có DSN đặc quyền được IT quản lý riêng:
+
+```sh
+uv run python bootstrap_admin.py --tenant <tenant-uuid> --user-object <existing-object-uuid> --operator '<trusted operator attribution>' --reason '<approved reason>'
+```
+
+Mặc định dry-run, không commit; đối chiếu preview stable identity trước khi thêm
+`--execute`. Operator attribution là khai báo người vận hành tin cậy, không giả làm
+session admin đã tồn tại. Quyền máy chủ/DB operator phải được kiểm soát bên ngoài app.
+Đây không phải endpoint tự cấp admin. CLI không có chức năng cấp thêm admin hoặc revoke
+admin; các thay đổi authority tiếp theo cần quy trình/audit được review riêng.
+
+Local ngày 2026-10-07: đối chiếu identity Entra đã đăng nhập của chủ dự án, chạy
+dry-run rồi execute trên `scheduler_entra_local` (loopback 55433) sau additive upgrade
+0007 → 0008 và schema check. Đọc lại xác nhận user active/admin=true và đúng một
+admin_authority_event; access_grant và planner_permission đều giữ một hàng như trước.
+Không tạo thêm WO grants, không chạy provisioning/cleanup execute trên DB này.
+Đây là cấp admin local theo lựa chọn chủ dự án, chưa phải bootstrap/IT nghiệm thu staging.
 
 Người vận hành tin cậy có quyền DB có thể dùng CLI từ `backend/`:
 
@@ -50,4 +83,5 @@ Toàn bộ truy cập Maximo trong luồng này chỉ GET; không cập nhật W
 Tests PostgreSQL + HTTP mocks bao gồm admin/CSRF, từ chối viewer/anonymous, scope khác,
 PERSON đổi/null, thu hồi giữa network I/O, session hết hạn, baseline conflict, PM/CFT,
 vòng đời tạo/restore/update/delete và audit. Xem [TODO](todos.md) cho số tests và giới hạn cuối task.
-Offshore, tenant policy, tải đồng thời 10 người, quản trị qua UI và upload chưa nghiệm thu.
+Offshore, tenant policy, tải đồng thời 10 người, quản trị qua UI trên staging và upload
+chưa nghiệm thu. Admin UI có synthetic behavior tests; chưa thử cấp/thu hồi qua browser live.

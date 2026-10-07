@@ -15,8 +15,9 @@ Cập nhật: 2026-10-07. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 - [CI GitHub Actions](ci.md) cho push/PR/thủ công: backend fast, PostgreSQL migrations
   và integration, frontend lint/typecheck/test/build; action SHA được khóa, không cần
   Entra/Maximo secrets. Python 3.12.14, uv 0.11.9 và Node 26.0.0 giữ baseline đã kiểm tra.
-  Actionlint 1.7.12 và kiểm tra tương đương local qua ngày 2026-10-07; workflow đã commit/push
-  dd9cae6 được GitHub connector xác nhận, kết quả GitHub runner chưa xác minh.
+  Actionlint 1.7.12 qua; workflow dd9cae6 đã push. Run 37590200157: frontend Ubuntu success,
+  hai backend fail tại uv Python download. Working tree sửa dùng setup-python SHA pinned
+  cho 3.12.14; corrected GitHub run sau push còn pending. Linux container suite đã qua.
 - Carbon Gray 10 / Gray 100 cho sáng/tối, nút chuyển trên header và lưu preference.
   IBM Plex Sans 400/500/600 được phục vụ nội bộ cùng giấy phép OFL; màu chữ, tag,
   các ô nháp và native date picker theo theme. Chuyển theme không remount bảng/panel.
@@ -59,17 +60,26 @@ Cập nhật: 2026-10-07. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
   preview, save/update/restore/delete; backend recheck scope và baseline từng WO,
   lưu toàn nhóm trong một transaction và deduplicate bằng receipt bền vững.
   Local browser đã đọc và preview nhóm 4 WO E&I; 4 WO này thiếu systemid.
-  Chưa nghiệm thu monthly-load live hoặc desktop rộng; upload chưa triển khai.
+  Nhóm 100/200 WO synthetic và Chromium desktop 1600×1000 đã qua ngày 2026-10-07:
+  group/row/paste/Undo/preview/save/reopen, atomic DB persistence và lỗi scope/baseline/version.
+  Tab containment, opener return, chooser transition/focus sau Save và Settings radio keys qua;
+  version409 khóa lưu và giữ edits. [Phạm vi/số đo](large-batch-keyboard-tests.md).
+  Monthly-load live, 10 planner và accessibility toàn luồng còn pending; upload chưa triển khai.
 
 ## Bằng chứng kiểm tra
 
-- Backend: 236 tests qua ngày 2026-10-07 (136 fast + 100 PostgreSQL integration scenarios);
+- Backend: 244 tests qua ngày 2026-10-07 (136 fast + 108 PostgreSQL integration scenarios),
+  trên Windows và Docker Linux Python 3.12.14 với PostgreSQL tạm riêng;
   suite không gọi Maximo/Entra thật. Test lịch nhóm dùng SelectorEventLoop như các test
   PostgreSQL khác để tương thích psycopg trên Windows.
-- Frontend: 138 tests (UI + API boundary, 2026-10-07); TypeScript và ESLint qua; Vite production build thành công.
+- Frontend: 151 tests/14 files (UI + API boundary, 2026-10-07); clean npm ci, TypeScript,
+  ESLint và Vite production build qua. Vá transitive dev source-map-js 1.2.2; npm audit 0 advisories.
 - Ruff lint/format qua.
 - Alembic upgrade từ DB trống, downgrade về base và upgrade lại qua trên PostgreSQL 17 test; schema/model không lệch.
 - `docker compose config --quiet` qua với credential giả chỉ để validate cấu hình.
+- Backend/web Docker builds từ pinned manifest digests qua; backend live/readiness trả ok,
+  nginx -t qua. Frozen Linux sync và migration round-trip/schema checks qua;
+  [container checks](container-checks.md). Không phải full Compose staging/HTTPS.
 - Trình duyệt local hiển thị overview, backend liveness và bảng demo; sửa DEMO-001 Finish
   từ 2026-09-29 sang 2026-10-01 hiển thị đúng before/after, Upload vẫn bị khóa.
 
@@ -79,15 +89,16 @@ Kiểm tra UI đã thực hiện trong panel trình duyệt hẹp; chưa thay th
 
 ## Chưa xác minh / chưa triển khai
 
-- Docker Desktop và PostgreSQL test đã chạy. Full application image builds chưa xác minh.
-- Container image digest/scan, backup/restore và khả năng chạy Ubuntu chưa xác minh.
+- Docker Desktop, PostgreSQL test, application image builds và manifest digests đã xác minh local.
+- Image scan/lifecycle/security patch, backup/restore, full Compose/Ubuntu staging chưa xác minh.
 - Entra local và Onshore test đã cấu hình; đọc WO list/detail và 25 PIC E&I_N thành công,
   grant E&I chỉ xem từ PERSON và timezone Asia/Ho_Chi_Minh đã xác nhận. Offshore chưa kiểm chứng.
 - Entra login/callback thật đã xác minh trên Windows local; logout/expiry, chính sách tenant và staging còn pending. Đã có scoped API list WO; đã có detail/create/restore draft; chưa có history, upload Maximo hoặc đối soát upstream.
 - Draft đã có API/UI tạo/list/mở/cập nhật/xóa theo owner, stale-edit/version checks và duplicate receipts; audit vẫn là dịch vụ nội bộ. Recovery chỉ chuyển sending cũ sang unknown.
-- Chưa tách DB runtime role/migration owner; chưa kiểm thử worker concurrency hay crash durability.
+- Có provisioning DB runtime/migration owner và Compose tách DSN; áp dụng trên staging
+  còn chờ IT. Chưa kiểm thử worker concurrency hay crash durability.
 - Chưa có E2E với backend nghiệp vụ, kiểm thử 10 phiên hay triển khai production;
-  CI đã có workflow và xác minh local, lần chạy GitHub Ubuntu runner còn pending.
+  CI cũ frontend Ubuntu qua, backend chưa tới tests vì download lỗi; lần chạy bản sửa còn pending.
 
 ## Bước tiếp theo
 
@@ -97,7 +108,8 @@ Checkbox hiện tại đã tách theo phạm vi; không dùng số checkbox mớ
 
 1. Kiểm thử tác vụ nhóm 100–200 WO và keyboard-only/focus; sửa/paste/Undo/preview đã có implementation.
 2. Xác minh ba job CI đã push, clean Ubuntu/images/runtime versions; local checks không thay runner results.
-3. Bootstrap admin/UI quản trị, roster và runtime DB role/retention theo đầu vào IT/chủ dự án.
+3. Nghiệm thu admin/UI và DB roles trên staging, roster và retention theo
+   [hồ sơ IT](it-acceptance.md); công cụ bootstrap/Planner/expired-auth cleanup đã có.
 4. Đối chiếu metadata/read contract/web-VBA, mở rộng scopes và tenant/staging policy.
 5. Chốt WO test/write contract/ETag trước upload orchestration, audit/read-back/unknown recovery.
 
@@ -235,3 +247,14 @@ production config/metadata, reclassification khi đang retrieve, HTTP detail/PIC
 không đổi origin/scheme. Frontend không đổi; không chạy lại frontend tests cho thay đổi này.
 Không thêm dependency hoặc migration. Chưa gửi API key tới server test thật; OSLC contract,
 credentials/grants/timezone và đường mạng Ubuntu còn pending.
+
+
+## Admin và IT readiness — 2026-10-07
+
+Admin roster GET/Planner UI `/admin`, bootstrap first-admin có audit 0008 và DB role
+provisioning/expired-auth cleanup đã triển khai. Chủ dự án chọn bản thân; local upgrade
+0007→0008, exact identity dry-run/execute và audit read-back qua, không thêm WO grants.
+254 backend/160 frontend tests và các kiểm tra code/build qua; quyền runtime được thử
+trên DB/roles tạm. Staging provisioning/UI/tenant/roster/read contract vẫn pending;
+[chi tiết và giới hạn](todos.md), [hồ sơ IT](it-acceptance.md).
+Write contract/ETag mới có giao thức nghiệm thu, chưa có bằng chứng live và chưa mở upload.

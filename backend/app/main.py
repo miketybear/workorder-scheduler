@@ -19,7 +19,7 @@ from app.maximo.routes import router as maximo_router
 from app.scheduling.batches import router as batches_router
 from app.scheduling.routes import router as scheduling_router
 
-SCHEMA_REVISION = "0007_connection_setting"
+SCHEMA_REVISION = "0008_admin_authority"
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

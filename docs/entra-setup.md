@@ -19,7 +19,8 @@ quyền đọc WO qua Entra. WO grants nằm trong PostgreSQL theo connection + 
 User mới có identity theo tenant ID + object ID, không có grants và không có admin.
 Không dùng email, roles hoặc nhóm từ browser làm bằng chứng quyền WO.
 Planner grants có API/CLI audit; xem [Planner access](planner-access.md).
-Bootstrap admin đầu tiên/UI quản trị còn chưa triển khai; không tự seed quyền quản trị.
+Bootstrap admin đầu tiên và UI Planner có công cụ riêng; không tự seed quyền quản trị.
+Xem [Planner/admin](planner-access.md) và [nghiệm thu tenant/staging cùng IT](it-acceptance.md).
 
 ## Theo dõi thu thập — 2026-10-02
 

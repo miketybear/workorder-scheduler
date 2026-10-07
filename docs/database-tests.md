@@ -46,4 +46,12 @@ sending bị bỏ dở thành unknown, không gửi lại. Chỉ chạy recovery
 cũ đã dừng; chưa có worker lease hoặc bộ đối soát Maximo.
 
 Audit trigger chặn UPDATE/DELETE/TRUNCATE, kể cả trên bảng rỗng. DB owner vẫn có thể
-gỡ trigger; tách runtime role và migration owner là việc còn lại trước production.
+gỡ trigger; dùng [provisioning roles và retention](database-operations.md) để tách
+runtime/migration owner. Áp dụng trên staging và restore còn cần IT nghiệm thu.
+
+2026-10-07: test_db_roles tạo DB/owner/runtime tạm trong infrastructure đã guard,
+chạy chính SQL provisioning và đăng nhập runtime thật để kiểm thử quyền DML và
+các lệnh bị cấm. Test ưu tiên `psql` trên PATH; Windows local fallback chỉ container
+test `wos-tests-db-1`. CI đảm bảo PostgreSQL client có mặt; không dùng tên container
+Windows làm điều kiện bắt buộc trên runner Ubuntu. Password chỉ vào child environment,
+không command arguments/logs; DB/roles tạm được dọn sau test.

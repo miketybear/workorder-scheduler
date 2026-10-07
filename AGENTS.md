@@ -3,6 +3,44 @@
 Read this file before changing the project. Component instructions live in
 [backend/AGENTS.md](backend/AGENTS.md) and [frontend/AGENTS.md](frontend/AGENTS.md).
 
+## Codex agent routing
+
+The main Fullstack Lead defaults to GPT-6.1 Sol / medium. Native project settings
+are in .codex/config.toml; the only custom sub-agents are frontend, backend and reviewer
+in .codex/agents/. See [docs/codex-agents.md](docs/codex-agents.md) for setup and usage.
+
+| Agent | Model | Effort | Responsibility |
+| --- | --- | --- | --- |
+| Main / Fullstack Lead | gpt-6.1-sol | medium | Requirements, planning, architecture decisions, integration and verification |
+| frontend | gpt-6-luna | medium | Substantial React/TypeScript UI, state and API integration work |
+| backend | gpt-6.1-sol | medium | Substantial FastAPI, business logic, PostgreSQL and migration work |
+| reviewer / Debugger | gpt-6-astra | high | Architecture analysis, difficult/recurring bugs and final large-change review |
+
+Routing instructions for the main agent:
+
+- Handle small, localized tasks and documentation-only edits yourself.
+- Delegate substantial frontend work to the frontend sub-agent.
+- Delegate substantial backend/database work to the backend sub-agent.
+- Delegate independent FE and BE work in parallel after agreeing the API contract;
+  assign disjoint file scopes. Resolve dependencies first when the work is coupled.
+- Delegate architecture analysis, difficult or recurring bugs, and the final review of
+  large changes to reviewer. The main owns the decision and resolves actionable findings.
+- Select the native custom agent by name. If the client only exposes a generic spawn tool,
+  explicitly pass the matching model and effort above and include that agent's instructions
+  in its scoped task. Use bounded task context when the client requires it for overrides.
+  Do not silently substitute models if unavailable; report the limitation.
+- Give each sub-agent its task, owned files, acceptance criteria, relevant context and checks.
+  Sub-agents do not spawn more agents. Keep this team to one main and these three roles.
+- Reviewer is review-only by default: return evidence, file/line references and fixes to
+  consider; do not edit files or implement without an explicit main assignment. Any such
+  assignment must also fit the effective session permissions; reviewer never grants itself
+  write access. Its native file sets a read-only sandbox default.
+- The main integrates results, checks API compatibility, runs checks appropriate to the
+  change, updates shared documentation and docs/todos.md, and gives the final response.
+  Component instructions and product invariants apply to every agent.
+- Preserve existing uncommitted work. Coordinate shared-file changes through the main;
+  do not overwrite other agents' edits or run migrations concurrently.
+
 ## Purpose and status
 
 Replace WorkOrderScheduler_v4.2.xlsm with an internal web application for retrieving,

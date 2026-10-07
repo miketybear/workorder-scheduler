@@ -3,6 +3,8 @@
 Cập nhật: 2026-10-07. Onshore test đã xác minh GET WO/PERSON/crew E&I và nháp nội bộ
 trên Windows local; write contract, scopes khác/Offshore và đường mạng Ubuntu còn pending.
 Đối soát đầy đủ: [checklist 1–6](checklist-review.md). Các mốc theo ngày bên dưới là lịch sử.
+Các quyết định và ca thử để làm cùng IT được gom tại [hồ sơ nghiệm thu](it-acceptance.md),
+với [write contract/ETag](maximo-write-contract.md) là điều kiện trước upload.
 
 ## Thông tin tối thiểu để bắt đầu Maximo test
 

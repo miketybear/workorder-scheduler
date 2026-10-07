@@ -35,7 +35,6 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const infoId = useId();
   const panel = useRef<HTMLElement>(null);
-  useEffect(() => { panel.current?.focus(); }, []);
   const current = useRef<BatchRow[]>([]);
   const existing = useRef<Saved | null>(null);
   const pending = useRef<AbortController | null>(null);
@@ -48,6 +47,10 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
         (cause instanceof BatchError && cause.issues.some((issue) => issue.code === 'unavailable'))) onDenied();
     else {
       setError(cause instanceof Error ? cause.message : 'Không kiểm tra được nhóm WO.');
+      if (cause instanceof RetrievalError && cause.status === 409) {
+        setIssues(Object.fromEntries(current.current.map((row) =>
+          [rowKey(row.item), 'WO hoặc nháp đã đổi; giữ sửa đổi để đối chiếu, mở lại trước khi lưu.'])));
+      }
       if (cause instanceof BatchError) setIssues(Object.fromEntries(cause.issues.map((issue) =>
         [JSON.stringify([issue.site_id, issue.workorder_id]), ({ unavailable: 'WO không còn khả dụng; mở lại để kiểm tra.',
           baseline_changed: 'WO đã thay đổi; mở lại để đối chiếu.' } as Record<string, string>)[issue.code]]).filter((entry) => entry[1])));
