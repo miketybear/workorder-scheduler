@@ -71,7 +71,9 @@ Phụ thuộc: tài liệu đã hoàn thiện. Không cần credential thật.
 - [x] Thiết lập settings tập trung, kiểm tra cấu hình và .env.example không có secret.
 - [x] Tạo health/readiness endpoints; không đưa thông tin credential vào response.
 - [x] Thiết lập Ruff, pytest, typecheck, frontend lint/test/build scripts.
-- [ ] Thêm kiểm tra tự động trong CI khi đã chọn nơi quản lý mã nguồn.
+- [x] Thêm workflow GitHub Actions cho backend/frontend và PostgreSQL migrations/tests
+      (2026-10-07); actionlint và kiểm tra tương đương local qua. Chưa chạy trên GitHub runner;
+      xem [CI](ci.md) và bằng chứng cuối checklist.
 - [x] Ghi lệnh chạy local và các kiểm tra thật sự chạy được vào README.
 
 Nghiệm thu: môi trường sạch cài bằng lockfile và chạy frontend/backend với dữ liệu mock;
@@ -1070,3 +1072,29 @@ Giới hạn: chỉ kiểm tra desktop browser; bảng nhóm giữ cuộn ngang 
 
 Giới hạn: PostgreSQL dùng scheduler_test cô lập; Maximo/Entra giả trong suite.
       Kết quả này không xác nhận remote upload hay UAT nhiều người dùng; không ghi Maximo.
+
+## CI cho backend/frontend và PostgreSQL — 2026-10-07
+
+- [x] Thêm `.github/workflows/ci.yml` cho push, pull request và chạy thủ công; ba job
+      độc lập trên Ubuntu 24.04: backend fast, PostgreSQL migration/integration, frontend.
+      Dùng lockfile frozen/npm ci, token chỉ đọc, checkout không lưu credential,
+      concurrency cancellation và timeout. Checkout/setup-uv/setup-node khóa SHA release
+      chính thức; không thêm dependency runtime hoặc nạp secret Entra/Maximo vào CI.
+- [x] Khóa `.python-version` từ 3.12 thành 3.12.14 khớp Dockerfile/local đã kiểm tra;
+      CI dùng uv 0.11.9 và Node 26.0.0 hiện có. Không nâng package/lockfile.
+      Mục đánh giá/pin toàn bộ runtime/image vẫn chưa hoàn thành, PostgreSQL còn tag 17-alpine.
+- [x] `actionlint` 1.7.12 qua. Backend 236 tests qua: 136 fast và 100 PostgreSQL;
+      Ruff lint/format qua. Frontend 138 tests/12 files, ESLint, TypeScript/build qua.
+      `uv sync --frozen` qua với môi trường local hiện có.
+- [x] Upgrade/check/downgrade base/upgrade/check qua trên database tạm mới tạo từ
+      PostgreSQL test riêng; hai lần schema check không lệch. Xóa đúng database tạm sau
+      kiểm tra; không downgrade DB ứng dụng hoặc database test đang chứa dữ liệu.
+      Tài liệu CI/README/status cập nhật; diff và liên kết nội bộ qua.
+- [ ] Commit/push workflow và xác minh lần chạy đầu trên GitHub Ubuntu runner.
+- [ ] Cấu hình required checks/branch protection nếu chủ dự án chọn chính sách merge này.
+
+Giới hạn: kiểm chứng thực thi hiện trên Windows local với PostgreSQL 17 trong Docker;
+      chưa chứng minh Linux clean install hoặc GitHub Actions thành công. Không commit/push,
+      không đổi repository settings, không gọi Maximo/Entra thật hoặc ghi dữ liệu nghiệp vụ.
+      UAT 10 phiên, ETag/conditional update và remote upload vẫn pending.
+      Hướng dẫn/phạm vi: [CI](ci.md).

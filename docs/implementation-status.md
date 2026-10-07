@@ -12,6 +12,11 @@ Cập nhật: 2026-10-07. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 - React overview và bảng demo giả lập: sửa ngày, khóa target PM/CFT, preview và reset.
 - Dockerfiles và Compose phát triển local, migration service, DB volume và healthchecks.
 - uv.lock, package-lock.json, scripts lint/test/typecheck/build và tài liệu chạy local.
+- [CI GitHub Actions](ci.md) cho push/PR/thủ công: backend fast, PostgreSQL migrations
+  và integration, frontend lint/typecheck/test/build; action SHA được khóa, không cần
+  Entra/Maximo secrets. Python 3.12.14, uv 0.11.9 và Node 26.0.0 giữ baseline đã kiểm tra.
+  Actionlint 1.7.12 và kiểm tra tương đương local qua ngày 2026-10-07; workflow chưa push
+  hoặc chạy trên GitHub runner.
 - Carbon Gray 10 / Gray 100 cho sáng/tối, nút chuyển trên header và lưu preference.
   IBM Plex Sans 400/500/600 được phục vụ nội bộ cùng giấy phép OFL; màu chữ, tag,
   các ô nháp và native date picker theo theme. Chuyển theme không remount bảng/panel.
@@ -81,7 +86,8 @@ Kiểm tra UI đã thực hiện trong panel trình duyệt hẹp; chưa thay th
 - Entra login/callback thật đã xác minh trên Windows local; logout/expiry, chính sách tenant và staging còn pending. Đã có scoped API list WO; đã có detail/create/restore draft; chưa có history, upload Maximo hoặc đối soát upstream.
 - Draft đã có API/UI tạo/list/mở/cập nhật/xóa theo owner, stale-edit/version checks và duplicate receipts; audit vẫn là dịch vụ nội bộ. Recovery chỉ chuyển sending cũ sang unknown.
 - Chưa tách DB runtime role/migration owner; chưa kiểm thử worker concurrency hay crash durability.
-- Chưa có E2E với backend nghiệp vụ, kiểm thử 10 phiên, CI hay triển khai production.
+- Chưa có E2E với backend nghiệp vụ, kiểm thử 10 phiên hay triển khai production;
+  CI đã có workflow và xác minh local, lần chạy GitHub Ubuntu runner còn pending.
 
 ## Bước tiếp theo
 

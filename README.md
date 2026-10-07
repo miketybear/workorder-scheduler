@@ -38,6 +38,7 @@ Múi giờ kết nối vẫn dùng để tính ngày nhưng không hiện nhãn;
 - [Danh sách công việc chi tiết](docs/todos.md)
 - [Trạng thái và bằng chứng kiểm tra](docs/implementation-status.md)
 - [Lý do chọn dependency](docs/dependencies.md)
+- [CI trên GitHub Actions](docs/ci.md)
 - [Lập lịch và quản lý nháp](docs/drafts.md)
 - [Hướng dẫn chung cho coding agent](AGENTS.md)
 - [Backend](backend/AGENTS.md) / [Frontend](frontend/AGENTS.md)
@@ -51,7 +52,7 @@ Bàn giao credential qua kênh quản lý secret, không đưa vào tài liệu 
 
 ## Chạy local không cần Maximo
 
-Yêu cầu: Python 3.12 (đã kiểm tra 3.12.14), uv, Node.js 26.0.0 và npm.
+Yêu cầu: Python 3.12.14, uv 0.11.9, Node.js 26.0.0 và npm.
 Các lệnh dưới chạy từ thư mục dự án trong terminal tương ứng.
 
 Backend:
@@ -109,6 +110,9 @@ Database lưu trong volume `postgres_data`. Không xóa volume để xử lý l�
 Migration online đã kiểm tra trên PostgreSQL 17 test riêng; full application image builds chưa xác minh.
 
 ## Kiểm tra
+
+[Workflow CI](.github/workflows/ci.yml) chạy các kiểm tra backend/frontend và migration
+round-trip trên PostgreSQL test riêng cho mỗi push/PR. Xem [phạm vi và giới hạn](docs/ci.md).
 
 Từ `backend/`:
 
