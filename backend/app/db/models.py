@@ -51,6 +51,16 @@ class MaximoConnection(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class UserConnectionSetting(Base):
+    __tablename__ = "user_connection_setting"
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("app_user.id", ondelete="CASCADE"), primary_key=True
+    )
+    connection_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("maximo_connection.id", ondelete="CASCADE")
+    )
+
+
 class AccessGrant(Base):
     __tablename__ = "access_grant"
     __table_args__ = (
@@ -65,6 +75,20 @@ class AccessGrant(Base):
     )
     discipline: Mapped[str] = mapped_column(String(50))
     capability: Mapped[str] = mapped_column(String(10))
+
+
+class PlannerPermission(Base):
+    __tablename__ = "planner_permission"
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("app_user.id", ondelete="RESTRICT"), primary_key=True
+    )
+    connection_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("maximo_connection.id", ondelete="RESTRICT"), primary_key=True
+    )
+    discipline: Mapped[str] = mapped_column(String(50), primary_key=True)
+    __table_args__ = (
+        CheckConstraint("length(trim(discipline)) > 0", name="ck_planner_discipline"),
+    )
 
 
 class MaximoPersonBinding(Base):

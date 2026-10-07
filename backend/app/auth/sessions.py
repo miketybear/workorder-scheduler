@@ -9,7 +9,7 @@ from fastapi import HTTPException, Request, Response
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AccessGrant, LoginSession, MaximoConnection, User
+from app.db.models import AccessGrant, LoginSession, MaximoConnection, User, UserConnectionSetting
 
 SESSION_COOKIE = "__Host-wos-session"
 CSRF_COOKIE = "__Host-wos-csrf"
@@ -115,6 +115,28 @@ async def current_grants(db: AsyncSession, user_id: uuid.UUID) -> list[dict]:
     ]
 
 
+async def session_payload(db: AsyncSession, identity: SessionIdentity) -> dict:
+    grants = await current_grants(db, identity.user_id)
+    preferred = await db.scalar(
+        select(UserConnectionSetting.connection_id).where(
+            UserConnectionSetting.user_id == identity.user_id
+        )
+    )
+    # A saved preference never supplies access after its grant has been revoked.
+    preferred_id = str(preferred) if preferred else None
+    if not any(grant["connection_id"] == preferred_id for grant in grants):
+        preferred_id = None
+    return {
+        "user": {
+            "id": str(identity.user_id),
+            "name": identity.display_name,
+            "is_admin": identity.is_admin,
+        },
+        "grants": grants,
+        "preferred_connection_id": preferred_id,
+    }
+
+
 async def session_info(request: Request, response: Response):
     from app.auth.person_access import sync_person_access
 
@@ -125,15 +147,7 @@ async def session_info(request: Request, response: Response):
     await sync_person_access(request, token)
     async with request.app.state.sessions() as db:
         identity = await resolve_session(db, token)
-        grants = await current_grants(db, identity.user_id)
-    return {
-        "user": {
-            "id": str(identity.user_id),
-            "name": identity.display_name,
-            "is_admin": identity.is_admin,
-        },
-        "grants": grants,
-    }
+        return await session_payload(db, identity)
 
 
 async def logout(request: Request):

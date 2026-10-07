@@ -13,7 +13,7 @@ describe('session access', () => {
     await screen.findByText('Chờ cấu hình đăng nhập từ IT.');
     expect(screen.queryByText('Đăng nhập Microsoft')).not.toBeInTheDocument();
     vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: null });
-    fireEvent(window, new Event('focus'));
+    fireEvent(document, new Event('visibilitychange'));
     expect(await screen.findByText('Đăng nhập Microsoft')).toHaveAttribute('href', '/api/auth/login');
   });
 
@@ -37,7 +37,7 @@ describe('session access', () => {
     render(<SessionPanel />);
     await screen.findByText(/Onshore test/);
     vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: null });
-    fireEvent(window, new Event('focus'));
+    fireEvent(document, new Event('visibilitychange'));
     await waitFor(() => expect(screen.queryByText('Planner')).not.toBeInTheDocument());
     expect(screen.queryByText(/Onshore test/)).not.toBeInTheDocument();
     await screen.findByText('Đăng nhập Microsoft');

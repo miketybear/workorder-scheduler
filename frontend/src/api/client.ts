@@ -9,6 +9,7 @@ export async function getLiveness(signal?: AbortSignal): Promise<boolean> {
 
 export type Session = {
   user: { id: string; name: string; is_admin: boolean };
+  preferred_connection_id?: string | null;
   grants: { connection_id: string; label: string; system: 'onshore' | 'offshore'; environment: 'test' | 'production'; timezone: string; discipline: string; capability: 'read' | 'write' }[];
 };
 
@@ -26,9 +27,13 @@ export async function getAuthSummary(signal?: AbortSignal): Promise<{ available:
   if (!record(options) || typeof options.login_available !== 'boolean') throw new Error('Phản hồi không hợp lệ.');
   if (response.status === 401) return { available: options.login_available, session: null };
   if (!response.ok) throw new Error('Không kiểm tra được phiên đăng nhập.');
-  const body: unknown = await response.json();
+  return { available: options.login_available, session: parseSession(await response.json()) };
+}
+
+export function parseSession(body: unknown): Session {
   if (!record(body) || !record(body.user) || typeof body.user.id !== 'string' ||
       typeof body.user.name !== 'string' || typeof body.user.is_admin !== 'boolean' ||
+      (body.preferred_connection_id !== undefined && body.preferred_connection_id !== null && typeof body.preferred_connection_id !== 'string') ||
       !Array.isArray(body.grants) || !body.grants.every((grant: unknown) => record(grant) &&
         typeof grant.connection_id === 'string' && typeof grant.label === 'string' &&
         typeof grant.timezone === 'string' && grant.timezone.length > 0 &&
@@ -37,7 +42,7 @@ export async function getAuthSummary(signal?: AbortSignal): Promise<{ available:
         typeof grant.discipline === 'string' && ['read', 'write'].includes(String(grant.capability)))) {
     throw new Error('Phản hồi phiên đăng nhập không hợp lệ.');
   }
-  return { available: options.login_available, session: body as Session };
+  return body as Session;
 }
 
 export const loginUrl = `${config.apiBase}/auth/login`;

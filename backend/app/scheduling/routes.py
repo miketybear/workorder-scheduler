@@ -217,7 +217,12 @@ async def persist(request, payload, draft_id=None):
                 item.changes = payload.changes.model_dump(mode="json", exclude_unset=True)
                 draft.version += 1
                 draft.updated_at = datetime.now(UTC)
-            receipt.result = {"draft_id": str(draft.id), "version": draft.version, "state": "draft"}
+            receipt.result = {
+                "draft_id": str(draft.id),
+                "version": draft.version,
+                "state": "draft",
+                "updated_at": draft.updated_at.isoformat(),
+            }
             await db.flush()
         except ValueError:
             raise HTTPException(
@@ -241,12 +246,32 @@ async def update(request: Request, response: Response, draft_id: UUID, payload: 
 async def restore_data(request, draft_id):
     async with request.app.state.sessions.begin() as db:
         actor = await resolve_session(db, request.cookies.get(SESSION_COOKIE))
-        draft, scopes = await owned_draft(db, actor.user_id, draft_id, lock=True)
+        draft, scopes = await owned_draft(db, actor.user_id, draft_id)
+        version = draft.version
         currents = {}
         orders = {}
-        for item in scopes:
-            key = WorkOrderKey(draft.connection_id, item.site_id, item.workorder_id)
-            _, orders[key], currents[key] = await retrieve_snapshot(request, key, item.discipline)
+        if len(scopes) > 1:
+            # Reuse crew/scope reads and bound parallel detail requests for monthly batches.
+            from app.scheduling.batches import BatchPrepare, snapshots
+
+            if len({item.discipline for item in scopes}) != 1:
+                raise HTTPException(409, "Draft contains multiple disciplines")
+            payload = BatchPrepare(
+                connection_id=draft.connection_id,
+                discipline=scopes[0].discipline,
+                items=[
+                    {"site_id": item.site_id, "workorder_id": item.workorder_id} for item in scopes
+                ],
+            )
+            _, results = await snapshots(request, payload, write=False, csrf=False)
+            for order, current in results:
+                orders[current.key], currents[current.key] = order, current
+        else:
+            for item in scopes:
+                key = WorkOrderKey(draft.connection_id, item.site_id, item.workorder_id)
+                _, orders[key], currents[key] = await retrieve_snapshot(
+                    request, key, item.discipline
+                )
 
         async def reader(key):
             return currents[key]
@@ -255,10 +280,14 @@ async def restore_data(request, draft_id):
         if fresh_actor.user_id != actor.user_id:
             raise HTTPException(401, "Sign-in required")
         items = await load_draft(db, actor.user_id, draft_id, reader)
+        await db.refresh(draft)
+        if draft.version != version:
+            raise HTTPException(409, "Draft changed; reopen before restoring")
         return {
             "draft_id": str(draft_id),
             "version": draft.version,
             "connection_id": str(draft.connection_id),
+            "updated_at": draft.updated_at.isoformat(),
             "state": "draft",
             "items": [
                 {
@@ -281,6 +310,7 @@ async def list_drafts(
     connection_id: UUID,
     discipline: Annotated[str, Query(min_length=1, max_length=50)],
     offset: Annotated[int, Query(ge=0)] = 0,
+    include_items: bool = False,
 ):
     response.headers["Cache-Control"] = "no-store"
     key = WorkOrderKey(connection_id, "", "")
@@ -317,18 +347,29 @@ async def list_drafts(
             if error.status_code in (404, 409):
                 continue
             raise
+        if any(item["discipline"] != discipline for item in data["items"]):
+            continue
         results.append(
             {
                 "draft_id": data["draft_id"],
                 "version": data["version"],
+                "updated_at": data["updated_at"],
                 "wonum": data["items"][0]["wonum"],
                 "site_id": data["items"][0]["site_id"],
+                "item_count": len(data["items"]),
+                "system_name": data["items"][0]["item"]["systemid"],
+                **({"items": data["items"]} if include_items else {}),
             }
         )
     fresh_actor, _ = await checked_settings(request, key, discipline)
     if fresh_actor.user_id != actor.user_id:
         raise HTTPException(401, "Sign-in required")
-    return {"items": results, "next_offset": offset + 20 if len(ids) > 20 else None}
+    return {
+        "connection_id": str(connection_id),
+        "discipline": discipline,
+        "items": results,
+        "next_offset": offset + 20 if len(ids) > 20 else None,
+    }
 
 
 @router.get("/drafts/{draft_id}")
@@ -339,15 +380,28 @@ async def restore(request: Request, response: Response, draft_id: UUID):
 
 @router.delete("/drafts/{draft_id}", status_code=204)
 async def remove(request: Request, draft_id: UUID, version: Annotated[int, Query(gt=0)]):
-    async with request.app.state.sessions.begin() as db:
+    # Never hold a draft lock while PERSON sync acquires the user lock on another session.
+    async with request.app.state.sessions() as db:
         actor = await resolve_session(db, request.cookies.get(SESSION_COOKIE))
         verify_csrf(actor, request.headers.get("X-CSRF-Token"))
+        draft, items = await owned_draft(db, actor.user_id, draft_id)
+        scopes = [
+            (WorkOrderKey(draft.connection_id, item.site_id, item.workorder_id), item.discipline)
+            for item in items
+        ]
+    for key, discipline in scopes:
+        await retrieve_snapshot(request, key, discipline, write=True)
+    async with request.app.state.sessions.begin() as db:
+        await actor_after_io(request, db, actor)
+        for key, discipline in scopes:
+            await require_scope(db, actor.user_id, key, discipline, write=True)
         draft, items = await owned_draft(db, actor.user_id, draft_id, lock=True)
-        for item in items:
-            key = WorkOrderKey(draft.connection_id, item.site_id, item.workorder_id)
-            identity, _, _ = await retrieve_snapshot(request, key, item.discipline, write=True)
-            await actor_after_io(request, db, identity)
-            await require_scope(db, actor.user_id, key, item.discipline, write=True)
+        current_scopes = [
+            (WorkOrderKey(draft.connection_id, item.site_id, item.workorder_id), item.discipline)
+            for item in items
+        ]
+        if current_scopes != scopes:
+            raise HTTPException(409, "Draft changed; reopen before deleting")
         if draft.version != version:
             raise HTTPException(409, "Draft changed; reopen before deleting")
         await db.delete(draft)

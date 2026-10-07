@@ -33,6 +33,9 @@ ReadCurrent = Callable[[WorkOrderKey], Awaitable[CurrentWorkOrder]]
 async def require_scope(
     db: AsyncSession, user_id: uuid.UUID, key: WorkOrderKey, discipline: str, *, write: bool
 ) -> None:
+    if write:
+        # Serialize the final save with Planner revocation and PERSON synchronization.
+        await db.scalar(select(User.id).where(User.id == user_id).with_for_update())
     grant = await db.scalar(
         select(AccessGrant.id)
         .join(User)

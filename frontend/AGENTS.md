@@ -37,7 +37,11 @@ frontend/
 Overview, session/login/logout controls and an explicitly synthetic /demo route exist.
 The /work-orders route consumes the scoped list/detail/draft APIs, with one-WO editing,
 before/after preview, save/restore/delete and current session/scope checks.
-Live SSO/Maximo verification, spreadsheet-style bulk editing and uploads remain pending.
+The account's scope is automatic; /settings selects a configured connection and persists
+the account preference on the server. Never offer a discipline selector or infer it by array order.
+Compact table and batch panels support up to 200 WOs, group changes, per-row edits,
+paste and undo. Local Onshore E&I list/detail/crew reads are verified; broader live
+scopes, monthly-load usability and uploads remain pending.
 
 ## API and authentication
 
@@ -57,8 +61,9 @@ Live SSO/Maximo verification, spreadsheet-style bulk editing and uploads remain 
 - List only permitted systems/disciplines supplied by the backend.
 - Display WO identity, description, type, location/system, status, priority, PIC, duration,
   percentage complete and schedule/target/actual dates as available.
-- Edit schedule start/finish, PIC and duration. Target editing requires explicit user intent;
-  disable it for PM/CFT with a clear explanation.
+- Edit schedule start, PIC and duration; derive read-only finish from start plus elapsed
+  duration hours when start or duration changes. Target date-picker edits set explicit user
+  intent; disable them for PM/CFT with a clear explanation.
 - Support selected-row date assignment, clear modified-cell indicators, undo/reset to the
   retrieved baseline and a field-level before/after preview.
 - Distinguish retrieval, saved drafts, pending uploads and confirmed Maximo values.
@@ -68,6 +73,15 @@ Live SSO/Maximo verification, spreadsheet-style bulk editing and uploads remain 
 - Display dates in the configured business timezone; do not silently use the browser timezone
   or convert a date-only input to midnight UTC.
 - Keep drafts server-side; avoid persistent browser storage of operational WO data.
+- Keep the WO workspace mounted in App memory across internal routes, including edits and
+  selection. Returning to a visible tab verifies session/grants without reloading WO data;
+  blur/focus alone must not trigger requests or cancel mutations. A five-minute age notice
+  invites explicit refresh, which preserves edits and rechecks baseline/PIC/draft version.
+  Clear the workspace on identity/grant/connection changes or logout; hide retained data
+  after failed authorization verification. Backend write checks remain mandatory.
+- While a WO editor, batch planner or draft chooser is visible, lock page and background
+  table scrolling without resetting their positions. Contain panel overscroll; release
+  the lock when closing, hiding, navigating away or unmounting the workspace.
 
 ## Code style and tests
 

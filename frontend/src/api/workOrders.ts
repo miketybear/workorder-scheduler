@@ -1,5 +1,9 @@
 import { config } from '../config';
 import { isAwareDate } from './dates';
+import type { Changes } from './drafts';
+
+export type PlanningMarker = { draft_id: string; version: number; is_batch: boolean; updated_at: string;
+  changes: Changes; baseline_changed: boolean };
 
 export const columns = [
   ['wolo10', '% Complete'], ['bdpocdiscipline', 'Discipline'], ['wonum', 'Work Order'],
@@ -11,7 +15,7 @@ export const columns = [
   ['workorderid', 'WOID'],
 ] as const;
 type Field = typeof columns[number][0];
-export type WorkOrder = Record<Field, string | null> & { siteid: string; wonum: string; workorderid: string; worktype: string; status: string; targcompdate: string; wopriority: number | null };
+export type WorkOrder = Record<Field, string | null> & { siteid: string; wonum: string; workorderid: string; worktype: string; status: string; targcompdate: string; wopriority: number | null; drafts?: PlanningMarker[] };
 export type WorkOrderFilter = { connection_id: string; discipline: string; target_from: string; target_before: string };
 
 export class RetrievalError extends Error {
@@ -65,5 +69,21 @@ export function parseWorkOrder(raw: unknown, discipline: string): WorkOrder {
         !(raw.wopriority === null || (typeof raw.wopriority === 'number' && Number.isInteger(raw.wopriority)))) {
       throw new Error('Phản hồi WO không hợp lệ.');
     }
-  return raw as WorkOrder;
+  return { ...raw, drafts: parsePlanningMarkers(raw.drafts ?? []) } as WorkOrder;
+}
+
+export function parsePlanningMarkers(raw: unknown): PlanningMarker[] {
+  if (!Array.isArray(raw)) throw new Error('Phản hồi kế hoạch không hợp lệ.');
+  const ids = new Set<string>();
+  for (const item of raw) {
+    if (!isRecord(item) || typeof item.draft_id !== 'string' || !item.draft_id || ids.has(item.draft_id) ||
+      !Number.isInteger(item.version) || Number(item.version) < 1 || typeof item.is_batch !== 'boolean' ||
+      typeof item.baseline_changed !== 'boolean' || typeof item.updated_at !== 'string' || !isAwareDate(item.updated_at) || !isRecord(item.changes) ||
+      !Object.entries(item.changes).every(([key, value]) => key === 'change_target' ? typeof value === 'boolean' :
+        ['schedstart', 'schedfinish', 'assignedtechname', 'estdur', 'targstartdate', 'targcompdate'].includes(key) && typeof value === 'string')) {
+      throw new Error('Phản hồi kế hoạch không hợp lệ.');
+    }
+    ids.add(item.draft_id);
+  }
+  return raw as PlanningMarker[];
 }

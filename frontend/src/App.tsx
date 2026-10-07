@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { getLiveness } from './api/client';
 import { DemoScheduler } from './scheduling/DemoScheduler';
 import styles from './App.module.css';
 import { SessionPanel } from './auth/SessionPanel';
 import { WorkOrders } from './scheduling/WorkOrders';
+import { ThemeToggle } from './components/ThemeToggle';
+import { Settings } from './components/Settings';
 
 function Overview() {
   const [status, setStatus] = useState('Đang kiểm tra…');
@@ -38,12 +40,15 @@ function Overview() {
 }
 
 export function App() {
+  const workOrdersActive = useLocation().pathname === '/work-orders';
   return <div className={styles.shell}>
-    <header className={styles.header}><Link to="/" className={styles.brand}><span>W</span> WORKORDER <b>/ Scheduler</b></Link>
-      <span className={styles.badge}>Bản phát triển · Chưa kết nối Maximo</span></header>
+    <header className={styles.header}><Link to="/" className={styles.brand}>WORKORDER <b>/ Scheduler</b></Link>
+      <div className={styles.headerActions}><span className={styles.badge}>Bản phát triển · Lập lịch & nháp</span><Link to="/settings">Settings</Link><ThemeToggle /></div></header>
     <main><Routes><Route path="/" element={<Overview />} /><Route path="/demo" element={<DemoScheduler />} />
-      <Route path="/work-orders" element={<WorkOrders />} />
-      <Route path="*" element={<p>Không tìm thấy trang. <Link to="/">Về tổng quan</Link></p>} /></Routes></main>
+      <Route path="/work-orders" element={null} />
+      <Route path="/settings" element={<Settings />} />
+      <Route path="*" element={<p>Không tìm thấy trang. <Link to="/">Về tổng quan</Link></p>} /></Routes>
+      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} /></div></main>
     <footer>Work Order Scheduler <span>Onshore + Offshore · Nội bộ</span></footer>
   </div>;
 }

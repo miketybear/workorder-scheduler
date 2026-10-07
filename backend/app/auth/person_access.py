@@ -8,6 +8,7 @@ from app.db.models import (
     AuthorizationEvent,
     MaximoConnection,
     MaximoPersonBinding,
+    PlannerPermission,
     User,
 )
 from app.maximo.connections import configured_connection
@@ -80,7 +81,13 @@ async def replace_person_grants(db, user_id, connection_id, discipline, reason):
         )
     )
     before = sorted((row.discipline, row.capability) for row in rows)
-    after = [(discipline, "read")] if discipline else []
+    permission = (
+        await db.get(PlannerPermission, (user_id, connection_id, discipline))
+        if discipline
+        else None
+    )
+    capability = "write" if permission else "read"
+    after = [(discipline, capability)] if discipline else []
     if before == after:
         return
     for row in rows:
@@ -93,7 +100,7 @@ async def replace_person_grants(db, user_id, connection_id, discipline, reason):
                 user_id=user_id,
                 connection_id=connection_id,
                 discipline=discipline,
-                capability="read",
+                capability=capability,
             )
         )
     db.add(
@@ -107,7 +114,7 @@ async def replace_person_grants(db, user_id, connection_id, discipline, reason):
 
 
 async def sync_person_access(request: Request, token: str | None) -> None:
-    """PERSON-managed connections grant read only; lookup failures revoke persisted grants."""
+    """Intersect explicit Planner permission with PERSON; lookup failures revoke access."""
     settings = request.app.state.settings
     managed_ids = [key for key, value in settings.maximo.items() if value.person_login_domain]
     if not managed_ids:

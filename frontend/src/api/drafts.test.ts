@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { getDetail, listDrafts, openDraft, saveDraft, type Baseline } from './drafts';
+import { getDetail, listDrafts, listPlannedWorkOrders, openDraft, saveDraft, type Baseline } from './drafts';
 import { columns } from './workOrders';
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
@@ -64,4 +64,20 @@ it('reads bounded paginated draft summaries and rejects malformed summaries', as
   expect(new URL(fetcher.mock.calls[0][0], 'https://example.invalid').searchParams.get('offset')).toBe('0');
   respond({ items: [{ draft_id: 'id', version: 'bad', wonum: 'WO', site_id: 'SITE' }], next_offset: null });
   await expect(listDrafts(key, 0, new AbortController().signal)).rejects.toThrow();
+});
+
+it.each(['valid', 'connection', 'discipline', 'identity', 'field', 'cursor'])('validates the same-table planned WO boundary: %s', async (fault) => {
+  const member = { item: { ...item }, site_id: 'SITE', workorder_id: '100', discipline: 'MECH', baseline_changed: false,
+    changes: { estdur: '9' } as Record<string, string> };
+  const raw = { connection_id: fault === 'connection' ? 'two' : 'one', discipline: 'MECH', next_offset: fault === 'cursor' ? 0 : 20,
+    items: [{ draft_id: 'draft', version: 1, updated_at: '2026-10-06T00:00:00Z', items: [member] }] };
+  if (fault === 'discipline') member.discipline = 'OTHER';
+  if (fault === 'identity') member.site_id = 'OTHER';
+  if (fault === 'field') member.changes.status = 'APPR';
+  const fetcher = respond(raw);
+  const action = listPlannedWorkOrders(key, 0, new AbortController().signal);
+  if (fault === 'valid') {
+    expect(await action).toMatchObject({ next_offset: 20, items: [{ estdur: '8', drafts: [{ draft_id: 'draft', changes: { estdur: '9' } }] }] });
+    expect(new URL(fetcher.mock.calls[0][0], 'https://example.invalid').searchParams.get('include_items')).toBe('true');
+  } else await expect(action).rejects.toThrow();
 });

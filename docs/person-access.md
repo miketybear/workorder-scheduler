@@ -1,4 +1,4 @@
-# Quyền chỉ xem từ Maximo PERSON
+# Quyền discipline từ Maximo PERSON
 
 Triển khai và kiểm tra 2026-10-02 theo yêu cầu chủ dự án. Trên Onshore test,
 nguồn discipline là `PERSON.ct_discipline` qua object structure `mxperson`.
@@ -40,8 +40,9 @@ không tách danh sách hoặc đoán multi-value. Trường hợp multi-value c
 
 Session API và các đường truy xuất WO/detail/draft kiểm tra nguồn PERSON.
 WO list kiểm tra trước và sau retrieve, detail/draft qua checked_settings trước/sau upstream.
-Connection dùng nguồn PERSON được đồng bộ thành đúng một grant **read**, hoặc không có grant;
-không tự cấp write/admin. Grants thủ công trên cùng connection cũng bị thay thế bởi nguồn này.
+Connection dùng nguồn PERSON được đồng bộ thành đúng một grant **read**, hoặc **write** khi
+có [permission Planner riêng](planner-access.md) khớp scope; không có discipline thì không có grant.
+Không tự cấp Planner/admin. Grants thủ công trên cùng connection cũng bị thay thế bởi nguồn này.
 Để thu hồi bền vững, sửa nguồn PERSON, disable user/connection hoặc đổi chính sách nguồn;
 xóa riêng grant sẽ được đồng bộ lại từ PERSON ở request sau.
 Không giữ cache quyền từ PERSON. Các request đồng bộ cùng user được serialize bằng row lock;

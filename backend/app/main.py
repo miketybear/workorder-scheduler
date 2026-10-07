@@ -10,13 +10,16 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.auth.entra import router as entra_router
+from app.auth.planner import router as planner_router
 from app.auth.sessions import logout, session_info
+from app.auth.settings import router as settings_router
 from app.config import Settings
 from app.maximo.reader import MaximoReadError
 from app.maximo.routes import router as maximo_router
+from app.scheduling.batches import router as batches_router
 from app.scheduling.routes import router as scheduling_router
 
-SCHEMA_REVISION = "0005_person_access"
+SCHEMA_REVISION = "0007_connection_setting"
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -50,8 +53,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="Work Order Scheduler", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
     app.include_router(entra_router)
+    app.include_router(planner_router)
+    app.include_router(settings_router)
     app.include_router(maximo_router)
     app.include_router(scheduling_router)
+    app.include_router(batches_router)
 
     @app.exception_handler(MaximoReadError)
     async def upstream_unavailable(request: Request, error: MaximoReadError):

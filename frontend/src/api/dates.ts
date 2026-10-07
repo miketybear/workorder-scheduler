@@ -38,3 +38,27 @@ export function startOfDay(date: string, timeZone: string): string {
   if (candidates.length !== 1) throw new Error('Mốc đầu ngày không xác định duy nhất trong múi giờ này.');
   return `${date}T00:00:00${candidates[0]}`;
 }
+
+export function localDateTime(value: string, timeZone: string): string {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en', { timeZone, calendar: 'iso8601',
+    numberingSystem: 'latn', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit' }).formatToParts(new Date(value)).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+export function zonedDateTime(wall: string, timeZone: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(wall) || !isAwareDate(`${wall}:00Z`)) {
+    throw new Error('Chọn ngày giờ hợp lệ.');
+  }
+  const base = Date.parse(`${wall}:00Z`);
+  const formatter = new Intl.DateTimeFormat('en', { timeZone, timeZoneName: 'longOffset' });
+  const offsets = new Set([-86400000, 0, 86400000].map((delta) => {
+    const name = formatter.formatToParts(base + delta).find((part) => part.type === 'timeZoneName')?.value;
+    if (name === 'GMT') return '+00:00';
+    if (!name || !/^GMT[+-]\d{2}:\d{2}$/.test(name)) throw new Error('Múi giờ không được hỗ trợ.');
+    return name.slice(3);
+  }));
+  const matches = [...offsets].filter((offset) => localDateTime(`${wall}:00${offset}`, timeZone) === wall);
+  if (matches.length !== 1) throw new Error('Ngày giờ không tồn tại hoặc không duy nhất trong múi giờ này.');
+  return `${wall}:00${matches[0]}`;
+}

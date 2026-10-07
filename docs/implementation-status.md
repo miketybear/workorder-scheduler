@@ -1,6 +1,6 @@
 # Trạng thái triển khai — foundation
 
-Cập nhật: 2026-10-02. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
+Cập nhật: 2026-10-07. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 
 ## Đã triển khai
 
@@ -12,11 +12,56 @@ Cập nhật: 2026-10-02. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 - React overview và bảng demo giả lập: sửa ngày, khóa target PM/CFT, preview và reset.
 - Dockerfiles và Compose phát triển local, migration service, DB volume và healthchecks.
 - uv.lock, package-lock.json, scripts lint/test/typecheck/build và tài liệu chạy local.
+- Carbon Gray 10 / Gray 100 cho sáng/tối, nút chuyển trên header và lưu preference.
+  IBM Plex Sans 400/500/600 được phục vụ nội bộ cùng giấy phép OFL; màu chữ, tag,
+  các ô nháp và native date picker theo theme. Chuyển theme không remount bảng/panel.
+  Component styles đã thay lớp cũ: shell đen 48px, spacing 16/24px, input viền dưới,
+  nút 40px, table 14/18 và tags. Panel WO đơn lẻ căn giữa viewport cả hai trục,
+  rộng tối đa 1320px, chiều cao giới hạn theo viewport; thông tin Maximo
+  và các section chỉnh sửa đặt cạnh nhau trên desktop; header/footer cố định, phần ngày
+  Maximo/thực tế mở theo yêu cầu. Màn hình nhỏ ưu tiên form rồi thông tin tham chiếu.
+- Bảng WO 7 cột và panel đủ 17 field nghiệp vụ theo mapping hiện có;
+  System/Site/WOID không hiển thị, định danh nội bộ vẫn giữ.
+- WO tự dùng phạm vi tài khoản; không còn selector Hệ thống/Discipline. Trang /settings
+  hiển thị URL đã cấu hình và lưu connection cho từng tài khoản trong PostgreSQL
+  (migration 0007). Một grant duy nhất dùng tự động; nhiều kết nối chọn một lần trong
+  Settings. Discipline lấy từ quyền server, không lựa chọn khi một kết nối có nhiều discipline.
+  Preference hết quyền không được dùng để truy cập WO. Local Onshore test / E&I save/readback
+  preference và đọc 3 WO có nháp đã xác minh; 106 frontend / 236 backend tests qua.
+- Chọn Scheduled Start, Finish chỉ đọc và tự tính theo duration giờ khi sửa Start/Duration;
+  Target date/time pickers tự bật intent, PM/CFT khóa. Nhãn múi giờ ẩn, tính ngày vẫn theo
+  múi giờ kết nối. Dán Excel 3 cột Start/PIC/Duration; không tự refresh theo timer.
+- Đóng panel giữ nháp trong PostgreSQL, có marker/lọc ngay trên bảng WO và mở đúng nháp;
+  giữ workspace trong RAM qua route. Tab trở về visible chỉ xác minh phiên/quyền,
+  không refetch WO; blur/focus không gọi request. Có thời điểm cập nhật, nhãn cũ sau
+  5 phút và Cập nhật thủ công giữ edits, đối chiếu baseline/PIC/phiên bản mới hơn.
+  Hai nguồn Maximo/nháp giữ snapshot riêng trong RAM; đổi nguồn giữ bảng/query/trang,
+  bộ lọc/dòng chọn/thời điểm cập nhật, lưu/xóa nháp cập nhật cả bảng đang ẩn.
+  Khóa cuộn trang và bảng WO nền khi panel đơn lẻ/nhóm mở, chặn scroll chaining;
+  đóng/ẩn panel hoặc chuyển route gỡ khóa và giữ vị trí cuộn.
+  138 frontend tests, lint/typecheck/build qua ngày 2026-10-07; backend không đổi.
+  Browser Onshore test/E&I: Retrieve 117 WO tháng 10, sang nguồn 3 WO có nháp rồi quay
+  về vẫn đủ 117 WO, cùng timestamp/bộ lọc/dòng chọn; không ghi/xóa nháp hay Maximo.
+  Bảng hiển thị kế hoạch đã lưu với nhãn Nháp ở ô thay đổi,
+  giữ riêng baseline và status Maximo. Nháp cạnh tranh có lựa chọn rõ; baseline cũ cần đối chiếu.
+  Nguồn WO có nháp trong phạm vi dùng cùng bảng, truy cập được nháp ngoài khoảng Retrieve.
+  API WO list lấy markers scoped/owned bằng một SQL query, không thêm per-draft Maximo reads.
+- Nháp nhóm tối đa 200 WO: áp lịch/PIC/duration, sửa ô, Undo/reset, dán vùng Excel,
+  panel căn giữa viewport theo hai trục, chiếm 95% chiều rộng và 95% chiều cao màn hình;
+  hàng thông tin bổ sung chỉ giữ 7 field chưa có trên dòng, chia 3 nhóm ngang toàn bảng,
+  mở một WO mỗi lần, giữ edits và không refetch khi mở/đóng. Browser nhóm 3 WO E&I
+  đã xác minh phần bổ sung cao 140px tại viewport 1164×884.
+  preview, save/update/restore/delete; backend recheck scope và baseline từng WO,
+  lưu toàn nhóm trong một transaction và deduplicate bằng receipt bền vững.
+  Local browser đã đọc và preview nhóm 4 WO E&I; 4 WO này thiếu systemid.
+  Chưa nghiệm thu monthly-load live hoặc desktop rộng; upload chưa triển khai.
 
 ## Bằng chứng kiểm tra
 
-- Backend: 194 tests qua (HTTP mocks + PostgreSQL integration scenarios); suite không gọi Maximo/Entra thật.
-- Frontend: 52 tests (UI + API boundary); TypeScript và ESLint qua; Vite production build thành công.
+- Backend: 236 tests qua ngày 2026-10-07 (136 fast + 100 PostgreSQL integration scenarios);
+  suite không gọi Maximo/Entra thật. Test lịch nhóm dùng SelectorEventLoop như các test
+  PostgreSQL khác để tương thích psycopg trên Windows.
+- Frontend: 138 tests (UI + API boundary, 2026-10-07); TypeScript và ESLint qua; Vite production build thành công.
 - Ruff lint/format qua.
 - Alembic upgrade từ DB trống, downgrade về base và upgrade lại qua trên PostgreSQL 17 test; schema/model không lệch.
 - `docker compose config --quiet` qua với credential giả chỉ để validate cấu hình.
@@ -40,9 +85,24 @@ Kiểm tra UI đã thực hiện trong panel trình duyệt hẹp; chưa thay th
 
 ## Bước tiếp theo
 
-1. Kiểm thử Entra logout/expiry và chính sách tenant; triển khai đường quản trị grants có audit.
+1. Hoàn thiện quản trị qua UI/bootstrap admin và chính sách tenant; Planner đã có API/CLI có audit.
 2. Mở rộng kiểm chứng detail/crew/PIC ngoài E&I Onshore test; xác minh revision/ETag.
-3. Kiểm thử browser E2E cho nháp, hoàn thiện sửa nhiều dòng và triển khai upload có audit/đối soát.
+3. Mở rộng browser E2E ngoài scope Onshore E&I; hoàn thiện sửa nhiều dòng và upload có audit/đối soát.
+
+## Planner và nháp live — 2026-10-02
+
+Migration 0006 lưu permission Planner theo user/connection/discipline, intersect với PERSON;
+API admin có CSRF và CLI vận hành DB có audit before/after/reason/source. Không tự cấp admin.
+Thu hồi hạ effective grant ngay; user lock serialize với PERSON sync và bước lưu/xóa cuối.
+Restore không giữ draft lock trong network I/O và kiểm tra lại version trước trả dữ liệu.
+
+210 backend tests, 52 frontend tests, Ruff lint/format, TypeScript/ESLint/build qua.
+Migration và schema check qua trên DB test riêng và local SSO. Browser thật tạo, mở lại,
+cập nhật nháp P13457392/BD1 tới v2, thu hồi Planner khóa editor và cấp lại scope E&I.
+API lifecycle delete, expired session, PERSON đổi scope, baseline conflict, PM/CFT và
+revocation trong network I/O qua PostgreSQL + mocks. Browser live delete đã xác minh sau
+xác nhận của chủ dự án: nháp P13457392/BD1 v2 biến mất khỏi danh sách, DB không còn DraftItem
+của WO đó; hai nháp khác vẫn còn. Không gọi mutation Maximo. [Vận hành Planner](planner-access.md).
 
 ## Entra login live local — 2026-10-02
 
@@ -131,7 +191,8 @@ nhân đôi nháp; version cũ hoặc baseline đổi trả 409. Grants/owner/up
 preview trước/sau, reset, lưu/mở/cập nhật/xóa nháp một WO. Lỗi lưu giữ sửa; retry cùng nội dung
 sử dụng lại request UUID. Giá trị duration và ngày khác cách viết nhưng cùng giá trị không tạo edit.
 
-Kiểm tra phiên xóa bảng retrieve, ẩn editor rồi đọc lại WO/nháp trước hiện lại. Lỗi tạm thời giữ sửa
+Không còn timer refresh 60 giây. Khi quay lại cửa sổ, kiểm tra phiên giữ bộ lọc và bảng,
+ẩn editor rồi đọc lại WO/nháp trước hiện lại. Lỗi tạm thời giữ sửa
 ở trạng thái ẩn; mất quyền/phiên xóa dữ liệu. Baseline đổi khóa lưu và hiển thị giá trị hiện tại.
 Bảo vệ đổi scope/filter và liên kết; Back của browser chưa có blocker trong SPA.
 

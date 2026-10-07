@@ -33,6 +33,17 @@ it('requires explicit offset and increasing bounded interval', () => {
   expect(() => validateRange(filter.target_from, filter.target_before)).not.toThrow();
 });
 
+it.each(['duplicate', 'field', 'version', 'timestamp'])('rejects malformed draft markers: %s', async (fault) => {
+  const marker = { draft_id: 'id', version: 1, is_batch: false, updated_at: '2026-10-06T00:00:00Z', baseline_changed: false,
+    changes: { estdur: '9' } as Record<string, string> };
+  if (fault === 'field') marker.changes.status = 'APPR';
+  if (fault === 'version') marker.version = 0;
+  if (fault === 'timestamp') marker.updated_at = 'invalid';
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ ...filter, count: 1,
+    items: [{ ...row, drafts: fault === 'duplicate' ? [marker, marker] : [marker] }] }))));
+  await expect(retrieveWorkOrders(filter, new AbortController().signal)).rejects.toThrow('kế hoạch');
+});
+
 it.each(['2026-02-30T08:00:00+07:00', '2026-02-29T08:00:00+07:00', '2026-09-31T08:00:00+07:00', '2026-09-01T24:00:00+07:00'])('rejects invalid calendar date %s', (start) => {
   expect(() => validateRange(start, filter.target_before)).toThrow();
 });

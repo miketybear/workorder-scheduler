@@ -9,7 +9,16 @@ cho phát triển local. Bảng `/demo` dùng dữ liệu hoàn toàn giả lậ
 Đã xác minh Entra login/callback local và đọc PERSON Maximo test; chưa xác minh WO retrieve thật.
 Quyền read có thể lấy từ [PERSON.ct_discipline](docs/person-access.md) theo Entra login đã xác thực.
 Route /work-orders đã nối API danh sách/chi tiết và nháp; bấm số WO để sửa lịch, PIC, duration,
-xem before/after và lưu/mở/cập nhật/xóa nháp một WO. /demo vẫn dùng dữ liệu giả. Upload Maximo chưa triển khai.
+xem before/after và lưu/mở/cập nhật/xóa nháp một hoặc nhiều WO (tối đa 200).
+Bảng gọn 7 cột có panel đầy đủ thông tin WO; chọn nhóm để áp lịch/PIC/duration,
+Undo, sửa ô và dán vùng Excel. System, site và WOID không hiển thị; site/WOID vẫn
+thuộc định danh phía backend. Giữ workspace trong RAM khi đổi route; quay lại tab chỉ
+kiểm tra phiên/quyền, không tự tải lại WO. Có thời điểm cập nhật, nhãn dữ liệu cũ sau
+5 phút và nút Cập nhật giữ bộ lọc/phần sửa. Chọn Scheduled Start;
+Scheduled Finish chỉ đọc, tự tính khi đổi Start hoặc Duration (giờ), cả đơn lẻ và nhóm.
+Target Start/Finish có date/time picker; chọn ngày tự bật Change Target, PM/CFT bị khóa.
+Múi giờ kết nối vẫn dùng để tính ngày nhưng không hiện nhãn; dán Excel theo 3 cột Start, PIC, Duration.
+/demo vẫn dùng dữ liệu giả. Upload Maximo chưa triển khai.
 
 ## Phạm vi đã chốt
 
@@ -71,6 +80,12 @@ npm run dev
 
 Mở `http://127.0.0.1:5173`. Vite proxy `/api` tới backend local. Mở `/demo` để thử
 chỉnh ngày, preview và reset. Thay đổi demo mất khi rời trang/tải lại, không lưu lên server.
+
+`/work-orders` tự nhận phạm vi tài khoản đăng nhập. Nếu chỉ có một phạm vi hợp lệ,
+không cần chọn hệ thống/discipline. Trang `/settings` cho chọn trong các kết nối/URL
+đã cấu hình và đã được cấp quyền; lựa chọn lưu riêng cho tài khoản trên PostgreSQL,
+dùng lại ở các lần đăng nhập sau. Discipline luôn lấy từ quyền server. Xem
+[Settings tài khoản](docs/account-settings.md); chạy migration tới head trước khi dùng API mới.
 
 ## Chạy nền tảng bằng Docker Compose
 
@@ -137,5 +152,8 @@ Connector chỉ đọc và mapping VBA: [Maximo reader](docs/maximo-reader.md).
 Mở `/work-orders` để retrieve theo quyền sau khi cấu hình Entra, grants và Maximo.
 Nhập mốc đầu/cuối ISO có offset, ví dụ `2026-09-01T00:00:00+07:00` và
 `2026-10-01T00:00:00+07:00` (chỉ dùng offset đã xác nhận). Bấm số WO để mở phần lập lịch; chỉ grant write được sửa/lưu/xóa nháp. Xem [hướng dẫn nháp](docs/drafts.md).
-Bảng danh sách được xóa khi kiểm tra lại phiên; nội dung sửa được giữ nếu quyền và WO vẫn được xác minh.
+Bảng và phần sửa được giữ khi phiên/quyền không đổi; đổi tài khoản/quyền/hệ thống hoặc
+hết phiên xóa workspace. Lỗi xác minh quyền ẩn nội dung đến khi kiểm tra lại thành công.
 Không dùng session giả để truy cập route này.
+
+Cấp/thu hồi Planner có audit và điều kiện PERSON: [hướng dẫn Planner](docs/planner-access.md).

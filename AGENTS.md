@@ -13,14 +13,19 @@ Database-backed sessions, internal draft storage and upload/audit state persiste
 Entra login/callback and session UI have offline tests and a successful local live login.
 Read-only PERSON.ct_discipline lookup on Onshore test is verified; PERSON-derived read grants,
 stable identity binding and authorization audit are implemented (migration 0005).
+Explicit scoped Planner permissions intersect with PERSON discipline (migration 0006);
+audited admin API/operator CLI and local live draft create/restore/update are verified.
 Onshore test E&I WO list/detail and crew PIC reads are verified locally.
 Broader live scopes/tenant verification and remote uploads remain pending.
 Scoped WO detail/PIC and draft create/list/restore/update/delete APIs are implemented with synthetic tests.
 Draft baseline preconditions, version checks and durable duplicate submission receipts are implemented.
-The /work-orders UI supports one-WO draft editing, preview, save/restore and session rechecks.
+The /work-orders UI supports a compact table, detail panel and up to 200-WO draft batches,
+group date/PIC/duration edits, per-row editing, paste, undo, preview and session rechecks.
 A scoped read-only WO list API and bounded Maximo reader have synthetic HTTP/PostgreSQL tests.
-The /work-orders UI consumes that API with scope selection and stale-response cancellation;
-live verification is pending.
+The /work-orders UI automatically uses the signed-in account's scope and saved connection,
+with stale-response cancellation. /settings persists the selected approved connection per
+account (migration 0007); discipline remains server-derived. Onshore test reads are verified;
+broader live scopes remain pending.
 Implementation status and dependencies are tracked in [docs/todos.md](docs/todos.md).
 
 ## Stack and decisions

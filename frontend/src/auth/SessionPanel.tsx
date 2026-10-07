@@ -12,14 +12,14 @@ export function SessionPanel() {
       controller.abort();
       controller = new AbortController();
       const signal = controller.signal;
-      setAuth(null);
       getAuthSummary(signal).then((result) => {
         if (!signal.aborted) { setAuth(result); setError(''); }
-      }).catch(() => { if (!signal.aborted) setError('Chưa kết nối được dịch vụ đăng nhập.'); });
+      }).catch(() => { if (!signal.aborted) { setAuth(null); setError('Chưa kết nối được dịch vụ đăng nhập.'); } });
     };
     load();
-    window.addEventListener('focus', load);
-    return () => { controller.abort(); window.removeEventListener('focus', load); };
+    const returning = () => { if (!document.hidden) load(); };
+    document.addEventListener('visibilitychange', returning);
+    return () => { controller.abort(); document.removeEventListener('visibilitychange', returning); };
   }, []);
   async function logout() {
     setBusy(true);

@@ -45,7 +45,11 @@ Scoped detail/PIC and draft create/list/restore/update/delete APIs exist, with b
 version checks and durable duplicate receipts (migration 0004). Draft UI is connected.
 Local Entra login and Onshore test mxperson reads are verified; PERSON-derived read grants
 and authorization audit use migration 0005. Onshore test E&I WO list/detail and crew reads
-are verified locally; broader live scopes and tenant policy checks,
+and live draft create/restore/update are verified. Migration 0006 adds explicit scoped Planner
+permissions with audited admin API/operator CLI, intersected with PERSON discipline.
+Migration 0007 stores the account's selected configured connection; session/settings responses
+intersect preferences with current grants. This preference never creates or expands WO access.
+Broader live scopes and tenant policy checks,
 WO revision/ETag and uploads remain pending. See ../docs/person-access.md and ../docs/entra-setup.md.
 
 ## Identity and authorization
