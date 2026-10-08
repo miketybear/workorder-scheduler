@@ -1,7 +1,7 @@
 # Hồ sơ nghiệm thu cùng IT
 
-Cập nhật: 2026-10-07. Hồ sơ này là đầu vào và các ca nghiệm thu cần thực hiện;
-chưa có xác nhận IT, roster đầy đủ hoặc nghiệm thu staging trong lần cập nhật này.
+Cập nhật: 2026-10-08. Hồ sơ này là đầu vào và các ca nghiệm thu cần thực hiện;
+chưa có xác nhận IT hoặc nghiệm thu staging. Không cần roster cố định trước login.
 Chủ dự án đã chọn bản thân và được bootstrap admin trên DB Entra local; không cấp WO grants mới.
 Không gửi secret trong hồ sơ. Xem [intake](integration-intake.md),
 [Planner](planner-access.md), [DB và retention](database-operations.md) và
@@ -9,15 +9,18 @@ Không gửi secret trong hồ sơ. Xem [intake](integration-intake.md),
 
 ## Năm việc cần trao đổi với IT
 
-1. Cho biết danh sách người sẽ dùng ứng dụng và mỗi người được sửa lịch hệ thống nào.
-   Admin local hiện là chủ dự án; IT đối chiếu mã tài khoản và quyền khi đưa lên staging.
-2. Chốt nháp và lịch sử cần giữ bao lâu, ai sao lưu/phục hồi, và cấp tài khoản DB riêng
+1. Admin là chủ dự án. Người đăng nhập Entra có PERSON/discipline hợp lệ được đọc
+   trong scope; chủ dự án cấp Planner khi cần sửa/lưu nháp. IT đối chiếu identity
+   và quyền trên staging; không yêu cầu danh sách tất cả người dùng từ đầu.
+2. Giữ lịch sử; tự xóa nháp sau khi toàn bộ upload được read-back xác nhận.
+   Chốt người sao lưu/phục hồi và cấp tài khoản DB riêng
    cho ứng dụng với tài khoản dùng nâng cấp schema.
 3. Cung cấp địa chỉ HTTPS trên server thử nghiệm và cấu hình đăng nhập công ty;
    cùng chạy các ca cho phép/chặn và thu hồi quyền.
 4. Nhờ quản trị Maximo xác nhận các trường/danh sách WO web đọc đúng, crew/PIC và
    phạm vi Onshore/Offshore; so với workbook cùng bộ lọc/thời điểm.
-5. Chỉ định WO thử được phép thay đổi và người khôi phục. Cùng chứng minh ETag chặn
+5. Chủ dự án đã cho chọn WO trong danh sách tải server test ngày 08/10. Đã chọn
+   CM P13463520/BD1/523961 cho GET, chưa ghi. Cùng chứng minh ETag chặn
    ghi đè khi WO đã được người khác đổi; sau đó mới phát triển upload.
 
 Các bảng dưới là chi tiết kỹ thuật để IT đối chiếu, không yêu cầu chủ dự án tự lấy
@@ -28,19 +31,19 @@ hết thông tin một lần. Không gửi credential trong chat/tài liệu.
 | Mã | IT/chủ dự án cung cấp hoặc phê duyệt | Bằng chứng cần lưu | Trạng thái |
 | --- | --- | --- | --- |
 | A1 | Trusted DB operator và admin đầu tiên: tenant/object ID, lý do, người duyệt | Quyết định có ngày; audit bootstrap và không thêm WO grants | Chủ dự án chọn bản thân; local bootstrap/audit qua 07/10, staging operator chưa chốt |
-| A2 | Roster khoảng 10 người theo mẫu dưới, cả Onshore/Offshore | Stable identity đối chiếu Entra; PERSON binding/discipline; phạm vi được duyệt | Mới có một Planner Onshore E&I từ 02/10 |
+| A2 | Identity/PERSON theo connection; Planner do chủ dự án cấp | Stable identity, PERSON binding/discipline, audit cấp/thu hồi | Chốt 08/10: mặc định chỉ đọc, không cần roster cố định; live một Planner Onshore E&I |
 | D1 | DB owner/migrator/runtime, đường secret riêng, quyền máy chủ | Test runtime từ chối DDL/audit mutation; migration owner upgrade; DSN runtime không owner | Chờ áp trên staging |
-| D2 | Retention, replay horizon, backup RPO/RTO và restore owner | Chính sách có người duyệt/ngày; restore diễn tập; cleanup dry-run | Chưa chốt thời hạn dữ liệu nghiệp vụ |
+| D2 | Retention, replay horizon, backup RPO/RTO và restore owner | Chính sách có người duyệt/ngày; restore diễn tập; cleanup dry-run | Chốt 08/10: giữ lịch sử, tự xóa nháp sau toàn bộ upload confirmed; finalizer và backup staging còn pending |
 | R1 | Metadata/status domain/read filters/paging cho từng connection | Response/metadata đã redaction và so tập web/workbook cùng thời điểm | Onshore E&I GET có bằng chứng; hợp đồng đầy đủ còn mở |
 | T1 | Entra single-tenant/Web, assignment, MFA/CA, guest policy | Portal settings đã redaction và các ca allow/deny thực tế | Local login qua; portal chưa đối chiếu |
 | S1 | Ubuntu/hostname HTTPS/callback, DNS/CA, outbound routes, secret injection | TLS/proxy/network checks từ Ubuntu và login trên staging | Chưa có hostname staging |
-| W1 | WO test CM/PM/CFT, trường được phép ghi, window/rollback owner | Quyền ghi cụ thể; href/orgid và ca If-Match stale token | Chưa chỉ định WO/quyền ghi; upload chưa triển khai |
+| W1 | WO test CM/PM/CFT, trường được phép ghi, window/rollback owner | Quyền ghi cụ thể; href/orgid và ca If-Match stale token | Cho chọn WO từ danh sách test 08/10; CM GET qua, ETag `0` chưa xác minh; chưa mutation/upload |
 
 Không dùng email hoặc tên hiển thị để cấp quyền. UI quản trị chỉ dùng identity đã
 đăng nhập và có trong DB; user mới vẫn không có quyền WO. PERSON xác định discipline,
 Planner permission chỉ giao với discipline đó để mở sửa/lưu nháp.
 
-## Mẫu roster để IT phê duyệt
+## Danh sách quyền quản trị phát sinh
 
 Mỗi hàng là một identity và một connection/discipline. Có thể có nhiều hàng cho cùng
 identity; không dùng ALL/wildcard hoặc suy rộng Onshore sang Offshore.
@@ -48,7 +51,7 @@ identity; không dùng ALL/wildcard hoặc suy rộng Onshore sang Offshore.
 | Tenant ID | Object ID | Connection UUID | System/environment | PERSON ID đã đối chiếu | Discipline | Planner enabled | Người duyệt/ngày/lý do |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 
-Bảng cố ý chưa có hàng mới: chưa nhận roster được duyệt. Tên/email chỉ bổ sung để
+Bảng dùng khi cấp Planner, không phải điều kiện đăng nhập/read. Tên/email chỉ bổ sung để
 người đọc đối chiếu, không thay tenant/object ID. `Planner enabled` không phải giấy
 phép upload; integration account và WO được phép ghi có quyết định riêng ở W1.
 Thu hồi assignment phải dùng revoke permission; chỉ xóa cached grant không đủ.

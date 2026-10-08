@@ -6,7 +6,7 @@ trên GitHub Actions. Ba job độc lập dùng Ubuntu 24.04:
 | Job | Kiểm tra |
 | --- | --- |
 | Backend fast checks | Cài `uv.lock` bằng `uv sync --frozen`; Ruff lint/format; pytest không có marker integration |
-| PostgreSQL migrations and integration | PostgreSQL 17 riêng; upgrade/check/downgrade/upgrade/check trên DB trống; toàn bộ tests integration với `--run-db-tests` |
+| PostgreSQL migrations and integration | PostgreSQL 17 riêng; upgrade/check/downgrade/upgrade/check trên DB trống; toàn bộ tests integration với `--run-db-tests`; diễn tập backup/restore dữ liệu synthetic trên hai DB mới |
 | Frontend checks and build | `npm ci`; TypeScript, ESLint, Vitest và production build |
 
 Python 3.12.14 lấy từ [backend/.python-version](../backend/.python-version), khớp Dockerfile;
@@ -67,3 +67,12 @@ Job PostgreSQL đảm bảo `psql` có trên PATH (cài postgresql-client khi th
 SQL provisioning/real runtime LOGIN test trên DB/roles tạm, không phụ thuộc tên Docker
 container Windows. Backend current local suite 254 tests qua; frontend 160 tests qua.
 Actionlint cho thay đổi workflow qua; chưa có corrected GitHub run cho working tree mới.
+
+## Backup/restore rehearsal — 2026-10-08
+
+Job PostgreSQL gọi `backup_restore_rehearsal.py --docker-container` với ID service
+container của runner. Dùng `pg_dump`/`pg_restore`/`psql` bên trong PostgreSQL 17 để
+khớp server, không phụ thuộc phiên bản client mặc định trên Ubuntu. Công cụ tạo DB
+nguồn synthetic và DB restore riêng, không dump hoặc restore vào `scheduler_test`.
+Chi tiết và giới hạn: [quy trình DB](database-operations.md).
+Kết quả GitHub cho bước mới vẫn cần xác minh sau commit/push.

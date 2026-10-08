@@ -14,7 +14,7 @@ in .codex/agents/. See [docs/codex-agents.md](docs/codex-agents.md) for setup an
 | Main / Fullstack Lead | gpt-6.1-sol | medium | Requirements, planning, architecture decisions, integration and verification |
 | frontend | gpt-6-luna | medium | Substantial React/TypeScript UI, state and API integration work |
 | backend | gpt-6.1-sol | medium | Substantial FastAPI, business logic, PostgreSQL and migration work |
-| reviewer / Debugger | gpt-6-astra | high | Architecture analysis, difficult/recurring bugs and final large-change review |
+| reviewer / Debugger | gpt-6.1-sol | high | Independent review when useful; deeper models only for scoped escalation |
 
 Routing instructions for the main agent:
 
@@ -23,8 +23,29 @@ Routing instructions for the main agent:
 - Delegate substantial backend/database work to the backend sub-agent.
 - Delegate independent FE and BE work in parallel after agreeing the API contract;
   assign disjoint file scopes. Resolve dependencies first when the work is coupled.
-- Delegate architecture analysis, difficult or recurring bugs, and the final review of
-  large changes to reviewer. The main owns the decision and resolves actionable findings.
+- Review small, routine changes yourself with the main Sol/medium session. Do not spawn
+  reviewer for every task, turn, status update, TODO/documentation edit or test run.
+- Use reviewer (Sol/high) when an independent review adds value to a substantial feature
+  milestone or a concrete correctness/security concern. Batch completed work into one
+  focused review of the diff and directly related execution paths.
+- Default review budget per feature/milestone: one independent review and at most one
+  focused recheck of fixes to P1/critical findings. The main verifies minor fixes itself.
+  Starting a new chat or turn does not reset this budget for the same milestone.
+- Escalate to Sol/xhigh only for a bounded unresolved issue or an explicit user request.
+  Use Astra/high only for a difficult root cause or consequential architecture/security/
+  concurrency question still unresolved after Sol review, or an explicit user request.
+  State the concrete unresolved question before escalation; do not automatically run
+  both models for every review. An escalation consumes the independent review budget;
+  beyond that budget, require an explicit user request or a new material P1/critical
+  issue, record the reason and review only the newly affected scope.
+- Custom reviewer.toml pins Sol/high. For an authorized xhigh/Astra escalation, use a
+  generic/default spawn with explicit model and effort plus the same reviewer
+  instructions, rather than selecting the pinned custom role. This is the same logical
+  reviewer responsibility; do not create another persistent role. Use bounded context.
+- Do not wake a completed reviewer for status or unchanged evidence. Check model/effort
+  before reusing a session: legacy Astra/high reviewers keep their settings. Start a new
+  Sol/high reviewer for routine review instead of continuing the old Astra session.
+  The main owns decisions and resolves actionable findings.
 - Select the native custom agent by name. If the client only exposes a generic spawn tool,
   explicitly pass the matching model and effort above and include that agent's instructions
   in its scoped task. Use bounded task context when the client requires it for overrides.
@@ -38,6 +59,14 @@ Routing instructions for the main agent:
 - The main integrates results, checks API compatibility, runs checks appropriate to the
   change, updates shared documentation and docs/todos.md, and gives the final response.
   Component instructions and product invariants apply to every agent.
+- After every completed task, always end the final response with 1-3 concrete next
+  steps in priority/dependency order, based on the latest docs/todos.md and verified
+  project state. State the recommended first action and its intended result. Identify
+  any step blocked on user/IT input and what is needed; separate it from work ready to do.
+  Keep suggestions proportional to the task and avoid a vague "what next?" question.
+  If no required work remains, say so and suggest a relevant verification/acceptance
+  follow-up instead of inventing new scope. Finish the authorized task before suggesting
+  follow-up work; do not leave required work undone just to list it as a next step.
 - Preserve existing uncommitted work. Coordinate shared-file changes through the main;
   do not overwrite other agents' edits or run migrations concurrently.
 

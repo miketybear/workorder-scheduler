@@ -29,7 +29,9 @@ Tests dùng SelectorEventLoop để psycopg async hoạt động trên Windows.
 
 Đã kiểm tra upgrade từ DB trống, downgrade về base, upgrade lại và `alembic check`
 không phát hiện lệch giữa model/schema. Downgrade xóa bảng: chỉ thực hiện trên DB test trống.
-Đây không phải kiểm thử backup/restore, tải đồng thời hay độ bền qua mất điện/restart DB.
+Vòng migration này không phải kiểm thử backup/restore, tải đồng thời hay độ bền qua
+mất điện/restart DB. Diễn tập backup/restore riêng dùng hai database mới với dữ liệu
+synthetic: xem [quy trình DB](database-operations.md#diễn-tập-cô-lập-bằng-dữ-liệu-synthetic).
 
 Session API đọc grants mới mỗi request; logout kiểm tra CSRF rồi xóa session.
 Session chỉ lưu hash của token; Secure cookie cần HTTPS. Callback Entra tạo session sau xác thực; xem [cấu hình SSO](entra-setup.md).
@@ -55,3 +57,10 @@ các lệnh bị cấm. Test ưu tiên `psql` trên PATH; Windows local fallback
 test `wos-tests-db-1`. CI đảm bảo PostgreSQL client có mặt; không dùng tên container
 Windows làm điều kiện bắt buộc trên runner Ubuntu. Password chỉ vào child environment,
 không command arguments/logs; DB/roles tạm được dọn sau test.
+
+2026-10-08: [mốc đầu P7](upload-workflow.md) thêm 29 PostgreSQL tests; toàn bộ backend
+406 tests qua. Các ca concurrent duplicate/reservation/send dùng UUID schema tạm
+trong đúng DB test đã guard, connection độc lập và commit thật; xác minh intent
+visible trước fake transport và audit append-only. Schema tạm được dọn sau test;
+không migrate DB app hoặc gọi Maximo thật. Finalizer kiểm tra exact source/full
+selection/all confirmed; app chưa nối sender/worker/finalizer thật.

@@ -1,6 +1,6 @@
 # Trạng thái triển khai — foundation
 
-Cập nhật: 2026-10-07. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
+Cập nhật: 2026-10-08. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 
 ## Đã triển khai
 
@@ -9,6 +9,12 @@ Cập nhật: 2026-10-07. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 - Policy grants theo connection/discipline; session và draft service đọc grants từ DB.
 - Validation payload allowlist, target intent, PM/CFT, ngày có timezone, PIC và duration.
 - Models/migrations cho identity, grants, sessions, drafts, upload batches/items và audit; không seed credential.
+- P7 có API preview từ nháp đã lưu, submit gate và trạng thái batch theo owner/scope;
+  orchestration nội bộ lưu immutable source, dedup/reservation, intent-before-send,
+  read-back/unknown reconciliation và confirmed-only finalizer với transport giả.
+  Không có transport ghi Maximo trong app, worker/lease hoặc UI upload/history;
+  submit thật bị khóa đến khi conditional write contract được kiểm chứng.
+  [Phạm vi và API](upload-workflow.md); bằng chứng kiểm tra P7 ghi ở [TODO](todos.md).
 - React overview và bảng demo giả lập: sửa ngày, khóa target PM/CFT, preview và reset.
 - Dockerfiles và Compose phát triển local, migration service, DB volume và healthchecks.
 - uv.lock, package-lock.json, scripts lint/test/typecheck/build và tài liệu chạy local.
@@ -68,6 +74,12 @@ Cập nhật: 2026-10-07. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 
 ## Bằng chứng kiểm tra
 
+- Mốc đầu P7 ngày 2026-10-08: full backend 406 tests qua, trong đó 38 tests P7
+  (9 fast + 29 PostgreSQL); concurrent submit/reservation/send và intent visibility
+  có independent connections/real commits trên schema synthetic tạm. Ruff qua;
+  reviewer Sol/high không có P1/critical, P2 status scheduling/PIC đã sửa và
+  regression qua. Schema/dependencies/frontend không đổi; không gọi writer thật.
+  [API, command và giới hạn](upload-workflow.md).
 - Backend: 244 tests qua ngày 2026-10-07 (136 fast + 108 PostgreSQL integration scenarios),
   trên Windows và Docker Linux Python 3.12.14 với PostgreSQL tạm riêng;
   suite không gọi Maximo/Entra thật. Test lịch nhóm dùng SelectorEventLoop như các test

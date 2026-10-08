@@ -91,6 +91,8 @@ jobs:
           uv run --frozen alembic upgrade head
           uv run --frozen alembic check
       - run: uv run --frozen pytest -m integration --run-db-tests --tb=short
+      - name: Rehearse isolated backup and restore
+        run: uv run --frozen python backup_restore_rehearsal.py --docker-container '${{ job.services.postgres.id }}'
 
   frontend:
     name: Frontend checks and build

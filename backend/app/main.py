@@ -18,6 +18,7 @@ from app.maximo.reader import MaximoReadError
 from app.maximo.routes import router as maximo_router
 from app.scheduling.batches import router as batches_router
 from app.scheduling.routes import router as scheduling_router
+from app.scheduling.upload_routes import router as uploads_router
 
 SCHEMA_REVISION = "0008_admin_authority"
 
@@ -58,6 +59,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(maximo_router)
     app.include_router(scheduling_router)
     app.include_router(batches_router)
+    app.include_router(uploads_router)
 
     @app.exception_handler(MaximoReadError)
     async def upstream_unavailable(request: Request, error: MaximoReadError):

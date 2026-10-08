@@ -1,6 +1,6 @@
 # TODO — Work Order Scheduler
 
-Cập nhật: 2026-10-07.
+Cập nhật: 2026-10-08.
 
 ## Cách sử dụng
 
@@ -46,6 +46,38 @@ ba model và effort tương ứng; debug prompt-input xác nhận AGENTS routing
 Phạm vi là cấu hình/tài liệu; không chạy lượt model/sub-agent live hay suite ứng dụng.
 Danh mục model không chứng minh một lượt gọi model thành công. Chat đang chạy giữ
 model/effort riêng; dùng chat mới trong project và chọn Sol/Medium khi cần.
+
+## 0.2. Giảm chi phí review agent — hoàn thành 2026-10-08
+
+- [x] Theo lựa chọn chủ dự án: reviewer mặc định Sol/High; Main vẫn Sol/Medium,
+      frontend Luna/Medium và backend Sol/Medium. Reviewer tiếp tục review-only.
+- [x] Main tự review thay đổi nhỏ/thường; không gọi readiness reviewer theo mỗi chat,
+      lượt, status/TODO/tài liệu hoặc lần chạy test. Review độc lập chỉ khi có giá trị.
+- [x] Mỗi tính năng/mốc mặc định một review độc lập và tối đa một recheck lỗi P1/
+      nghiêm trọng. Nâng mức Sol/xhigh hoặc Astra/high cần vấn đề chưa giải quyết
+      cụ thể hoặc yêu cầu rõ; không đặt lại giới hạn khi đổi chat và không review lại
+      bằng chứng không đổi. Vượt giới hạn chỉ cho yêu cầu rõ hoặc vấn đề P1 mới.
+- [x] Ghi cách nâng mức với generic/default spawn vì native reviewer cố định Sol/high;
+      không thêm role và không tiếp tục phiên Astra/high cũ cho review thường.
+
+Bằng chứng: parse TOML đúng model/effort/read-only; đối chiếu routing trong AGENTS.md,
+reviewer.toml và hướng dẫn; kiểm tra liên kết local và git diff --check. Model/effort
+Sol high/xhigh và Astra high đã được đối chiếu với tài liệu OpenAI và native catalog.
+Không chạy model/sub-agent live hoặc suite ứng dụng cho thay đổi cấu hình/tài liệu.
+Giới hạn số lượt là hướng dẫn orchestration, không phải quota cưỡng chế của runtime.
+Sub-agent đã tồn tại vẫn giữ model/effort cũ; cần phiên reviewer Sol/high mới.
+
+## 0.3. Main luôn đề xuất bước tiếp theo — hoàn thành 2026-10-08
+
+- [x] Bổ sung AGENTS.md: sau mỗi task hoàn thành, Main luôn kết thúc bằng 1–3 bước
+      cụ thể theo ưu tiên/phụ thuộc, dựa trên TODO và trạng thái đã kiểm chứng.
+      Nêu việc nên làm đầu tiên/kết quả mong đợi và bước cần đầu vào từ chủ dự án/IT.
+- [x] Đồng bộ hướng dẫn sử dụng; nếu không còn việc bắt buộc, đề xuất kiểm tra/
+      nghiệm thu phù hợp. Không bỏ dở task để chuyển việc bắt buộc thành đề xuất.
+
+Bằng chứng: đối chiếu quy tắc giữa AGENTS.md và hướng dẫn; kiểm tra liên kết local,
+không có placeholder/trailing whitespace, git diff --check. Chỉ sửa hướng dẫn/
+tài liệu; không đổi model/effort và không chạy lượt model hoặc suite ứng dụng.
 
 ## 1. P0 — Thu thập cấu hình và kiểm chứng hợp đồng Maximo
 
@@ -355,6 +387,45 @@ scope hiện tại; preview phản ánh chính xác payload sẽ gửi.
 
 Phụ thuộc: 1, 3, 4, 5, 6.
 
+Đánh giá sẵn sàng 2026-10-08: có thể bắt đầu thiết kế API, orchestration/audit,
+source draft/version linkage, recovery và tests với Maximo giả; chưa mở sender thật.
+Bằng chứng hiện có: nháp đơn/nhóm và quyền scoped, audit/state persistence, diễn tập
+backup/restore synthetic đã kiểm chứng. GET Onshore test trả ETag `0`; conditional
+write, token advance/stale rejection/concurrency và write/read-back semantics chưa
+được chứng minh; xem [write contract](maximo-write-contract.md). Đây là đánh giá
+phụ thuộc từ mã/tài liệu hiện tại, không phải kiểm thử mới hoặc hoàn thành P7.
+
+Mốc đầu P7 triển khai ngày 2026-10-08: API preview/submit gate/status và dịch vụ
+orchestration nội bộ có tests synthetic; [hợp đồng và giới hạn](upload-workflow.md).
+Các checkbox end-to-end bên dưới vẫn mở vì chưa có sender/conditional contract thật,
+worker lifecycle hoặc UI upload/history. Không dùng evidence mock để tick remote upload.
+
+- [x] Preview từ nháp owned/scoped, version và 1–200 thành viên chọn; đọc lại WO/PIC,
+      dựng before/changes bằng allowlist server, kiểm tra baseline/PM/CFT/intent/date/PIC.
+- [x] Submit API xác minh CSRF/source/preview hash rồi trả 409 write_contract_unverified;
+      không tạo batch hoặc gọi writer. Status API kiểm tra owner và current WO scope.
+- [x] Dịch vụ nội bộ với transport giả: hash/idempotency, unique reservation WO,
+      prepared source draft/version/member + immutable before/changes/membership hash,
+      commit intent trước send, per-item results, read-back và explicit reconciliation.
+- [x] Finalizer nội bộ chỉ xóa nguồn unchanged/full selection/all confirmed sau
+      read-back; partial/unknown/conflict/nháp mới hơn giữ lại, thêm audit source_finalized.
+      Chưa nối finalizer vào app hoặc worker; không tự xóa nháp thật.
+
+Bằng chứng mốc đầu: 38 tests P7 (9 fast + 29 PostgreSQL) qua; full backend 406 tests
+qua ngày 2026-10-08 trên Python 3.12.14/Windows với PostgreSQL test riêng. Concurrent
+duplicate/overlapping actors/send và intent visibility dùng connection độc lập,
+commit thật trong UUID schema tạm có constraints/audit trigger, đã dọn sau test.
+Bao phủ DB intent failure không send, cancellation→recovery unknown, normalized
+date/Decimal read-back, mixed outcomes và finalizer/replay sau xóa nguồn.
+Reviewer Sol/high một lượt không có P1/critical; P2 status dùng reader scheduling
+đã sửa, Main kiểm tra code và regression WO đóng/crew unavailable/current scope.
+Ruff lint/format, docs links/placeholders và git diff --check qua. Full suite sandbox
+ban đầu vướng Windows temp ACL/Docker pipe ở tests cũ; chạy lại với quyền phù hợp
+thì toàn bộ qua. Không thêm dependency/migration, không đổi frontend, không gọi
+Maximo/Entra thật, migrate DB app, deploy, commit hoặc push. Conditional write,
+transport thật, worker lease/retry attempt links/correlation logs, UI upload/history,
+crash durability live và nghiệm thu staging vẫn mở.
+
 - [ ] Tạo endpoint preview/submit với allowlist field và typed validation.
 - [ ] Re-read từng WO; kiểm tra scope, worktype, baseline và revision trước write.
 - [ ] Chặn target PM/CFT ngay cả khi gửi request thủ công.
@@ -407,7 +478,11 @@ Phụ thuộc: 2–8; DNS/TLS, credentials và chính sách vận hành từ IT.
 - [ ] Cấu hình DNS/certificate/CA và kiểm tra đường mạng browser/server → Entra/Maximo.
 - [ ] Tách cấu hình/secret test và production; không có fallback sang production.
 - [ ] Thực hiện migration một cách có kiểm soát khi deploy.
-- [ ] Xây backup theo retention đã chốt; thực hành restore và ghi bằng chứng.
+- [x] Diễn tập backup/restore PostgreSQL cô lập bằng dữ liệu synthetic, kiểm tra
+      nháp/receipts/audit/schema/ACL và unknown recovery (2026-10-08);
+      [phạm vi và bằng chứng](database-operations.md#diễn-tập-cô-lập-bằng-dữ-liệu-synthetic).
+- [ ] Chốt và triển khai backup staging: RPO/RTO, encryption/offsite/retention,
+      roles/secret recovery và diễn tập restore trên hạ tầng Ubuntu thật.
 - [ ] Log có correlation ID, theo dõi lỗi upstream, unknown attempts và dung lượng DB.
 - [ ] Viết runbook deploy/update/rollback, credential rotation và xử lý upload chưa rõ kết quả.
 - [ ] Chuẩn bị integration accounts riêng cho hệ thống đích và grants người dùng.
@@ -1296,12 +1371,41 @@ Giới hạn: browser APIs hoàn toàn giả; PostgreSQL là test infrastructure
       production build qua. Reviewer Astra/high rà soát và xác nhận sửa các blockers
       schema/function ownership, default privileges và admin refresh/auth failure.
       Compose config với DSNs synthetic, actionlint và links/placeholders/diff checks qua.
-- [ ] IT phê duyệt roster khoảng 10 người, operator/staging, DB provisioning thật và
-      thời hạn retention/replay/backup/restore; secret manager/reference resolver chưa có.
+- [ ] IT đối chiếu operator/staging, DB provisioning thật và backup/restore;
+      secret manager/reference resolver chưa có. Quyền mặc định/retention chủ dự án chốt 08/10 bên dưới.
 - [ ] Nghiệm thu read đầy đủ các discipline/Offshore, web/workbook cùng snapshot,
       Ubuntu routing, tenant portal/MFA/assignment/guest và HTTPS staging.
-- [ ] Chỉ định WO CM/PM/CFT + quyền ghi test; xác minh write contract/ETag live trước
+- [ ] Xác minh write contract/ETag live trước
       sender/upload. Không tick các mục live từ synthetic evidence.
+
+## Quyết định quyền/retention và probe write contract — 2026-10-08
+
+- [x] Chủ dự án là admin; không cần roster cố định. Entra identity + PERSON discipline
+      hợp lệ cấp read theo từng connection; Planner chỉ do chủ dự án cấp khi cần.
+      Giữ cơ chế read/explicit Planner hiện tại; không thêm quyền hoặc sửa grant thật.
+- [x] Giữ receipts/upload/audit; không purge theo tuổi. Tự xóa nháp sau toàn bộ upload
+      được read-back xác nhận; partial/conflict/unknown hoặc nháp sửa tiếp phải giữ.
+      Ghi rõ finalizer chưa có, manual scoped/version discard vẫn có.
+- [x] Nhận production origins Onshore bd-maxapp và Offshore bdpqp-maxapp;
+      ghi tại [intake](integration-intake.md), không đoán context path/OSLC hoặc đăng ký
+      connection production. Onshore/Offshore là hệ thống, không phải vị trí người dùng.
+- [x] Probe GET bounded test-only, stable identity/PERSON/Planner trước/sau, origin pinning,
+      no redirect, identity/scope và exact token classification. Không thêm dependency/migration.
+      Reviewer Astra/high rà soát read-only: không có blocker cho probe GET.
+- [x] Main chạy 214 backend fast tests qua (134 integration deselected); Ruff lint/format
+      các files probe qua. Không thay FE nên không tính FE tests lịch sử là rerun.
+- [x] Live Onshore test E&I: PERSON recheck, 117 WO tháng 10, 7 CM phù hợp; chọn
+      P13463520/BD1/523961, single resource 200/orgid BDPOC. Href quảng bá origin khác
+      không được theo. ETag `0` qua các GET variants, rowstamp `3235810749` chỉ là evidence;
+      [write contract](maximo-write-contract.md) ghi conditional token chưa xác minh.
+- [ ] IT xác minh token/header và cấu hình ETag của đúng OSLC endpoint; audited authenticated
+      test harness chứng minh success/token advance/stale rejection/concurrency/restore.
+- [ ] Sender + immutable source draft/version/member linkage + confirmed-only finalizer,
+      production/scopes khác, tenant/Ubuntu HTTPS staging, DB runtime/backup nghiệm thu thật.
+
+Giới hạn: chỉ đọc Maximo test, không mutation/upload; không tự dùng rowstamp hoặc hash
+thay If-Match. Không purge, provisioning DB thật, deploy, gửi IT, commit/push hoặc gọi
+production. Local readiness API ok; không tính browser login/UAT mới là đã kiểm chứng.
 
 Giới hạn: không gọi mutation Maximo hoặc gửi email IT, không deploy/commit/push.
 Thay đổi dữ liệu thật chỉ là additive migration/admin bootstrap local được chủ dự án
@@ -1309,3 +1413,32 @@ chọn; không thay WO/Planner grants, không chạy role provisioning hoặc cl
 trên DB thật. Không có browser live admin test hoặc corrected GitHub runner cho working tree.
 Các thay đổi batch/CI/agent có sẵn được giữ nguyên; các mốc tests Linux trước là lịch sử,
 không phải Linux rerun cho admin mới.
+
+## Diễn tập backup/restore PostgreSQL cô lập — 2026-10-08
+
+- [x] Thêm `backup_restore_rehearsal.py`: chỉ nhận cấu hình integration đã guard,
+      tạo nguồn/đích và owner/runtime riêng bằng UUID, migrate/seed dữ liệu synthetic,
+      pg_dump custom-format và pg_restore transaction; không nhận DB nguồn thật.
+      Kiểm tra container test port mapping; giữ credential ngoài argv/output;
+      cleanup chỉ objects đã tạo thành công và archive tạm.
+- [x] Main chạy Docker PostgreSQL 17: revision 0008, 17 bảng/32 hàng dữ liệu khớp
+      sau restore; schema/type modifiers/owners/ACL/default privileges/triggers qua.
+      Audit append-only và các quyền runtime được thử còn đúng; recovery sending cũ
+      thành unknown, không tự resend, giữ unique lock WO; reconciliation có audit.
+      [Bằng chứng/command/giới hạn](database-operations.md#diễn-tập-cô-lập-bằng-dữ-liệu-synthetic).
+- [x] Sửa lỗi row lock phát hiện dưới runtime: transition/recovery chỉ FOR UPDATE OF
+      upload_item, không khóa bảng batch chỉ được đọc/insert. Không mở rộng quyền DB.
+      Thêm 20 tests cho guard/credential/cleanup failure và tích hợp CLI vào CI dùng
+      binaries PostgreSQL 17 trong service container, tránh client Ubuntu khác major.
+- [x] Reviewer Sol/high review độc lập một lượt: không có P1; finding P2 thiếu schema
+      ACL/default privileges/type modifiers đã sửa và Main đối chiếu catalog queries,
+      chạy lại rehearsal thực tế. Toàn bộ 368 backend tests (234 fast + 134 PostgreSQL)
+      qua; Ruff lint/format, actionlint, docs links/placeholders và diff check qua.
+- [ ] Backup staging/Ubuntu, RPO/RTO, offsite/encryption/retention, phục hồi roles/secret
+      trên cluster khác và corrected GitHub run sau commit/push vẫn cần nghiệm thu.
+
+Giới hạn: dữ liệu hoàn toàn synthetic, cùng cluster test; runtime dùng SET ROLE,
+chưa nghiệm thu login runtime hoặc vận hành staging. Native client transport chưa chạy
+local; Docker17 đã chạy. Không đổi frontend, migration, credentials/grants thật;
+không gọi Maximo/Entra, deploy, commit/push hoặc bật lịch backup. Upload tiếp tục chờ
+write contract/conditional update live; ETag `0` chưa chứng minh chống stale write.

@@ -19,7 +19,9 @@ kiểm tra phiên/quyền, không tự tải lại WO. Có thời điểm cập 
 Scheduled Finish chỉ đọc, tự tính khi đổi Start hoặc Duration (giờ), cả đơn lẻ và nhóm.
 Target Start/Finish có date/time picker; chọn ngày tự bật Change Target, PM/CFT bị khóa.
 Múi giờ kết nối vẫn dùng để tính ngày nhưng không hiện nhãn; dán Excel theo 3 cột Start, PIC, Duration.
-/demo vẫn dùng dữ liệu giả. Upload Maximo chưa triển khai.
+/demo vẫn dùng dữ liệu giả. P7 có backend preview từ nháp, submit gate và trạng thái
+batch; orchestration/audit/read-back được kiểm thử với transport giả. Chưa có sender
+Maximo thật hoặc UI upload; cổng submit giữ đóng đến khi write contract được xác minh.
 
 ## Phạm vi đã chốt
 
@@ -47,6 +49,7 @@ Múi giờ kết nối vẫn dùng để tính ngày nhưng không hiện nhãn;
 - [Quyền DB và retention](docs/database-operations.md)
 - [Hồ sơ nghiệm thu cùng IT](docs/it-acceptance.md)
 - [Write contract và ETag trước upload](docs/maximo-write-contract.md)
+- [P7: luồng upload từ nháp và cổng write contract](docs/upload-workflow.md)
 - [Lập lịch và quản lý nháp](docs/drafts.md)
 - [Hướng dẫn chung cho coding agent](AGENTS.md)
 - [Cấu hình Main và ba sub-agent Codex](docs/codex-agents.md)
@@ -160,6 +163,9 @@ HTTPS, xác minh SSO/Maximo thật, upload/history và hướng dẫn vận hàn
 được theo dõi riêng trong backlog.
 
 Kiểm thử PostgreSQL riêng: xem [hướng dẫn database test](docs/database-tests.md).
+
+Diễn tập backup/restore trên DB mới với dữ liệu synthetic:
+[quy trình và giới hạn](docs/database-operations.md#diễn-tập-cô-lập-bằng-dữ-liệu-synthetic).
 
 Cấu hình và giới hạn đăng nhập: [Entra SSO](docs/entra-setup.md).
 Kiểm thử HTTPS/Entra trên máy Windows: [hướng dẫn local](docs/entra-local-windows.md).

@@ -1,6 +1,6 @@
 # Thu thập thông tin tích hợp
 
-Cập nhật: 2026-10-07. Onshore test đã xác minh GET WO/PERSON/crew E&I và nháp nội bộ
+Cập nhật: 2026-10-08. Onshore test đã xác minh GET WO/PERSON/crew E&I và nháp nội bộ
 trên Windows local; write contract, scopes khác/Offshore và đường mạng Ubuntu còn pending.
 Đối soát đầy đủ: [checklist 1–6](checklist-review.md). Các mốc theo ngày bên dưới là lịch sử.
 Các quyết định và ca thử để làm cùng IT được gom tại [hồ sơ nghiệm thu](it-acceptance.md),
@@ -16,8 +16,8 @@ với [write contract/ETag](maximo-write-contract.md) là điều kiện trướ
 | Kênh bàn giao secret và secret reference để cấu hình server | IT | Key local nằm trong .env ignore, DB có secret_reference; quy trình bàn giao/rotation và secret manager staging chưa chốt |
 | Discipline codes, crew groups và PIC mapping | Maximo admin/planner | Có DECK/DNC/RES/MECH/PROD/E&I và mapping Onshore; live 25 PIC E&I_N qua 02/10; scope khác chưa kiểm chứng |
 | Timezone nghiệp vụ, quy tắc giờ mặc định và khoảng lọc cuối ngày | Planner | Asia/Ho_Chi_Minh, offset và mốc cuối loại trừ đã dùng live; giờ mặc định/clear/null write semantics chưa chốt |
-| Site, WOID và WONUM của WO test được chỉ định; loại CM/PM/CFT cần kiểm tra | Planner/Maximo admin | Chưa cung cấp |
-| Quyền được cấp: đọc trước; WO nào được phép ghi và trường nào được thay đổi | Chủ dự án/Maximo admin | Read và Planner nháp Onshore E&I đã xác minh; chưa có WO/ủy quyền ghi Maximo test được chỉ định |
+| Site, WOID và WONUM của WO test; CM/PM/CFT | Planner/Maximo admin | Cho chọn danh sách tải test 08/10; CM P13463520/BD1/523961 đã GET, PM/CFT chưa chọn |
+| Quyền được cấp: đọc trước; WO nào được phép ghi và trường nào được thay đổi | Chủ dự án/Maximo admin | Cho thử WO từ danh sách server test 08/10; mỗi mutation cần authenticated durable audit và conditional contract; chưa ghi |
 | Ubuntu test, routing, DNS, TLS và CA nội bộ | IT/chủ dự án | Chủ dự án xác nhận không cần VPN, server test chưa cài chứng chỉ; đường mạng từ Ubuntu chưa xác minh |
 
 Onshore và Offshore là hai hệ thống độc lập. Ghi riêng URL, scope, account và kết quả
@@ -40,14 +40,20 @@ API key không mã hóa khi truyền qua HTTP. Connector yêu cầu bật allow_
 cho entry registry và connection trong DB phải có environment=test. Cấu hình ứng dụng
 production từ chối HTTP; HTTPS vẫn xác minh chứng chỉ. Chưa có credential test và chưa gửi
 credential tới server thật. Chi tiết cấu hình trong [Maximo reader](maximo-reader.md).
-Chưa cung cấp URL production và chưa có kiểm thử trên production.
+Tại mốc 01/10 chưa có URL production; ngày 08/10 chủ dự án cung cấp
+Onshore production `https://bd-maxapp.biendongpoc.vn/` và Offshore production
+`https://bdpqp-maxapp.biendongpoc.vn/`. Mới xác nhận origin; context path/OSLC,
+TLS và account chưa kiểm chứng. Không tự thêm `/maximo`, đăng ký production hoặc
+dùng key test với production. Onshore/Offshore là vị trí hệ thống Maximo, không
+phải thuộc tính vị trí người dùng để tự cấp quyền; mỗi connection vẫn có PERSON/scope riêng.
 
 ## Entra và quyền người dùng
 
 Thu thập tenant ID, client ID, hostname HTTPS của ứng dụng, callback URI đã đăng ký,
 nhóm/người được đăng nhập và danh sách planner với tenant/object ID, connection, discipline,
 capability read/write. Credential Entra được bàn giao riêng qua kênh quản lý secret.
-Xem [Entra setup](entra-setup.md). Entra assignment không tự cấp quyền WO.
+Xem [Entra setup](entra-setup.md). Entra assignment không tự cấp quyền WO. Chủ dự án chốt 08/10: không cần roster
+cố định; PERSON hợp lệ cấp read trong scope, Planner chỉ do chủ dự án cấp khi cần.
 
 Entra login/callback local đã thành công; chủ dự án xác nhận logout/login lại đúng
 ngày 2026-10-02. PERSON-derived read và scoped Planner Onshore E&I đã được cấp/kiểm chứng

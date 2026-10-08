@@ -67,7 +67,7 @@ async def transition_upload(
             select(UploadItem)
             .join(UploadBatch)
             .where(UploadItem.id == item_id, UploadBatch.actor_id == actor_id)
-            .with_for_update()
+            .with_for_update(of=UploadItem)
         )
         if item is None:
             raise ValueError("Upload item not found")
@@ -84,7 +84,7 @@ async def recover_stale_sends(sessions: async_sessionmaker[AsyncSession], before
                 select(UploadItem, UploadBatch.actor_id)
                 .join(UploadBatch)
                 .where(UploadItem.state == "sending", UploadItem.updated_at < before)
-                .with_for_update(skip_locked=True)
+                .with_for_update(of=UploadItem, skip_locked=True)
             )
         ).all()
         for item, actor_id in rows:
