@@ -69,6 +69,7 @@ class MaximoSettings(BaseModel):
     open_statuses: list[str] = Field(min_length=1, max_length=30)
     crew_groups: dict[str, str] = Field(default_factory=dict)
     person_login_domain: str | None = None
+    conditional_write_contract: Literal["native_rowstamp_test"] | None = None
 
     @field_validator("person_login_domain")
     @classmethod
@@ -157,6 +158,10 @@ class Settings(BaseSettings):
     def require_production_identity(self):
         if self.environment in {"staging", "production"} and self.entra is None:
             raise ValueError("Entra configuration is required outside local development/test")
+        if self.environment not in {"development", "test"} and any(
+            connection.conditional_write_contract is not None for connection in self.maximo.values()
+        ):
+            raise ValueError("Verified conditional write contract is TEST-only")
         if self.environment == "production" and any(
             urlsplit(connection.collection_url).scheme == "http"
             for connection in self.maximo.values()

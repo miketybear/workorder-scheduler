@@ -1,6 +1,6 @@
 # Trạng thái triển khai — foundation
 
-Cập nhật: 2026-10-08. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
+Cập nhật: 2026-10-09. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 
 ## Đã triển khai
 
@@ -9,11 +9,32 @@ Cập nhật: 2026-10-08. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
 - Policy grants theo connection/discipline; session và draft service đọc grants từ DB.
 - Validation payload allowlist, target intent, PM/CFT, ngày có timezone, PIC và duration.
 - Models/migrations cho identity, grants, sessions, drafts, upload batches/items và audit; không seed credential.
-- P7 có API preview từ nháp đã lưu, submit gate và trạng thái batch theo owner/scope;
-  orchestration nội bộ lưu immutable source, dedup/reservation, intent-before-send,
-  read-back/unknown reconciliation và confirmed-only finalizer với transport giả.
-  Không có transport ghi Maximo trong app, worker/lease hoặc UI upload/history;
-  submit thật bị khóa đến khi conditional write contract được kiểm chứng.
+- P7 có API preview, native TEST sender và trạng thái từng WO theo owner/scope;
+  immutable source, durable receipt/reservation, intent-before-send, native `_rowstamp`,
+  read-back/unknown reconciliation và confirmed-only exact-version finalizer.
+  UI gửi nháp đã lưu, tra cứu receipt, continue tối đa 10 pending WO và đối chiếu unknown;
+  không gửi lại unknown. Explicit opt-in tám mã type hiện có trên Onshore test
+  trong development/test; PM/CFT cấm target, nhóm còn lại cần explicit target intent.
+  Production/staging/Offshore vẫn khóa. Worker/lease và history đầy đủ còn pending.
+  PM browser ngày09/10 đã qua ba request204: đổi lịch/duration25→21, restore cặp ngày,
+  rồi duration-only25. Read-only audit19events xác nhận original all6 exact,
+  ba nguồn finalized, zero reservations và bốn nháp cũ nguyên vẹn.
+  Backend641 tests/4 known warnings và frontend187 tests/typecheck/lint/build qua.
+  Review độc lập ba P2 về nullable origin, interrupted receipt recovery và semantic
+  equality đã sửa, main kiểm tra code và regression tests. Mốc tiếp theo đã qua
+  browser PM nhóm H14286978/H14288340, giữ baseline gốc riêng và restore exact26/24h;
+  CFT H14302007:6→6.25→6h duration-only giữ null lịch/PIC và target gốc.
+  Backend644 tests/4 known warnings và Ruff qua sau gate CFT; không đổi frontend.
+  Chủ dự án chốt nghiệm thu theo hai nhóm quy tắc target, thay browser từng type;
+  Gate chung tám mã TEST đã triển khai: cả hai target fields có32 ca API qua;
+  main full backend694 passed/4 known warnings, Ruff/diff-check qua ngày09/10.
+  Backend local đã nạp lại/readiness200; không live write mới trong bước này.
+  Nhóm hỗn hợp PM/CFT/REC đã qua browser:7requests204/43events, original all6exact
+  từng WO sau restore, zero reservations, bốn nháp cũ giữ nguyên. BatchPlanner có
+  per-row targets với explicit intent và PM/CFT khóa; frontend190 tests/checks qua.
+  Retrieve nhiều trang test dừng an toàn vì nextPage mang host production; theo chủ
+  dự án test dùng DB sao chép production. Chưa kiểm chứng pagination production;
+  không bỏ URL guard hoặc sửa cấu hình server trong mốc gate này.
   [Phạm vi và API](upload-workflow.md); bằng chứng kiểm tra P7 ghi ở [TODO](todos.md).
 - React overview và bảng demo giả lập: sửa ngày, khóa target PM/CFT, preview và reset.
 - Dockerfiles và Compose phát triển local, migration service, DB volume và healthchecks.
@@ -70,10 +91,67 @@ Cập nhật: 2026-10-08. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
   group/row/paste/Undo/preview/save/reopen, atomic DB persistence và lỗi scope/baseline/version.
   Tab containment, opener return, chooser transition/focus sau Save và Settings radio keys qua;
   version409 khóa lưu và giữ edits. [Phạm vi/số đo](large-batch-keyboard-tests.md).
-  Monthly-load live, 10 planner và accessibility toàn luồng còn pending; upload chưa triển khai.
+  Monthly-load live, 10 planner và accessibility toàn luồng còn pending;
+  upload CM Onshore test đã triển khai trong phạm vi P7 bên trên.
 
 ## Bằng chứng kiểm tra
 
+- 2026-10-09: operator field harness đã chuẩn bị cho7 non-CM types với immutable
+  payload plan, null schedule-pair/PIC exact restore và original-PIC ngoài crew
+  no-op preflight. Diagnostic field combination và unplanned duration-mode payload
+  bị chặn; duration JSON numeric/bounds/exact serialization kiểm tra trước intent.
+  Full backend616 tests/Ruff qua, focused review không còn P1. Live field preflight
+  ban đầu bị Entra session hết hạn. Login503 sau đó được xác định do backend local
+  sandbox proxy refused10061; restart owned backend ngoài sandbox trả login303/ready200,
+  browser SSO/callback thành công đúng actor/scope. Không đổi credential/TLS/grants.
+  Bảy type đã qua live schedule/PIC/fraction/allowed-target và exact six-field restore;
+  audit84 intent/results,448 events,7 confirmed, zero reservations, nháp cũ giữ nguyên.
+  PM/CFT không gửi target. PM date update tự đổi duration25→21; restore duration
+  riêng sau date restore trả25, lịch sử stopped probe/recovery được giữ lại.
+  Các type khác không đổi duration qua date requests; app non-CM gate vẫn khóa,
+  semantics date/duration đã được xử lý theo mốc dưới; cần browser UAT trước khi mở gate.
+- 2026-10-09 PM preview/readback: cảnh báo khi start hoặc finish thực sự đổi (kể cả
+  duration edit kéo theo finish). Known200/204 với date changes nhưng không đổi estdur
+  chỉ confirmed khi tất cả trường khác exact; audit pin actual baseline/revision và
+  receipt hiển thị expected→actual. Explicit duration mismatch/timeout giữ unknown;
+  không tự POST thêm. Finalize/reconcile không chấp nhận duration drift sau pin.
+  Backend629 tests, FE181 tests/typecheck/lint/build qua; focused review P2 local
+  finish-only warning đã sửa. Browser Onshore test PM preview đã qua, WO unchanged;
+  ở mốc này nháp kiểm chứng riêng được giữ để xem và gate còn CM-only. Mốc browser
+  PM đơn sau đó đã finalized nháp này và restore all6 exact (coverage hiện tại bên trên).
+- 2026-10-08 conditional-duration theo7 non-CM types: PM/CFT/REC/OVERHAUL/MoD/
+  General/Routine đều qua wrong/current/fresh/stale/same-token pair/restore live;
+  49POST,7items confirmed/203events. Read-only audit xác nhận7 exact baseline,
+  không active reservation và nháp cũ giữ nguyên. Full backend531 tests/Ruff qua,
+  PM/CFT browser target khóa và backend trước-network rejection tests qua.
+  App gate vẫn CM: date/PIC/allowed target positive proof theo từng type còn pending.
+  [WO/item/coverage](maximo-write-contract.md).
+- Mốc native sender/browser UAT ngày 2026-10-08: full backend 500 tests qua gồm
+  PostgreSQL, frontend 175 tests qua, lint/typecheck/build qua. Sau sửa toolbar receipt
+  còn sót, 60 WorkOrders tests/typecheck/lint qua; browser restore kiểm tra không còn nút
+  khôi phục thừa. Independent Sol/high review không có P1; các P2 đã sửa và main xác minh.
+  Live field probe P13463520 confirmed 59 events, duration phân số/ngày/PIC/CM target
+  và restore exact. Browser P13467327/BD1/531789 upload duration 5→6 rồi 6→5,
+  từng lần confirmed/source finalized; receipt lookup chỉ đọc. Nháp cũ giữ nguyên.
+  Browser nhóm hai CM sau đó upload và restore P13467496 (11→12→11) và P13467932
+  (10.5→11.5→10.5), UI confirmed2/2 cả hai lượt và bỏ đúng nháp nguồn.
+  [Hồ sơ hiện tại](upload-workflow.md). Không suy rộng sang PM/CFT/Offshore/production,
+  null-clear UI, crash lease hoặc 10 planner live.
+- Harness operator-only Onshore test ngày08/10: committed intent từng POST, current
+  Entra/PERSON/Planner, một WO reservation và scoped read-only probe reconciliation.
+  ETag0 và raw rowstamp-as-header bị412 BMXAA8229W; sau sửa representation,
+  JSON `_rowstamp` qua wrong412/current204/fresh204/stale412/pair204+412/restore204
+  trên P13463520. Đọc lại khôi phục exact baseline20.0, audit confirmed29events.
+  Full backend453 tests trước classification cuối;148 targeted tests gồm10PG sau
+  sửa và Ruff lint/format qua. Upload ứng dụng giữ khóa; date/PIC/target còn chờ thử.
+  [Bằng chứng và giới hạn](maximo-write-contract.md).
+- Mốc UI preview P7 ngày 2026-10-08: 167 frontend tests/16 files, ESLint, TypeScript
+  và production build qua. Main review parser/contract, conflict rows và abort/lifecycle;
+  tests dùng React/HTTP mocks. Browser live Onshore test/E&I sau đó qua nháp đơn v2
+  và fixture nhóm hai CM v1: current/proposal, upload khóa, unsaved edit hủy preview;
+  save/reopen nhóm đúng v1. Ba nháp cũ giữ nguyên; fixture nhóm còn lưu để xem.
+  Route-away/late response chưa nghiệm thu browser; UI upload/history chưa có.
+  Backend không đổi trong mốc UI, không chạy lại backend suite đã qua bên dưới.
 - Mốc đầu P7 ngày 2026-10-08: full backend 406 tests qua, trong đó 38 tests P7
   (9 fast + 29 PostgreSQL); concurrent submit/reservation/send và intent visibility
   có independent connections/real commits trên schema synthetic tạm. Ruff qua;

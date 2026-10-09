@@ -312,6 +312,7 @@ def test_upload_preview_submit_gate_and_scoped_status():
                 assert preview.status_code == 200, preview.text
                 assert preview.headers["Cache-Control"] == "no-store"
                 assert preview.json()["items"][0]["changes"] == {"estdur": "9"}
+                assert preview.json()["items"][0]["warnings"] == []
                 submit = await client.post(
                     url + "/uploads",
                     json={
@@ -327,6 +328,7 @@ def test_upload_preview_submit_gate_and_scoped_status():
                 response = await client.get(f"/api/uploads/{batch_id}")
                 assert response.status_code == 200, response.text
                 assert response.json()["counts"] == {"pending": 1}
+                assert response.json()["items"][0]["duration_result"] is None
                 assert "before" not in response.text and "changes" not in response.text
                 # Status survives closing the WO and failure of its configured crew endpoint.
                 closed = True

@@ -28,9 +28,17 @@ from app.scheduling.changes import WorkOrderBaseline
 
 PROBE_SELECT = (
     "href,orgid,siteid,workorderid,wonum,bdpocdiscipline,worktype,status,istask,parent,"
-    "schedstart,schedfinish,assignedtechname,estdur,targstartdate,targcompdate"
+    "schedstart,schedfinish,assignedtechname,estdur,targstartdate,targcompdate,_rowstamp"
 )
 ETagStatus = Literal["missing", "weak", "invalid", "strong", "numeric_candidate"]
+ProbeWorktype = Literal["CM", "PM", "CFT", "REC", "OVERHAUL", "MoD", "General", "Routine"]
+OPERATOR_WORKTYPES = {"CM", "PM", "CFT", "REC", "OVERHAUL", "MoD", "General", "Routine"}
+
+
+def validate_probe_worktype(worktype):
+    if worktype not in OPERATOR_WORKTYPES:
+        raise MaximoReadError("Unsupported explicit operator WO type")
+    return worktype
 
 
 class ProbeAuthority(BaseModel):
@@ -54,7 +62,7 @@ class ContractEvidence(BaseModel):
     wonum: str
     orgid: str | None
     discipline: str
-    worktype: Literal["CM"] = "CM"
+    worktype: ProbeWorktype = "CM"
     status: str
     lean_requested: bool = True
     resource_status: Literal[200] = 200
@@ -62,6 +70,7 @@ class ContractEvidence(BaseModel):
     resource_etag_status: ETagStatus
     resource_etag: str | None = Field(default=None, max_length=500)
     strong_etag: str | None = Field(default=None, max_length=500)
+    rowstamp_candidate: str | None = Field(default=None, max_length=30)
     baseline: WorkOrderBaseline
 
 
@@ -208,19 +217,25 @@ async def bounded_get(client: httpx.AsyncClient, settings: MaximoSettings, url: 
 
 
 def validate_order(
-    raw: dict, settings: MaximoSettings, site_id: str, workorder_id: str, discipline: str
+    raw: dict,
+    settings: MaximoSettings,
+    site_id: str,
+    workorder_id: str,
+    discipline: str,
+    operator_worktype: ProbeWorktype = "CM",
 ) -> tuple[WorkOrder, str | None]:
+    validate_probe_worktype(operator_worktype)
     order = map_work_order(raw)
     if (
         order.siteid != site_id
         or order.workorderid != workorder_id
         or order.bdpocdiscipline != discipline
-        or order.worktype != "CM"
+        or order.worktype != operator_worktype
         or order.status not in settings.open_statuses
         or order.istask
         or order.parent not in (None, "")
     ):
-        raise MaximoReadError("Contract resource outside requested CM scope")
+        raise MaximoReadError("Contract resource outside requested WO type scope")
     orgid = raw.get("orgid")
     if orgid is not None and (
         not isinstance(orgid, str)
@@ -237,7 +252,10 @@ async def probe_contract(
     site_id: str,
     workorder_id: str,
     discipline: str,
+    *,
+    operator_worktype: ProbeWorktype = "CM",
 ) -> ContractEvidence:
+    validate_probe_worktype(operator_worktype)
     if not re.fullmatch(r"[0-9]{1,30}", workorder_id) or str(int(workorder_id)) != workorder_id:
         raise MaximoReadError("Invalid contract work order identity")
     statuses = json.dumps(settings.open_statuses, separators=(",", ":"))
@@ -246,7 +264,8 @@ async def probe_contract(
         "oslc.select": PROBE_SELECT,
         "oslc.pageSize": "2",
         "oslc.where": f"siteid={code(site_id)} and workorderid={int(workorder_id)}"
-        f' and bdpocdiscipline={code(discipline)} and worktype="CM" and istask=0'
+        f" and bdpocdiscipline={code(discipline)}"
+        f" and worktype={code(operator_worktype)} and istask=0"
         f' and parent!="*" and status in {statuses}',
     }
     try:
@@ -263,13 +282,15 @@ async def probe_contract(
                 or info.get("nextPage") is not None
             ):
                 raise MaximoReadError("Contract collection must contain exactly one scoped WO")
-            initial, orgid = validate_order(members[0], settings, site_id, workorder_id, discipline)
+            initial, orgid = validate_order(
+                members[0], settings, site_id, workorder_id, discipline, operator_worktype
+            )
             url, resource_id, origin_changed = canonical_resource(members[0].get("href"), settings)
             resource, (resource_etag_status, resource_etag) = await bounded_get(
                 client, settings, url, {"lean": "1", "oslc.select": PROBE_SELECT}
             )
             order, resource_orgid = validate_order(
-                resource, settings, site_id, workorder_id, discipline
+                resource, settings, site_id, workorder_id, discipline, operator_worktype
             )
             if order.wonum != initial.wonum or resource_orgid != orgid:
                 raise MaximoReadError("Contract resource identity changed")
@@ -286,14 +307,26 @@ async def probe_contract(
                 wonum=order.wonum,
                 orgid=resource_orgid,
                 discipline=discipline,
+                worktype=order.worktype,
                 status=order.status,
                 collection_etag_status=collection_etag_status,
                 resource_etag_status=resource_etag_status,
                 resource_etag=resource_etag,
                 strong_etag=resource_etag if resource_etag_status == "strong" else None,
+                rowstamp_candidate=rowstamp_candidate(resource),
                 baseline=WorkOrderBaseline.model_validate(
                     {field: getattr(order, field) for field in WorkOrderBaseline.model_fields}
                 ),
             )
     except (httpx.HTTPError, TimeoutError):
         raise MaximoReadError("Contract probe unavailable or timed out") from None
+
+
+def rowstamp_candidate(resource):
+    value = resource.get("_rowstamp")
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        return None
+    token = str(value)
+    if re.fullmatch(r"[0-9]{1,30}", token) and int(token) > 0 and str(int(token)) == token:
+        return token
+    return None

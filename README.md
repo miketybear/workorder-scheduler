@@ -7,7 +7,12 @@ retrieve WO từ Maximo, chỉnh sửa kế hoạch, xem thay đổi và upload 
 cho phát triển local. Bảng `/demo` dùng dữ liệu hoàn toàn giả lập, cho sửa ngày và xem before/after.
 Đã có lưu session, dịch vụ nội bộ lưu nháp và trạng thái upload/audit trên PostgreSQL.
 Đã xác minh Entra login/callback local và GET PERSON/WO list/detail/crew Onshore test E&I;
-nháp đơn live đã kiểm tra, các scope khác và write contract còn chưa nghiệm thu.
+nháp đơn live đã kiểm tra. Conditional/field contract và browser upload/restore CM
+Onshore test đã nghiệm thu ngày 2026-10-08; PM browser upload/restore ngày và duration
+đã qua ngày 2026-10-09; PM nhóm hai WO và CFT duration-only đã upload/restore exact.
+Theo quyết định chủ dự án ngày2026-10-09, nghiệm thu chức năng theo hai nhóm target;
+không yêu cầu browser upload/restore riêng từng mã WO type. Nhóm hỗn hợp PM/CFT/REC
+đã upload/restore exact sáu trường gốc:7requests204/43audit events, nháp cũ nguyên vẹn.
 Quyền read có thể lấy từ [PERSON.ct_discipline](docs/person-access.md) theo Entra login đã xác thực.
 Route /work-orders đã nối API danh sách/chi tiết và nháp; bấm số WO để sửa lịch, PIC, duration,
 xem before/after và lưu/mở/cập nhật/xóa nháp một hoặc nhiều WO (tối đa 200).
@@ -19,9 +24,19 @@ kiểm tra phiên/quyền, không tự tải lại WO. Có thời điểm cập 
 Scheduled Finish chỉ đọc, tự tính khi đổi Start hoặc Duration (giờ), cả đơn lẻ và nhóm.
 Target Start/Finish có date/time picker; chọn ngày tự bật Change Target, PM/CFT bị khóa.
 Múi giờ kết nối vẫn dùng để tính ngày nhưng không hiện nhãn; dán Excel theo 3 cột Start, PIC, Duration.
-/demo vẫn dùng dữ liệu giả. P7 có backend preview từ nháp, submit gate và trạng thái
-batch; orchestration/audit/read-back được kiểm thử với transport giả. Chưa có sender
-Maximo thật hoặc UI upload; cổng submit giữ đóng đến khi write contract được xác minh.
+/demo vẫn dùng dữ liệu giả. P7 có preview, sender native `_rowstamp`, durable receipt,
+audit trước gửi, trạng thái từng WO, continue tối đa 10 WO và read-only reconcile.
+Upload dùng chung sender cho tám mã type hiện có trên Onshore test, chỉ khi opt-in
+trong app development/test. PM/CFT cấm target; CM/REC/OVERHAUL/MoD/General/Routine
+chỉ đổi target khi có intent rõ ràng. Production/staging và Offshore vẫn khóa.
+Browser đã upload duration
+5→6→5 và xác nhận read-back/hoàn tất đúng nháp. PM đổi lịch có Maximo recalc25→21;
+restore ngày rồi duration-only trả đúng sáu trường gốc/25h. PM nhóm giữ original
+riêng từng WO, restore exact26/24h; CFT6→6.25→6h giữ lịch null và khóa target.
+Retrieve nhiều trang trên test bị chặn vì next-page mang host production. Chủ dự án
+xác nhận test dùng DB sao chép production; không yêu cầu sửa server trong mốc này.
+Production pagination chưa được kiểm chứng; URL guard vẫn giữ.
+History đầy đủ và worker/lease còn pending.
 
 ## Phạm vi đã chốt
 

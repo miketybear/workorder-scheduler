@@ -1,6 +1,6 @@
 # TODO — Work Order Scheduler
 
-Cập nhật: 2026-10-08.
+Cập nhật: 2026-10-09.
 
 ## Cách sử dụng
 
@@ -398,7 +398,8 @@ phụ thuộc từ mã/tài liệu hiện tại, không phải kiểm thử mớ
 Mốc đầu P7 triển khai ngày 2026-10-08: API preview/submit gate/status và dịch vụ
 orchestration nội bộ có tests synthetic; [hợp đồng và giới hạn](upload-workflow.md).
 Các checkbox end-to-end bên dưới vẫn mở vì chưa có sender/conditional contract thật,
-worker lifecycle hoặc UI upload/history. Không dùng evidence mock để tick remote upload.
+worker lifecycle hoặc UI tiến độ/history. UI preview được bổ sung trong mốc tiếp
+ngày 2026-10-08; không dùng evidence mock để tick remote upload.
 
 - [x] Preview từ nháp owned/scoped, version và 1–200 thành viên chọn; đọc lại WO/PIC,
       dựng before/changes bằng allowlist server, kiểm tra baseline/PM/CFT/intent/date/PIC.
@@ -425,6 +426,33 @@ thì toàn bộ qua. Không thêm dependency/migration, không đổi frontend, 
 Maximo/Entra thật, migrate DB app, deploy, commit hoặc push. Conditional write,
 transport thật, worker lease/retry attempt links/correlation logs, UI upload/history,
 crash durability live và nghiệm thu staging vẫn mở.
+
+Mốc UI preview tiếp tục ngày 2026-10-08:
+
+- [x] Nháp đơn/nhóm đã lưu có nút đối chiếu trước upload gọi API scoped với đúng
+      version và danh sách thành viên; khóa khi có sửa chưa lưu/blocked/suspended.
+      Nhóm dùng toàn bộ thành viên đã lưu; không thêm chọn subset riêng cho upload.
+- [x] Hiển thị WONUM, trước/sau từng trường và kết quả xung đột/không hợp lệ kể cả
+      khi backend không trả changed fields; context dùng connection/system/environment
+      từ grant. Ngày theo timezone kết nối, giữ quyết định ẩn nhãn timezone/ID/hash.
+- [x] Parser kiểm tra phiên bản/hash/gate false, exact member set/unique identity,
+      allowlist, aware dates và finite nonnegative duration (kể cả scientific Decimal).
+      Request dùng cookie/CSRF hiện có; không gọi submit hoặc tạo batch giả.
+- [x] Preview unmount/abort khi edits/Undo/reset/save/delete/busy, đổi scope/version/
+      baseline/PIC/verification context, suspend/hide/đóng panel; late response bỏ qua.
+      Route-away chỉ hủy preview, không đổi behavior mutation/cache workspace hiện có.
+      Recoverable error giữ nháp; 401/403/404 gọi luồng kiểm tra quyền hiện có.
+- [x] Frontend 167 tests/16 files, ESLint, TypeScript và production build qua;
+      Main rà API contract, conflict-empty rows, lifecycle/abort và integration props.
+      Sau chỉnh wording sản phẩm, Main chạy lại 33 tests editor đơn/nhóm và typecheck
+      qua; Vite tests cần quyền child-process Windows, không phải lỗi ứng dụng.
+      Docs links/placeholders/diff check qua; không thêm dependency hoặc đổi backend.
+
+Giới hạn UI: tests dùng React/HTTP mocks, chưa kiểm chứng browser/live preview mới,
+keyboard/a11y toàn luồng hoặc nhóm 200-WO live. Upload luôn khóa; chưa có sender,
+UI tiến độ/kết quả/history, submit live hoặc E2E ghi Maximo. Không gọi Maximo/Entra
+thật, thay nháp thật, deploy, commit hoặc push trong mốc UI này. Không chạy lại
+406 backend tests đã qua vì backend không đổi; bằng chứng backend ở mốc trên.
 
 - [ ] Tạo endpoint preview/submit với allowlist field và typed validation.
 - [ ] Re-read từng WO; kiểm tra scope, worktype, baseline và revision trước write.
@@ -1400,6 +1428,8 @@ Giới hạn: browser APIs hoàn toàn giả; PostgreSQL là test infrastructure
       [write contract](maximo-write-contract.md) ghi conditional token chưa xác minh.
 - [ ] IT xác minh token/header và cấu hình ETag của đúng OSLC endpoint; audited authenticated
       test harness chứng minh success/token advance/stale rejection/concurrency/restore.
+      Chủ dự án đã cho phép mọi thử nghiệm cần thiết trên Onshore test ngày 08/10;
+      không chờ thêm xác nhận WO/field/window. Hành vi endpoint vẫn cần bằng chứng live.
 - [ ] Sender + immutable source draft/version/member linkage + confirmed-only finalizer,
       production/scopes khác, tenant/Ubuntu HTTPS staging, DB runtime/backup nghiệm thu thật.
 
@@ -1442,3 +1472,498 @@ chưa nghiệm thu login runtime hoặc vận hành staging. Native client trans
 local; Docker17 đã chạy. Không đổi frontend, migration, credentials/grants thật;
 không gọi Maximo/Entra, deploy, commit/push hoặc bật lịch backup. Upload tiếp tục chờ
 write contract/conditional update live; ETag `0` chưa chứng minh chống stale write.
+
+## Nghiệm thu browser preview và audited write probe — 2026-10-08
+
+- [x] Chủ dự án yêu cầu nghiệm thu preview với nháp Onshore test và cho phép nối/thử
+      mọi phần cần thiết trên hệ thống này, không hỏi lại WO/field/window/restore.
+      Đây là authorization test; production và kết nối khác vẫn chưa nghiệm thu.
+- [x] Browser đăng nhập Entra mới, Onshore test/E&I scoped Planner; nháp đơn
+      P13469545 v2 đọc lại Maximo thành công, hiện current/proposal và upload khóa.
+      Sửa duration 10.5→10.75 chưa lưu hủy preview/khóa đối chiếu; không lưu đè nháp cũ.
+- [x] Retrieve đủ 117 WO tháng 10; app chặn lập nhóm mới từ WO đã có nháp.
+      Tạo fixture riêng P13462775/P13465570: nháp nhóm PIC BANPV, v1; save/reopen từ
+      server đúng v1, preview cả hai WO khớp và upload khóa. Sửa PIC chưa lưu hủy
+      preview; trả lại BANPV, không lưu v2. Ba nháp ban đầu giữ nguyên.
+      Fixture nhóm còn lưu để xem nghiệm thu; ảnh `.cache/p7-group-preview.jpg`.
+- [x] Harness operator-only giữ một active WO reservation, committed intent từng POST,
+      current Entra/PERSON/Planner/scope; wrong/stale negatives là no-op, readback và
+      conditional restore. Recovery probe riêng chỉ remote GET, chỉ giải phóng unknown
+      khi exact original baseline; không xử lý sending còn có thể in-flight.
+      Review Sol/high + một focused P1 recheck, main sửa/kiểm tra các finding phụ.
+- [x] Live advertised ETag probe P13463520: wrong sentinel và exact ETag0 đều trả412
+      BMXAA8229W; đọc lại estdur20.0/baseline nguyên trạng. Audit item kết thúc failed,
+      không giữ reservation; không có write thành công, không chạy pair/stale/restore.
+      [Chi tiết](maximo-write-contract.md). Upload gate của app giữ khóa.
+- [x] Live rowstamp candidate được chọn rõ ở harness: sai sentinel và exact current
+      rowstamp no-op đều412 BMXAA8229W. Dừng trước positive, baseline20.0 nguyên trạng;
+      audit item failed, không giữ reservation. Không tự đổi quoting/token/app gate.
+- [x] Full backend439 tests qua, gồm PostgreSQL và rehearsal Windows/Docker; Ruff qua.
+      Probe suite127 tests gồm9 PG: real commit visibility, reservation, guard denial,
+      unknown exact-original reconciliation và sending refusal. Không dependency/migration.
+- [x] Xác định usable conditional token/representation sau ETag0 và raw rowstamp bị412:
+      JSON `_rowstamp` qua full fresh/stale/same-token pair/readback/restore08/10,
+      xem mốc sửa lỗi bên dưới. Fields/date/PIC/null/target trước sender thật còn pending.
+      Không coi HTTP412 của ETag0 là bằng chứng mọi conditional token không được hỗ trợ.
+
+Giới hạn browser: route-away/late-response còn dựa automated tests; gặp IAB CDP/click
+bridge treo ở tab cũ, phiên sạch phục hồi tương tác và hoàn tất nhóm, không sửa code
+theo lỗi tool. Không upload fixture, gọi production, deploy, commit/push hoặc gửi IT.
+
+Read-only schema xác nhận root WORKORDER/persistent schedule fields; conditional GET
+raw/quoted0 và rowstamp đều200/ETag0, không304. Chưa có evidence cho một write token
+khác ở thời điểm đó. Server logs/config có thể giải thích ETag0/header rejection;
+workspace không có quyền đọc trực tiếp. Sau phép thử JSON rowstamp bên dưới, logs
+không còn là dependency bắt buộc để tiến tiếp trên Onshore test. Không cần xác nhận
+lại quyền test; field contract và sender/app gate vẫn cần triển khai/kiểm chứng.
+
+- [x] 08/10: đối chiếu lại endpoint/path, POST override PATCH, JSON estdur, If-Match
+      và transaction IDs từ harness/hồ sơ audit để trình bày request lỗi cho chủ dự án.
+      Chỉ đọc mã/evidence đã lưu, không resend hoặc gọi Maximo mới; chỉ giữ HTTP412 và
+      reasonCode BMXAA8229W, không có raw response message/body trong audit.
+
+## Sửa lỗi conditional OSLC — 2026-10-08
+
+- [x] Đối chiếu tài liệu IBM và response thực tế: header ETag0/raw rowstamp bị412;
+      thêm explicit TEST-only `rowstamp_body_candidate` gửi native `_rowstamp` trong
+      JSON. Không fallback unconditional, không nối transport vào API ứng dụng.
+- [x] Sửa conflict classifier:412+BMXAA8229W không đòi message phải có WORKORDER,
+      vẫn từ chối known child;400/409 đòi WORKORDER. Negative chỉ là bước đầu;
+      bắt buộc current/no-op/fresh/stale/pair/readback/restore đầy đủ mới đạt.
+- [x] Live P13463520/BD1/523961: wrong412/current204/fresh204/stale412/pair204+412/
+      restore204. estdur20→21→22→20; toàn bộ PIC/ngày/baseline khôi phục đúng.
+      Rowstamp tiến3235810749→3624646770→3624646774→3624646778, ETag vẫn0.
+      Audit item38f274be-2eee-4d47-873d-eb3bdf6c6657 confirmed29events; reservation
+      giải phóng sau verified restore. [Evidence](maximo-write-contract.md).
+- [x] Main full backend453 tests qua trước narrow classifier fix;148 targeted tests
+      (10 PostgreSQL) sau fix và Ruff qua. Không dependency/migration/server changes.
+- [ ] Tiếp theo: live field contract date/PIC/duration precision/null và target CM;
+      PM/CFT target cấm trước outbound. Sau đó tích hợp sender dùng body precondition,
+      recheck current authority/WO, audit, readback/unknown recovery và UI upload UAT.
+
+Giới hạn: chỉ verified configured Onshore test CM duration/resource đã chọn; không
+chứng minh mọi connection/PM/CFT/field hay runtime/staging/crash. App upload giữ khóa.
+Không cần IT logs để tiếp tục các phép thử TEST này; không deploy/commit/push/gửi IT.
+
+## Đối chiếu IBM OSLC/REST reference — 2026-10-08
+
+- [x] Đọc URL Overview chủ dự án cung cấp và các mục Create/update, Selecting,
+      API keys, Duplicate requests. Đối chiếu reader/contract/write probe: lean1,
+      POST overridePATCH, member href-derived REST ID, apikey header và transactionid
+      đúng guide; _rowstamp dirty-update purpose phù hợp live conditional proof.
+- [x] Ghi reference matrix trong [write contract](maximo-write-contract.md), phân biệt
+      documented semantics và live evidence: null omission khác write clear; child
+      PATCH khác MERGE; duplicate409/retention chưa live verified, không thay receipts.
+      Docs-only, kiểm tra link/consistency/placeholders và diff whitespace; không resend
+      Maximo, không đổi code/server/settings/gate, không chạy lại application tests.
+- [ ] Ưu tiên tiếp theo vẫn là field contract date/PIC/duration precision/null/CM target,
+      rồi sender body precondition và browser upload UAT trên Onshore test.
+
+## P7 nối sender và browser upload — hoàn thành phạm vi CM Onshore test 2026-10-08
+
+- [x] Chủ dự án đồng ý tiếp tục field contract, sender và browser UAT; quyền thử
+      Onshore test/khôi phục đã có, không xin lại field/WO/window.
+- [x] Live field harness item05bdf081-83c4-4c28-b850-2adc738bcf5f trên P13463520:
+      wrong412, current/no-op/null và bốn ca positive/restore đều204; duration20.25,
+      schedule+1h7m13s, PIC ANHTQ1→null và CM target exact. Mỗi ca khôi phục toàn bộ
+      baseline trước ca tiếp theo.159 targeted tests/Ruff trước live qua.
+      [Evidence và giới hạn](maximo-write-contract.md).
+- [x] Tích hợp sender chỉ explicit verified TEST connection/non-production, native
+      rowstamp từ exact resource, giữ immutable source revision nháp riêng với fresh
+      write revision; CSRF/scope/current PERSON/Planner/audit/readback vẫn bắt buộc.
+- [x] Submit idempotent receipt kể cả source đã finalized; chỉ xử lý pending,
+      tối đa10 WO mỗi request; explicit continue/status/unknown read-only reconcile.
+- [x] Giao diện kết quả từng WO và exact-version finalized callback/refresh; không
+      gửi lại unknown, không polling hoặc mất unrelated unsaved drafts.
+- [x] Focused independent review sender + trực tiếp related FE paths, full appropriate
+      checks, browser upload/restore fixture riêng; giữ nguyên các nháp cũ.
+
+Bằng chứng: full backend 500 tests (PostgreSQL và backup/restore) qua; frontend 175
+tests/16 files, typecheck/lint/build qua. Independent Sol/high không có P1; P2 sửa
+và main kiểm tra. Sau minor receipt-toolbar fix, 60 WorkOrders tests/typecheck/lint
+qua; browser lần restore không còn recovery button thừa. Live P13467327/BD1/531789
+duration 5→6→5, hai lần app upload confirmed/source finalized, lookup receipt chỉ đọc;
+trình duyệt hiển thị Maximo 5.0, PIC/ngày lịch vẫn trống. Nháp cũ ba đơn và một nhóm
+giữ nguyên. [Hồ sơ audit/UAT](upload-workflow.md).
+
+Giới hạn và việc tiếp theo:
+- Yêu cầu browser UAT riêng từng mã type đã được chủ dự án thay bằng nghiệm thu hai
+      nhóm target ngày2026-10-09; lịch sử phạm vi gate tại mốc CM bên dưới được giữ.
+      PM/CFT vẫn cấm target. Null-clear app chưa được mở; giới hạn số/ngày phải kiểm tra riêng.
+      2026-10-08 conditional-duration đã đạt trên7 type còn lại; ngày/PIC/target
+      từng type chưa đủ coverage nên app sender vẫn CM. Xem mốc kiểm chứng bên dưới.
+- [x] 2026-10-08: browser live nhóm hai CM upload/restore fixture riêng trên Onshore test:
+      P13467496 duration11→12→11 và P13467932 duration10.5→11.5→10.5.
+      Mỗi lượt UI confirmed2/2, làm mới giá trị Maximo, đóng panel và bỏ đúng markers;
+      không còn receipt recovery thừa. Baseline được ghi độc lập trước gửi.
+      Read-only audit:4 POST đều204/confirmed,24 events, cả hai nhóm finalize sau
+      đủ2 confirmed trong một transaction; sáu fields exact original, không còn
+      active reservations, các nháp cũ giữ nguyên. Không sửa code/config hoặc chạy
+      lại application suite trong lượt UAT này; diff/docs consistency qua.
+      [Hồ sơ nhóm](upload-workflow.md). Nhóm lớn/partial/conflict/unknown vẫn chỉ có
+      synthetic tests; không coi thành công hai WO là nghiệm thu mọi trường hợp.
+- [ ] Worker/lease và crash recovery tự động; hiện sending sau crash cần xác định process
+      ownership trước operator recovery, unknown chỉ đối chiếu đọc, không retry mù.
+- [ ] Ubuntu/staging HTTPS/routing, tenant policy, Offshore connection và 10 planner live
+      còn phụ thuộc hạ tầng/quyền/test roster từ IT; chưa deploy hoặc mở production.
+
+## Conditional write các WO type còn lại — 2026-10-08
+
+- [x] Scoped October E&I inventory117 WO: CM25, PM70/CFT11/OVERHAUL4/General3/
+      REC2/MoD1/Routine1. Chọn7 root WO không có nháp của bất kỳ owner hoặc active
+      reservation; lưu exact baseline độc lập trước thử.
+- [x] Operator probe chọn exact case-preserved type; non-CM chỉ cho duration và
+      explicit native JSON rowstamp. Reader/app mặc định CM, không mở gate từ client;
+      PM/CFT target và non-duration non-CM bị chặn trước audit/network.
+- [x] Live PM P13469691, CFT H14302007, REC P13469038, OVERHAUL P13468596,
+      MoD P13439902, General P13457667, Routine H14306831: wrong412/current204/
+      fresh204/stale412/pair204+412/restore204 đều đạt. Không suy winner từ thứ tự
+      response; đối chiếu label/transactionid và readback. Final audit7 items confirmed/203events/49POST
+      transaction IDs với committed intent và result tương ứng, actor đúng.
+      Cả7 exact six-field baseline bằng ban đầu; không còn active reservation,
+      ba nháp đơn cũ và nhóm hai WO giữ đúng version/membership.
+- [x] Browser PM/CFT Change Target/Target Start/Target Finish đều disabled;
+      không lưu nháp hoặc thử ghi target. Full backend531 tests qua (4 known warnings),
+      Ruff qua; main review type boundaries, diff/docs consistency qua. Không FE,
+      API/schema/dependency/config changes trong mốc này.
+- [x] Date/PIC/allowed target field contract từng non-CM type, gồm exact-null
+      restoration có guards; hoàn tất09/10, bằng chứng ở mốc tiếp theo.
+- [ ] Browser app upload từng non-CM type trước khi mở gate; xử lý PM date/duration
+      side effect đã đo trong field proof trước browser UAT.
+
+[Bảng WO/item và phạm vi bằng chứng](maximo-write-contract.md). Chỉ E&I Onshore test
+open root WO đại diện trong tháng10; không suy rộng sang discipline/connection/type
+không thấy trong inventory. Chưa deploy/commit/push hoặc mở production/Offshore.
+
+## Field contract non-CM — 2026-10-09 (đã nghiệm thu)
+
+- [x] Chủ dự án yêu cầu kiểm chứng ngày lịch/PIC/allowed target và exact restore;
+      áp dụng7 type đã qua duration proof. PM/CFT target luôn cấm.
+- [x] Operator-only field plan bất biến theo label/payload, exact original null schedule
+      pair/PIC restoration và exact original PIC ngoài crew (preflight no-op trước
+      positive). Giữ default duration probe và app gate, không mở API clear/null.
+- [x] 263 related tests gồm isolated PostgreSQL qua; Ruff toàn backend qua.
+      Independent Sol/high review new field-mode không còn P1 sau fixes: diagnostic-only
+      không được chạy positive fields; mọi duration-mode chỉ estdur; low-level payload
+      numeric/finite/bounds/exact serialization được kiểm tra trước intent/network.
+      Main kiểm tra fixes, không chạy thêm independent review cho minor guard.
+      Tests/review focused new field-mode boundary trước live; audit từng POST,
+      recheck quyền/current WO và dừng unknown, không fallback/unconditional retry.
+- [x] Live từng type tuần tự: schedule/PIC/allowed target positive rồi restore từng
+      ca về toàn bộ baseline; độc lập audit cuối, giữ nháp cũ và giải phóng reservation
+      chỉ khi kết quả đã xác minh.
+
+Live preflight ban đầu chưa chạy: phiên Entra hết hạn, active verified session guard
+dừng trước network/reservation. Ngày09/10 đã sửa login503: backend local được launch
+trong sandbox có proxy từ chối kết nối (ProxyError/WinError10061); cùng settings MSAL
+ngoài sandbox tạo flow được. Khởi động lại owned backend với network permission phù hợp,
+GET login303 Microsoft/secure flow cookie, readiness200; browser callback/SSO thành công
+Nhat Nguyen Hoang Onshore test/E&I. Không sửa credential/TLS/grants hoặc tạo session giả.
+Sau khi login phục hồi đã capture fresh plans trước live field mutations.
+
+Main full backend590 tests qua (4 known warnings) sau tất cả fixes ngày09/10;
+PostgreSQL/backup-restore và app CM gate regressions có trong suite. Không đánh dấu
+schedule/PIC/target non-CM đã verified chỉ từ mocks.
+
+Login đã phục hồi như bằng chứng bên trên. Fresh7 preflight đã qua, baselines/typed
+plans ghi `.cache/p7-fields-types-initial.json`. Phép thử PM P13469691 dừng unknown
+với reservation giữ lại: schedule+1:07:13 đã áp dụng đúng/HTTP204, nhưng Maximo tự
+đổi estdur25→21 (quan sát readback, chưa biết server rule/config). Fraction25.25 và
+restore25 trước đó đều exact; target/PIC chưa đổi. Lúc dừng các type khác chưa gửi.
+Sau đó chuẩn bị scoped audited recovery ngày lịch gốc + duration25, freshconditional và
+exactsixfield readback trước release. Không gọi lại wholeprobe hoặc retry mù.
+
+Recovery PM đã hoàn tất: request ngày gốc+estdur25 có HTTP204 nhưng readback còn21;
+ngày/PIC/target đều đúng gốc. Phase riêng duration-only, chỉ sau settled204 và fresh
+pin/otherfields exact, gửi estdur25 HTTP204; readback original_state_exact=true và
+reservation_released=true. Hai immutable recovery plans/intent giữ nguyên lịch sử
+unknown; không lặp payload trước. Recovery PostgreSQL17 tests qua, gồm timeout giữ
+unknown và cấm replay. Đã cập nhật schedule experiment để ghi nhận auto duration
+và restore duration riêng, trước khi thử tiếp bảy type.
+
+Nghiệm thu hoàn tất09/10: PM/CFT/REC/OVERHAUL/MoD/General/Routine đều confirmed,
+schedule/PIC/fraction và allowed targets có positive readback/exact restore; PM/CFT
+zero target payloads. Date/PIC original null được restore thật, MoD SONNA gốc
+được phục hồi. PM schedule tự tính25→21, sau date restore gửi duration-only trả25;
+sáu type khác duration không đổi khi cập nhật ngày. Audit độc lập448 events,
+84 unique TXIDs/intent/results (7 wrong-token412,77 còn lại204), all6fields bằng
+initial originals, zero reservations; bốn source drafts cũ giữ version/membership.
+Evidence `.cache/p7-fields-types-audit.json` và receipts/initial/recovery artifacts.
+Main full backend616 passed/4 known warnings, Ruff qua; không thay API/schema/
+dependencies/config/gate trong field milestone. Login503 đã xử lý và browser vào
+Work Orders đúng Onshore test/E&I, bằng chứng `.cache/p7-login-workorders-recovered.jpg`.
+
+- [x] Ưu tiên tiếp: xử lý preview/upload semantics ngày và duration PM dựa trên
+      side effect đã đo; API app phải báo đúng kết quả khi Maximo tính lại duration.
+- Coverage sender/UAT riêng từng mã type được thay bằng gate chung tám mã và tests
+      theo hai nhóm target theo quyết định chủ dự án2026-10-09. PM đơn/nhóm và CFT
+      duration đã qua; không đánh dấu các browser type chưa chạy là đã nghiệm thu.
+
+## Preview/readback duration PM — 2026-10-09
+
+- [x] Cảnh báo theo WO ở preview nháp đơn/nhóm và API upload preview khi PM thực
+      sự đổi schedstart hoặc schedfinish. Duration edit tự đổi finish cũng cảnh báo;
+      không đoán calendar hoặc con số duration thực tế trước upload.
+- [x] Sau known successful write, chỉ xác nhận duration Maximo tính lại khi PM đổi
+      ngày, estdur không có actual change và toàn bộ baseline khác exact. Audit lưu
+      expected/actual/full snapshot/revision trước confirmed; finalize và reconcile
+      yêu cầu pinned actual snapshot exact, không dung thứ drift về sau.
+- [x] Explicit duration mismatch vẫn unknown/reserved, giữ nháp, trả expected/actual
+      cho UI; timeout không được suy ra recalc success. Không POST bổ sung hoặc retry.
+      Khi reconcile đạt exact expected, receipt bỏ mismatch hiện tại, audit cũ giữ lại.
+- [x] Mọi preview item trả warnings[], mọi receipt item trả duration_result|null;
+      FE kiểm tra code/state và duration finite/nonnegative/bounds. Dữ liệu duration
+      không hợp lệ có display null, không phá receipt của cả nhóm.
+- [x] Main full backend629 passed/4 known warnings; backend focused51 PG tests,
+      Ruff qua. Independent Sol/high review không có P1; P2 cảnh báo local thiếu
+      finish-only đã sửa, main kiểm tra lại. Full FE181 tests qua, typecheck/lint/build
+      qua, gồm batch100/200WO và warnings theo từng PM. Không migration/dependency.
+- [x] Browser real Onshore test/E&I preview P13469691/BD1/536549 đã hiện cảnh báo
+      và gate upload vẫn đóng. Nháp kiểm chứng riêng a043956f-4fce-4fbf-9237-95ba6240aac4
+      v1 được giữ để xem; bốn source drafts cũ giữ version/membership. Read-only audit
+      xác nhận PM exact original six fields/25h và zero reservations. Không gửi WO
+      mutation trong mốc này. Evidence `.cache/pm-duration-preview-browser.jpg`,
+      `pm-duration-browser-audit.json`, `pm-duration-full-tests.txt`.
+
+Ở mốc preview này chưa nghiệm thu PM app upload thật. Mốc browser tiếp theo bên dưới
+đã xác minh PM đơn; PM/CFT target vẫn cấm, production/Offshore vẫn khóa.
+
+## Browser PM upload/restore — hoàn thành phạm vi đơn Onshore TEST 2026-10-09
+
+- [x] Sender native_rowstamp_test hỗ trợ CM/PM dưới opt-in hiện có, app dev/test và
+      configured Onshore TEST; fresh scoped read/typed native pin/actor intent giữ
+      nguyên. CFT/REC/OVERHAUL/MoD/General/Routine, production và Offshore vẫn khóa.
+- [x] Immutable actor-scoped receipt restore_source.before giữ original PM khi source
+      đã finalized. UI giữ first origin theo principal/connection/discipline/site/WO;
+      date-only rồi duration-only proposals đều qua save/preview/upload bình thường.
+      Không automatic POST/restore; PIC/target/type drift hoặc original ngày null khóa
+      restore. Full reload chưa có UI nạp original từ history, audit server vẫn giữ.
+- [x] Browser P13469691/BD1/536549 đổi lịch chỉ schedstart/schedfinish: HTTP204,
+      confirmed và source finalized, Maximo duration25→21 có immutable actual snapshot.
+      Restore cặp ngày gốc30/10 06:30→31/10 17:30+07 HTTP204/duration21; phase riêng
+      chỉ estdur25 HTTP204, original all6 exact. Reopen không còn restore region/nháp.
+- [x] Read-only independent audit19events,3unique transactions/3intents/3results204,
+      không extra request, zero active reservations. PICnull/target không đổi hoặc
+      outbound; bốn nháp cũ/năm members giữ exact version/baseline/proposals.
+      Evidence `.cache/pm-browser-before-audit.json`, `pm-browser-final-audit.json`,
+      `pm-browser-{upload-preview,positive,dates-restored,restored}.jpg`.
+- [x] Backend641 tests/4 known warnings, frontend187 tests/typecheck/lint/build qua.
+      Review Sol/high không có P1; ba P2 nullable-origin parser, interrupted receipt
+      recovery first-origin và semantic date/duration equality đã sửa. Main kiểm tra
+      fixes, recovery lookup integration và phase-by-phase browser UAT. Không migration
+      hoặc runtime dependency. Credits interruption đã giải quyết sau owner bổ sung,
+      standard browser API hoạt động trở lại, không workaround approval rejection.
+- [x] Browser PM nhóm hai WO và restore từng WO đã qua mốc tiếp theo bên dưới;
+      explicit-duration mismatch vẫn chỉ synthetic/PostgreSQL, chưa live cố ý.
+- [x] Sender CFT và browser duration-only upload/restore đã qua mốc tiếp theo.
+- CFT app lịch/PIC/nhóm và browser từng type là giới hạn bằng chứng lịch sử;
+      chủ dự án không yêu cầu nghiệm thu riêng từng mã nữa. Nghiệm thu nhóm hỗn hợp
+      theo hai nhóm target thay thế; null clear, production/Offshore và scope rộng
+      vẫn chưa được mở bởi quyết định này.
+
+## Browser PM nhóm và CFT duration — 2026-10-09
+
+- [x] September E&I PM nhóm H14286978/BD1/2458816 (26h/PICnull) và
+      H14288340/BD1/2461540 (24h/PICNGOCNH). Fresh preview có warning riêng từng WO;
+      batch0104725f-5e51-474d-80cb-ee5bfb701b04 chỉ gửi schedstart/schedfinish,
+      cả hai confirmed/source finalized. Duration thực tế lần này giữ26/24h;
+      không suy mọi PM đều recalculates từ kết quả PM tháng10 trước đó.
+- [x] Restore từng PM qua browser origin riêng: PM1 ngày16/09 06:30→30/09 18:30,
+      PM2 ngày01/09 06:30→15/09 18:30+07. Hai request204/datepair-only, all6 original
+      exact; không cần duration POST vì duration chưa đổi. PM1 origin clear không
+      xóa origin PM2; reopen từng WO sau restore không còn region/marker nháp.
+- [x] CFT H14302007/BD1/2488922 browser6→6.25→6h, hai request204 chỉestdur;
+      schedule/PICnull và target gốc giữ nguyên. PM/CFT target khóa UI và backend;
+      thêm CFT positive sender/receipt/duplicate/recovery PG coverage và target/
+      clear/mismatched-type/revoked-authority unit tests. CM/PM/CFT opt-in Onshore
+      TEST dev/test, năm type khác và production/Offshore vẫn khóa.
+- [x] Independent read-only final audit:3WO all6original exact,6confirmed/finalized
+      items,6unique TXIDs/6intents/6native conditionalresults204,36events;
+      noextra POST, noPIC/targetpayload, zero active reservations. Bốn nháp cũ/năm
+      members giữ exact version/baseline/proposals. Evidence
+      `.cache/pm-group-cft-before-audit.json`, `pm-group-cft-final-audit.json`, `pm-group-first-restored.jpg`,
+      `pm-group-second-restored.jpg`, `cft-browser-positive.jpg`, `cft-browser-restored.jpg`.
+- [x] Main full backend644 passed/4 known warnings, Ruff và diff--check qua.
+      Full run trong sandbox bị Docker/temp-file permission errors; chạy lại với
+      local infrastructure permission phù hợp đạt toàn bộ. Evidence
+      `.cache/pm-group-cft-backend-verified-tests.txt`. Frontend không đổi ở mốc này;
+      bộ187 tests/typecheck/lint/build của mốc PM đơn vẫn là evidence trước đó.
+- [x] Khoanh nguyên nhân Retrieve3months502 bằng read-only: firstcollection200,
+      nextPage advertised https://maximo.biendongpoc.vn khác TEST configured
+      http://bd-maxdev.biendongpoc.vn, reader dừng `Unsafe paging response` và không
+      gọi host đó. Monthly September166/October117 đã qua browser. Không bỏ URL
+      guard/đổi config/server; `.cache/pm-group-cft-read-diagnostic.json` giữ sanitized
+      origin-only evidence. Không kết luận từ log/config server không truy cập được.
+- Chủ dự án xác nhận test dùng DB sao chép production nên next-page mang host
+      production; không yêu cầu sửa server hoặc rewrite paging trong mốc này.
+      Vẫn chặn host khác khi đang chọn test. Pagination production chưa được
+      kiểm chứng, cần kiểm tra khi nghiệm thu kết nối production, không suy đã qua.
+- Yêu cầu mở guard/browser REC rồi từng mã khác được chủ dự án thay bằng hai nhóm
+      target ngày2026-10-09; xem quyết định và kiểm chứng bước1 bên dưới.
+
+## Quyết định gate theo hai nhóm target — 2026-10-09
+
+- Chủ dự án chốt khác biệt quyền target giữa PM/CFT và các type còn lại; không yêu
+  cầu nghiệm thu browser riêng từng mã. Các live operator contract/duration/fields
+  bảy non-CM đã verified trước đó vẫn là evidence; không đổi thành browser evidence.
+- Sender/preview dùng chung domain contract tám mã đã biết:
+  CM/PM/CFT/REC/OVERHAUL/MoD/General/Routine. PM/CFT luôn cấm target, sáu mã còn lại
+  chỉ đổi target với explicit change_target trong immutable saved proposal.
+  Mã không hỗ trợ vẫn fail closed; production/staging/Offshore và default opt-in
+  closed giữ nguyên. Không đổi grants, credentials, config, schema hoặc frontend.
+- [x] Hoàn tất tests tự động native sender/PG API mọi mã: allowlisted targets với
+      explicit intent, missing intent, PM/CFT forbidden targets, scope/authorization,
+      durable intent/duplicate/conflict/timeout reconciliation và source finalization.
+      Cả targstartdate/targcompdate:32 ca API qua; mỗi payload chỉ trường target đã
+      chọn cùng rowstamp. Main full backend694 passed/4 known warnings, Ruff và
+      diff--check qua; evidence `.cache/two-target-groups-backend-tests.txt`.
+      Main rà soát gate/validation; backend local đã nạp lại, readiness200
+      database-schema-only. Không live write Maximo trong bước1; frontend không đổi.
+- [x] Bước2: nghiệm thu nhóm hỗn hợp PM/CFT/WO được đổi target trên TEST,
+      preview/receipt/readback/restore từng WO. Chọn fixture restore chính xác;
+      không bổ sung clear/null hoặc viết production trong phạm vi này.
+      Hoàn tất ngày2026-10-09; bằng chứng chi tiết tại mục mixed browser dưới đây.
+- [ ] Sau nghiệm thu chức năng: kiểm tra deployment Ubuntu/Docker/HTTPS, Entra callback,
+      Maximo routes và backup/restore. Production setup cần IT và kiểm chứng riêng.
+
+## Logo BDPOC trên web — 2026-10-09
+
+- [x] Thêm PNG do chủ dự án cung cấp vào assets frontend và header chung, có alt text, giữ tỷ lệ trên nền trắng để đọc rõ ở header tối. Browser preview đã xác nhận hiển thị; evidence: .cache/bdpoc-logo-preview.png.
+- [x] TypeScript/build và ESLint qua. Build cần quyền chạy tiến trình con ngoài sandbox (Vite spawn EPERM trong sandbox). Không thay đổi luồng WO/upload hoặc backend.
+- Tiếp theo ưu tiên: nghiệm thu nhóm hỗn hợp PM/CFT/WO được đổi target trên Onshore test theo mục gate hai nhóm phía trên.
+
+## Favicon Work Order Scheduler — 2026-10-09
+
+- [x] Tạo favicon SVG chữ WOS (WO Scheduler) theo yêu cầu chủ dự án, màu trắng trên nền accent #0f62fe của web, góc bo tròn; dùng paths để không phụ thuộc font. Gắn rel=icon vào index.html.
+- [x] TypeScript/build qua sau đổi WO thành WOS; browser render SVG và DOM trang work-orders xác nhận link favicon. Evidence .cache/favicon-wos-preview.png; không thay đổi dữ liệu hoặc nghiệp vụ.
+- Tiếp theo ưu tiên: nghiệm thu nhóm hỗn hợp PM/CFT/WO được đổi target trên Onshore test.
+
+## Mixed browser PM/CFT/allowed target — 2026-10-09
+
+- [x] Bổ sung Target Start/Finish từng dòng BatchPlanner, tự đặt explicit intent;
+      PM/CFT khóa cả controls và handler, không có group target apply. Undo/Reset
+      giữ đúng các trường khác; nhập lại baseline gỡ target change và intent.
+      Independent review phát hiện một P2 về thay đổi giả khi nhập lại baseline;
+      đã sửa và main xác nhận browser số dòng đổi3→2→3. Frontend190 tests,
+      typecheck/lint/build/diff-check qua. Backend không đổi;694 tests của bước1.
+- [x] Baseline bất biến trước mọi write: PM P13469691/BD1/536549,
+      CFT H14302007/BD1/2488922, REC P13469038/BD1/535211, Onshore TEST E&I.
+      Forward cùng batch1bcf571d-c65a-463c-839b-849ff2386480 confirmed3:
+      PM datepair Oct30 07:30→Oct31 08:30 (duration25→21 server-derived);
+      CFT duration6→6.25 giữ lịch/PICnull; REC targetstartOct1 10:38→11:38
+      explicit change_target=true, không đổi targetfinish/lịch/duration/PIC.
+- [x] Restore qua browser: PM originaldatepair Oct30 06:30→Oct31 17:30
+      batch22988ae2-49ed-491a-8370-554e2df1c556 rồi duration-only25
+      batche98ce9a3-9800-4b5e-bee6-c10f35fcb6ad. CFTduration6 và RECtargetstart10:38
+      cùng restorebatch8dec2205-ad11-4a5f-b018-330677811271 confirmed2.
+      Reopen PM hiển thị gốc25 và không còn restore-origin section; REC targetgốc.
+- [x] Final independent read-only audit: cả3WO all6original semanticexact,
+      7unique transactions/7intents/7native conditionalresponses204,4batches,
+      43events, allconfirmed/finalized, zero reservations. Chỉ RECtarget outbound
+      hai chiều có explicit intent; không PM/CFTtarget/PIC hoặc extraPOST.
+      Bốn nháp cũ/năm members giữ nguyên versions/baselines/proposals.
+      Evidence `.cache/mixed-target-{before,forward,final}.json`,
+      `mixed-target-upload-preview.png`, `mixed-target-pm-restored.png`,
+      `mixed-target-rec-restored.png`, `mixed-target-cft-restored.png`.
+- Giới hạn: một mixedgroup E&I TEST; không suy mọi WO/discipline/production đã qua.
+  Production/staging/Offshore vẫn khóa. Bước tiếp theo sẵn sàng: rà soát deployment
+  Ubuntu/Docker/HTTPS và backup/restore; endpoint/certificate/Entra production
+  cần thông tin IT và kiểm chứng riêng.
+
+## Thu gọn Work Orders theo browser comments — 2026-10-09
+
+- [x] Bỏ khối hướng dẫn nháp và khối account context (connection/system/environment/discipline/capability cùng link Settings bên dưới) đúng hai ghi chú của chủ dự án. Settings trên header vẫn truy cập được; thông báo kết quả upload/lỗi và backend authorization giữ nguyên.
+- [x] 62 tests WorkOrders qua; TypeScript/build/lint qua. Browser preview xác nhận hai khối đã bỏ; evidence .cache/work-orders-remove-notices.png. Điều chỉnh tests dùng navigation header và trạng thái Retrieve thay nội dung đã xóa; không live write Maximo.
+- Tiếp theo ưu tiên theo mốc nghiệm thu: rà soát deployment Ubuntu/Docker/HTTPS và backup/restore; thông tin kết nối production cần IT.
+
+## Review bố trí bộ lọc WO — 2026-10-09
+
+- [x] Bỏ badge Lập lịch / Nháp theo browser comment2. Review comment1: các khối Retrieve, help, nguồn, refresh, status và localfilters hiện tách nhiều hàng; dateflexbasis220px làm nút Retrieve xuống hàng tại viewport600px.
+- Đề xuất: gom nguồn/date/Retrieve thành thanh lấy dữ liệu gọn; chuyển help vào popover; sau Retrieve thu gọn thành summary khoảngngày có nút đổi, gộp count/update/selection vào một thanh; local search luôn hiện, các lọc phụ mở qua nút Bộ lọc kèm count. Desktop rộng hiện nhiều controls cùng hàng, viewport600px cho date+Retrieve một hàng riêng. Chưa triển khai sắp xếp bộ lọc vì ghi chú yêu cầu review/đề xuất.
+- [x] TypeScript/build qua; browser badge removed evidence .cache/work-orders-no-badge.png. Tiếp theo ưu tiên: triển khai phương án bộ lọc sau khi chủ dự án chọn; không thay đổi retrieve/date semantics hoặc protectiondraft.
+
+## Mockup bộ lọc trước/sau Retrieve — 2026-10-09
+
+- [x] Tạo hai hình đề xuất cùng viewport 600×742, màu Gray 10/Carbon blue và logo hiện tại: `.cache/wo-filter-proposal-before.png`, `.cache/wo-filter-proposal-after.png`. Bản trước gom nguồn/ngày/Retrieve; bản sau thu gọn khoảng ngày, giữ search, đưa các lọc phụ vào Bộ lọc, gộp count/time/update. Bảng sau bắt đầu tại y=313px và hiển thị tám dòng minh họa.
+- [x] Render bằng Edge headless từ HTML cục bộ, kiểm tra trực quan cả hai PNG. Dữ liệu bảng là minh họa, không phải kết quả đọc Maximo mới. Chỉ tạo artifact đề xuất; chưa sửa UI ứng dụng hoặc thực hiện API/write. Source tái tạo: `.cache/render-filter-proposal.cjs` và hai HTML cùng tên.
+- Tiếp theo: chủ dự án duyệt hai trạng thái; sau duyệt triển khai bố cục và kiểm chứng Retrieve, bộ lọc, selection và bảo vệ nháp trên browser.
+
+## Triển khai phần Retrieve đã duyệt — 2026-10-09
+
+- [x] Chủ dự án duyệt phần 1, yêu cầu giữ bảng và các thanh lọc hiện tại của phần 2. Gom nguồn WO, hai ngày Target Finish, nút Retrieve và trợ giúp vào một panel gọn; không thu gọn sau Retrieve, không đưa các lọc bảng vào menu. Giữ pagination nháp bên ngoài panel và toàn bộ handlers/quy tắc ngày/quyền/bảo vệ chỉnh sửa hiện tại.
+- [x] TypeScript/build/lint và 62 tests WorkOrders qua. Browser Onshore test Retrieve 01/10/2026 đến trước 01/12/2026 trả đủ 172 WO; search, Status, Lập lịch, Nháp, clear filters, group selection và các cột bảng hiện tại vẫn hiển thị. Evidence `.cache/work-orders-compact-retrieve.png`. Chỉ live read, không upload hoặc thay đổi nháp/Maximo.
+- Tiếp theo ưu tiên: chủ dự án nghiệm thu độ gọn phần Retrieve trong preview; sau đó tiếp tục rà soát deployment Ubuntu/Docker/HTTPS và backup/restore theo mốc đã nghiệm thu. Kết nối/certificate/Entra production cần thông tin IT.
+
+## Chuyển Nguồn WO vào bộ lọc bảng — 2026-10-09
+
+- [x] Chuyển selector Nguồn WO khỏi panel Retrieve, đặt đầu khối bộ lọc bảng cùng search/Status/Lập lịch/Nháp. Khối nguồn vẫn hiển thị khi chưa Retrieve hoặc kết quả rỗng để không mất đường chuyển sang/ra nguồn nháp. Giữ nguyên handlers, bảng, các bộ lọc dữ liệu và pagination nháp; bỏ CSS riêng cho nguồn trong heading cũ.
+- [x] 62 tests WorkOrders qua; TypeScript/build/lint qua. Cập nhật test đổi connection: nguồn vẫn khả dụng nhưng search/Status và dữ liệu cũ phải biến mất. Browser xác nhận nguồn nằm trong section bộ lọc, giữ 172 WO và khoảng ngày hiện tại; evidence `.cache/work-orders-source-table-filters.png`. Không live write hoặc thay đổi nháp.
+- Tiếp theo: nghiệm thu vị trí nguồn trong preview; tiếp tục rà soát deployment và backup/restore sau khi chốt giao diện.
+
+## Điều chỉnh Nguồn WO sang hàng Cập nhật — 2026-10-09
+
+- [x] Theo yêu cầu Undo của chủ dự án, bỏ Nguồn WO khỏi khối bộ lọc và chuyển sang phải hàng Cập nhật lần cuối/stale notice/Cập nhật. Các bộ lọc bảng trở lại bố cục trước khi thêm nguồn; nguồn vẫn khả dụng trước Retrieve hoặc khi kết quả rỗng.
+- [x] 62 tests WorkOrders, TypeScript/build/lint qua. Browser xác nhận Nguồn WO và nút Cập nhật cùng hàng ở viewport hiện tại (y350/y350.5), selector không nằm trong bộ lọc, giữ 172 WO và khoảng ngày. Evidence `.cache/work-orders-source-update-row.png`. Chỉ chỉnh giao diện; không live write hoặc thay đổi nháp.
+- Tiếp theo: nghiệm thu bố cục mới; tiếp tục rà soát deployment/backup/restore sau khi chốt giao diện.
+
+## Thu gọn khoảng ngày sau Retrieve — 2026-10-09
+
+- [x] Bổ sung phần chủ dự án nhắc còn thiếu: sau Retrieve thành công (kể cả kết quả rỗng), panel chỉ hiện khoảng ngày đã tải và nút Đổi khoảng ngày. Mở nút giữ dữ liệu/selection và không gọi API; thay ngày vẫn dùng bảo vệ nháp và xóa kết quả theo logic cũ. Retrieve thất bại giữ input mở. Lưu range đã tải trong React state, xóa khi mất quyền/clear, khôi phục đúng range khi đổi nguồn. Nguồn nháp hiện input bình thường; bảng/bộ lọc/hàng Cập nhật giữ bố cục đã duyệt.
+- [x] Hướng dẫn mở bằng summary ⓘ có accessible label/title. 63 tests WorkOrders qua (thêm success/open/failure regression); TypeScript/build/lint qua. Browser Onshore test tải đủ 172 WO, thu gọn đúng 01/10/2026 đến trước 01/12/2026; mở ngày giữ 172 dòng và hai giá trị, ⓘ mở hướng dẫn đúng. Evidence `.cache/work-orders-retrieve-collapsed.png`. Chỉ read, không upload/thay đổi nháp.
+- Tiếp theo: nghiệm thu phần tự thu gọn trên preview; tiếp tục deployment/backup/restore sau khi chốt giao diện.
+
+## Thay Nguồn WO bằng Nháp của tôi — 2026-10-09
+
+- [x] Theo phương án chủ dự án duyệt, thay dropdown Nguồn WO bằng nút Nháp của tôi trên hàng Cập nhật. Trong nguồn nháp hiện nút Quay lại WO đã tải. Giữ bộ lọc Nháp của bảng, phạm vi truy cập, pagination, snapshot từng nguồn và xác nhận bảo vệ thay đổi chưa lưu; không đổi API hoặc logic dữ liệu.
+- [x] Cập nhật tests chuyển nguồn sang click nút; 63 tests WorkOrders, TypeScript/build/lint và diff check qua. Browser Onshore test mở danh sách 5 WO có nháp, quay lại đủ 172 WO và khoảng ngày thu gọn trước đó. Evidence `.cache/work-orders-my-drafts-view.png`, `.cache/work-orders-my-drafts-button.png`. Chỉ đọc; không sửa/xóa nháp hoặc upload Maximo.
+- Tiếp theo: nghiệm thu hai nút chuyển danh sách; sau khi chốt giao diện tiếp tục rà soát deployment Ubuntu/Docker/HTTPS và backup/restore. Thông tin production/certificate/Entra cần IT.
+
+## Xóa hai note và rà soát button style — 2026-10-09
+
+- [x] Xóa hướng dẫn ⓘ và dòng đếm thành công “N WO đã lấy đầy đủ” theo hai browser comments. Giữ dòng Hiển thị N/N phía dưới bộ lọc và thông báo kết quả rỗng/lỗi. Bỏ CSS help không dùng; sửa dấu chấm còn thiếu của selector responsive `.retrieveDates` tại 480px được phát hiện khi rà CSS.
+- [x] 63 tests WorkOrders, TypeScript/build/lint qua. Browser giữ 172 WO, xác nhận hai note biến mất; evidence `.cache/work-orders-remove-help-count.png`. Tests dùng count Hiển thị thay count đã xóa.
+- [x] Review style: palette/typography Carbon Gray10/100 tự triển khai bằng CSS/native controls, chưa có component variants chung ngoài primary. Toolbar hiện 40px đồng nhất nhưng date-change viền/chữ xanh được override riêng, update/draft viền xám; destructive actions như xác nhận xóa nháp chưa có danger style. Retrieve căn giữa khác default trái; close panel 32px và links WO compact là ngoại lệ theo ngữ cảnh. Disabled gray là trạng thái có chủ đích.
+- Đề xuất chuẩn hóa variant theo vai trò: primary cho hành động chính; tertiary chung cho Đổi khoảng ngày/Cập nhật; ghost cho Nháp của tôi/clear filters/Đóng; danger cho xác nhận xóa nháp. Dùng chung chiều cao 40px/font14/18/padding/focus/hover/disabled, chỉ giữ compact size ở khu vực phù hợp. Chưa thay đổi style các nút trong task review này. Tham chiếu [Carbon Button guidelines](https://www.carbondesignsystem.com/building-blocks/core/components/button/guidelines): hierarchy, consistent variants, không trộn size trong cùng button group.
+- Tiếp theo ưu tiên: chuẩn hóa variants và áp vào WO/editor/upload theo phương án duyệt, kiểm chứng sáng/tối/disabled/focus; sau đó tiếp tục deployment/backup/restore.
+
+## Chuẩn hóa nút WO và panel — 2026-10-09
+
+- [x] Áp reusable primary/tertiary/ghost/danger/dangerGhost cho WorkOrders, DraftEditor, BatchPlanner và UploadPreviewPanel. Base cùng font14/18, min-height40px, padding10/16, căn trái, hover/focus; touch min44px. Primary cho thao tác chính, tertiary cho đối chiếu/cập nhật/restore, ghost cho đóng/reset/chuyển danh sách/clear, danger cho xác nhận xóa và dangerGhost cho bước mở xác nhận. Bỏ overrides nút retrieveSummary/panelHeading/căn giữa Retrieve. Giữ WO links/disclosure nhỏ theo ngữ cảnh; text dài có thể tăng chiều cao khi wrap.
+- [x] Disabled áp cùng theme tokens, opacity1, không giữ màu primary/danger; focus-visible viền2px có offset2px. Filled danger dùng token #da1e28, hover#ba1b23 ở cả hai theme để chữ trắng vẫn có tương phản; dangerGhost dùng error text theo theme.
+- [x] Frontend full191/191 tests, TypeScript/lint/build và diffcheck qua. Main rà CSS/class assignment và kiểm chứng live browser trang WO/nháp đơn/nháp nhóm ở Gray10/Gray100: toolbar40px, primarybluewhite/tertiaryoutline/ghosttransparent; disabledgray, keyboard focus2px trên Cập nhật, xác nhận xóa, đối chiếu nhóm. Chỉ mở rồi Hủy xác nhận xóa; không gửi/save/delete/upload. Giữ172WO và một dòng user chọn, đóng panels và khôi phục g10.
+- Evidence `.cache/wo-buttons-{light,dark}-focus.png`, `wo-panel-buttons-{light,dark}-focus.png`, `wo-batch-buttons-light.png`, `wo-batch-buttons-dark-focus.png`. Upload control dùng cùng variants và có unit tests; browser không gửi upload hay tạo trạng thái lỗi/unknown để kiểm tra style.
+- Tiếp theo ưu tiên: nghiệm thu style trong preview; tiếp tục rà soát deployment Ubuntu/Docker/HTTPS và backup/restore. Production endpoint/certificate/Entra cần IT trước triển khai production.
+
+## Chuyển nút nháp cạnh Lập lịch nhóm — 2026-10-09
+
+- [x] Chuyển Nháp của tôi/Quay lại WO đã tải từ hàng Cập nhật xuống ngay bên phải Lập lịch nhóm trong cùng cụm thao tác. Cụm chuyển danh sách luôn khả dụng cả khi chưa Retrieve, rỗng, lọc không có kết quả hoặc chỉ có quyền đọc. Giữ ghost style và các handlers/snapshot/bảo vệ nháp hiện tại.
+- [x] 63 tests WorkOrders, TypeScript/build/lint qua. Browser: Nháp của tôi ở cùng y536 và bên phải nút nhóm; nguồn nháp 5WO có Quay lại ở cùng y647 và bên phải nhóm. Quay về172WO giữ một dòng user chọn. Evidence `.cache/wo-drafts-next-to-batch.png`, `.cache/wo-back-next-to-batch.png`. Không save/delete/upload.
+- Tiếp theo: nghiệm thu vị trí toolbar nhóm; tiếp tục deployment/backup/restore sau khi chốt giao diện.
+
+## Nghiệm thu chuyển màn và review layout nháp — 2026-10-09
+
+- [x] Live browser Onshore test: WO đã tải172, Nháp của tôi5; quay lại giữ172WO, khoảng01/10 đến trước01/12 và checkbox P13431393. Nháp search P13462775 giảm1/5; chuyển qua WO rồi quay lại giữ search riêng. Search không khớp cho0 dòng vẫn có Quay lại, thông báo đúng; khôi phục search nháp rỗng, trở về WO/g10 với dòng chọn ban đầu. Không lưu/xóa/upload/đổi giá trị WO.
+- [x] Review tại viewport928×884: panel retrieval WO height72px, drafts127px; drafts thêm hàng pagination56px. Top bảng WO y592, drafts y703 (dịch111px). Dùng cùng table/filter/button styles/cột là nhất quán; context header đều Work Orders, retrieval dates vẫn hiện khi đang ở nguồn nháp dù không áp dụng. Draft filter tại nguồn nháp chỉ có Có5/Không0, hai pagination buttons disabled ở trang duy nhất.
+- Evidence `.cache/uat-layout-loaded-wo.png`, `.cache/uat-layout-my-drafts.png`. Automated source preservation/dirty guard/error/connection checks đã qua trong63WorkOrders tests ở task trước; không chạy lại khi chỉ review/read UI. Live nghiệm thu không tạo lỗi mạng/unknown upload hoặc kiểm chứng phân trang nhiều trang vì nguồn hiện chỉ5WO.
+- Đề xuất, chưa triển khai: (1) nguồn nháp thay panel Retrieve bằng summary gọn cùng chiều cao, thể hiện Nháp của tôi/phạm vi và không phụ thuộc ngày; giữ action toggle tại cụm nhóm đã duyệt; (2) ẩn filter Nháp thừa riêng trong nguồn nháp nhưng giữ Status/search/Lập lịch ở vị trí ổn định, gom pagination vào count/footer và chỉ hiện khi cần; (3) nhãn hành động nhóm theo dữ liệu đã lưu: Mở nháp nhóm khi chọn đúng một nhóm, tránh gọi Lập lịch nhóm cho mọi WO đã có kế hoạch. Cần giữ snapshot/dirty guard/date semantics và thông báo rỗng/lỗi. Bước sẵn sàng đầu tiên: triển khai1 để tránh hiểu nhầm ngày và kéo bảng nháp lên; sau chốt UI tiếp tục deployment/backup/restore.
+
+## Triển khai layout nháp đã duyệt — 2026-10-09
+
+- [x] Thực hiện cả bốn đề xuất: nguồn nháp có summary Nháp của tôi/phạm vi discipline/không phụ thuộc ngày, ẩn Retrieve inputs; pagination vào count row và chỉ hiện nếu có trang trước/tiếp (kể cả trang rỗng); ẩn Nháp filter và bỏ tác động filter đó ở nguồn nháp, giữ search/status/planning cùng vị trí bằng slot layout; chọn cùng saved batch đổi nhãn Mở nháp nhóm(N), nguồn nháp đơn/trộn khác nhóm khóa nút và có guidance bên ngoài cụm button. Nút chuyển nguồn vẫn sát bên phải action nhóm. Các API/dirty guard/snapshot/date rules giữ nguyên.
+- [x] 67 WorkOrders tests, TypeScript/lint/build và diffcheck qua. Thêm tests single-page pagination hidden/empty later page navigation/same-group label/single-mixed disabled, cập nhật tests date/filter/source. Main rà source và live UI. Không chạy lại backend vì không thay đổi backend.
+- [x] Phiên cũ hết hạn lúc bắt đầu nghiệm thu; app xóa workspace đúng quy tắc. SSO đăng nhập lại thành công, Retrieve Onshore test01/10 đến trước01/12 đủ172WO. Nguồn nháp5WO: panel72px và bảng y592px, khớp WO đã tải và cao hơn bản cũ111px; ngày không hiển thị, filterNháp và pagination một trang không còn. Quay về giữ172WO và hai giá trị ngày; bộ lọc Nháp hiện lại. Chọn P13462775/P13465570 mở đúng nhóm2WO/v1; chọn nháp đơn hoặc nháp đơn trộn nhóm khóa action và hướng dẫn đúng, không làm mất nút quay về. Đã đóng panel và bỏ các lựa chọn tạo trong nghiệm thu, trả preview g10/WO172. Không save/delete/upload hoặc chỉnh WO.
+- Evidence `.cache/drafts-layout-loaded-wo.png`, `.cache/drafts-layout-my-drafts.png`, `.cache/drafts-layout-same-group.png`. Multi-page drafts được kiểm chứng synthetic tests; live nguồn chỉ5WO nên không khẳng định nghiệm thu nhiều trang thật.
+- Tiếp theo ưu tiên: chủ dự án nghiệm thu layout nguồn nháp mới; tiếp tục rà soát deployment Ubuntu/Docker/HTTPS và backup/restore. Thông tin production endpoint/certificate/Entra cần IT trước rollout.
+
+## Ẩn/hiện bộ lọc và tận dụng tiêu đề WO — 2026-10-09
+
+- [x] Thêm nút Ẩn/Hiện bộ lọc bên phải Work Orders khi có dữ liệu, kèm số điều kiện đang áp dụng. Dùng aria-expanded/aria-controls và giữ controls mounted khi ẩn để bảo toàn search/status/planning/draft filter, kết quả và dòng chọn; không gọi Retrieve khi toggle. Áp dụng cả WO đã tải và Nháp của tôi. Bỏ dòng hướng dẫn “Bảng gọn · bấm Work Order để xem đầy đủ thông tin trong panel”.
+- [x] 68/68 WorkOrders tests, TypeScript/build/lint và diffcheck qua. Regression kiểm chứng hide/show giữ search và checkbox, accessible search ẩn đúng và không Retrieve thêm. Browser Onshore test tải172WO, search P13431393/chọn dòng rồi hide/show giữ1/172 và checkbox; nguồn nháp5WO toggle đúng, quay lại giữ172WO. Tại viewport928×884, ẩn bộ lọc kéo bảng từ y560 lên y407 (thêm153px cho bảng). Trả preview về bộ lọc hiện, search rỗng, selection0; không save/delete/upload.
+- Evidence `.cache/wo-filters-hidden.png`, `.cache/wo-filters-visible.png`. Không kiểm chứng reload persistence cho trạng thái toggle vì tùy chọn này chỉ thuộc phiên trang hiện tại.
+- Tiếp theo ưu tiên: nghiệm thu vị trí toggle và diện tích bảng trong preview; sau chốt UI tiếp tục rà soát deployment Ubuntu/Docker/HTTPS và backup/restore. Production endpoint/certificate/Entra cần IT trước rollout.
+
+## Dời nút bộ lọc cạnh Cập nhật — 2026-10-09
+
+- [x] Theo browser comment mới: dời nút Ẩn/Hiện bộ lọc khỏi tiêu đề xuống ngay bên phải Cập nhật; mặc định bộ lọc ẩn. Giữ số điều kiện đang áp dụng, aria-expanded/aria-controls và toggle không xóa điều kiện/dòng chọn.
+- [x] 68 WorkOrders tests, TypeScript/build/lint và diffcheck qua. Regression xác nhận mặc định hidden, toggle ngay sau Cập nhật và không nằm trong title. Browser Onshore test Retrieve172WO xác nhận mặc định ẩn; show/hide hoạt động, hai nút cùng y255 và toggle nằm bên phải. Preview giữ172WO, bộ lọc ẩn, selection0; không save/delete/upload. Evidence `.cache/wo-filter-toggle-next-to-refresh.png`.
+- Tiếp theo: nghiệm thu hàng Cập nhật mới; sau chốt UI tiếp tục rà soát deployment/backup/restore, thông tin production/certificate/Entra cần IT trước rollout.

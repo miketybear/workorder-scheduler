@@ -1,22 +1,33 @@
-import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { BatchError, deleteDraft, openBatch, prepareBatch, saveBatch, editableFields, type BatchRow, type Changes,
   type DraftNotice, type EditableField, type Saved, type Scope } from '../api/drafts';
 import { localDateTime, zonedDateTime } from '../api/dates';
 import { RetrievalError } from '../api/workOrders';
-import { scheduledChange, validateChanges } from './editing';
+import { changedValue, scheduledChange, validateChanges } from './editing';
 import { displayDate, rowKey } from './presentation';
 import { BatchWorkOrderInfo } from './BatchWorkOrderInfo';
 import styles from '../App.module.css';
+import { UploadPreviewControls, type FinalizedUpload, type UploadConnection } from './UploadPreviewPanel';
+import type { UploadRecoveryEntry } from '../api/drafts';
 
 export type BatchSelection = { keys: { site_id: string; workorder_id: string }[] } | { draftId: string };
-const fields = ['schedstart', 'schedfinish', 'assignedtechname', 'estdur'] as const;
+const fields = ['schedstart', 'schedfinish', 'assignedtechname', 'estdur', 'targstartdate', 'targcompdate'] as const;
 const inputFields = ['schedstart', 'assignedtechname', 'estdur'] as const;
-const labels = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish', assignedtechname: 'Assigned PIC', estdur: 'Est. Duration' };
+const targetFields = ['targstartdate', 'targcompdate'] as const;
+const labels = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish', assignedtechname: 'Assigned PIC', estdur: 'Est. Duration',
+  targstartdate: 'Target Start', targcompdate: 'Target Finish' };
+const pmScheduleChanged = (row: BatchRow) => row.baseline.worktype.toUpperCase() === 'PM' &&
+  (['schedstart', 'schedfinish'] as const).some((field) => (row.changes[field] ?? row.baseline[field]) !== row.baseline[field]);
+const targetForbidden = (row: BatchRow) => ['PM', 'CFT'].includes(row.baseline.worktype.toUpperCase());
 
-export function BatchPlanner({ selection, scope, timezone, writable, suspended, refreshVersion = 0, onDirty, onDenied, onClose, onDraftReady }: {
+export function BatchPlanner({ selection, scope, timezone, writable, suspended, active = true, refreshVersion = 0, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, connection }: {
   selection: BatchSelection; scope: Scope; timezone: string; writable: boolean; suspended: boolean;
+  active?: boolean;
+  connection?: UploadConnection;
   onDirty: (value: boolean) => void; onDenied: () => void; onClose: () => void;
   onDraftReady?: (draft: DraftNotice) => void;
+  onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>;
+  onUploadRequestCreated?: (entry: UploadRecoveryEntry) => void;
   refreshVersion?: number;
 }) {
   const [rows, setRows] = useState<BatchRow[]>([]);
@@ -32,6 +43,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   const [showPreview, setShowPreview] = useState(false);
   const [history, setHistory] = useState<BatchRow[][]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [uploadLocked, setUploadLocked] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const infoId = useId();
   const panel = useRef<HTMLElement>(null);
@@ -103,12 +115,33 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   const pics = rows.length ? rows[0].allowed_pics.filter((pic) => rows.every((row) => row.allowed_pics.includes(pic))) : [];
   const changed = rows.filter((row) => editableFields.some((field) => row.changes[field] !== undefined));
   const problems = Object.fromEntries(rows.map((row) => [rowKey(row.item), issues[rowKey(row.item)] || validateChanges(row.baseline, row.changes, row.allowed_pics)]));
-  const blocked = !verified || busy || suspended || !writable;
+  const blocked = !verified || busy || suspended || !writable || uploadLocked;
+  const uploadContext = JSON.stringify([saved?.draft_id, saved?.version, scope, timezone, connection, refreshVersion,
+    rows.map((row) => [row.item.siteid, row.item.workorderid, row.item.wonum, row.baseline_token, row.allowed_pics, row.changes])]);
+  const uploadSelection = useMemo(() => rows.map((row) => ({ site_id: row.item.siteid, workorder_id: row.item.workorderid, wonum: row.item.wonum })), [rows]);
   function stage(next: BatchRow[]) {
     setHistory((previous) => [...previous.slice(-19), rows]); setRows(next); setNotice(''); setError(''); setShowPreview(false);
   }
   function edit(index: number, field: EditableField, value: string) {
     stage(rows.map((row, i) => i === index ? { ...row, changes: scheduledChange(row.changes, row.baseline, field, value) } : row));
+  }
+  function editTarget(index: number, field: typeof targetFields[number], value: string) {
+    const row = rows[index];
+    if (!row || targetForbidden(row)) return;
+    let changes: Changes = { ...row.changes };
+    if (value) changes = changedValue(changes, row.baseline, field, value);
+    else delete changes[field];
+    if (targetFields.some((targetField) => changes[targetField] !== undefined)) changes.change_target = true;
+    else delete changes.change_target;
+    stage(rows.map((item, i) => i === index ? { ...item, changes } : item));
+  }
+  function resetTargets(index: number) {
+    const row = rows[index];
+    if (!row || targetForbidden(row)) return;
+    const changes = { ...row.changes };
+    targetFields.forEach((field) => delete changes[field]);
+    delete changes.change_target;
+    stage(rows.map((item, i) => i === index ? { ...item, changes } : item));
   }
   function apply() {
     if (!Object.keys(group).length) return;
@@ -164,7 +197,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
   return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy) onClose(); }} className={`${styles.sidePanel} ${styles.batchPanel}`} role="dialog" aria-label="Lập lịch hàng loạt" aria-modal="false">
-    <div className={styles.panelHeading}><h2>Lập lịch {rows.length || ('keys' in selection ? selection.keys.length : '')} WO</h2><button disabled={busy} onClick={onClose}>Đóng nhóm</button></div>
+    <div className={styles.panelHeading}><h2>Lập lịch {rows.length || ('keys' in selection ? selection.keys.length : '')} WO</h2><button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng nhóm</button></div>
     <p>{scope.discipline} · {saved ? `Nháp v${saved.version}` : 'Chưa lưu nháp'}</p>
     <p>Scheduled Finish tự tính từ Scheduled Start + Est. Duration (giờ).</p>
     {error && <p role="alert" className={styles.error}>{error}</p>}
@@ -182,35 +215,57 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
               } catch (cause) { setError(cause instanceof Error ? cause.message : 'Ngày không hợp lệ.'); }
             }} />)}
       </label>)}
-      <button onClick={apply} disabled={!Object.keys(group).length || Object.values(group).some((value) => !String(value).trim())}>Áp dụng vào nháp</button>
+      <button className={styles.primary} onClick={apply} disabled={!Object.keys(group).length || Object.values(group).some((value) => !String(value).trim())}>Áp dụng vào nháp</button>
     </fieldset>
-    <div className={styles.batchToolbar}><button disabled={blocked || !history.length} onClick={() => { const previous = history.at(-1); if (previous) { setRows(previous); setHistory(history.slice(0, -1)); setShowPreview(false); } }}>Undo</button>
-      <span>{changed.length} / {rows.length} WO có thay đổi</span><button disabled={blocked || !changed.length} onClick={() => setShowPreview(true)}>Xem trước thay đổi</button>
+    <div className={styles.batchToolbar}><button className={styles.ghost} disabled={blocked || !history.length} onClick={() => { const previous = history.at(-1); if (previous) { setRows(previous); setHistory(history.slice(0, -1)); setShowPreview(false); } }}>Undo</button>
+      <span>{changed.length} / {rows.length} WO có thay đổi</span><button className={styles.tertiary} disabled={blocked || !changed.length} onClick={() => setShowPreview(true)}>Xem trước thay đổi</button>
       <button className={styles.primary} disabled={blocked || !dirty || !showPreview || Object.values(problems).some(Boolean)} onClick={() => void save()}>Lưu nháp nhóm</button></div>
+    {saved && writable && <section className={styles.editorSection} aria-label="Upload nháp nhóm đã lưu">
+      <UploadPreviewControls draft={saved} selection={uploadSelection} connection={connection} connectionId={scope.connection_id}
+        timezone={timezone} context={uploadContext} onDenied={onDenied} active={active}
+        enabled={!blocked && !dirty && changed.length > 0 && !Object.values(problems).some(Boolean)}
+        previewLabel="Đối chiếu nhóm với Maximo trước upload"
+        buttonLabel={`Upload nhóm lên ${connection?.system === 'offshore' ? 'Offshore' : 'Onshore'} ${connection?.environment === 'production' ? 'production' : 'test'}`}
+        onUploadFinalized={onUploadFinalized} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
+        onWorkflowCreated={onUploadRequestCreated} />
+    </section>}
     <div className={styles.tableWrap}><table className={styles.planningTable}><thead><tr><th>Work Order / Công việc</th>{fields.map((field) => <th key={field}>{labels[field]}</th>)}<th>Kiểm tra</th></tr></thead>
       <tbody>{rows.map((row, index) => <Fragment key={rowKey(row.item)}><tr><th scope="row">{row.item.wonum}<small>{row.item.worktype} · {row.item.status}</small><small>{row.item.description ?? '—'}</small><small>{row.item.location ?? 'Chưa có Tag Name'}</small>
         <button className={styles.batchInfoToggle} aria-label={`Thông tin ${row.item.wonum}`} aria-expanded={expandedRow === rowKey(row.item)} aria-controls={`${infoId}-${index}`}
           onClick={() => setExpandedRow((previous) => previous === rowKey(row.item) ? null : rowKey(row.item))}>
           <span aria-hidden="true">{expandedRow === rowKey(row.item) ? '▾' : '▸'}</span> Thông tin bổ sung
         </button></th>
-        {fields.map((field) => { const value = row.changes[field] ?? row.baseline[field] ?? ''; return <td key={field} className={row.changes[field] !== undefined ? styles.modified : undefined}>
-          {field === 'schedfinish' ? <input aria-label={`${row.item.wonum} ${labels[field]}`} readOnly value={displayDate(value || null, timezone)} /> : field === 'assignedtechname' ? <select aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked} value={value} onChange={(e) => edit(index, field, e.target.value)}>
-            <option value={row.baseline[field] ?? ''}>{row.baseline[field] ?? 'Chưa có PIC'}</option>{row.allowed_pics.filter((pic) => pic !== row.baseline[field]).map((pic) => <option key={pic}>{pic}</option>)}</select>
-            : <input aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked} type={field === 'estdur' ? 'text' : 'datetime-local'} value={field === 'estdur' ? value : value ? localDateTime(value, timezone) : ''}
-              inputMode={field === 'estdur' ? 'decimal' : undefined} onChange={(e) => { try { edit(index, field, field === 'estdur' || !e.target.value ? e.target.value : zonedDateTime(e.target.value, timezone)); }
-                catch (cause) { setError(cause instanceof Error ? cause.message : 'Ngày không hợp lệ.'); } }} />}</td>; })}
-        <td>{problems[rowKey(row.item)] && <span role="alert" className={styles.error}>{problems[rowKey(row.item)]}</span>}<button disabled={blocked} onClick={() => stage(rows.map((value, i) => i === index ? { ...value, changes: {} } : value))}>Reset dòng</button></td></tr>
+        {fields.map((field) => {
+          const value = row.changes[field] ?? row.baseline[field] ?? '';
+          const isTarget = targetFields.includes(field as typeof targetFields[number]);
+          return <td key={field} className={row.changes[field] !== undefined ? styles.modified : undefined}>
+            {field === 'schedfinish' ? <input aria-label={`${row.item.wonum} ${labels[field]}`} readOnly value={displayDate(value || null, timezone)} /> :
+              field === 'assignedtechname' ? <select aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked} value={value} onChange={(e) => edit(index, field, e.target.value)}>
+                <option value={row.baseline[field] ?? ''}>{row.baseline[field] ?? 'Chưa có PIC'}</option>{row.allowed_pics.filter((pic) => pic !== row.baseline[field]).map((pic) => <option key={pic}>{pic}</option>)}</select> :
+                <input aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked || (isTarget && targetForbidden(row))}
+                  type={field === 'estdur' ? 'text' : 'datetime-local'} value={field === 'estdur' ? value : value ? localDateTime(value, timezone) : ''}
+                  inputMode={field === 'estdur' ? 'decimal' : undefined} onChange={(e) => { try {
+                    if (isTarget) editTarget(index, field as typeof targetFields[number], !e.target.value ? '' : zonedDateTime(e.target.value, timezone));
+                    else edit(index, field, field === 'estdur' || !e.target.value ? e.target.value : zonedDateTime(e.target.value, timezone));
+                  } catch (cause) { setError(cause instanceof Error ? cause.message : 'Ngày không hợp lệ.'); } }} />}
+            {isTarget && targetForbidden(row) && <small>PM/CFT không được đổi Target.</small>}
+          </td>;
+        })}
+        <td>{problems[rowKey(row.item)] && <span role="alert" className={styles.error}>{problems[rowKey(row.item)]}</span>}
+          {targetFields.some((field) => row.changes[field] !== undefined) && <button className={styles.tertiary} disabled={blocked} onClick={() => resetTargets(index)}>Khôi phục Target gốc</button>}
+          <button className={styles.ghost} disabled={blocked} onClick={() => stage(rows.map((value, i) => i === index ? { ...value, changes: {} } : value))}>Reset dòng</button></td></tr>
         {expandedRow === rowKey(row.item) && <tr><td colSpan={fields.length + 2} className={styles.batchInfoCell}>
           <BatchWorkOrderInfo row={row.item} timezone={timezone} id={`${infoId}-${index}`} />
         </td></tr>}
       </Fragment>)}</tbody></table></div>
     {showPreview && <section aria-label="Preview nhóm"><h3>Thay đổi trước / sau</h3><table><thead><tr><th>WO</th><th>Trường</th><th>Trước</th><th>Sau</th></tr></thead><tbody>
-      {changed.flatMap((row) => editableFields.filter((field) => row.changes[field] !== undefined).map((field) => <tr key={`${rowKey(row.item)}:${field}`}><td>{row.item.wonum}</td><td>{field in labels ? labels[field as keyof typeof labels] : field}</td>
+      {changed.flatMap((row) => [...editableFields.filter((field) => row.changes[field] !== undefined).map((field) => <tr key={`${rowKey(row.item)}:${field}`}><td>{row.item.wonum}</td><td>{field in labels ? labels[field as keyof typeof labels] : field}</td>
         <td>{field.includes('start') || field.includes('finish') || field.includes('date') ? displayDate(row.baseline[field], timezone) : row.baseline[field] ?? '—'}</td>
-        <td>{field.includes('start') || field.includes('finish') || field.includes('date') ? displayDate(row.changes[field] ?? null, timezone) : row.changes[field]}</td></tr>))}</tbody></table></section>}
+        <td>{field.includes('start') || field.includes('finish') || field.includes('date') ? displayDate(row.changes[field] ?? null, timezone) : row.changes[field]}</td></tr>),
+      ...(pmScheduleChanged(row) ? [<tr key={`${rowKey(row.item)}:pm-duration-warning`}><td>{row.item.wonum}</td><td colSpan={3}>Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.</td></tr>] : [])])}</tbody></table></section>}
     <details><summary>Dán vùng từ Excel</summary><p>Theo thứ tự WO trong bảng: Start, PIC, Duration. Ngày: YYYY-MM-DDTHH:mm; Finish tự tính, ô trống giữ nguyên. Kiểm tra và áp vào nháp trước khi lưu.</p>
-      <textarea aria-label="Vùng dữ liệu Excel" disabled={blocked} value={paste} onChange={(e) => setPaste(e.target.value)} rows={4} /><button disabled={blocked} onClick={applyPaste}>Kiểm tra và áp dữ liệu dán</button></details>
-    {saved && writable && <div className={styles.batchToolbar}><button disabled={blocked} onClick={() => setConfirmDelete(true)}>Xóa nháp nhóm</button>
-      {confirmDelete && <><span>Xóa nháp của toàn bộ {rows.length} WO? Maximo giữ nguyên.</span><button disabled={blocked} onClick={() => void remove()}>Xác nhận xóa nháp nhóm</button><button disabled={busy} onClick={() => setConfirmDelete(false)}>Hủy xóa</button></>}</div>}
+      <textarea aria-label="Vùng dữ liệu Excel" disabled={blocked} value={paste} onChange={(e) => setPaste(e.target.value)} rows={4} /><button className={styles.tertiary} disabled={blocked} onClick={applyPaste}>Kiểm tra và áp dữ liệu dán</button></details>
+    {saved && writable && <div className={styles.batchToolbar}><button className={styles.dangerGhost} disabled={blocked} onClick={() => setConfirmDelete(true)}>Xóa nháp nhóm</button>
+      {confirmDelete && <><span>Xóa nháp của toàn bộ {rows.length} WO? Maximo giữ nguyên.</span><button className={styles.danger} disabled={blocked} onClick={() => void remove()}>Xác nhận xóa nháp nhóm</button><button className={styles.ghost} disabled={busy} onClick={() => setConfirmDelete(false)}>Hủy xóa</button></>}</div>}
   </section>;
 }

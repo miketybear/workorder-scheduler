@@ -3,6 +3,7 @@ import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { getLiveness } from './api/client';
 import { DemoScheduler } from './scheduling/DemoScheduler';
 import styles from './App.module.css';
+import bdpocLogo from './assets/bdpoc-logo.png';
 import { SessionPanel } from './auth/SessionPanel';
 import { WorkOrders } from './scheduling/WorkOrders';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -43,7 +44,7 @@ function Overview() {
 export function App() {
   const workOrdersActive = useLocation().pathname === '/work-orders';
   return <div className={styles.shell}>
-    <header className={styles.header}><Link to="/" className={styles.brand}>WORKORDER <b>/ Scheduler</b></Link>
+    <header className={styles.header}><Link to="/" className={styles.brand}><img className={styles.brandLogo} src={bdpocLogo} alt="Petrovietnam Biendong POC" />WORKORDER <b>/ Scheduler</b></Link>
       <div className={styles.headerActions}><span className={styles.badge}>Bản phát triển · Lập lịch & nháp</span><Link to="/settings">Settings</Link><AdminLink /><ThemeToggle /></div></header>
     <main><Routes><Route path="/" element={<Overview />} /><Route path="/demo" element={<DemoScheduler />} />
       <Route path="/work-orders" element={null} />

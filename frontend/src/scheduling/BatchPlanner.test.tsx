@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BatchPlanner } from './BatchPlanner';
-import { BatchError, deleteDraft, openBatch, prepareBatch, saveBatch, type Detail } from '../api/drafts';
+import { BatchError, deleteDraft, openBatch, prepareBatch, previewUpload, saveBatch, type Detail } from '../api/drafts';
 import { columns, type WorkOrder } from '../api/workOrders';
 import { zonedDateTime } from '../api/dates';
 
-vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), prepareBatch: vi.fn(), saveBatch: vi.fn(), openBatch: vi.fn(), deleteDraft: vi.fn() }));
+vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), prepareBatch: vi.fn(), saveBatch: vi.fn(), openBatch: vi.fn(), deleteDraft: vi.fn(), previewUpload: vi.fn() }));
 afterEach(() => vi.resetAllMocks());
 const scope = { connection_id: 'one', discipline: 'MECH' };
 const details: Detail[] = ['100', '101'].map((id) => ({
@@ -35,7 +35,7 @@ it('shows only supplemental facts with timezone-aware dates outside the editable
   fireEvent.click(toggle);
   const info = screen.getByRole('region', { name: 'Thông tin bổ sung WO-100' });
   expect(toggle).toHaveAttribute('aria-controls', info.id);
-  expect(info.closest('td')).toHaveAttribute('colspan', '6');
+  expect(info.closest('td')).toHaveAttribute('colspan', '8');
   const facts = within(info);
   expect(facts.getAllByRole('heading')).toHaveLength(3);
   for (const value of ['High (3)', 'ONSHORE', '25%', '01/10/2026, 08:00', '31/10/2026, 17:00', '02/10/2026, 09:30']) {
@@ -82,6 +82,112 @@ it('applies group duration, supports undo, and requires preview before atomic sa
   await screen.findByText('Đã lưu nháp 2 WO · v1. Maximo chưa thay đổi.');
   expect(vi.mocked(saveBatch).mock.calls[0][1]).toHaveLength(2);
   await vi.waitFor(() => expect(props.onDirty).toHaveBeenLastCalledWith(false));
+});
+
+it('keeps PM and CFT targets disabled in a mixed batch and saves allowed row targets with explicit intent', async () => {
+  const mixed = ['PM', 'CFT', 'CM'].map((worktype, index) => ({ ...details[index % details.length],
+    item: { ...details[index % details.length].item, workorderid: String(100 + index), wonum: `WO-${100 + index}`, worktype },
+    baseline: { ...details[index % details.length].baseline, worktype,
+      targstartdate: '2026-10-01T08:00:00+07:00', targcompdate: '2026-10-02T08:00:00+07:00' },
+  }));
+  vi.mocked(prepareBatch).mockResolvedValue(mixed);
+  render(<BatchPlanner {...props} selection={{ keys: mixed.map(({ item }) => ({ site_id: item.siteid, workorder_id: item.workorderid })) }} />);
+  const pmTarget = await screen.findByLabelText('WO-100 Target Start');
+  expect(pmTarget).toBeDisabled();
+  expect(screen.getByLabelText('WO-101 Target Finish')).toBeDisabled();
+  expect(screen.getAllByText('PM/CFT không được đổi Target.')).toHaveLength(4);
+  expect(screen.getByLabelText('WO-102 Target Finish')).toBeEnabled();
+  fireEvent.change(pmTarget, { target: { value: '2026-10-03T08:00' } });
+  fireEvent.change(screen.getByLabelText('WO-101 Target Finish'), { target: { value: '2026-10-03T08:00' } });
+  fireEvent.change(screen.getByLabelText('WO-102 Target Finish'), { target: { value: '2026-10-05T09:30' } });
+  expect(screen.getByLabelText('WO-100 Target Start')).toHaveValue('2026-10-01T08:00');
+  expect(screen.getByLabelText('WO-101 Target Finish')).toHaveValue('2026-10-02T08:00');
+  expect(screen.getByLabelText('WO-102 Target Finish')).toHaveValue('2026-10-05T09:30');
+  fireEvent.click(screen.getByText('Xem trước thay đổi'));
+  vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'target-batch', version: 1, state: 'draft' });
+  fireEvent.click(screen.getByText('Lưu nháp nhóm'));
+  await screen.findByText('Đã lưu nháp 1 WO · v1. Maximo chưa thay đổi.');
+  expect(vi.mocked(saveBatch).mock.calls[0][1]).toHaveLength(1);
+  expect(vi.mocked(saveBatch).mock.calls[0][1][0].changes).toEqual({
+    targcompdate: '2026-10-05T09:30:00+07:00', change_target: true,
+  });
+});
+
+it('restores permitted target proposals to their non-null row baseline and undo restores the proposal', async () => {
+  const row = { ...details[0], baseline: { ...details[0].baseline, targstartdate: '2026-10-01T08:00:00+07:00' } };
+  vi.mocked(prepareBatch).mockResolvedValue([row]);
+  render(<BatchPlanner {...props} selection={{ keys: [{ site_id: row.item.siteid, workorder_id: row.item.workorderid }] }} />);
+  const start = await screen.findByLabelText('WO-100 Target Start');
+  fireEvent.change(start, { target: { value: '2026-10-03T09:00' } });
+  expect(start).toHaveValue('2026-10-03T09:00');
+  fireEvent.click(screen.getByText('Undo'));
+  expect(start).toHaveValue('2026-10-01T08:00');
+  fireEvent.change(start, { target: { value: '2026-10-04T09:00' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Khôi phục Target gốc' }));
+  expect(start).toHaveValue('2026-10-01T08:00');
+  expect(screen.queryByRole('button', { name: 'Khôi phục Target gốc' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText('Undo'));
+  expect(screen.getByLabelText('WO-100 Target Start')).toHaveValue('2026-10-04T09:00');
+});
+
+it('drops allowed target no-ops and their intent while retaining PM/CFT duration rows in the atomic save', async () => {
+  const mixed = ['PM', 'CFT', 'CM', 'General'].map((worktype, index) => ({ ...details[index % details.length],
+    item: { ...details[index % details.length].item, workorderid: String(200 + index), wonum: `WO-${200 + index}`, worktype },
+    baseline: { ...details[index % details.length].baseline, worktype,
+      targstartdate: '2026-10-01T08:00:00+07:00', targcompdate: '2026-10-02T08:00:00+07:00' },
+  }));
+  vi.mocked(prepareBatch).mockResolvedValue(mixed);
+  render(<BatchPlanner {...props} selection={{ keys: mixed.map(({ item }) => ({ site_id: item.siteid, workorder_id: item.workorderid })) }} />);
+  fireEvent.change(await screen.findByLabelText('WO-200 Est. Duration'), { target: { value: '9' } });
+  fireEvent.change(screen.getByLabelText('WO-201 Est. Duration'), { target: { value: '10' } });
+  for (const wonum of ['WO-202', 'WO-203']) {
+    fireEvent.change(screen.getByLabelText(`${wonum} Target Start`), { target: { value: '2026-10-03T08:00' } });
+    fireEvent.change(screen.getByLabelText(`${wonum} Target Finish`), { target: { value: '2026-10-04T08:00' } });
+    fireEvent.change(screen.getByLabelText(`${wonum} Target Start`), { target: { value: '2026-10-01T08:00' } });
+    fireEvent.change(screen.getByLabelText(`${wonum} Target Finish`), { target: { value: '2026-10-02T08:00' } });
+  }
+  expect(screen.queryByRole('button', { name: 'Khôi phục Target gốc' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText('Xem trước thay đổi'));
+  vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'duration-only-pm-cft', version: 1, state: 'draft' });
+  fireEvent.click(screen.getByText('Lưu nháp nhóm'));
+  await screen.findByText('Đã lưu nháp 2 WO · v1. Maximo chưa thay đổi.');
+  const items = vi.mocked(saveBatch).mock.calls[0][1];
+  expect(items.map((item) => item.item.worktype)).toEqual(['PM', 'CFT']);
+  expect(items.map((item) => item.changes)).toEqual([{ estdur: '9' }, { estdur: '10' }]);
+});
+
+it('warns per PM row for a duration-derived finish while a CM calendar edit stays unflagged', async () => {
+  const rows = details.map((detail, index) => ({ ...detail, item: { ...detail.item, worktype: index === 0 ? 'PM' : 'CM',
+    schedstart: '2026-10-01T08:00:00+07:00', schedfinish: '2026-10-01T16:00:00+07:00' }, baseline: { ...detail.baseline,
+    worktype: index === 0 ? 'PM' : 'CM', schedstart: '2026-10-01T08:00:00+07:00', schedfinish: '2026-10-01T16:00:00+07:00' } }));
+  vi.mocked(prepareBatch).mockResolvedValue(rows);
+  render(<BatchPlanner {...props} />);
+  await screen.findByLabelText('WO-100 Est. Duration');
+  fireEvent.change(screen.getByLabelText('WO-100 Est. Duration'), { target: { value: '9' } });
+  fireEvent.change(screen.getByLabelText('WO-101 Scheduled Start'), { target: { value: '2026-10-01T09:00' } });
+  fireEvent.click(screen.getByText('Xem trước thay đổi'));
+  const warning = 'Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.';
+  const warningRow = screen.getByText(warning).closest('tr');
+  expect(warningRow).toHaveTextContent('WO-100');
+  expect(screen.getAllByText(warning)).toHaveLength(1);
+});
+
+it('previews the persisted batch and disables the upload action while unsaved edits remain', async () => {
+  await setup();
+  fireEvent.change(screen.getByLabelText('WO-100 Est. Duration'), { target: { value: '9' } });
+  fireEvent.click(screen.getByText('Xem trước thay đổi'));
+  vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'group', version: 2, state: 'draft' });
+  fireEvent.click(screen.getByText('Lưu nháp nhóm'));
+  await screen.findByText('Đã lưu nháp 1 WO · v2. Maximo chưa thay đổi.');
+  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'group', version: 2, preview_hash: 'c'.repeat(64),
+    send_enabled: false, gate: 'write_contract_unverified', items: [{ site_id: 'BD1', workorder_id: '100', code: 'ready', warnings: [],
+      before: { estdur: '8' }, changes: { estdur: '9' } }] });
+  fireEvent.click(screen.getByText('Đối chiếu nhóm với Maximo trước upload'));
+  expect(await screen.findByText('Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.')).toBeInTheDocument();
+  expect(previewUpload).toHaveBeenCalledWith(expect.objectContaining({ draft_id: 'group', version: 2 }),
+    [{ site_id: 'BD1', workorder_id: '100' }], expect.any(AbortSignal));
+  fireEvent.change(screen.getByLabelText('WO-100 Est. Duration'), { target: { value: '10' } });
+  expect(screen.getByText('Ẩn đối chiếu')).toBeInTheDocument();
 });
 
 it('preserves edits and request identity after an uncertain network outcome', async () => {

@@ -3,16 +3,17 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import { getAuthSummary, getLiveness, type Session } from '../api/client';
 import { columns, RetrievalError, retrieveWorkOrders, type WorkOrder } from '../api/workOrders';
-import { WorkOrders } from './WorkOrders';
+import { mergePmOrigin, WorkOrders } from './WorkOrders';
 import { App } from '../App';
-import { deleteDraft, getDetail, listPlannedWorkOrders, openBatch, openDraft, prepareBatch, saveBatch, saveDraft } from '../api/drafts';
+import { deleteDraft, getDetail, listPlannedWorkOrders, lookupUploadRequest, openBatch, openDraft, prepareBatch, previewUpload, saveBatch, saveDraft, submitUpload } from '../api/drafts';
 import { getConnectionSettings, saveConnectionSetting } from '../api/settings';
 
 vi.mock('../api/client', () => ({ getAuthSummary: vi.fn(), getLiveness: vi.fn().mockResolvedValue(true), loginUrl: '/api/auth/login' }));
 vi.mock('../api/settings', () => ({ getConnectionSettings: vi.fn(), saveConnectionSetting: vi.fn() }));
 vi.mock('../api/workOrders', async (original) => ({ ...await original<object>(), retrieveWorkOrders: vi.fn() }));
 vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), getDetail: vi.fn(), prepareBatch: vi.fn(),
-  openDraft: vi.fn(), openBatch: vi.fn(), saveDraft: vi.fn(), saveBatch: vi.fn(), deleteDraft: vi.fn(), listPlannedWorkOrders: vi.fn() }));
+  openDraft: vi.fn(), openBatch: vi.fn(), saveDraft: vi.fn(), saveBatch: vi.fn(), deleteDraft: vi.fn(), listPlannedWorkOrders: vi.fn(),
+  previewUpload: vi.fn(), submitUpload: vi.fn(), lookupUploadRequest: vi.fn() }));
 afterEach(() => { vi.useRealTimers(); vi.resetAllMocks(); vi.restoreAllMocks(); });
 const session: Session = { user: { id: 'user', name: 'Planner', is_admin: false }, preferred_connection_id: 'one', grants: [
   { connection_id: 'one', label: 'Onshore test', system: 'onshore', environment: 'test', timezone: 'Asia/Ho_Chi_Minh', discipline: 'MECH', capability: 'read' },
@@ -25,6 +26,78 @@ const row = { ...Object.fromEntries(columns.map(([field]) => [field, null])),
 const editorDetail = { item: row, baseline_token: 'a'.repeat(64), allowed_pics: ['TECH'],
   baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedtechname: null, estdur: '8',
     targstartdate: null, targcompdate: row.targcompdate } };
+
+it('collapses only a successfully retrieved range and opens date controls without reloading rows', async () => {
+  await setup();
+  vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
+  expect(screen.getByLabelText('Target Finish từ')).toBeVisible();
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  await screen.findByRole('button', { name: 'WO-REAL' });
+  expect(screen.getByText('Đã tải: 01/09/2026 → trước 01/10/2026')).toBeVisible();
+  expect(screen.getByLabelText('Target Finish từ')).not.toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Đổi khoảng ngày' }));
+  expect(screen.getByLabelText('Target Finish từ')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
+  expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
+  fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-09-02' } });
+  expect(screen.queryByText(/Đã tải:/)).not.toBeInTheDocument();
+  vi.mocked(retrieveWorkOrders).mockRejectedValue(new Error('Retrieve failed'));
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  await screen.findByText('Retrieve failed');
+  expect(screen.getByLabelText('Target Finish từ')).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Đổi khoảng ngày' })).not.toBeInTheDocument();
+});
+
+it('defaults filters to hidden and toggles beside refresh without losing filters, selection or loaded rows', async () => {
+  await setup(false, 'two');
+  vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  await screen.findByRole('button', { name: 'WO-REAL' });
+  const showFilters = screen.getByRole('button', { name: 'Hiện bộ lọc' });
+  expect(showFilters).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.queryByRole('search')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Cập nhật' }).nextElementSibling).toBe(showFilters);
+  expect(screen.getByRole('heading', { name: 'Work Orders' }).parentElement).not.toContainElement(showFilters);
+  fireEvent.click(showFilters);
+  fireEvent.change(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name'), { target: { value: 'WO-REAL' } });
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' }));
+  const toggle = screen.getByRole('button', { name: 'Ẩn bộ lọc (1)' });
+  const filterId = toggle.getAttribute('aria-controls');
+  expect(screen.getByRole('search')).toHaveAttribute('id', filterId);
+  fireEvent.click(toggle);
+  expect(screen.getByRole('button', { name: 'Hiện bộ lọc (1)' })).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.queryByRole('search')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).not.toBeVisible();
+  expect(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' })).toBeChecked();
+  expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Hiện bộ lọc (1)' }));
+  expect(screen.getByRole('button', { name: 'Ẩn bộ lọc (1)' })).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toBeVisible();
+  expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('WO-REAL');
+  expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText(/Bảng gọn ·/)).not.toBeInTheDocument();
+});
+
+it('keeps the first PM origin when a finalized recovery receipt carries an intermediate baseline', () => {
+  const original = { worktype: 'PM', schedstart: '2026-10-01T00:00:00+07:00', schedfinish: '2026-10-02T00:00:00+07:00',
+    assignedtechname: 'PIC', estdur: '25', targstartdate: '2026-09-01T00:00:00+07:00', targcompdate: null };
+  const intermediate = { ...original, schedstart: '2026-10-03T00:00:00+07:00', schedfinish: '2026-10-04T00:00:00+07:00', estdur: '21' };
+  const key = JSON.stringify(['user', 'one', 'MECH', 'SITE-A', '100']);
+  const first = new Map([[key, original]]);
+  const afterRecoveredDateRestore = mergePmOrigin(first, 'user', 'one', 'MECH',
+    { site_id: 'SITE-A', workorder_id: '100', restore_source: { before: intermediate } },
+    { ...original, schedstart: '2026-10-01T00:00:00Z', schedfinish: '2026-10-02T00:00:00Z', estdur: '21' });
+  expect(afterRecoveredDateRestore.get(key)).toEqual(original);
+  const captured = mergePmOrigin(new Map(), 'user', 'one', 'MECH',
+    { site_id: 'SITE-A', workorder_id: '100', restore_source: { before: original } }, intermediate);
+  expect(captured.get(key)).toEqual(original);
+  const semanticallyRestored = mergePmOrigin(first, 'user', 'one', 'MECH',
+    { site_id: 'SITE-A', workorder_id: '100', restore_source: null },
+    { ...original, schedstart: '2026-09-30T17:00:00Z', schedfinish: '2026-10-01T17:00:00Z', estdur: '25.0' });
+  expect(semanticallyRestored.has(key)).toBe(false);
+  expect(mergePmOrigin(first, 'user', 'two', 'MECH',
+    { site_id: 'SITE-A', workorder_id: '100', restore_source: null }, original).has(key)).toBe(true);
+});
 
 function returnToPage() {
   vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
@@ -150,7 +223,7 @@ it('unlocks other routes and restores the lock only when returning to the retain
   fireEvent.click(await screen.findByRole('button', { name: 'WO-REAL' }));
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
   expect(document.documentElement).toHaveAttribute('data-wo-panel-open');
-  fireEvent.click(screen.getByRole('link', { name: 'Settings · Hệ thống' }));
+  fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
   await screen.findByRole('radio', { name: /Offshore test/ });
   expect(document.documentElement).not.toHaveAttribute('data-wo-panel-open');
   fireEvent.click(screen.getByRole('link', { name: '← Work Orders' }));
@@ -190,7 +263,7 @@ it('retains the WO table, selection, panel edits and scroll position across Sett
   const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   vi.spyOn(window, 'scrollY', 'get').mockReturnValue(240);
   fireEvent(window, new Event('scroll'));
-  fireEvent.click(screen.getByRole('link', { name: 'Settings · Hệ thống' }));
+  fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
   await screen.findByRole('radio', { name: /Offshore test/ });
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
   expect(confirm).not.toHaveBeenCalled();
@@ -212,7 +285,7 @@ it('requires discarding edits before switching the saved connection and clears t
   fireEvent.click(screen.getByText('Retrieve WO'));
   fireEvent.click(await screen.findByRole('button', { name: 'WO-REAL' }));
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
-  fireEvent.click(screen.getByRole('link', { name: 'Settings · Hệ thống' }));
+  fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
   fireEvent.click(await screen.findByRole('radio', { name: /Onshore test/ }));
   const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
   fireEvent.click(screen.getByText('Lưu hệ thống'));
@@ -222,7 +295,7 @@ it('requires discarding edits before switching the saved connection and clears t
   await screen.findByText(/Đã lưu hệ thống cho tài khoản/);
   vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session });
   fireEvent.click(screen.getByRole('link', { name: '← Work Orders' }));
-  await screen.findByText(/Onshore test · onshore · test \/ MECH/);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Retrieve WO' })).toBeEnabled());
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
 });
@@ -242,7 +315,7 @@ async function setup(withApp = false, connectionId = 'one') {
   vi.mocked(getLiveness).mockResolvedValue(true);
   vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: { ...session, preferred_connection_id: connectionId } });
   render(<MemoryRouter initialEntries={['/work-orders']}>{withApp ? <App /> : <WorkOrders />}</MemoryRouter>);
-  await screen.findByText(/Có thể chỉnh sửa và lưu nháp|Chỉ xem/);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Retrieve WO' })).toBeEnabled());
   fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-09-01' } });
   fireEvent.change(screen.getByLabelText('Target Finish trước'), { target: { value: '2026-10-01' } });
   expect(screen.queryByLabelText('Hệ thống / Discipline')).not.toBeInTheDocument();
@@ -279,7 +352,7 @@ it('keeps seven compact columns and hides system, site and WOID while preserving
   await setup();
   vi.mocked(retrieveWorkOrders).mockResolvedValue([{ ...row, systemid: 'HT-98-MISC-SYSTEM' }, { ...row, siteid: 'SITE-B', systemid: 'MT1-61-INSTR-AIR-SYS' }]);
   fireEvent.click(screen.getByText('Retrieve WO'));
-  await screen.findByText('2 WO đã lấy đầy đủ.');
+  await screen.findByText('Hiển thị 2 / 2 WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.');
   expect(screen.getAllByText('WO-REAL')).toHaveLength(2);
   expect(screen.getAllByRole('columnheader')).toHaveLength(7);
   expect(screen.queryByLabelText('System')).not.toBeInTheDocument();
@@ -298,7 +371,7 @@ it('filters only retrieved rows by WO, description, tag and status without more 
     { ...row, workorderid: '102', wonum: 'WO-NULL', description: null, location: null },
   ]);
   fireEvent.click(screen.getByText('Retrieve WO'));
-  await screen.findByText('3 WO đã lấy đầy đủ.');
+  await screen.findByText('Hiển thị 3 / 3 WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.');
   const search = screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name');
   for (const query of [' wo-pump ', 'PUMP', 'tag-01']) {
     fireEvent.change(search, { target: { value: query } });
@@ -321,11 +394,13 @@ it('clears table filters and old scope data when the connection changes', async 
   await setup();
   vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
   fireEvent.click(screen.getByText('Retrieve WO'));
-  await screen.findByText('1 WO đã lấy đầy đủ.');
+  await screen.findByText('Hiển thị 1 / 1 WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.');
   fireEvent.change(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name'), { target: { value: 'no-match' } });
   fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'APPR' } });
   await chooseConnection('two');
-  expect(screen.queryByRole('search')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Nháp của tôi' })).toBeInTheDocument();
+  expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Status')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
   vi.mocked(retrieveWorkOrders).mockResolvedValue([{ ...row, wonum: 'WO-OFFSHORE' }]);
   fireEvent.click(screen.getByText('Retrieve WO'));
@@ -395,8 +470,8 @@ it('protects edits on scope and filter changes and preserves them across unchang
   fireEvent.click(await screen.findByText('WO-REAL'));
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
   vi.spyOn(window, 'confirm').mockReturnValue(false);
-  fireEvent.click(screen.getByRole('link', { name: 'Settings · Hệ thống' }));
-  expect(screen.getByText(/Offshore test · offshore · test \/ MECH/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('link', { name: '← Tổng quan' }));
+  expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
   fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-09-02' } });
   expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');
   await act(async () => { returnToPage(); });
@@ -503,7 +578,7 @@ it('keeps a saved group accessible after closing and reopens the batch API', asy
   expect(await screen.findByLabelText('WO-SECOND Est. Duration')).toHaveValue('9');
   expect(openBatch).toHaveBeenCalledWith('group', { connection_id: 'two', discipline: 'MECH' }, expect.any(AbortSignal));
   fireEvent.click(screen.getByText('Đóng nhóm'));
-  fireEvent.click(screen.getByText('Lập lịch nhóm (2)'));
+  fireEvent.click(screen.getByRole('button', { name: 'Mở nháp nhóm (2)' }));
   await screen.findByLabelText('WO-SECOND Est. Duration');
   expect(prepareBatch).toHaveBeenCalledTimes(1);
 });
@@ -620,7 +695,7 @@ it('filters saved plans and opens their exact ID without requesting a new baseli
   vi.mocked(openDraft).mockResolvedValue({ ...editorDetail, draft_id: marker.draft_id, version: 1, state: 'draft',
     changes: marker.changes, baseline_changed: false, changes_valid_now: true });
   fireEvent.click(screen.getByText('Retrieve WO'));
-  await screen.findByText('2 WO đã lấy đầy đủ.');
+  await screen.findByText('Hiển thị 2 / 2 WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.');
   expect(screen.getByRole('cell', { name: 'TECHNháp' })).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Nháp'), { target: { value: 'yes' } });
   expect(screen.queryByRole('button', { name: 'NO-DRAFT' })).not.toBeInTheDocument();
@@ -666,8 +741,11 @@ it('uses the same WO table for drafts outside the Retrieve range and rechecks th
   await setup();
   const planned = { ...row, drafts: [marker] };
   vi.mocked(listPlannedWorkOrders).mockResolvedValue({ items: [planned], next_offset: 20 });
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   await screen.findByRole('button', { name: 'WO-REAL' });
+  expect(screen.getByText('Phạm vi MECH · không phụ thuộc khoảng ngày Retrieve')).toBeVisible();
+  expect(screen.getByLabelText('Target Finish từ')).not.toBeVisible();
+  expect(screen.queryByLabelText('Nháp')).not.toBeInTheDocument();
   expect(retrieveWorkOrders).not.toHaveBeenCalled();
   expect(listPlannedWorkOrders).toHaveBeenCalledWith({ connection_id: 'one', discipline: 'MECH' }, 0, expect.any(AbortSignal));
   expect(screen.getAllByRole('columnheader')).toHaveLength(7);
@@ -689,17 +767,17 @@ it('restores separate source tables, filters, selection and timestamps without r
   fireEvent.change(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name'), { target: { value: 'REAL' } });
   fireEvent.click(screen.getByLabelText('Chọn WO-REAL · dòng 1'));
   const timestamp = screen.getByText(/Cập nhật lần cuối:/).textContent;
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   await screen.findByRole('button', { name: 'DRAFT-ONLY' });
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name'), { target: { value: 'DRAFT' } });
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'maximo' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('REAL');
   expect(screen.getByLabelText('Chọn WO-REAL · dòng 1')).toBeChecked();
   expect(screen.getByText(/Cập nhật lần cuối:/)).toHaveTextContent(timestamp!);
   expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   expect(screen.getByRole('button', { name: 'DRAFT-ONLY' })).toBeVisible();
   expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('DRAFT');
   expect(listPlannedWorkOrders).toHaveBeenCalledTimes(1);
@@ -714,16 +792,16 @@ it('restores the draft page and uses the restored source query for explicit refr
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByRole('button', { name: 'WO-REAL' });
   const query = vi.mocked(retrieveWorkOrders).mock.calls[0][0];
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   await waitFor(() => expect(screen.getByText('Trang tiếp')).toBeEnabled());
   fireEvent.click(screen.getByText('Trang tiếp'));
   await screen.findByRole('button', { name: 'PAGE-TWO' });
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'maximo' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
   await act(async () => fireEvent.click(screen.getByText('Cập nhật')));
   expect(retrieveWorkOrders).toHaveBeenLastCalledWith(query, expect.any(AbortSignal));
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   expect(screen.getByRole('button', { name: 'PAGE-TWO' })).toBeVisible();
-  expect(screen.getByText(/Nháp của tôi · trang 2/)).toBeVisible();
+  expect(screen.getByText('Hiển thị 1 / 1 WO · trang 2.')).toBeVisible();
   expect(screen.getByText('Trang tiếp')).toBeDisabled();
   expect(listPlannedWorkOrders).toHaveBeenCalledTimes(2);
   await act(async () => fireEvent.click(screen.getByText('Cập nhật')));
@@ -736,11 +814,11 @@ it('restores the age warning even when both sources have the same retrieval time
   vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
   vi.mocked(listPlannedWorkOrders).mockResolvedValue({ items: [{ ...row, drafts: [marker] }], next_offset: null });
   await act(async () => fireEvent.click(screen.getByText('Retrieve WO')));
-  await act(async () => fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } }));
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' })));
   await act(async () => vi.advanceTimersByTimeAsync(5 * 60 * 1000));
   expect(screen.getByText('Dữ liệu có thể đã thay đổi.')).toBeVisible();
   await act(async () => {
-    fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'maximo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
   });
   await act(async () => vi.advanceTimersByTimeAsync(0));
   expect(screen.getByText('Dữ liệu có thể đã thay đổi.')).toBeVisible();
@@ -753,13 +831,13 @@ it('updates the hidden Maximo snapshot after deleting a draft from the drafts so
   fireEvent.click(screen.getByText('Đóng nháp'));
   vi.mocked(listPlannedWorkOrders).mockResolvedValue({ items: [{ ...row, estdur: '8', drafts: [marker] }], next_offset: null });
   vi.mocked(deleteDraft).mockResolvedValue();
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   fireEvent.click(await screen.findByRole('button', { name: 'WO-REAL' }));
   await screen.findByLabelText('Est. Duration');
   fireEvent.click(screen.getByText('Xóa nháp'));
   fireEvent.click(screen.getByText('Xác nhận xóa nháp'));
   await screen.findByText('Không có WO có nháp khả dụng trong trang này.');
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'maximo' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(screen.getByRole('cell', { name: '8' })).toBeInTheDocument();
   expect(screen.queryByText('Nháp · v1')).not.toBeInTheDocument();
@@ -771,12 +849,12 @@ it('updates a hidden source snapshot after saving a newer draft version', async 
   fireEvent.click(screen.getByText('Đóng nháp'));
   vi.mocked(listPlannedWorkOrders).mockResolvedValue({ items: [{ ...row, estdur: '8', drafts: [marker] }], next_offset: null });
   vi.mocked(saveDraft).mockResolvedValue({ draft_id: marker.draft_id, version: 2, state: 'draft' });
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   fireEvent.click(await screen.findByRole('button', { name: 'WO-REAL' }));
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '11' } });
   fireEvent.click(screen.getByText('Lưu nháp'));
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'maximo' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
   expect(screen.getByText('Nháp · v2')).toBeInTheDocument();
   expect(screen.getByRole('cell', { name: '11Nháp' })).toBeInTheDocument();
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
@@ -788,16 +866,16 @@ it('clears both source snapshots after a connection change', async () => {
   vi.mocked(listPlannedWorkOrders).mockResolvedValue({ items: [{ ...row, wonum: 'OLD-DRAFT', drafts: [marker] }], next_offset: null });
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByRole('button', { name: 'WO-REAL' });
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   await screen.findByRole('button', { name: 'OLD-DRAFT' });
   await chooseConnection('two');
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
   vi.mocked(listPlannedWorkOrders).mockResolvedValue({ items: [], next_offset: null });
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   await screen.findByText('Không có WO có nháp khả dụng trong trang này.');
   expect(screen.queryByRole('button', { name: 'OLD-DRAFT' })).not.toBeInTheDocument();
   expect(listPlannedWorkOrders).toHaveBeenLastCalledWith({ connection_id: 'two', discipline: 'MECH' }, 0, expect.any(AbortSignal));
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'maximo' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
 });
 
@@ -808,11 +886,12 @@ it('preserves Maximo data after a failed draft load and retries the failed sourc
     .mockResolvedValue({ items: [], next_offset: null });
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByRole('button', { name: 'WO-REAL' });
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   await screen.findByRole('alert');
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'maximo' } });
+  expect(screen.getByRole('alert')).toHaveTextContent('Upstream unavailable');
+  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   await screen.findByText('Không có WO có nháp khả dụng trong trang này.');
   expect(listPlannedWorkOrders).toHaveBeenCalledTimes(2);
 });
@@ -820,8 +899,8 @@ it('preserves Maximo data after a failed draft load and retries the failed sourc
 it('keeps the current source and unsaved edits when discarding is declined', async () => {
   await editWorkOrder();
   vi.spyOn(window, 'confirm').mockReturnValue(false);
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
-  expect(screen.getByLabelText('Nguồn WO')).toHaveValue('maximo');
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
+  expect(screen.getByRole('button', { name: 'Nháp của tôi' })).toBeVisible();
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(listPlannedWorkOrders).not.toHaveBeenCalled();
@@ -833,14 +912,14 @@ it('changing the date range invalidates only Maximo results and retains the draf
   vi.mocked(listPlannedWorkOrders).mockResolvedValue({ items: [{ ...row, wonum: 'DRAFT-ONLY', drafts: [marker] }], next_offset: null });
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByRole('button', { name: 'WO-REAL' });
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   await screen.findByRole('button', { name: 'DRAFT-ONLY' });
   fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-08-01' } });
   expect(screen.getByRole('button', { name: 'DRAFT-ONLY' })).toBeVisible();
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'maximo' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
   expect(screen.getByText(/Chưa Retrieve WO cho khoảng ngày này/)).toBeVisible();
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   expect(screen.getByRole('button', { name: 'DRAFT-ONLY' })).toBeVisible();
   expect(listPlannedWorkOrders).toHaveBeenCalledTimes(1);
 });
@@ -849,7 +928,7 @@ it('discards delayed planned rows on a scope change', async () => {
   await setup();
   let finish!: (result: { items: WorkOrder[]; next_offset: null }) => void;
   vi.mocked(listPlannedWorkOrders).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
-  fireEvent.change(screen.getByLabelText('Nguồn WO'), { target: { value: 'drafts' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   const signal = vi.mocked(listPlannedWorkOrders).mock.calls[0][2];
   await chooseConnection('two');
   expect(signal.aborted).toBe(true);
@@ -911,7 +990,7 @@ it('clears the editor when the work order moves out of scope during recheck', as
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
   expect(screen.queryByText('Đăng nhập Microsoft')).not.toBeInTheDocument();
   expect(screen.getByRole('alert')).toHaveTextContent('WO hoặc nháp không còn tồn tại');
-  expect(screen.getByText(/Có thể chỉnh sửa và lưu nháp/)).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Đổi khoảng ngày' })).toBeEnabled();
 });
 
 it('reopens the same work order after explicitly discarding edits', async () => {
@@ -929,7 +1008,7 @@ it('selects only filtered retrieved WOs from a monthly list and resets selection
   vi.mocked(retrieveWorkOrders).mockResolvedValue(monthly);
   vi.mocked(prepareBatch).mockResolvedValue([]);
   fireEvent.click(screen.getByText('Retrieve WO'));
-  await screen.findByText('100 WO đã lấy đầy đủ.');
+  await screen.findByText('Hiển thị 100 / 100 WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.');
   fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'WMATL' } });
   fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn tất cả 20 WO trong kết quả lọc đã tải' }));
   expect(screen.getByText('Lập lịch nhóm (20)')).toBeEnabled();
@@ -955,12 +1034,69 @@ it('does not refresh or disturb retrieval state while the user remains on the pa
   await act(async () => { await vi.advanceTimersByTimeAsync(180000); });
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
   expect(getAuthSummary).toHaveBeenCalledTimes(authCalls);
-  expect(screen.getByText(/Offshore test · offshore · test \/ MECH/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Đổi khoảng ngày' })).toBeEnabled();
   expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');
   expect(screen.getByLabelText('Target Finish trước')).toHaveValue('2026-10-01');
   expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('WO-REAL');
   expect(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' })).toBeChecked();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
+});
+
+it('hides draft pagination when the server returns a single page', async () => {
+  await setup();
+  vi.mocked(listPlannedWorkOrders).mockResolvedValue({ items: [{ ...row, drafts: [marker] }], next_offset: null });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
+  await screen.findByRole('button', { name: 'WO-REAL' });
+  expect(screen.queryByRole('button', { name: 'Trang trước' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Trang tiếp' })).not.toBeInTheDocument();
+});
+
+it('keeps previous navigation when a paginated drafts response has an empty page', async () => {
+  await setup();
+  vi.mocked(listPlannedWorkOrders).mockResolvedValueOnce({ items: [{ ...row, drafts: [marker] }], next_offset: 20 })
+    .mockResolvedValueOnce({ items: [], next_offset: null })
+    .mockResolvedValue({ items: [{ ...row, drafts: [marker] }], next_offset: null });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
+  await screen.findByRole('button', { name: 'WO-REAL' });
+  expect(screen.getByRole('button', { name: 'Trang tiếp' })).toBeEnabled();
+  browseDraftPage();
+  await screen.findByText('Không có WO có nháp khả dụng trong trang này.');
+  expect(screen.getByText('Trang 2 · 0 WO.')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Trang trước' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Trang tiếp' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Trang trước' }));
+  await screen.findByText('Hiển thị 1 / 1 WO · trang 1.');
+});
+
+function browseDraftPage() {
+  fireEvent.click(screen.getByRole('button', { name: 'Trang tiếp' }));
+}
+
+it('labels a selection from one saved group draft as an open action', async () => {
+  await setup(false, 'two');
+  const groupMarker = { ...marker, is_batch: true };
+  vi.mocked(listPlannedWorkOrders).mockResolvedValue({ items: [
+    { ...row, drafts: [groupMarker] }, { ...row, siteid: 'SITE-B', workorderid: '101', wonum: 'WO-SECOND', drafts: [groupMarker] },
+  ], next_offset: null });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
+  await screen.findByRole('button', { name: 'WO-REAL' });
+  fireEvent.click(screen.getByLabelText('Chọn WO-REAL · dòng 1'));
+  fireEvent.click(screen.getByLabelText('Chọn WO-SECOND · dòng 2'));
+  expect(screen.getByRole('button', { name: 'Mở nháp nhóm (2)' })).toBeEnabled();
+});
+
+it('disables group opening for single drafts or mixed saved drafts with guidance', async () => {
+  await setup(false, 'two');
+  vi.mocked(listPlannedWorkOrders).mockResolvedValue({ items: [
+    { ...row, drafts: [marker] }, { ...row, workorderid: '101', wonum: 'WO-SECOND', drafts: [{ ...marker, draft_id: 'another', is_batch: true }] },
+  ], next_offset: null });
+  fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
+  await screen.findByRole('button', { name: 'WO-REAL' });
+  fireEvent.click(screen.getByLabelText('Chọn WO-REAL · dòng 1'));
+  expect(screen.getByRole('button', { name: 'Mở nháp nhóm' })).toBeDisabled();
+  expect(screen.getByText(/mở nháp đơn bằng cách bấm WO/)).toBeVisible();
+  fireEvent.click(screen.getByLabelText('Chọn WO-SECOND · dòng 2'));
+  expect(screen.getByRole('button', { name: 'Mở nháp nhóm' })).toBeDisabled();
 });
 
 it('replaces old list data with the fresh scoped response and drops disappeared selections', async () => {
@@ -972,7 +1108,7 @@ it('replaces old list data with the fresh scoped response and drops disappeared 
   await act(async () => fireEvent.click(screen.getByText('Cập nhật')));
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
   expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');
-  expect(screen.getByText(/Offshore test · offshore · test \/ MECH/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Đổi khoảng ngày' })).toBeEnabled();
 });
 
 it('keeps the verified snapshot visible after a failed explicit update and preserves filters after retry', async () => {
@@ -1012,3 +1148,151 @@ it('shows every business data field in the panel while hiding technical identity
   expect(panel.queryByText('HT-98-MISC-SYSTEM')).not.toBeInTheDocument();
   expect(vi.mocked(getDetail).mock.calls[0][0]).toMatchObject({ site_id: 'SITE-A', workorder_id: '100' });
 });
+
+it('refreshes and closes a finalized saved batch for the exact batch scope', async () => {
+  await prepareBatchUpload();
+  const latest = { ...row, estdur: '9' };
+  vi.mocked(getDetail).mockResolvedValue({ ...editorDetail, item: latest });
+  expect(submitUpload).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText('Upload nhóm lên Offshore test'));
+  await waitFor(() => expect(submitUpload).toHaveBeenCalledTimes(1));
+  await screen.findByText(/Đã xác nhận 1 WO trong Maximo/);
+  expect(screen.queryByRole('dialog', { name: 'Lập lịch hàng loạt' })).not.toBeInTheDocument();
+  expect(screen.getByText(/Đã xác nhận 1 WO trong Maximo/)).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Kiểm tra kết quả upload trước' })).not.toBeInTheDocument();
+  expect(getDetail).toHaveBeenCalledWith({ connection_id: 'two', discipline: 'MECH', site_id: 'SITE-A', workorder_id: '100' }, expect.any(AbortSignal));
+  expect(screen.getByRole('cell', { name: '9' })).toBeInTheDocument();
+});
+
+it('keeps the first PM origin through date restoration, offers a duration-only step, and clears it when all fields match', async () => {
+  await setup(false, 'two');
+  const originRow = { ...row, worktype: 'PM', schedstart: '2026-09-30T08:00:00+07:00', schedfinish: '2026-09-30T16:00:00+07:00',
+    estdur: '8', targstartdate: '2026-09-01T08:00:00+07:00', targcompdate: '2026-10-01T08:00:00+07:00' };
+  const original = { ...editorDetail, item: originRow, baseline: { worktype: 'PM', schedstart: originRow.schedstart, schedfinish: originRow.schedfinish,
+    assignedtechname: null, estdur: '8', targstartdate: originRow.targstartdate, targcompdate: originRow.targcompdate } };
+  const shiftedRow = { ...originRow, schedstart: '2026-09-30T09:00:00+07:00', schedfinish: '2026-09-30T17:00:00+07:00', estdur: '6' };
+  const shifted = { ...original, item: shiftedRow, baseline: { ...original.baseline, schedstart: shiftedRow.schedstart,
+    schedfinish: shiftedRow.schedfinish, estdur: '6' } };
+  const datesRestoredRow = { ...originRow, estdur: '6' };
+  const datesRestored = { ...original, item: datesRestoredRow, baseline: { ...original.baseline, estdur: '6' } };
+  vi.mocked(retrieveWorkOrders).mockResolvedValue([originRow]);
+  vi.mocked(getDetail).mockResolvedValueOnce(original).mockResolvedValueOnce(shifted).mockResolvedValueOnce(shifted)
+    .mockRejectedValueOnce(new Error('temporary fresh detail failure')).mockResolvedValueOnce(datesRestored)
+    .mockResolvedValueOnce(datesRestored).mockResolvedValueOnce(original).mockResolvedValueOnce(original);
+  vi.mocked(saveDraft).mockResolvedValueOnce({ draft_id: 'forward', version: 1, state: 'draft' })
+    .mockResolvedValueOnce({ draft_id: 'date-restore', version: 1, state: 'draft' })
+    .mockResolvedValueOnce({ draft_id: 'duration-restore', version: 1, state: 'draft' });
+  vi.mocked(previewUpload).mockImplementation(async (draft) => ({ draft_id: draft.draft_id, version: draft.version,
+    preview_hash: 'a'.repeat(64), send_enabled: true, gate: null,
+    items: [{ site_id: 'SITE-A', workorder_id: '100', code: 'ready', warnings: [], before: {}, changes: { schedstart: '2026-09-30T09:00:00+07:00' } }] }));
+  const receipt = (draftId: string, before: typeof original.baseline | null) => ({ batch_id: `batch-${draftId}`, source_finalized: true,
+    counts: { confirmed: 1 }, items: [{ item_id: `item-${draftId}`, connection_id: 'two', site_id: 'SITE-A', workorder_id: '100', state: 'confirmed' as const,
+      updated_at: '2026-10-08T00:00:00Z', source: { draft_id: draftId, draft_version: 1, member_id: `member-${draftId}` }, duration_result: null,
+      restore_source: before ? { before } : null }] });
+  vi.mocked(submitUpload).mockResolvedValueOnce(receipt('forward', original.baseline)).mockResolvedValueOnce(receipt('date-restore', shifted.baseline))
+    .mockResolvedValueOnce(receipt('duration-restore', null));
+  vi.mocked(lookupUploadRequest).mockResolvedValue(receipt('date-restore', shifted.baseline));
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  fireEvent.click(await screen.findByRole('button', { name: 'WO-REAL' }));
+  fireEvent.change(await screen.findByLabelText('Scheduled Start'), { target: { value: '2026-09-30T09:00' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+  await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  fireEvent.click(screen.getByText('Upload lên Offshore test'));
+  await screen.findByText(/Đã xác nhận 1 WO trong Maximo/);
+
+  fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
+  await screen.findByRole('button', { name: 'Khôi phục ngày lịch gốc' });
+  fireEvent.click(screen.getByRole('button', { name: 'Khôi phục ngày lịch gốc' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+  await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
+  expect(vi.mocked(saveDraft).mock.calls[1][1]).toEqual({ schedstart: original.baseline.schedstart, schedfinish: original.baseline.schedfinish });
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  fireEvent.click(screen.getByText('Upload lên Offshore test'));
+  await screen.findByText(/Maximo đã xác nhận thay đổi, nhưng chưa làm mới được bảng/);
+  fireEvent.click(screen.getByRole('button', { name: 'Đóng nháp' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Kiểm tra kết quả upload trước' }));
+  await screen.findByRole('heading', { name: 'Kết quả upload đã tra cứu' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
+  const durationRestore = await screen.findByRole('button', { name: 'Khôi phục Duration gốc' });
+  expect(screen.getByRole('button', { name: 'Khôi phục ngày lịch gốc' })).toBeDisabled();
+  fireEvent.click(durationRestore);
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+  await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
+  expect(vi.mocked(saveDraft).mock.calls[2][1]).toEqual({ estdur: '8' });
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  fireEvent.click(screen.getByText('Upload lên Offshore test'));
+  await screen.findByText(/Đã xác nhận 1 WO trong Maximo/);
+
+  fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
+  await screen.findByLabelText('Est. Duration');
+  expect(screen.queryByRole('button', { name: 'Khôi phục ngày lịch gốc' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Khôi phục Duration gốc' })).not.toBeInTheDocument();
+});
+
+it('ignores a finalized batch refresh after the connection scope changes', async () => {
+  await prepareBatchUpload();
+  let finish!: (value: typeof editorDetail) => void;
+  vi.mocked(getDetail).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+  fireEvent.click(screen.getByText('Upload nhóm lên Offshore test'));
+  await waitFor(() => expect(getDetail).toHaveBeenCalledTimes(1));
+  await chooseConnection('one');
+  expect(screen.queryByRole('dialog', { name: 'Lập lịch hàng loạt' })).not.toBeInTheDocument();
+  await act(async () => finish({ ...editorDetail, item: { ...row, estdur: '9' } }));
+  expect(screen.queryByText(/Đã xác nhận 1 WO trong Maximo/)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Est. Duration')).not.toBeInTheDocument();
+});
+
+it('keeps an in-memory recovery entry after an ambiguous submit 404 unmounts the editor', async () => {
+  await editWorkOrder();
+  vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'recoverable-draft', version: 1, state: 'draft' });
+  vi.mocked(openDraft).mockResolvedValue({ ...editorDetail, draft_id: 'recoverable-draft', version: 1, state: 'draft',
+    changes: { estdur: '9' }, baseline_changed: false, changes_valid_now: true });
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+  await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
+  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'recoverable-draft', version: 1, preview_hash: 'c'.repeat(64),
+    send_enabled: true, gate: null, items: [{ site_id: 'SITE-A', workorder_id: '100', code: 'ready', warnings: [], before: { estdur: '8' }, changes: { estdur: '9' } }] });
+  vi.mocked(submitUpload).mockRejectedValue(new RetrievalError(404, 'Scoped read failed after send'));
+  vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000002');
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  fireEvent.click(screen.getByText('Upload lên Offshore test'));
+  await screen.findByRole('button', { name: 'Kiểm tra kết quả upload trước' });
+  expect(screen.queryByLabelText('Est. Duration')).not.toBeInTheDocument();
+  vi.mocked(lookupUploadRequest).mockResolvedValue({ batch_id: 'batch', source_finalized: false, counts: { sending: 1 },
+    items: [{ item_id: 'item', connection_id: 'two', site_id: 'SITE-A', workorder_id: '100', state: 'sending',
+      updated_at: '2026-10-08T00:00:00Z', source: { draft_id: 'recoverable-draft', draft_version: 1, member_id: 'source-item' }, duration_result: null, restore_source: null }] });
+  fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra kết quả upload trước' }));
+  await screen.findByText('Kết quả upload đã tra cứu');
+  expect(lookupUploadRequest).toHaveBeenCalledWith(expect.objectContaining({ request_id: '00000000-0000-4000-8000-000000000002',
+    connection_id: 'two', discipline: 'MECH', draft_id: 'recoverable-draft', version: 1 }), expect.any(AbortSignal));
+  expect(screen.getByText(/Đang gửi: 1/)).toBeInTheDocument();
+});
+
+async function prepareBatchUpload() {
+  const second = { ...row, workorderid: '101', wonum: 'WO-SECOND' };
+  await setup(false, 'two');
+  vi.mocked(retrieveWorkOrders).mockResolvedValue([row, second]);
+  vi.mocked(prepareBatch).mockResolvedValue([editorDetail, { ...editorDetail, item: second }]);
+  vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'batch-draft', version: 1, state: 'draft' });
+  const preview = { draft_id: 'batch-draft', version: 1, preview_hash: 'a'.repeat(64), send_enabled: true, gate: null,
+    items: [{ site_id: 'SITE-A', workorder_id: '100', code: 'ready' as const, warnings: [], before: { estdur: '8' }, changes: { estdur: '9' } }] };
+  vi.mocked(previewUpload).mockResolvedValue(preview);
+  vi.mocked(submitUpload).mockResolvedValue({ batch_id: 'batch-id', source_finalized: true, counts: { confirmed: 1 },
+    items: [{ item_id: 'upload-item', connection_id: 'two', site_id: 'SITE-A', workorder_id: '100', state: 'confirmed',
+      updated_at: '2026-10-08T00:00:00Z', source: { draft_id: 'batch-draft', draft_version: 1, member_id: 'draft-item' }, duration_result: null, restore_source: null }] });
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  await screen.findByRole('button', { name: 'WO-SECOND' });
+  fireEvent.click(screen.getByLabelText('Chọn tất cả 2 WO trong kết quả lọc đã tải'));
+  fireEvent.click(screen.getByText('Lập lịch nhóm (2)'));
+  fireEvent.change(await screen.findByLabelText('WO-REAL Est. Duration'), { target: { value: '9' } });
+  fireEvent.click(screen.getByText('Xem trước thay đổi'));
+  fireEvent.click(screen.getByText('Lưu nháp nhóm'));
+  await screen.findByText('Đã lưu nháp 1 WO · v1. Maximo chưa thay đổi.');
+  fireEvent.click(screen.getByText('Đối chiếu nhóm với Maximo trước upload'));
+  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+}

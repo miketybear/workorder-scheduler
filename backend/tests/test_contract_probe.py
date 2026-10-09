@@ -29,6 +29,33 @@ def run_probe(handler, settings=None):
     return asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("worktype", ["PM", "CFT", "REC", "OVERHAUL", "MoD", "General", "Routine"])
+def test_non_cm_requires_explicit_exact_operator_type_and_default_stays_cm(worktype):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        source = raw(worktype=worktype)
+        return httpx.Response(
+            200, json={"member": [source]} if request.url.path != PATH else source
+        )
+
+    with pytest.raises(MaximoReadError):
+        run_probe(handler)
+    assert len(calls) == 1
+    calls.clear()
+
+    async def execute():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await probe_contract(
+                client, config(), "TEST", "100", "E&I", operator_worktype=worktype
+            )
+
+    result = asyncio.run(execute())
+    assert result.worktype == result.baseline.worktype == worktype
+    assert f'worktype="{worktype}"' in calls[0].url.params["oslc.where"]
+
+
 @pytest.mark.parametrize(
     "etag,status,token",
     [

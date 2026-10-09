@@ -1,6 +1,6 @@
-"""Saved-draft upload preparation and orchestration; no production transport is provided."""
+"""Saved-draft preparation and orchestration with explicit verified TEST transport."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 from uuid import UUID
 
@@ -26,6 +26,8 @@ class PreparedItem:
     proposal: dict
     changes: dict
     code: str
+    source_revision: str | None = None
+    revision_pinned: bool = False
 
 
 @dataclass(frozen=True)
@@ -54,10 +56,31 @@ def source(item):
         "workorder_id": item.key.workorder_id,
         "discipline": item.discipline,
         "revision": item.revision,
+        "source_revision": item.source_revision if item.revision_pinned else item.revision,
         "before": item.before,
         "proposal": item.proposal,
         "changes": item.changes,
     }
+
+
+def preview_warnings(item):
+    if item.code == "ready" and pm_schedule_change(item.before, item.changes):
+        return ["pm_duration_recalculation"]
+    return []
+
+
+def pm_schedule_change(before, changes):
+    return before["worktype"].upper() == "PM" and bool(
+        {"schedstart", "schedfinish"} & changes.keys()
+    )
+
+
+def valid_duration(value):
+    return value is not None and value.is_finite() and 0 <= value <= 100000
+
+
+def duration_display(value):
+    return str(value) if valid_duration(value) else None
 
 
 def member_hash(members):
@@ -96,7 +119,9 @@ def validate_current(item, current):
         return "invalid_changes", {}
 
 
-async def prepare_upload(db, actor_id, draft_id, version, keys, read_current: ReadCurrent):
+async def prepare_upload(
+    db, actor_id, draft_id, version, keys, read_current: ReadCurrent, *, pin_current_revision=False
+):
     draft, members = await owned_draft(db, actor_id, draft_id)
     if draft.version != version:
         raise HTTPException(409, "Draft changed; reopen before uploading")
@@ -126,24 +151,37 @@ async def prepare_upload(db, actor_id, draft_id, version, keys, read_current: Re
         )
         current = await read_current(key)
         await require_scope(db, actor_id, key, member.discipline, write=True)
-        code, changes = validate_current(item, current)
+        # Legacy drafts retain their original None revision; baseline equality is still
+        # mandatory. Pin the fresh exact-resource rowstamp only into this preview.
+        checked = (
+            replace(item, revision=current.revision)
+            if pin_current_revision and item.revision is None
+            else item
+        )
+        code, changes = validate_current(checked, current)
+        if pin_current_revision and not current.revision:
+            code, changes = "conflict", {}
         result.append(
             PreparedItem(
                 item.member_id,
                 key,
                 item.wonum,
                 item.discipline,
-                item.revision,
+                current.revision if pin_current_revision else item.revision,
                 item.before,
                 item.proposal,
                 changes,
                 code,
+                item.revision,
+                pin_current_revision,
             )
         )
     return PreparedUpload(draft.id, version, tuple(result))
 
 
-async def create_upload(sessions, actor_id, request_id, prepared, preview_hash):
+async def create_upload(
+    sessions, actor_id, request_id, prepared, preview_hash, *, return_created=False
+):
     """Internal only. Commit immutable source evidence and local reservations before send."""
     if prepared.preview_hash != preview_hash or any(i.code != "ready" for i in prepared.items):
         raise HTTPException(409, "Preview changed or contains invalid items")
@@ -161,7 +199,7 @@ async def create_upload(sessions, actor_id, request_id, prepared, preview_hash):
             if existing:
                 if existing.request_hash != preview_hash:
                     raise HTTPException(409, "Request ID already used for a different upload")
-                return existing.id
+                return (existing.id, False) if return_created else existing.id
             draft, members = await owned_draft(db, actor_id, prepared.draft_id, lock=True)
             by_id = {member.id: member for member in members}
             membership_hash = member_hash(members)
@@ -177,7 +215,7 @@ async def create_upload(sessions, actor_id, request_id, prepared, preview_hash):
                     or member.discipline != item.discipline
                     or member.baseline != item.before
                     or member.changes != item.proposal
-                    or member.upstream_revision != item.revision
+                    or member.upstream_revision != source(item)["source_revision"]
                 ):
                     raise HTTPException(409, "Draft changed; reopen before uploading")
             batch = UploadBatch(
@@ -216,7 +254,7 @@ async def create_upload(sessions, actor_id, request_id, prepared, preview_hash):
                         },
                     )
                 )
-            return batch.id
+            return (batch.id, True) if return_created else batch.id
     except IntegrityError:
         # The database uniqueness constraint also catches concurrent reservations.
         raise HTTPException(409, "Work order already has an unresolved upload") from None
@@ -275,9 +313,15 @@ async def immutable_item(db, item):
         evidence["proposal"],
         evidence["changes"],
         "ready",
+        evidence.get("source_revision", evidence["revision"]),
+        True,
     )
     if (
-        source(expected) != {field: evidence[field] for field in source(expected)}
+        source(expected)
+        != {
+            field: evidence.get(field, evidence["revision"] if field == "source_revision" else None)
+            for field in source(expected)
+        }
         or item.before != expected.before
         or item.changes != expected.changes
         or item.upstream_revision != expected.revision
@@ -305,14 +349,22 @@ async def send_pending(
 ):
     """Explicit internal orchestration; never resend sending/unknown/terminal items.
 
-    No HTTP endpoint calls this function and the app has no concrete write transport.
+    Verified TEST submit/continue invoke this bounded by the route.
     Cancellation/crash leaves sending, to be recovered as unknown by existing recovery.
     """
+    from app.maximo.reader import MaximoReadError
+
     async with sessions.begin() as db:
         item = await upload_item(db, actor_id, item_id)
         if item.state != "pending":
             return item.state
-        _, current, code = await checked_item(db, actor_id, item, reader)
+        try:
+            _, current, code = await checked_item(db, actor_id, item, reader)
+        except (MaximoReadError, HTTPException, ValueError):
+            if getattr(transport, "contract", None) != "native_rowstamp_test":
+                raise
+            await record_transition(db, item, actor_id, "failed")
+            return "failed"
         if (
             code != "ready"
             or not current.revision
@@ -323,16 +375,41 @@ async def send_pending(
             await record_transition(db, item, actor_id, state)
             return state
         await record_transition(db, item, actor_id, "sending")
+        if getattr(transport, "contract", None) == "native_rowstamp_test":
+            db.add(
+                AuditEvent(
+                    upload_item_id=item.id,
+                    actor_id=actor_id,
+                    event="conditional_request",
+                    details={
+                        "transaction_id": str(item.id),
+                        "contract": transport.contract,
+                        "precondition": {
+                            "channel": "json_body",
+                            "field": "_rowstamp",
+                            "value": current.revision,
+                        },
+                    },
+                )
+            )
     # Intent has committed before outbound I/O; keep this item locked through the call so
     # stale-send recovery cannot race the worker. A second check closes the commit gap.
     async with sessions.begin() as db:
         item = await upload_item(db, actor_id, item_id)
         if item.state != "sending":
             return item.state
-        key, current, code = await checked_item(db, actor_id, item, reader)
+        try:
+            key, current, code = await checked_item(db, actor_id, item, reader)
+        except (MaximoReadError, HTTPException, ValueError):
+            if getattr(transport, "contract", None) != "native_rowstamp_test":
+                raise
+            await record_transition(db, item, actor_id, "failed")
+            return "failed"
         if code != "ready":
             await record_transition(db, item, actor_id, "conflict")
             return "conflict"
+        if getattr(transport, "contract", None) == "native_rowstamp_test":
+            transport.attempt_id = item.id
         try:
             await transport.write(key, current.revision, item.changes)
         except ConditionalConflict:
@@ -342,12 +419,29 @@ async def send_pending(
         except (UncertainWrite, TimeoutError, OSError):
             state = "unknown"
         else:
-            state = await readback_state(db, actor_id, item, reader)
+            # A returning protocol write proves success. Native HTTP must additionally
+            # report its explicitly accepted status; timeout paths never reach here.
+            known_success = getattr(transport, "contract", None) != "native_rowstamp_test" or (
+                getattr(transport, "outcome", None) is not None
+                and transport.outcome.get("status") in {200, 204}
+            )
+            state = await readback_state(
+                db, actor_id, item, reader, known_write_success=known_success
+            )
+        if getattr(transport, "outcome", None) is not None:
+            db.add(
+                AuditEvent(
+                    upload_item_id=item.id,
+                    actor_id=actor_id,
+                    event="conditional_response",
+                    details=transport.outcome,
+                )
+            )
         await record_transition(db, item, actor_id, state)
         return state
 
 
-async def readback_state(db, actor_id, item, reader):
+async def readback_state(db, actor_id, item, reader, *, known_write_success=False):
     from app.maximo.reader import MaximoReadError
 
     key = WorkOrderKey(item.connection_id, item.site_id, item.workorder_id)
@@ -358,9 +452,65 @@ async def readback_state(db, actor_id, item, reader):
         await require_scope(db, actor_id, key, item.discipline, write=True)
         evidence = await immutable_item(db, item)
         expected = WorkOrderBaseline.model_validate({**evidence.before, **evidence.changes})
+        pinned = await db.scalar(
+            select(AuditEvent)
+            .where(
+                AuditEvent.upload_item_id == item.id,
+                AuditEvent.actor_id == actor_id,
+                AuditEvent.event == "pm_duration_result",
+            )
+            .order_by(AuditEvent.created_at, AuditEvent.id)
+        )
+        if pinned and pinned.details["code"] == "pm_duration_recalculated":
+            # Never infer a new acceptable duration during finalization/reconciliation.
+            observed = WorkOrderBaseline.model_validate(pinned.details["observed"])
+            if (
+                not pinned.details.get("known_write_success")
+                or not pm_schedule_change(evidence.before, evidence.changes)
+                or "estdur" in evidence.changes
+                or not valid_duration(observed.estdur)
+                or observed.model_copy(update={"estdur": expected.estdur}) != expected
+                or pinned.details["requested"] != expected.model_dump(mode="json")
+            ):
+                return "unknown"
+            return "confirmed" if current.baseline == observed else "unknown"
+        if (
+            known_write_success
+            and pm_schedule_change(evidence.before, evidence.changes)
+            and current.baseline.estdur != expected.estdur
+        ):
+            duration_only = (
+                current.baseline.model_copy(update={"estdur": expected.estdur}) == expected
+            )
+            recalculated = (
+                "estdur" not in evidence.changes
+                and duration_only
+                and valid_duration(current.baseline.estdur)
+            )
+            # Flush before the terminal transition, in the same committed transaction.
+            db.add(
+                AuditEvent(
+                    upload_item_id=item.id,
+                    actor_id=actor_id,
+                    event="pm_duration_result",
+                    details={
+                        "code": "pm_duration_recalculated"
+                        if recalculated
+                        else "pm_duration_mismatch",
+                        "expected": duration_display(expected.estdur),
+                        "actual": duration_display(current.baseline.estdur),
+                        "requested": expected.model_dump(mode="json"),
+                        "observed": current.baseline.model_dump(mode="json"),
+                        "observed_revision": current.revision,
+                        "known_write_success": True,
+                    },
+                )
+            )
+            await db.flush()
+            return "confirmed" if recalculated else "unknown"
         # Compare normalized entire relevant baseline, including fields we did not write.
         return "confirmed" if current.baseline == expected else "unknown"
-    except (MaximoReadError, HTTPException, TimeoutError, OSError):
+    except (MaximoReadError, HTTPException, ValueError, TimeoutError, OSError):
         return "unknown"
 
 
@@ -381,8 +531,8 @@ async def reconcile_unknown(sessions, actor_id, item_id, reader: ReadCurrent):
 async def finalize_confirmed(sessions, actor_id, batch_id, reader: ReadCurrent):
     """Explicit cleanup of an unchanged, fully selected, fully confirmed source only.
 
-    Partial selection/outcomes or edits preserve the entire draft. No route/worker calls this
-    yet. Reader has the same raw configured, current eligibility contract as send_pending.
+    Partial selection/outcomes or edits preserve the entire draft. TEST routes invoke this
+    after execution/reconciliation. Reader has send_pending's raw configured scope contract.
     """
     async with sessions.begin() as db:
         await db.scalar(select(User.id).where(User.id == actor_id).with_for_update())

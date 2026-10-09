@@ -16,7 +16,8 @@ export function effectiveOrder(row: WorkOrder, choice?: string): WorkOrder {
 export function updatePlans(rows: WorkOrder[], notice: DraftNotice): WorkOrder[] {
   const members = new Map(notice.items?.map((item) => [rowKey(item.item), item]) ?? []);
   return rows.map((row) => {
-    const remaining = row.drafts?.filter((item) => item.draft_id !== notice.draft_id) ?? [];
+    const remaining = row.drafts?.filter((item) => item.draft_id !== notice.draft_id ||
+      (notice.items === null ? item.version !== notice.version : false)) ?? [];
     const previous = row.drafts?.find((item) => item.draft_id === notice.draft_id);
     const member = members.get(rowKey(row));
     return { ...member?.item ?? row, drafts: member ? [...remaining, { draft_id: notice.draft_id, version: notice.version,

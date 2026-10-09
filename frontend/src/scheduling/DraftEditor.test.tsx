@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { deleteDraft, getDetail, openDraft, saveDraft, type Detail, type Restored } from '../api/drafts';
+import { deleteDraft, getDetail, openDraft, previewUpload, saveDraft, submitUpload, type Detail, type Restored, type UploadPreview } from '../api/drafts';
 import { columns, RetrievalError, type WorkOrder } from '../api/workOrders';
 import { DraftEditor } from './DraftEditor';
 
 vi.mock('../api/drafts', async (original) => ({ ...await original<object>(),
-  getDetail: vi.fn(), openDraft: vi.fn(), saveDraft: vi.fn(), deleteDraft: vi.fn() }));
+  getDetail: vi.fn(), openDraft: vi.fn(), saveDraft: vi.fn(), deleteDraft: vi.fn(), previewUpload: vi.fn(), submitUpload: vi.fn() }));
 afterEach(() => { vi.resetAllMocks(); vi.restoreAllMocks(); });
 const scope = { connection_id: 'one', discipline: 'MECH' };
 const selection = { key: { ...scope, site_id: 'TEST', workorder_id: '100' } };
@@ -36,6 +36,173 @@ it('preserves edits after a failed save and retries with the same request ID; su
   await waitFor(() => expect(saveDraft).toHaveBeenCalledTimes(3));
   expect(vi.mocked(saveDraft).mock.calls[2][4]).toMatchObject({ version: 1 });
   expect(vi.mocked(saveDraft).mock.calls[2][3]).not.toBe(vi.mocked(saveDraft).mock.calls[0][3]);
+});
+
+it('previews only the saved single-WO version and hides that response as soon as edits become unsaved', async () => {
+  vi.mocked(getDetail).mockResolvedValue(detail);
+  vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'saved', version: 4, state: 'draft' });
+  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'saved', version: 4, preview_hash: 'b'.repeat(64),
+    send_enabled: false, gate: 'write_contract_unverified', items: [{ site_id: 'TEST', workorder_id: '100', code: 'ready', warnings: [],
+      before: { estdur: '8' }, changes: { estdur: '9' } }] });
+  render(<DraftEditor {...props} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
+  fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
+  fireEvent.click(screen.getByText('Lưu nháp'));
+  await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  expect(await screen.findByText('Maximo hiện tại')).toBeInTheDocument();
+  expect(screen.getByText(/Upload chưa mở/)).toBeInTheDocument();
+  expect(screen.getByText('Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.')).toBeInTheDocument();
+  expect(previewUpload).toHaveBeenCalledWith(expect.objectContaining({ draft_id: 'saved', version: 4 }),
+    [{ site_id: 'TEST', workorder_id: '100' }], expect.any(AbortSignal));
+  fireEvent.change(screen.getByLabelText('Est. Duration'), { target: { value: '10' } });
+  expect(screen.getByText('Ẩn đối chiếu')).toBeInTheDocument();
+  expect(screen.queryByText('Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Est. Duration'), { target: { value: '11' } });
+  expect(screen.queryByText('Upload chưa khả dụng')).not.toBeInTheDocument();
+});
+
+it('aborts and discards an in-flight preview when the workspace is hidden, without fetching again on return', async () => {
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, draft_id: 'saved', version: 4, state: 'draft', changes: { estdur: '9' }, baseline_changed: false, changes_valid_now: true });
+  let resolvePreview!: (value: UploadPreview) => void;
+  vi.mocked(previewUpload).mockReturnValue(new Promise((resolve) => { resolvePreview = resolve; }));
+  const view = render(<DraftEditor {...props} selection={{ draftId: 'saved' }} active />);
+  await screen.findByLabelText('Est. Duration');
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  await screen.findByText('Đang đối chiếu với Maximo…');
+  const signal = vi.mocked(previewUpload).mock.calls[0][2];
+  view.rerender(<DraftEditor {...props} selection={{ draftId: 'saved' }} active={false} />);
+  expect(signal.aborted).toBe(true);
+  await act(async () => resolvePreview({ draft_id: 'saved', version: 4, preview_hash: 'd'.repeat(64), send_enabled: false,
+    gate: 'write_contract_unverified', items: [{ site_id: 'TEST', workorder_id: '100', code: 'ready', warnings: [], before: { estdur: '8' }, changes: { estdur: '9' } }] }));
+  expect(screen.queryByText('Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.')).not.toBeInTheDocument();
+  view.rerender(<DraftEditor {...props} selection={{ draftId: 'saved' }} active />);
+  expect(screen.getByText('Đối chiếu với Maximo trước upload')).toBeInTheDocument();
+  expect(previewUpload).toHaveBeenCalledTimes(1);
+});
+
+it('shows a conflict with no changed fields instead of dropping the WO from preview', async () => {
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, draft_id: 'saved', version: 4, state: 'draft', changes: { estdur: '9' }, baseline_changed: false, changes_valid_now: true });
+  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'saved', version: 4, preview_hash: 'e'.repeat(64), send_enabled: false,
+    gate: 'write_contract_unverified', items: [{ site_id: 'TEST', workorder_id: '100', code: 'conflict', warnings: [], before: {}, changes: {} }] });
+  render(<DraftEditor {...props} selection={{ draftId: 'saved' }} />);
+  await screen.findByLabelText('Est. Duration');
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  expect(await screen.findByText('Không có trường nào đủ điều kiện đối chiếu.')).toBeInTheDocument();
+  expect(screen.getByRole('row', { name: /WO-100/ })).toHaveTextContent('Xung đột');
+});
+
+it('shows conflicts even when the connection can upload other ready rows and keeps submit disabled', async () => {
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, draft_id: 'saved', version: 4, state: 'draft', changes: { estdur: '9' }, baseline_changed: false, changes_valid_now: true });
+  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'saved', version: 4, preview_hash: 'd'.repeat(64), send_enabled: true, gate: null,
+    items: [{ site_id: 'TEST', workorder_id: '100', code: 'conflict', warnings: [], before: {}, changes: {} }] });
+  render(<DraftEditor {...props} selection={{ draftId: 'saved' }} />);
+  await screen.findByLabelText('Est. Duration');
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  expect(await screen.findByRole('row', { name: /WO-100/ })).toHaveTextContent('Xung đột');
+  expect(screen.getByText('Upload chưa khả dụng')).toBeDisabled();
+  expect(screen.queryByText('Upload lên Onshore test')).not.toBeInTheDocument();
+  expect(submitUpload).not.toHaveBeenCalled();
+});
+
+it.each([401, 500])('keeps the restored editor intact after upload preview error %s', async (status) => {
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, draft_id: 'saved', version: 4, state: 'draft', changes: { estdur: '9' }, baseline_changed: false, changes_valid_now: true });
+  vi.mocked(previewUpload).mockRejectedValue(new RetrievalError(status, 'Preview failed'));
+  render(<DraftEditor {...props} selection={{ draftId: 'saved' }} />);
+  const duration = await screen.findByLabelText('Est. Duration');
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  await waitFor(() => status === 401 ? expect(props.onDenied).toHaveBeenCalled() : expect(screen.getByRole('alert')).toHaveTextContent('Preview failed'));
+  expect(duration).toHaveValue('9');
+  expect(props.onClose).not.toHaveBeenCalled();
+  if (status === 500) expect(props.onDenied).not.toHaveBeenCalled();
+});
+
+it('retains the same request ID after an uncertain server error and recovers without a new preview', async () => {
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, draft_id: 'saved', version: 4, state: 'draft', changes: { estdur: '9' }, baseline_changed: false, changes_valid_now: true });
+  const ready: UploadPreview = { draft_id: 'saved', version: 4, preview_hash: 'f'.repeat(64), send_enabled: true, gate: null,
+    items: [{ site_id: 'TEST', workorder_id: '100', code: 'ready', warnings: [], before: { estdur: '8' }, changes: { estdur: '9' } }] };
+  vi.mocked(previewUpload).mockResolvedValue(ready);
+  vi.mocked(submitUpload).mockRejectedValueOnce(new RetrievalError(503, 'temporary failure')).mockResolvedValueOnce({
+    batch_id: 'batch', source_finalized: false, counts: { pending: 1 }, items: [{ item_id: 'item', connection_id: 'one',
+      site_id: 'TEST', workorder_id: '100', state: 'pending', updated_at: '2026-10-08T00:00:00Z',
+      source: { draft_id: 'saved', draft_version: 4, member_id: 'member' }, duration_result: null, restore_source: null }],
+  });
+  vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000001');
+  const view = render(<DraftEditor {...props} selection={{ draftId: 'saved' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
+  await screen.findByLabelText('Est. Duration');
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  fireEvent.click(screen.getByText('Upload lên Onshore test'));
+  await screen.findByText('Lấy kết quả yêu cầu trước');
+  expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
+  expect(submitUpload).toHaveBeenCalledTimes(1);
+  const firstCall = vi.mocked(submitUpload).mock.calls[0];
+  const requestId = firstCall[1];
+  view.rerender(<DraftEditor {...props} selection={{ draftId: 'saved' }} active={false}
+    connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
+  view.rerender(<DraftEditor {...props} selection={{ draftId: 'saved' }} active={true}
+    connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} timezone="UTC" />);
+  fireEvent.click(screen.getByText('Lấy kết quả yêu cầu trước'));
+  await screen.findByText('Kết quả từng WO');
+  expect(submitUpload).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(submitUpload).mock.calls[1][1]).toBe(requestId);
+  expect(vi.mocked(submitUpload).mock.calls[1][2]).toBe(firstCall[2]);
+  expect(vi.mocked(submitUpload).mock.calls[1][3]).toBe(firstCall[3]);
+  expect(previewUpload).toHaveBeenCalledTimes(2);
+});
+
+it('warns on PM schedule preview and shows the confirmed Maximo duration after upload', async () => {
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, item: { ...detail.item, worktype: 'PM' }, baseline: { ...detail.baseline, worktype: 'PM' },
+    draft_id: 'saved', version: 4, state: 'draft', changes: { schedstart: '2026-10-01T09:00:00+07:00' }, baseline_changed: false, changes_valid_now: true });
+  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'saved', version: 4, preview_hash: 'a'.repeat(64), send_enabled: true, gate: null,
+    items: [{ site_id: 'TEST', workorder_id: '100', code: 'ready', warnings: ['pm_duration_recalculation'],
+      before: { schedstart: '2026-10-01T08:00:00+07:00' }, changes: { schedstart: '2026-10-01T09:00:00+07:00' } }] });
+  vi.mocked(submitUpload).mockResolvedValue({ batch_id: 'batch', source_finalized: true, counts: { confirmed: 1 }, items: [{
+    item_id: 'upload', connection_id: 'one', site_id: 'TEST', workorder_id: '100', state: 'confirmed', updated_at: '2026-10-08T00:00:00Z',
+    source: { draft_id: 'saved', draft_version: 4, member_id: 'member' }, duration_result: { code: 'pm_duration_recalculated', expected: '25', actual: '21' }, restore_source: null,
+  }] });
+  render(<DraftEditor {...props} selection={{ draftId: 'saved' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
+  await screen.findByLabelText('Est. Duration');
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  expect(await screen.findByText('Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.')).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Upload lên Onshore test'));
+  expect(await screen.findByText('Maximo đã tính lại Duration: 25 → 21 giờ.')).toBeInTheDocument();
+  expect(screen.getByText('Đã xác nhận')).toBeInTheDocument();
+});
+
+it('keeps an unknown PM duration mismatch unconfirmed and preserves the draft for explicit reconciliation', async () => {
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, item: { ...detail.item, worktype: 'PM' }, baseline: { ...detail.baseline, worktype: 'PM' },
+    draft_id: 'saved', version: 4, state: 'draft', changes: { schedstart: '2026-10-01T09:00:00+07:00' }, baseline_changed: false, changes_valid_now: true });
+  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'saved', version: 4, preview_hash: 'a'.repeat(64), send_enabled: true, gate: null,
+    items: [{ site_id: 'TEST', workorder_id: '100', code: 'ready', warnings: ['pm_duration_recalculation'],
+      before: { schedstart: '2026-10-01T08:00:00+07:00' }, changes: { schedstart: '2026-10-01T09:00:00+07:00' } }] });
+  vi.mocked(submitUpload).mockResolvedValue({ batch_id: 'batch', source_finalized: false, counts: { unknown: 1 }, items: [{
+    item_id: 'upload', connection_id: 'one', site_id: 'TEST', workorder_id: '100', state: 'unknown', updated_at: '2026-10-08T00:00:00Z',
+    source: { draft_id: 'saved', draft_version: 4, member_id: 'member' }, duration_result: { code: 'pm_duration_mismatch', expected: '25', actual: '21' }, restore_source: null,
+  }] });
+  render(<DraftEditor {...props} selection={{ draftId: 'saved' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
+  const duration = await screen.findByLabelText('Est. Duration');
+  fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
+  expect(await screen.findByText('Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.')).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Upload lên Onshore test'));
+  expect(await screen.findByText('Chưa xác nhận: Duration thực tế 21 giờ, dự kiến 25 giờ. Nháp được giữ lại; hãy đối chiếu trước khi xử lý tiếp.')).toBeInTheDocument();
+  expect(duration).toHaveValue('8');
+  expect(screen.getByText('Chưa xác định')).toBeInTheDocument();
+  expect(submitUpload).toHaveBeenCalledTimes(1);
+});
+
+it('warns on a PM duration-only edit when its derived finish changes', async () => {
+  vi.mocked(getDetail).mockResolvedValue({ ...detail, baseline: { ...detail.baseline, worktype: 'PM' }, item: { ...detail.item, worktype: 'PM' } });
+  render(<DraftEditor {...props} />);
+  fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
+  expect(await screen.findByText('Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.')).toBeInTheDocument();
+});
+
+it('warns for a restored PM finish-only change against the original baseline', async () => {
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, baseline: { ...detail.baseline, worktype: 'PM' }, item: { ...detail.item, worktype: 'PM' },
+    draft_id: 'saved', version: 4, state: 'draft', changes: { schedfinish: '2026-10-01T17:00:00+07:00' }, baseline_changed: false, changes_valid_now: true });
+  render(<DraftEditor {...props} selection={{ draftId: 'saved' }} />);
+  expect(await screen.findByLabelText('Est. Duration')).toBeInTheDocument();
+  expect(await screen.findByText('Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.')).toBeInTheDocument();
 });
 
 it('requires target intent, resets targets when unchecked, and validates duration and dates before saving', async () => {
@@ -195,4 +362,69 @@ it('enables both target pickers and sends explicit intent after selecting a targ
   fireEvent.click(screen.getByText('Lưu nháp'));
   await waitFor(() => expect(saveDraft).toHaveBeenCalled());
   expect(vi.mocked(saveDraft).mock.calls[0][1]).toEqual({ change_target: true, targcompdate: '2026-10-01T16:00:00+07:00' });
+});
+
+it('prepares a date-only PM restoration and then a duration-only proposal without automatic writes', async () => {
+  const original = { ...baseline, worktype: 'PM' };
+  const shifted: Detail = { ...detail, baseline: { ...baseline, worktype: 'PM', schedstart: '2026-10-30T07:37:13+07:00',
+    schedfinish: '2026-10-31T18:37:13+07:00', estdur: '21' }, item: { ...detail.item, worktype: 'PM',
+    schedstart: '2026-10-30T07:37:13+07:00', schedfinish: '2026-10-31T18:37:13+07:00', estdur: '21' } };
+  vi.mocked(getDetail).mockResolvedValue(shifted);
+  vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'restore-draft', version: 1, state: 'draft' });
+  const first = render(<DraftEditor {...props} pmRestoreOrigin={original} />);
+  await screen.findByLabelText('Est. Duration');
+  fireEvent.click(screen.getByRole('button', { name: 'Khôi phục ngày lịch gốc' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+  await waitFor(() => expect(saveDraft).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(saveDraft).mock.calls[0][1]).toEqual({ schedstart: original.schedstart, schedfinish: original.schedfinish });
+  expect(submitUpload).not.toHaveBeenCalled();
+  first.unmount();
+
+  const atOriginalDates: Detail = { ...shifted, baseline: { ...shifted.baseline, schedstart: original.schedstart,
+    schedfinish: original.schedfinish }, item: { ...shifted.item, schedstart: original.schedstart, schedfinish: original.schedfinish } };
+  vi.mocked(getDetail).mockResolvedValue(atOriginalDates);
+  const second = render(<DraftEditor {...props} selection={{ key: { ...scope, site_id: 'TEST', workorder_id: '100' } }} pmRestoreOrigin={original} />);
+  await screen.findByLabelText('Est. Duration');
+  fireEvent.click(screen.getByRole('button', { name: 'Khôi phục Duration gốc' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+  await waitFor(() => expect(saveDraft).toHaveBeenCalledTimes(2));
+  expect(vi.mocked(saveDraft).mock.calls[1][1]).toEqual({ estdur: original.estdur });
+  expect(submitUpload).not.toHaveBeenCalled();
+  second.unmount();
+});
+
+it('fails closed when PM original dates are null or current protected PIC/targets drift', async () => {
+  const original = { ...baseline, worktype: 'PM', schedstart: null, schedfinish: null };
+  const pmDetail: Detail = { ...detail, baseline: { ...baseline, worktype: 'PM' }, item: { ...detail.item, worktype: 'PM' } };
+  vi.mocked(getDetail).mockResolvedValue(pmDetail);
+  const view = render(<DraftEditor {...props} pmRestoreOrigin={original} />);
+  await screen.findByLabelText('Est. Duration');
+  expect(screen.getByRole('alert')).toHaveTextContent('Ngày lịch gốc bị thiếu hoặc không hợp lệ');
+  expect(screen.getByRole('button', { name: 'Khôi phục ngày lịch gốc' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Khôi phục Duration gốc' })).toBeDisabled();
+  view.unmount();
+
+  const changedProtected: Detail = { ...pmDetail, baseline: { ...pmDetail.baseline, targcompdate: '2026-10-02T16:00:00+07:00' } };
+  vi.mocked(getDetail).mockResolvedValue(changedProtected);
+  render(<DraftEditor {...props} pmRestoreOrigin={{ ...baseline, worktype: 'PM' }} />);
+  await screen.findByLabelText('Est. Duration');
+  expect(screen.getByRole('alert')).toHaveTextContent('PIC, Target hoặc loại WO hiện tại khác dữ liệu gốc');
+  expect(screen.getByRole('button', { name: 'Khôi phục ngày lịch gốc' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Khôi phục Duration gốc' })).toBeDisabled();
+  expect(saveDraft).not.toHaveBeenCalled();
+  expect(submitUpload).not.toHaveBeenCalled();
+});
+
+it('treats equivalent timezone offsets and numeric duration formatting as the original PM values', async () => {
+  const original = { ...baseline, worktype: 'PM' };
+  const semanticallySame: Detail = { ...detail, baseline: { ...original,
+    schedstart: '2026-09-30T01:00:00Z', schedfinish: '2026-09-30T09:00:00Z', estdur: '8.0',
+    targstartdate: '2026-09-30T01:00:00Z', targcompdate: '2026-09-30T09:00:00Z' },
+  };
+  vi.mocked(getDetail).mockResolvedValue(semanticallySame);
+  render(<DraftEditor {...props} pmRestoreOrigin={original} />);
+  await screen.findByLabelText('Est. Duration');
+  expect(screen.getByRole('button', { name: 'Khôi phục ngày lịch gốc' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Khôi phục Duration gốc' })).toBeDisabled();
+  expect(screen.queryByRole('alert', { name: /PIC, Target/ })).not.toBeInTheDocument();
 });
