@@ -164,3 +164,39 @@ Không thêm dependency; browser API mocks chưa thay thế E2E policy với bac
 
 Revision/ETag, upload/audit/history, browser E2E rộng và kiểm thử khoảng 10 phiên
 vẫn nằm trong [backlog](todos.md).
+
+## Tối ưu danh sách nháp — 2026-10-10
+
+`GET /api/drafts` giữ phân trang 20 nháp và cả hai chế độ summary/`include_items=true`.
+Trong mỗi request, API đọc metadata/thành viên theo tập rồi trả connection DB về pool
+trước khi gọi Maximo. Những WO trùng giữa các nháp chỉ được đọc một lần theo key
+connection/site/WOID; crew được đọc một lần, tối đa 4 detail reads đồng thời.
+Không giữ cache giữa các request, không dùng metadata đã lưu thay kiểm tra upstream.
+
+Chỉ trả nhóm khi mọi thành viên còn đúng discipline/phạm vi và đủ điều kiện.
+Sau I/O, API kiểm tra lại session/grant và đọc lại metadata/thành viên trong cùng
+một SQL statement; nháp đổi version hoặc membership bị bỏ khỏi kết quả lần tải đó.
+Nhóm có thành viên không xác minh được bị ẩn toàn bộ, không lộ count/nội dung một phần.
+Chế độ expanded giữ baseline/change/PIC/token và cờ kiểm tra hiện có; summary tránh
+xây dựng các payload chi tiết không cần thiết. Timeout/hủy request hủy và drain mọi
+detail task trước khi đóng HTTP client. Xem [số đo 10 phiên](ten-session-operational-rehearsal.md).
+
+## Ràng buộc Schedule trong khoảng Target — 2026-10-10
+
+UI kiểm tra Scheduled Start và Scheduled Finish theo Target Start/Target Finish
+hiệu lực, gồm target mới nếu người dùng đang chỉnh với intent hợp lệ. Cho phép
+bằng mốc biên; so sánh instant có timezone, không bỏ phần giờ hoặc so chuỗi ngày.
+Finish tự tính từ Start + Duration cũng phải nằm trong khoảng này.
+
+Áp dụng khi sửa schedule/finish/duration hoặc target, trong editor đơn và từng WO
+nhóm, kể cả áp nhóm/dán Excel và mở lại nháp đã lưu. Lỗi hiển thị trên UI và chặn
+lưu/preview upload, giữ edits để người dùng sửa; không tự cắt hoặc đổi ngày.
+Nếu thiếu một mốc target thì chỉ áp dụng mốc còn có; không tự tạo target. PIC-only
+không bị khóa chỉ vì lịch gốc cũ đang ngoài target. PM/CFT vẫn không được đổi target.
+
+Phạm vi là validation UI theo yêu cầu; backend hiện kiểm tra date pairs/order,
+chưa áp dụng thêm containment Schedule trong Target cho các API client trực tiếp.
+Chủ dự án xác nhận ngày 2026-10-10 không cần bổ sung validation này ở backend.
+Upload vẫn re-read và so toàn bộ baseline, gồm target; target trên Maximo thay đổi
+sau khi lưu nháp làm preview/write conflict theo bảo vệ sẵn có.
+Lịch sử upload/audit tổng thể được chuyển sang phase 2 theo quyết định chủ dự án.

@@ -1,0 +1,51 @@
+{
+  "local": [
+    {
+      "allocation_id": "d8d8fde2-0743-4657-b153-304f58255c6b",
+      "assignment_id": "1968934",
+      "laborcode": "HAIDQ",
+      "minutes": 300,
+      "version": 1,
+      "sync_state": "local"
+    },
+    {
+      "allocation_id": "4a10b8e3-555e-4f12-b6d9-f2ec52c1e841",
+      "assignment_id": "1968932",
+      "laborcode": "CHANLD",
+      "minutes": 300,
+      "version": 1,
+      "sync_state": "local"
+    }
+  ],
+  "remote": [
+    {
+      "assignment_id": "1968934",
+      "laborcode": null,
+      "status": "WAITASGN",
+      "labor_hours": "5.0",
+      "revision": "3573533790"
+    },
+    {
+      "assignment_id": "1968932",
+      "laborcode": null,
+      "status": "WAITASGN",
+      "labor_hours": "5.0",
+      "revision": "3573533792"
+    }
+  ],
+  "effective_load": {
+    "HAIDQ": {
+      "local_minutes": 300,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 300
+    },
+    "CHANLD": {
+      "local_minutes": 300,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 300
+    }
+  },
+  "attempts": []
+}

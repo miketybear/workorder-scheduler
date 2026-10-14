@@ -1,0 +1,10 @@
+# Private file owned by wos-backup, mode0600. Supply the approved hostname/CA.
+# No password here; no credentials on the command line or in systemd Environment.
+[wos_backup]
+host=REPLACE_WITH_APPROVED_DB_HOSTNAME
+port=5432
+dbname=scheduler
+user=REPLACE_WITH_APPROVED_BACKUP_ROLE
+sslmode=verify-full
+sslrootcert=/etc/wos-backup/database-ca.pem
+connect_timeout=10

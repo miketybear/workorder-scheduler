@@ -1,0 +1,78 @@
+# Standalone staging stack; do not combine with compose.yaml.
+name: workorder-scheduler-staging
+services:
+  db:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_DB: scheduler
+      POSTGRES_USER: scheduler_dba
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scheduler_dba -d scheduler"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    logging: &bounded_logs
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  migrate:
+    image: ${WOS_BACKEND_IMAGE:?Set immutable backend release image}
+    profiles: [tools]
+    env_file:
+      - path: ${WOS_MIGRATION_ENV_FILE:?Set private migration environment file}
+        format: raw
+    environment:
+      WOS_ENVIRONMENT: staging
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *bounded_logs
+  backend:
+    image: ${WOS_BACKEND_IMAGE:?Set immutable backend release image}
+    env_file:
+      - path: ${WOS_RUNTIME_ENV_FILE:?Set private runtime environment file}
+        format: raw
+    environment:
+      WOS_ENVIRONMENT: staging
+    # Callback URL is explicit in Settings; no client-supplied proxy headers needed.
+    command: ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--no-proxy-headers", "--timeout-graceful-shutdown", "320"]
+    # Request budget <=300s; leave time for cancellation/response and lifespan cleanup.
+    stop_signal: SIGTERM
+    stop_grace_period: 330s
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/ready', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging: *bounded_logs
+  web:
+    image: ${WOS_WEB_IMAGE:?Set immutable web release image}
+    ports: ["443:443"]
+    volumes:
+      - ./deployment/staging/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${WOS_TLS_CERT_FILE:?Set certificate fullchain file}:/etc/nginx/tls/fullchain.pem:ro
+      - ${WOS_TLS_KEY_FILE:?Set private key file}:/etc/nginx/tls/privkey.pem:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    # QUIT drains nginx workers; TERM would interrupt active proxy requests.
+    stop_signal: SIGQUIT
+    stop_grace_period: 330s
+    restart: unless-stopped
+    logging: *bounded_logs
+volumes:
+  staging_postgres_data:
+secrets:
+  db_password:
+    file: ${WOS_DB_PASSWORD_FILE:?Set private DBA password file}

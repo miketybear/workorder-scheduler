@@ -14,10 +14,11 @@ from app.auth.sessions import SESSION_COOKIE, resolve_session, verify_csrf
 from app.db.models import AccessGrant, Draft, DraftItem, DraftSubmission
 from app.maximo.detail import current_snapshot, read_detail, read_pics
 from app.maximo.routes import authorized_connection, configured_connection
+from app.request_deadline import ReadDraftDeadlineRoute
 from app.scheduling.changes import ScheduleChanges, build_changes
 from app.scheduling.drafts import WorkOrderKey, create_draft, load_draft, require_scope
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api", route_class=ReadDraftDeadlineRoute)
 
 
 def restored_item(item, current):
@@ -184,7 +185,9 @@ async def persist(request, payload, draft_id=None):
     identity, _, current = await retrieve_snapshot(
         request, key, payload.discipline, write=True, csrf=True
     )
-    async with request.app.state.sessions.begin() as db:
+    # Direct transaction exit keeps commit cancellation in the request task.
+    # sessionmaker.begin() shields a child commit task that could outlive a 504.
+    async with request.app.state.sessions() as db, db.begin():
         actor = await actor_after_io(request, db, identity)
         await require_scope(db, actor.user_id, key, payload.discipline, write=True)
         if draft_id is not None:
@@ -244,7 +247,7 @@ async def update(request: Request, response: Response, draft_id: UUID, payload: 
 
 
 async def restore_data(request, draft_id):
-    async with request.app.state.sessions.begin() as db:
+    async with request.app.state.sessions() as db, db.begin():
         actor = await resolve_session(db, request.cookies.get(SESSION_COOKIE))
         draft, scopes = await owned_draft(db, actor.user_id, draft_id)
         version = draft.version
@@ -314,7 +317,7 @@ async def list_drafts(
 ):
     response.headers["Cache-Control"] = "no-store"
     key = WorkOrderKey(connection_id, "", "")
-    actor, _ = await checked_settings(request, key, discipline)
+    actor, config = await checked_settings(request, key, discipline)
     async with request.app.state.sessions() as db:
         ids = list(
             (
@@ -339,31 +342,11 @@ async def list_drafts(
                 )
             ).all()
         )
-    results = []
-    for draft_id in ids[:20]:
-        try:
-            data = await restore_data(request, draft_id)
-        except HTTPException as error:
-            if error.status_code in (404, 409):
-                continue
-            raise
-        if any(item["discipline"] != discipline for item in data["items"]):
-            continue
-        results.append(
-            {
-                "draft_id": data["draft_id"],
-                "version": data["version"],
-                "updated_at": data["updated_at"],
-                "wonum": data["items"][0]["wonum"],
-                "site_id": data["items"][0]["site_id"],
-                "item_count": len(data["items"]),
-                "system_name": data["items"][0]["item"]["systemid"],
-                **({"items": data["items"]} if include_items else {}),
-            }
-        )
-    fresh_actor, _ = await checked_settings(request, key, discipline)
-    if fresh_actor.user_id != actor.user_id:
-        raise HTTPException(401, "Sign-in required")
+    from app.scheduling.draft_list import verified_page
+
+    results = await verified_page(
+        request, actor, ids[:20], connection_id, discipline, config, include_items
+    )
     return {
         "connection_id": str(connection_id),
         "discipline": discipline,
@@ -391,7 +374,7 @@ async def remove(request: Request, draft_id: UUID, version: Annotated[int, Query
         ]
     for key, discipline in scopes:
         await retrieve_snapshot(request, key, discipline, write=True)
-    async with request.app.state.sessions.begin() as db:
+    async with request.app.state.sessions() as db, db.begin():
         await actor_after_io(request, db, actor)
         for key, discipline in scopes:
             await require_scope(db, actor.user_id, key, discipline, write=True)

@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-14",
+  "environment": "Onshore Test",
+  "owned_trial_child_id": "2001468",
+  "original_assignment_id": "2001466",
+  "delete_conditional_guard": "UNVERIFIED; no child ETag advertised",
+  "public_delete_enabled": false,
+  "no_blind_retry": true,
+  "http_status": 204,
+  "current_assignment_ids": [
+    "2001466"
+  ],
+  "only_owned_child_absent": true,
+  "all_original_ids_fields_schedules_planned_local_preserved": true,
+  "attempt_id": "40f3950e-f3fd-4b0a-b9bb-14132fad6b6f",
+  "cleanup_confirmed": true
+}

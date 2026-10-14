@@ -1,0 +1,25 @@
+{
+  "restore_attempt": "4e2f942d-b0e8-4a47-b2c0-a6a6fa9a74a2",
+  "response": "accepted",
+  "business_fields_restored": true,
+  "replacement_assignment": {
+    "old": "1968932",
+    "new": "2001462"
+  },
+  "both_waiting_5_hours": true,
+  "schedules": {
+    "2498722": {
+      "schedstart": null,
+      "schedfinish": null,
+      "targstartdate": "2026-10-01T00:00:00+07:00",
+      "targcompdate": "2026-10-31T00:00:00+07:00"
+    },
+    "2498724": {
+      "schedstart": null,
+      "schedfinish": null,
+      "targstartdate": "2026-10-01T00:00:00+07:00",
+      "targcompdate": "2026-10-01T10:00:00+07:00"
+    }
+  },
+  "siblings_preserved": true
+}

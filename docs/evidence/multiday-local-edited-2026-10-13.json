@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-13",
+  "phase": "edited",
+  "plans": [
+    {
+      "id": "9dad8c06-dcfb-4ace-bba8-93ef1acd86c8",
+      "state": "reserved",
+      "demand_minutes": 1200
+    }
+  ],
+  "segments": [
+    {
+      "id": "9544ebf9-05c1-4e60-85b5-71fac94f15cf",
+      "plan_id": "9dad8c06-dcfb-4ace-bba8-93ef1acd86c8",
+      "date": "2026-10-03",
+      "minutes": 630,
+      "version": 1,
+      "state": "reserved",
+      "sync_state": "local"
+    },
+    {
+      "id": "2fd3be3e-60e6-4477-9206-3c707339fa57",
+      "plan_id": "9dad8c06-dcfb-4ace-bba8-93ef1acd86c8",
+      "date": "2026-10-05",
+      "minutes": 540,
+      "version": 3,
+      "state": "reserved",
+      "sync_state": "local"
+    }
+  ],
+  "effective_load": {
+    "3": {
+      "local_minutes": 630,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 630
+    },
+    "4": {
+      "local_minutes": 0,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 0
+    },
+    "5": {
+      "local_minutes": 540,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 540
+    }
+  },
+  "upstream_waitasgn_20_hours_unchanged": true,
+  "plan_upload_attempts": 0,
+  "original_four_allocations_preserved": true
+}

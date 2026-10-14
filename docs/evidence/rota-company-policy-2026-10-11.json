@@ -1,0 +1,22 @@
+{
+  "verified_at": "2026-10-11T15:30:01.707351+00:00",
+  "scope": "Read-only company-column inspection of actual ODS; v4 parse compared with persisted Onshore Test LABOR snapshot; no staging mutation or fresh REST read",
+  "stored_stage_policy": "rota-2026-10-11-v3",
+  "parser_policy": "rota-2026-10-11-v4",
+  "company_counts": {
+    "BD POC": 87
+  },
+  "summary": {
+    "rota_people": 87,
+    "mapped_people": 73,
+    "blocking_count": 14,
+    "capacity_hours": 158476.5
+  },
+  "source_errors": 0,
+  "excluded_company_count": 0,
+  "unmapped_reasons": {
+    "no_exact_name_candidate": 6,
+    "ambiguous_identity": 1,
+    "craft_mismatch": 7
+  }
+}

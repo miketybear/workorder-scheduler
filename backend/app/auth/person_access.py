@@ -121,7 +121,9 @@ async def sync_person_access(request: Request, token: str | None) -> None:
         return
     failed = False
     try:
-        async with request.app.state.sessions.begin() as db:
+        # WO/draft callers have a deadline: grant commits must stay in their task,
+        # rather than sessionmaker.begin()'s shielded child commit worker.
+        async with request.app.state.sessions() as db, db.begin():
             identity = await resolve_session(db, token)
             user = await db.scalar(
                 select(User).where(User.id == identity.user_id).with_for_update()

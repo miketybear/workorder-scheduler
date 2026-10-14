@@ -312,14 +312,97 @@ từ grant đã xác minh, và ngày theo timezone kết nối. Không hiển th
 preview hash hoặc token. Preview không thay đổi Maximo, không tạo upload batch.
 
 Upload khả dụng chỉ khi backend mở gate, nháp đã lưu/current và mọi item ready.
-UI gọi submit/continue và hiển thị counts/kết quả từng WO; không polling/refetch tự
-động. Sửa/Undo/reset/đổi source/scope hủy read preview; kết quả yêu cầu ghi chưa rõ
+UI gọi submit/continue và hiển thị counts/kết quả từng WO. Nháp nhóm có thao tác
+upload toàn bộ bằng các đợt tuần tự tối đa10 WO; không polling trạng thái tự động.
+Sửa/Undo/reset/đổi source/scope hủy read preview; kết quả yêu cầu ghi chưa rõ
 không phải preview và phải giữ UUID để tra cứu, không tạo UUID mới rồi gửi lại.
 Refresh finalized chỉ scoped identities, đúng source version và guard sau I/O;
 không đóng editor khác hoặc áp response cũ sau đổi quyền/connection.
 
+### Upload toàn bộ nháp nhóm — 2026-10-10
+
+Phạm vi là một nháp nhóm đã lưu, tối đa200 WO cùng connection/discipline; không
+gom các nháp riêng hoặc các trang danh sách vào một yêu cầu. Mở nhóm, lưu thay đổi,
+bấm **Đối chiếu nhóm với Maximo trước upload**, rồi **Upload toàn bộ nhóm lên
+Onshore test** khi mọi WO hợp lệ và backend cho phép gửi. Gate Onshore TEST hiện
+có vẫn áp dụng; thay đổi UI không mở upload ở staging/production/Offshore.
+
+Một lần bấm tạo một mã yêu cầu; UI gửi tuần tự bằng submit rồi continue trên cùng
+batch, mỗi đợt tối đa10 WO. Tiến độ là số WO đã được Maximo xác nhận trên tổng WO
+của nháp, ví dụ30/200, không phải số request đã gửi. Chỉ thông báo hoàn tất và làm
+mới bảng khi backend xác nhận `source_finalized`; lỗi làm mới bảng giữ kết quả và
+cho phép thử đọc lại, không gửi lại thay đổi đã xác nhận.
+
+**Dừng sau đợt đang gửi** giữ kết quả đợt hiện tại và không bắt đầu đợt kế tiếp.
+Rời trang cũng dừng chuỗi; quay lại không tự gửi tiếp. Đổi scope/ngữ cảnh hoặc
+đóng panel hủy thao tác phía UI; hủy request không chứng minh Maximo chưa ghi.
+Lỗi, timeout, WO failed/conflict/unknown/sending hoặc kết quả không tiến triển
+dừng gửi tự động. Kiểm tra trạng thái hoặc đối chiếu kết quả chưa xác định trước
+khi tiếp tục; không tự retry mutation. Khi trạng thái an toàn, người dùng bấm
+**Tiếp tục upload toàn bộ nhóm** để gửi phần còn chờ xử lý.
+
+Bằng chứng: 12 tests hành vi cho luồng nhóm, full frontend218 tests/17files,
+TypeScript/ESLint/production build qua ngày2026-10-10. Review phát hiện context
+change khi một đợt đang gửi có thể dùng receipt cũ để tiếp tục; đã bổ sung chặn
+resume cho đến khi GET trạng thái thành công, regression và focused recheck qua.
+Main chạy lại12 tests mới qua. Các tests dùng API giả, không ghi Maximo thật;
+chưa nghiệm thu upload200 WO live/browser hoặc phục hồi sau đóng toàn bộ trình
+duyệt. Lịch sử tổng thể vẫn thuộc phase2.
+
 Lỗi tạm thời giữ dữ liệu nháp; có thể ẩn rồi mở đối chiếu để thử lại. Lỗi phiên/
 quyền chuyển về luồng kiểm tra quyền hiện có và không giữ preview đang hiển thị.
+
+### Nghiệm thu upload toàn bộ nhóm trên Onshore TEST — 2026-10-10
+
+Entra đăng nhập thật, quyền E&I/view+write, ứng dụng development HTTPS local
+`https://localhost:5173`, sender opt-in Onshore TEST và Maximo thật. Retrieve
+117 WO tháng10; chọn12 CM chưa có nháp hoặc reservation, có schedule/PIC null
+để chỉ thử Duration. Ghi baseline read-only bất biến trước gửi; mỗi lượt forward
+tăng riêng từng WO đúng0.25h, mỗi lượt reverse gửi giá trị gốc qua app.
+
+| Lượt | Thao tác UI | Kết quả |
+| --- | --- | --- |
+| 1 | Một lần bấm Upload toàn bộ nhóm | Tự gửi10+2;12confirmed, panel đóng, bảng fresh |
+| 2 | Trả12 Duration gốc |12confirmed; lần bấm dừng đến sau khi đã xong, chưa kiểm chứng pause |
+| 3 | Upload lại, dừng sau đợt đang gửi |10confirmed/2pending; nháp v1 đủ12members giữ lại |
+| 3 tiếp | Kiểm tra trạng thái, tiếp tục toàn bộ nhóm | Chỉ gửi2pending, cùng batch/request;12confirmed/finalized |
+| 4 | Khôi phục cuối bằng nhóm mới |12confirmed; sáu trường gốc của cả12 WO khớp chính xác |
+
+Lượt3 dùng watcher **chỉ đọc DB** để báo batch mới đã prepared, giúp bấm nút dừng
+trong đợt đầu; không delay/giả lập response Maximo hay can thiệp request. Audit khi
+pause xác nhận hai WO pending chỉ có prepared, chưa có intent/request/response và
+Duration vẫn gốc. Sau resume mỗi item có đúng một intent/conditional request/HTTP204
+response; request/batch không đổi, không phát sinh batch thêm do resume.
+
+Tổng48 items/4batches, tất cả confirmed/source_finalized, đúng actor/connection/E&I,
+chỉ `estdur`; bốn nháp cũ/năm members nguyên vẹn, nháp thử đã finalized, không còn
+reservation. Read-back độc lập xác nhận năm trường còn lại không đổi xuyên suốt
+và sáu trường editable cuối cùng bằng original; rowstamp tiến lên do các lần ghi.
+
+Theo timestamps audit, prepared→source_finalized của ba lượt không dừng là12.02,
+13.00 và13.42s; lượt dừng/resume105.71s **bao gồm thời gian người nghiệm thu dừng**.
+Đây là khoảng thời gian sự kiện DB, không phải latency HTTP/API hoặc phép đo từ
+lúc bấm đến UI render. Không dùng conditional_request→response transaction timestamps
+để khẳng định SLO. [Evidence đã lược dữ liệu](evidence/onshore-upload-all-uat-2026-10-10.json).
+
+UAT phát hiện nhãn preview “Maximo chưa thay đổi” vẫn hiện trong lúc submit đang
+chạy. Main sửa UI: khi có requestID thì ẩn preview trước gửi, hiện đang xử lý
+upload/kiểm tra kết quả; chỉ hiện recovery chưa rõ khi request không còn chạy.
+Regression deferred submit bổ sung; full frontend219tests/17files, lint và
+TypeScript/production build qua. Đây là sửa thông báo sau các lượt live nêu trên,
+không đổi backend/flow/gates; không cần ghi Maximo thêm để kiểm tra nhãn.
+
+Evidence đầy đủ local: `.cache/upload-all-uat-{before,after-upload,
+after-first-restore,after-pause,after-resume,final}.json`; ảnh
+`.cache/upload-all-uat-{forward,paused,final-restored}.png`. Không chứa credential;
+JSON audit chi tiết/screenshots được Git ignore. Watchers đã thoát; không stop
+dịch vụ local, deploy, migration hoặc sửa grant. Tab nghiệm thu giữ cho chủ dự án.
+
+Giới hạn:12 CM/duration-only, một tài khoản; chưa live200 WO,10browser/Ubuntu,
+timeout/unknown/network fault injection hoặc recovery sau đóng trình duyệt.
+PM/CFT/mixed target có bằng chứng mốc trước, không được tính lại là lượt này.
+Backup/restore DB và historyphase2 vẫn tạm gác; khôi phục giá trị WO thử trong UAT
+không phải diễn tập restore database.
 
 ## Điều kiện chuyển sang sender thật
 

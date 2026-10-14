@@ -1,0 +1,3 @@
+# Private file owned by wos-backup, mode0600. Fill via approved secret delivery.
+# Escape colon and backslash in actual values. No wildcard host/database/user.
+REPLACE_WITH_APPROVED_DB_HOSTNAME:5432:scheduler:REPLACE_WITH_APPROVED_BACKUP_ROLE:

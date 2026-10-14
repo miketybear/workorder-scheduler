@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-13",
+  "user_authorized_retry": true,
+  "request_id": "61916eba-edfd-4a37-ab42-04a17151c293",
+  "wonum": "P13431393",
+  "laborcode": "HAIDQ",
+  "assignment_date": "2026-10-01",
+  "receipt_state": "released",
+  "current_allocation": {
+    "id": "b346dd40-8ae3-4f2a-8574-a0f287124120",
+    "state": "released",
+    "version": 2,
+    "minutes": 60,
+    "sync_state": "local"
+  },
+  "active_allocations": 0,
+  "affected_day_remaining_minutes": 630,
+  "upload_attempts": 0
+}

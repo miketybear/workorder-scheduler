@@ -1,0 +1,30 @@
+{
+  "approval": {
+    "approved": false,
+    "reference": null,
+    "owner": null,
+    "rpo_seconds": null,
+    "rto_seconds": null,
+    "schedule_reference": null,
+    "retention_reference": null,
+    "offsite_approved": false
+  },
+  "service_name": "wos_backup",
+  "service_file": "/etc/wos-backup/pg_service.conf",
+  "pass_file": "/etc/wos-backup/pgpass",
+  "expected": {
+    "database": "scheduler",
+    "server_address": "REPLACE_WITH_APPROVED_DB_ADDRESS",
+    "server_port": 5432,
+    "postgres_major": 17,
+    "schema_revision": "0008_admin_authority"
+  },
+  "recipient_certificate": "/etc/wos-backup/recipient.pem",
+  "recipient_sha256": "REPLACE_WITH_APPROVED_64_HEX_CERTIFICATE_FINGERPRINT",
+  "release_reference": null,
+  "destination": "/mnt/wos-backup",
+  "expected_mount_source": null,
+  "work_directory": "/var/lib/wos-backup",
+  "lock_file": "/var/lib/wos-backup/backup.lock",
+  "timeout_seconds": 1800
+}

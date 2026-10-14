@@ -169,6 +169,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
       {notice && <p role="status" className={styles.notice}>{notice}</p>}
       {!detail && error && <button className={styles.ghost} onClick={onClose}>Đóng để mở lại</button>}
       {detail && <>
+        {validation() && <p role="alert" className={styles.error}>{validation()}</p>}
         {blocked && <p role="alert">{versionChanged ? 'Nháp đã thay đổi phiên bản. Phần đang sửa được giữ để đối chiếu; đóng và mở lại nháp trước khi tiếp tục.' :
           'Dữ liệu gốc hoặc PIC đã thay đổi. Nháp được giữ để đối chiếu; mở WO từ bảng để tạo nháp mới sau khi kiểm tra.'}</p>}
         {detail.pics_configured === false && <p>Chưa cấu hình crew/PIC cho discipline này. Có thể xem chi tiết WO; chưa thể chỉnh sửa hoặc lưu nháp.</p>}
@@ -223,7 +224,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
             {saved && writable && <section className={styles.editorSection} aria-label="Upload nháp đã lưu">
               <UploadPreviewControls draft={saved} selection={uploadSelection} connection={connection} connectionId={scope.connection_id}
                 timezone={timezone} context={uploadContext} onDenied={onDenied} active={active}
-                enabled={!busy && !suspended && !blocked && !unsaved && !uploadLocked && changed.length > 0}
+                enabled={!busy && !suspended && !blocked && !unsaved && !uploadLocked && changed.length > 0 && !validation()}
                 previewLabel="Đối chiếu với Maximo trước upload"
                 buttonLabel={`Upload lên ${connection?.system === 'offshore' ? 'Offshore' : 'Onshore'} ${connection?.environment === 'production' ? 'production' : 'test'}`}
                 onUploadFinalized={onUploadFinalized} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
@@ -250,7 +251,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
       </div>}
       <div className={styles.editorActions}>
         <button className={styles.ghost} disabled={editingDisabled} onClick={() => { setChanges({}); setError(''); setNotice(''); }}>Reset về baseline</button>
-        <button className={styles.primary} disabled={editingDisabled || changed.length === 0 || !unsaved} onClick={() => void mutate()}>{busy ? 'Đang lưu…' : 'Lưu nháp'}</button>
+        <button className={styles.primary} disabled={editingDisabled || changed.length === 0 || !unsaved || !!validation()} onClick={() => void mutate()}>{busy ? 'Đang lưu…' : 'Lưu nháp'}</button>
       </div>
     </div>}
   </section>;

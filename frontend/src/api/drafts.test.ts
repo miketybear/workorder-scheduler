@@ -58,6 +58,15 @@ it('does not send mutations without CSRF', async () => {
   expect(fetcher).not.toHaveBeenCalled();
 });
 
+it('keeps a deadline error recoverable without exposing the response or retrying a save', async () => {
+  vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-wos-csrf=csrf-value');
+  const fetcher = respond('sensitive proxy details', 504);
+  await expect(saveDraft(key, { estdur: '9' }, detail.baseline_token, 'request', null,
+    new AbortController().signal)).rejects.toMatchObject({ status: 504,
+    message: 'Yêu cầu xử lý quá thời gian. Nội dung sửa vẫn được giữ; kiểm tra trạng thái trước khi thử lại.' });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
 it('sends a versioned CSRF-protected upload preview and rejects injected fields or a changed draft', async () => {
   vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-wos-csrf=csrf-value');
   const response = { draft_id: 'draft', version: 3, preview_hash: 'b'.repeat(64), send_enabled: false,

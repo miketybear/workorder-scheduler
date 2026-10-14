@@ -1,0 +1,176 @@
+{
+  "environment": "development",
+  "database": "scheduler_entra_local",
+  "revision": "0011_assignments",
+  "owner_role": "wos_local_owner",
+  "runtime_role": "wos_local_runtime",
+  "runtime_role_flags": {
+    "rolname": "wos_local_runtime",
+    "rolsuper": false,
+    "rolcreatedb": false,
+    "rolcreaterole": false,
+    "rolbypassrls": false
+  },
+  "existing_data_unchanged": true,
+  "before_after_tables": {
+    "access_grant": {
+      "count": 1,
+      "sha256": "3815b5e1146eefb3227acfa36c16d73ffc3f3f07677760c183a93a7a7b77ab48"
+    },
+    "admin_authority_event": {
+      "count": 1,
+      "sha256": "e9d019221e6634e3756e59ebc5b3233a997f9e5aa835b9a116cf4ff468fc9d3b"
+    },
+    "app_user": {
+      "count": 1,
+      "sha256": "4006ceed8bca71cfac96fab80543e52a76b1c0dbaa510329a63cdd8d37220915"
+    },
+    "audit_event": {
+      "count": 1245,
+      "sha256": "ace05f7944b3d9d09fc77721469dac40072590477ee683adf4ba3364196fed63"
+    },
+    "authorization_event": {
+      "count": 8,
+      "sha256": "9670ef679f396d1cd0c373b6be5ce935fcfe06a6b685410f2d3a0ed354e250b0"
+    },
+    "draft": {
+      "count": 4,
+      "sha256": "84f8077b94bdc071cae8443e4923a8af363ec5343d50adfa43b8742385c249ad"
+    },
+    "draft_item": {
+      "count": 5,
+      "sha256": "47edc878dbabbeb80305321a35efd5a91b65d726f7d610cd4bad530595d635cd"
+    },
+    "draft_submission": {
+      "count": 31,
+      "sha256": "4331b9abff50bf44fed29175023bd6cabb20d6de5f868b8e8e7ca0a9e9b889c5"
+    },
+    "login_flow": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "login_session": {
+      "count": 16,
+      "sha256": "1006822badb74367c171821ef4cf33d2c166807f56dbf902dc60a151692709cc"
+    },
+    "maximo_connection": {
+      "count": 1,
+      "sha256": "a268ca1163fd2c70763de4fec51318d36ff64daca7f7ff80eba010d44672c5c2"
+    },
+    "maximo_person_binding": {
+      "count": 1,
+      "sha256": "aa20d9db2827b969d26f1665676604b714f89f46c0f619952e71e3a71826a245"
+    },
+    "person_day_capacity": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "planner_permission": {
+      "count": 1,
+      "sha256": "c4a327d3f3a4912fd5eedf069da2024b8391ba23536ff6f6307b751437d7d20b"
+    },
+    "resource_person": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "resource_pool": {
+      "count": 1,
+      "sha256": "6f61d1b0fa90ac40f8ab75b60a610ab2dee75eb4235a66160097000c2568684f"
+    },
+    "resource_pool_grant": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "resource_pool_state": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rota_activation": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "rota_event": {
+      "count": 5,
+      "sha256": "1ae4ff0049c3c644e97781cd90ebd54ab872fbca728aa72fc140a2139057e86d"
+    },
+    "rota_import": {
+      "count": 2,
+      "sha256": "7cacabbe0b5f01e963a24da4598ea79f94bbebc06ef559493999b7710a84684c"
+    },
+    "upload_batch": {
+      "count": 41,
+      "sha256": "d2b020b5380d824744851525b7735ee9e6a141385605a103a86ffc61ada485ac"
+    },
+    "upload_item": {
+      "count": 91,
+      "sha256": "f4d7614338fdec8bacfd9a2e45de5b8a5e10adc6dd89e1a6327140c53023b32b"
+    },
+    "user_connection_setting": {
+      "count": 1,
+      "sha256": "346da40bbf445fa5733d6f27fb3fa69207c87c8d626711c0b8e64afc66d010b8"
+    }
+  },
+  "assignment_grants": {
+    "assignment_allocation": {
+      "SELECT": true,
+      "INSERT": true,
+      "UPDATE": true,
+      "DELETE": false,
+      "TRUNCATE": false
+    },
+    "assignment_event": {
+      "SELECT": true,
+      "INSERT": true,
+      "UPDATE": false,
+      "DELETE": false,
+      "TRUNCATE": false
+    },
+    "assignment_submission": {
+      "SELECT": true,
+      "INSERT": true,
+      "UPDATE": false,
+      "DELETE": false,
+      "TRUNCATE": false
+    }
+  },
+  "new_assignment_rows": 0,
+  "maximo_writes": 0,
+  "rota_activations_created": 0,
+  "alembic_check": "passed",
+  "runtime_sql_checks": {
+    "allowed": [
+      "SELECT",
+      "SELECT",
+      "UPDATE"
+    ],
+    "denied": [
+      "CREATE",
+      "UPDATE",
+      "DELETE",
+      "UPDATE",
+      "DELETE",
+      "TRUNCATE"
+    ]
+  },
+  "post_start_counts": {
+    "rota_import": 2,
+    "rota_activation": 0,
+    "draft": 4,
+    "assignment_allocation": 0
+  },
+  "object_owners": [
+    [
+      "wos_local_owner",
+      28
+    ]
+  ],
+  "http_checks": {
+    "backend_live": 200,
+    "backend_ready": 200,
+    "frontend_https": 200,
+    "https_proxy_ready": 200,
+    "entra_configuration": 200,
+    "login_available": true,
+    "tls_verification": true
+  }
+}

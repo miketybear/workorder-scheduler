@@ -225,9 +225,9 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
         timezone={timezone} context={uploadContext} onDenied={onDenied} active={active}
         enabled={!blocked && !dirty && changed.length > 0 && !Object.values(problems).some(Boolean)}
         previewLabel="Đối chiếu nhóm với Maximo trước upload"
-        buttonLabel={`Upload nhóm lên ${connection?.system === 'offshore' ? 'Offshore' : 'Onshore'} ${connection?.environment === 'production' ? 'production' : 'test'}`}
+        buttonLabel={`Upload toàn bộ nhóm lên ${connection?.system === 'offshore' ? 'Offshore' : 'Onshore'} ${connection?.environment === 'production' ? 'production' : 'test'}`}
         onUploadFinalized={onUploadFinalized} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
-        onWorkflowCreated={onUploadRequestCreated} />
+        onWorkflowCreated={onUploadRequestCreated} uploadAll permitted={writable && !suspended && active} />
     </section>}
     <div className={styles.tableWrap}><table className={styles.planningTable}><thead><tr><th>Work Order / Công việc</th>{fields.map((field) => <th key={field}>{labels[field]}</th>)}<th>Kiểm tra</th></tr></thead>
       <tbody>{rows.map((row, index) => <Fragment key={rowKey(row.item)}><tr><th scope="row">{row.item.wonum}<small>{row.item.worktype} · {row.item.status}</small><small>{row.item.description ?? '—'}</small><small>{row.item.location ?? 'Chưa có Tag Name'}</small>

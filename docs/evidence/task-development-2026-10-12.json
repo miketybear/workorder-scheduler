@@ -1,0 +1,131 @@
+{
+  "date": "2026-10-12",
+  "database": "scheduler_entra_local",
+  "revision": "0012_task_assignments",
+  "backup_created": true,
+  "existing_data_preserved_during_provision": true,
+  "verification_started_revision": "0012_task_assignments",
+  "before_after": {
+    "access_grant": {
+      "count": 1,
+      "sha256": "3815b5e1146eefb3227acfa36c16d73ffc3f3f07677760c183a93a7a7b77ab48"
+    },
+    "admin_authority_event": {
+      "count": 1,
+      "sha256": "e9d019221e6634e3756e59ebc5b3233a997f9e5aa835b9a116cf4ff468fc9d3b"
+    },
+    "app_user": {
+      "count": 1,
+      "sha256": "4006ceed8bca71cfac96fab80543e52a76b1c0dbaa510329a63cdd8d37220915"
+    },
+    "assignment_allocation": {
+      "count": 8,
+      "sha256": "1879977facee71f84979d6963ea225a45233cce92152e03724da96963f7a98c3"
+    },
+    "assignment_event": {
+      "count": 18,
+      "sha256": "e172e23bea2ad5f6d9ad1da8a94c4dc428420108076288debe76d49168e498e5"
+    },
+    "assignment_submission": {
+      "count": 18,
+      "sha256": "38d366f28ea19fa16928d6fb535b4bed479fc0947fbb54846d735584b7f8f2c8"
+    },
+    "assignment_upload": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "audit_event": {
+      "count": 1245,
+      "sha256": "ace05f7944b3d9d09fc77721469dac40072590477ee683adf4ba3364196fed63"
+    },
+    "authorization_event": {
+      "count": 8,
+      "sha256": "9670ef679f396d1cd0c373b6be5ce935fcfe06a6b685410f2d3a0ed354e250b0"
+    },
+    "draft": {
+      "count": 4,
+      "sha256": "84f8077b94bdc071cae8443e4923a8af363ec5343d50adfa43b8742385c249ad"
+    },
+    "draft_item": {
+      "count": 5,
+      "sha256": "47edc878dbabbeb80305321a35efd5a91b65d726f7d610cd4bad530595d635cd"
+    },
+    "draft_submission": {
+      "count": 31,
+      "sha256": "4331b9abff50bf44fed29175023bd6cabb20d6de5f868b8e8e7ca0a9e9b889c5"
+    },
+    "login_flow": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "login_session": {
+      "count": 18,
+      "sha256": "fa4cdf97ad09785cef636c48f3cf7fd56388b0974a9883c341569575f1658390"
+    },
+    "maximo_connection": {
+      "count": 1,
+      "sha256": "a268ca1163fd2c70763de4fec51318d36ff64daca7f7ff80eba010d44672c5c2"
+    },
+    "maximo_person_binding": {
+      "count": 1,
+      "sha256": "aa20d9db2827b969d26f1665676604b714f89f46c0f619952e71e3a71826a245"
+    },
+    "person_day_capacity": {
+      "count": 31025,
+      "sha256": "0e19fcc510313939b48eeea789b2c4dbc6f9d729a8e7ab46c6b0d32fe6268ea3"
+    },
+    "planner_permission": {
+      "count": 1,
+      "sha256": "c4a327d3f3a4912fd5eedf069da2024b8391ba23536ff6f6307b751437d7d20b"
+    },
+    "resource_person": {
+      "count": 85,
+      "sha256": "df614446e7cff00cd593d56a8f84ffd2e01ad37dc5ead2be92b37db281a590b6"
+    },
+    "resource_pool": {
+      "count": 1,
+      "sha256": "6f61d1b0fa90ac40f8ab75b60a610ab2dee75eb4235a66160097000c2568684f"
+    },
+    "resource_pool_grant": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "resource_pool_state": {
+      "count": 1,
+      "sha256": "8a6c4086cfd1c72d12ea6e16fb0736827c9eac496ddb0745c86c077ce9b2701f"
+    },
+    "rota_activation": {
+      "count": 1,
+      "sha256": "9a1ef961052098f899be64c593fff816310c6e4defdc70c69ab4541479d77816"
+    },
+    "rota_event": {
+      "count": 14,
+      "sha256": "04666e2c995f5b55266729c609653baf8692e727e0cba834c5fac6c83e16e6f6"
+    },
+    "rota_import": {
+      "count": 3,
+      "sha256": "1a36e21d4f238ba4296af80cd1b0d95b7b79524ac34ce7ca1410e22671fa37cf"
+    },
+    "upload_batch": {
+      "count": 41,
+      "sha256": "d2b020b5380d824744851525b7735ee9e6a141385605a103a86ffc61ada485ac"
+    },
+    "upload_item": {
+      "count": 91,
+      "sha256": "f4d7614338fdec8bacfd9a2e45de5b8a5e10adc6dd89e1a6327140c53023b32b"
+    },
+    "user_connection_setting": {
+      "count": 1,
+      "sha256": "346da40bbf445fa5733d6f27fb3fa69207c87c8d626711c0b8e64afc66d010b8"
+    }
+  },
+  "runtime_upload_grants": {
+    "SELECT": true,
+    "INSERT": true,
+    "UPDATE": false,
+    "DELETE": false,
+    "TRUNCATE": false
+  },
+  "runtime_upload_state_update": true,
+  "alembic_check": "passed"
+}

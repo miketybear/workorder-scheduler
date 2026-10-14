@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BatchPlanner } from './BatchPlanner';
 import { BatchError, deleteDraft, openBatch, prepareBatch, previewUpload, saveBatch, type Detail } from '../api/drafts';
-import { columns, type WorkOrder } from '../api/workOrders';
+import { columns, RetrievalError, type WorkOrder } from '../api/workOrders';
 import { zonedDateTime } from '../api/dates';
 
 vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), prepareBatch: vi.fn(), saveBatch: vi.fn(), openBatch: vi.fn(), deleteDraft: vi.fn(), previewUpload: vi.fn() }));
@@ -82,6 +82,45 @@ it('applies group duration, supports undo, and requires preview before atomic sa
   await screen.findByText('Đã lưu nháp 2 WO · v1. Maximo chưa thay đổi.');
   expect(vi.mocked(saveBatch).mock.calls[0][1]).toHaveLength(2);
   await vi.waitFor(() => expect(props.onDirty).toHaveBeenLastCalledWith(false));
+});
+
+it('shows per-WO containment errors and blocks batch save when a row exceeds Target Finish', async () => {
+  const bounded = [{ ...details[0], baseline: { ...details[0].baseline,
+    schedstart: '2026-10-05T08:00:00+07:00', schedfinish: '2026-10-05T16:00:00+07:00', estdur: '8',
+    targstartdate: '2026-10-05T08:00:00+07:00', targcompdate: '2026-10-05T16:00:00+07:00' } }];
+  vi.mocked(prepareBatch).mockResolvedValue(bounded);
+  render(<BatchPlanner {...props} selection={{ keys: [{ site_id: bounded[0].item.siteid, workorder_id: bounded[0].item.workorderid }] }} />);
+  fireEvent.change(await screen.findByLabelText('WO-100 Est. Duration'), { target: { value: '9' } });
+  expect(screen.getByRole('alert')).toHaveTextContent('Scheduled Finish phải bằng hoặc trước Target Finish.');
+  fireEvent.click(screen.getByText('Xem trước thay đổi'));
+  expect(screen.getByText('Lưu nháp nhóm')).toBeDisabled();
+  expect(saveBatch).not.toHaveBeenCalled();
+});
+
+it('validates group duration overflow per WO and rejects paste atomically when one row violates Target Start', async () => {
+  const bounded = details.map((detail) => ({ ...detail, baseline: { ...detail.baseline,
+    schedstart: '2026-10-05T08:00:00+07:00', schedfinish: '2026-10-05T16:00:00+07:00', estdur: '8',
+    targstartdate: '2026-10-05T08:00:00+07:00', targcompdate: '2026-10-05T16:00:00+07:00' } }));
+  vi.mocked(prepareBatch).mockResolvedValue(bounded);
+  const view = render(<BatchPlanner {...props} />);
+  await screen.findByLabelText('WO-100 Est. Duration');
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Est. Duration' }));
+  fireEvent.change(screen.getByLabelText('Nhóm Est. Duration'), { target: { value: '9' } });
+  fireEvent.click(screen.getByText('Áp dụng vào nháp'));
+  expect(screen.getAllByRole('alert').filter((entry) => entry.textContent?.includes('Scheduled Finish'))).toHaveLength(2);
+  expect(screen.getByText('Lưu nháp nhóm')).toBeDisabled();
+  view.unmount();
+
+  vi.mocked(prepareBatch).mockResolvedValue(bounded);
+  render(<BatchPlanner {...props} />);
+  await screen.findByLabelText('WO-100 Est. Duration');
+  const paste = screen.getByLabelText('Vùng dữ liệu Excel');
+  fireEvent.change(paste, { target: { value: '2026-10-05T08:00\t\t8\n2026-10-05T07:59\t\t8' } });
+  fireEvent.click(screen.getByText('Kiểm tra và áp dữ liệu dán'));
+  expect(screen.getByRole('alert')).toHaveTextContent('WO-101: Scheduled Start');
+  expect(screen.getByLabelText('WO-100 Scheduled Start')).toHaveValue('2026-10-05T08:00');
+  expect(screen.getByLabelText('WO-101 Scheduled Start')).toHaveValue('2026-10-05T08:00');
+  expect(saveBatch).not.toHaveBeenCalled();
 });
 
 it('keeps PM and CFT targets disabled in a mixed batch and saves allowed row targets with explicit intent', async () => {
@@ -190,14 +229,28 @@ it('previews the persisted batch and disables the upload action while unsaved ed
   expect(screen.getByText('Ẩn đối chiếu')).toBeInTheDocument();
 });
 
-it('preserves edits and request identity after an uncertain network outcome', async () => {
+it('blocks upload preview for a restored batch containing a schedule outside its target window', async () => {
+  const row = { ...details[0], baseline: { ...details[0].baseline,
+    schedstart: '2026-10-05T08:00:00+07:00', schedfinish: '2026-10-05T16:00:00+07:00',
+    targstartdate: '2026-10-05T08:00:00+07:00', targcompdate: '2026-10-05T16:00:00+07:00' },
+    changes: { schedstart: '2026-10-05T08:00:00+07:00', schedfinish: '2026-10-05T17:00:00+07:00' } };
+  vi.mocked(openBatch).mockResolvedValue({ draft_id: 'legacy-group', version: 1, state: 'draft', items: [row] });
+  render(<BatchPlanner {...props} selection={{ draftId: 'legacy-group' }} />);
+  await screen.findByLabelText('WO-100 Est. Duration');
+  expect(screen.getByRole('alert')).toHaveTextContent('Scheduled Finish phải bằng hoặc trước Target Finish.');
+  expect(screen.getByText('Đối chiếu nhóm với Maximo trước upload')).toBeDisabled();
+  expect(previewUpload).not.toHaveBeenCalled();
+});
+
+it.each([new Error('Network lost'), new RetrievalError(504, 'Yêu cầu xử lý quá thời gian.')])('preserves edits and request identity after an uncertain outcome (%s)', async (failure) => {
   await setup();
   fireEvent.change(screen.getByLabelText('WO-100 Est. Duration'), { target: { value: '9' } });
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
-  vi.mocked(saveBatch).mockRejectedValueOnce(new Error('Network lost')).mockResolvedValue({ draft_id: 'group', version: 1, state: 'draft' });
+  vi.mocked(saveBatch).mockRejectedValueOnce(failure).mockResolvedValue({ draft_id: 'group', version: 1, state: 'draft' });
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
-  await screen.findByText('Network lost');
+  await screen.findByText(failure.message);
   expect(screen.getByLabelText('WO-100 Est. Duration')).toHaveValue('9');
+  expect(saveBatch).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
   await screen.findByText('Đã lưu nháp 1 WO · v1. Maximo chưa thay đổi.');
   expect(vi.mocked(saveBatch).mock.calls[0][2]).toBe(vi.mocked(saveBatch).mock.calls[1][2]);

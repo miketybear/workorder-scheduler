@@ -1,0 +1,28 @@
+{
+  "verified_at": "2026-10-11T15:07:01.410320+00:00",
+  "scope": "Actual ODS uploaded through UI with verified Entra session; PostgreSQL read-back; Onshore Test LABOR REST",
+  "policy": "rota-2026-10-11-v3",
+  "version": 2,
+  "status": "staged",
+  "source_rows": 87,
+  "days": 365,
+  "labor_rows": 147,
+  "source_errors": 0,
+  "summary": {
+    "rota_people": 87,
+    "mapped_people": 73,
+    "blocking_count": 14,
+    "capacity_hours": 158476.5
+  },
+  "excluded_labor_count": 66,
+  "unmapped_reasons": {
+    "no_exact_name_candidate": 6,
+    "craft_mismatch_or_ambiguous": 8
+  },
+  "audit_events": {
+    "upload": 1,
+    "labor_snapshot": 1
+  },
+  "actor_present": true,
+  "labor_error": null
+}

@@ -1,0 +1,30 @@
+{
+  "attempt_id": "8988982b-f28f-4e88-bf31-07c710989ae8",
+  "result": "accepted",
+  "original_id_recovered": false,
+  "first_row_retained": true,
+  "assignments": [
+    {
+      "_rowstamp": "3626753688",
+      "status_description": "Assigned",
+      "localref": "https://maximo.biendongpoc.vn/maximo/oslc/os/bdsched_wo/_QkQxL0gxNDMwNjkwOA--/showassignment/0-1968934",
+      "craft": "E&I",
+      "scheduledate": "2026-10-03T06:30:00+07:00",
+      "href": "http://childkey#V09SS09SREVSL0FTU0lHTk1FTlQvMTk2ODkzNA--",
+      "assignmentid": 1968934,
+      "laborhrs": 5.0,
+      "laborcode": "HAIDQ",
+      "status": "ASSIGNED"
+    },
+    {
+      "_rowstamp": "3626755136",
+      "status_description": "Waiting for Assignment",
+      "localref": "https://maximo.biendongpoc.vn/maximo/oslc/os/bdsched_wo/_QkQxL0gxNDMwNjkwOA--/showassignment/1-2001462",
+      "craft": "E&I",
+      "href": "http://childkey#V09SS09SREVSL0FTU0lHTk1FTlQvMjAwMTQ2Mg--",
+      "assignmentid": 2001462,
+      "laborhrs": 5.0,
+      "status": "WAITASGN"
+    }
+  ]
+}

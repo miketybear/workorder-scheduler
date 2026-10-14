@@ -36,11 +36,17 @@ Trong terminal backend:
 
 ```powershell
 cd backend
-uv run alembic upgrade head
+uv run --env-file .env.migration.local alembic upgrade head
 uv run python run_local_windows.py
 ```
 
 Launcher dùng SelectorEventLoop cho psycopg async trên Windows và tắt access log.
+Máy hiện tại đã tách DB roles ngày2026-10-12: `.env` dùng `wos_local_runtime`,
+`.env.migration.local` dùng `wos_local_owner`. Chỉ dùng file migration khi chạy
+Alembic, không launch backend với file đó. Cả hai file private/Gitignored, giữ
+Entra/Maximo settings hiện có. Setup scripts trên máy mới chưa tự tạo hai roles;
+operator phải làm theo [DB provisioning](database-operations.md) trước dùng cách
+chạy này. Không migrate bằng runtime hoặc đưa DB administrator vào backend.
 Trong terminal frontend khác:
 
 ```powershell

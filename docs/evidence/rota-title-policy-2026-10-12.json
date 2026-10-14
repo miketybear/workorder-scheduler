@@ -1,0 +1,36 @@
+{
+  "scope": "Onshore Test PERSON.title read and authenticated local staging refresh; no activation or Maximo mutation",
+  "labor_rows": 149,
+  "titles_present": 147,
+  "excluded_position_count": 2,
+  "summary": {
+    "rota_people": 85,
+    "mapped_people": 85,
+    "blocking_count": 0,
+    "capacity_hours": 154696.5
+  },
+  "production_nguyen_manh_hung_preserved": true,
+  "material_controller_remaining": 0,
+  "stage_modified": true,
+  "maximo_writes": 0,
+  "authenticated_refresh": {
+    "version": 8,
+    "audited_actor": true,
+    "stored_title_verified": true,
+    "source_policy": "rota-2026-10-11-v3",
+    "source_rows": 87,
+    "stored_mapping_rows": 85,
+    "activation_count": 0,
+    "assignment_count": 0
+  },
+  "source_rewritten": false,
+  "checks": {
+    "backend_offline": 559,
+    "frontend_tests": 285,
+    "focused_backend_offline": 112,
+    "focused_postgres_before_projection_fix": 41,
+    "post_fix_activation_assignment_checks": 31,
+    "frontend_focused": 24,
+    "lint_typecheck_build": "passed"
+  }
+}

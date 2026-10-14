@@ -1,0 +1,297 @@
+{
+  "date": "2026-10-12",
+  "scope": "Onshore Test E&I October2026",
+  "read_only": true,
+  "wo_count": 117,
+  "quantity_gt1_task_count": 12,
+  "candidates": [
+    {
+      "site_id": "BD1",
+      "workorder_id": "535921",
+      "wonum": "P13469393",
+      "status": "WMATL",
+      "task_workorder_id": "535927",
+      "task_id": 30,
+      "description": "Running test unload, with load , collect parameters motor and monitoring in 72 h",
+      "planned_labor": [
+        {
+          "quantity": 3,
+          "craft": "E&I",
+          "laborhrs": 70.0
+        }
+      ],
+      "assignments": [
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 551027,
+          "taskid": 30,
+          "laborhrs": 70.0,
+          "status": "WAITASGN"
+        },
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 551025,
+          "taskid": 30,
+          "laborhrs": 70.0,
+          "status": "WAITASGN"
+        },
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 551023,
+          "taskid": 30,
+          "laborhrs": 70.0,
+          "status": "WAITASGN"
+        }
+      ],
+      "available": 3
+    },
+    {
+      "site_id": "BD1",
+      "workorder_id": "2498722",
+      "wonum": "H14306907",
+      "status": "SCHED",
+      "task_workorder_id": "2498724",
+      "task_id": 10,
+      "description": "Follow work  instruction: BD-OPS-MNR-I-2012 Bus duct system Maintenance Instruction",
+      "planned_labor": [
+        {
+          "quantity": 2,
+          "craft": "E&I",
+          "laborhrs": 5.0
+        }
+      ],
+      "assignments": [
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1968934,
+          "taskid": 10,
+          "laborhrs": 5.0,
+          "status": "WAITASGN"
+        },
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1968932,
+          "taskid": 10,
+          "laborhrs": 5.0,
+          "status": "WAITASGN"
+        }
+      ],
+      "available": 2
+    },
+    {
+      "site_id": "BD1",
+      "workorder_id": "2498726",
+      "wonum": "H14306909",
+      "status": "SCHED",
+      "task_workorder_id": "2498728",
+      "task_id": 10,
+      "description": "Follow work  instruction: BD-OPS-MNR-I-2012 Bus duct system Maintenance Instruction",
+      "planned_labor": [
+        {
+          "quantity": 2,
+          "craft": "E&I",
+          "laborhrs": 10.0
+        }
+      ],
+      "assignments": [
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1968938,
+          "taskid": 10,
+          "laborhrs": 10.0,
+          "status": "WAITASGN"
+        },
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1968936,
+          "taskid": 10,
+          "laborhrs": 10.0,
+          "status": "WAITASGN"
+        }
+      ],
+      "available": 2
+    },
+    {
+      "site_id": "BD1",
+      "workorder_id": "2498742",
+      "wonum": "H14306917",
+      "status": "SCHED",
+      "task_workorder_id": "2498744",
+      "task_id": 10,
+      "description": "Follow instruction I-2019 to remove the old motor and replace it with a refurbished one. Then send the old motor to shore for refurbishment",
+      "planned_labor": [
+        {
+          "quantity": 2,
+          "craft": "E&I",
+          "laborhrs": 8.0
+        }
+      ],
+      "assignments": [
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1968954,
+          "taskid": 10,
+          "laborhrs": 8.0,
+          "status": "WAITASGN"
+        },
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1968952,
+          "taskid": 10,
+          "laborhrs": 8.0,
+          "status": "WAITASGN"
+        }
+      ],
+      "available": 2
+    },
+    {
+      "site_id": "BD1",
+      "workorder_id": "2498742",
+      "wonum": "H14306917",
+      "status": "SCHED",
+      "task_workorder_id": "2498746",
+      "task_id": 20,
+      "description": "Inspect starting relay, replace if require with item 28423",
+      "planned_labor": [
+        {
+          "quantity": 2,
+          "craft": "E&I",
+          "laborhrs": 2.0
+        }
+      ],
+      "assignments": [
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1968958,
+          "taskid": 20,
+          "laborhrs": 2.0,
+          "status": "WAITASGN"
+        },
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1968956,
+          "taskid": 20,
+          "laborhrs": 2.0,
+          "status": "WAITASGN"
+        }
+      ],
+      "available": 2
+    },
+    {
+      "site_id": "BD1",
+      "workorder_id": "2498742",
+      "wonum": "H14306917",
+      "status": "SCHED",
+      "task_workorder_id": "2498748",
+      "task_id": 30,
+      "description": "De-IC and run test, house keeping, close PTW",
+      "planned_labor": [
+        {
+          "quantity": 2,
+          "craft": "E&I",
+          "laborhrs": 0.5
+        }
+      ],
+      "assignments": [
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1968962,
+          "taskid": 30,
+          "laborhrs": 0.5,
+          "status": "WAITASGN"
+        },
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1968960,
+          "taskid": 30,
+          "laborhrs": 0.5,
+          "status": "WAITASGN"
+        }
+      ],
+      "available": 2
+    },
+    {
+      "site_id": "BD1",
+      "workorder_id": "2500364",
+      "wonum": "H14307728",
+      "status": "SCHED",
+      "task_workorder_id": "2500366",
+      "task_id": 10,
+      "description": "Follow instruction BDOPSMNRI3252",
+      "planned_labor": [
+        {
+          "quantity": 2,
+          "craft": "E&I",
+          "laborhrs": 4.0
+        }
+      ],
+      "assignments": [
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1969726,
+          "taskid": 10,
+          "laborhrs": 4.0,
+          "status": "WAITASGN"
+        },
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1969724,
+          "taskid": 10,
+          "laborhrs": 4.0,
+          "status": "WAITASGN"
+        }
+      ],
+      "available": 2
+    },
+    {
+      "site_id": "BD1",
+      "workorder_id": "2500368",
+      "wonum": "H14307730",
+      "status": "SCHED",
+      "task_workorder_id": "2500370",
+      "task_id": 10,
+      "description": "Follow instruction BDOPSMNRI3252",
+      "planned_labor": [
+        {
+          "quantity": 2,
+          "craft": "E&I",
+          "laborhrs": 4.0
+        }
+      ],
+      "assignments": [
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1969730,
+          "taskid": 10,
+          "laborhrs": 4.0,
+          "status": "WAITASGN"
+        },
+        {
+          "status_description": "Waiting for Assignment",
+          "craft": "E&I",
+          "assignmentid": 1969728,
+          "taskid": 10,
+          "laborhrs": 4.0,
+          "status": "WAITASGN"
+        }
+      ],
+      "available": 2
+    }
+  ]
+}

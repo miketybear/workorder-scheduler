@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-14",
+  "environment": "Onshore Test",
+  "wo": "H14306907",
+  "task_id": 10,
+  "source_id": "1968934",
+  "protected_sibling_id": "2001462",
+  "steps": [
+    {
+      "purpose": "daily_create",
+      "response": "accepted",
+      "reported_to_recovery_handler": "unknown",
+      "simulated_response_loss": true
+    },
+    {
+      "purpose": "stale_daily_root",
+      "response": "conflict"
+    },
+    {
+      "purpose": "owned_child_cleanup",
+      "http_status": 204,
+      "conditional_guard": "UNVERIFIED"
+    },
+    {
+      "purpose": "source_restore",
+      "response": "accepted"
+    }
+  ],
+  "public_daily_upload_enabled": false,
+  "delete_conditional_guard": "UNVERIFIED",
+  "owned_created_id": "2001470",
+  "mapping": [
+    {
+      "date": "2026-10-03",
+      "assignment_id": "1968934"
+    },
+    {
+      "date": "2026-10-04",
+      "assignment_id": "2001470"
+    }
+  ],
+  "lost_response_recovered_readonly": true,
+  "daily_create_confirmed": true,
+  "source_5h_split_into_minutes": [
+    150,
+    150
+  ],
+  "task_total_hours_preserved": 10,
+  "untouched_sibling_fields_and_revision_preserved": true,
+  "stale_root_no_duplicate_confirmed": true,
+  "owned_child_cleanup_confirmed": true,
+  "original_ids_preserved": [
+    "1968934",
+    "2001462"
+  ],
+  "source_business_fields_restored": true,
+  "task_parent_schedules_targets_planned_restored": true,
+  "local_reservations_unchanged": true,
+  "final_load_minutes": [
+    0,
+    0
+  ],
+  "outbound_mutation_count": 4
+}

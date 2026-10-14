@@ -12,11 +12,13 @@ export type UploadConnection = { label: string; system: 'onshore' | 'offshore'; 
 export type FinalizedUpload = { draft_id: string; version: number; items: { site_id: string; workorder_id: string; restore_source: { before: Baseline } | null }[] };
 
 export function UploadPreviewControls({ draft, selection, connection, connectionId, timezone, context, onDenied, enabled, buttonLabel, previewLabel,
-  active = true, onUploadFinalized, onWorkflowLock, discipline, onWorkflowCreated }: {
+  active = true, onUploadFinalized, onWorkflowLock, discipline, onWorkflowCreated, uploadAll = false, permitted = true }: {
   draft: Saved; selection: { site_id: string; workorder_id: string; wonum: string }[]; connection?: UploadConnection;
   connectionId: string; timezone: string; context: string; onDenied: () => void; enabled: boolean; buttonLabel: string; previewLabel: string; active?: boolean;
   onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>; onWorkflowLock?: (locked: boolean) => void;
   discipline: string; onWorkflowCreated?: (entry: UploadRecoveryEntry) => void;
+  uploadAll?: boolean;
+  permitted?: boolean;
 }) {
   const [preview, setPreview] = useState<UploadPreview | null>(null);
   const [workflow, setWorkflow] = useState<{ draft: Saved; preview: UploadPreview; connectionId: string } | null>(null);
@@ -28,7 +30,19 @@ export function UploadPreviewControls({ draft, selection, connection, connection
   const [previewContext, setPreviewContext] = useState('');
   const previewController = useRef<AbortController | null>(null);
   const operationController = useRef<AbortController | null>(null);
+  const submittingRef = useRef(false);
+  const autoContinueRef = useRef(false);
+  const hiddenStopRef = useRef(false);
   const signature = JSON.stringify([draft.draft_id, draft.version, selection, connectionId, connection, timezone, context]);
+  const signatureRef = useRef(signature);
+  signatureRef.current = signature;
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const permittedRef = useRef(permitted);
+  permittedRef.current = permitted;
+  const statusCheckRequiredRef = useRef(false);
+  const statusRef = useRef(status);
+  statusRef.current = status;
   const apiItems = useMemo(() => selection.map(({ site_id, workorder_id }) => ({ site_id, workorder_id })), [selection]);
   const wonum = (item: UploadPreviewItem) => selection.find((row) => row.site_id === item.site_id && row.workorder_id === item.workorder_id)?.wonum ?? '—';
   const currentPreview = previewContext === signature && preview?.draft_id === draft.draft_id && preview.version === draft.version && preview.items.length === selection.length ? preview : null;
@@ -43,10 +57,17 @@ export function UploadPreviewControls({ draft, selection, connection, connection
   if (viewState.active !== active) setViewState({ active, open: false });
   useEffect(() => {
     if (active) return;
+    hiddenStopRef.current = true;
     previewController.current?.abort();
     setBusy((current) => operationController.current ? current : false);
   }, [active]);
-  useEffect(() => () => { previewController.current?.abort(); operationController.current?.abort(); }, []);
+  useEffect(() => {
+    operationController.current?.abort();
+    autoContinueRef.current = false;
+    if (statusRef.current) statusCheckRequiredRef.current = true;
+  }, [signature]);
+  useEffect(() => { if (!permitted) { autoContinueRef.current = false; if (status) statusCheckRequiredRef.current = true; } }, [permitted, status]);
+  useEffect(() => () => { previewController.current?.abort(); operationController.current?.abort(); autoContinueRef.current = false; }, []);
   useEffect(() => { onWorkflowLock?.(workflowCompatible && !!requestId && (!status || (!status.source_finalized &&
     ((status.counts.pending ?? 0) + (status.counts.sending ?? 0) + (status.counts.unknown ?? 0) > 0)))); },
   [workflowCompatible, requestId, status, onWorkflowLock]);
@@ -74,9 +95,9 @@ export function UploadPreviewControls({ draft, selection, connection, connection
     setBusy(true); setNeedsStatusCheck(false); setError('');
     try {
       const next = await getUploadStatus(status.batch_id, expected.draft, expected.connectionId, expected.preview.items, controller.signal);
-      if (!controller.signal.aborted) { setStatus(next); await finalize(next); }
+      if (!controller.signal.aborted) { statusCheckRequiredRef.current = false; setStatus(next); await finalize(next); }
     } catch (cause) { if (!controller.signal.aborted) { handleError(cause); setNeedsStatusCheck(true); } }
-    finally { if (operationController.current === controller) operationController.current = null; if (!controller.signal.aborted) setBusy(false); }
+    finally { if (operationController.current === controller) { operationController.current = null; setBusy(false); } }
   }
   async function finalize(next: UploadStatus) {
     if (!next.source_finalized || !onUploadFinalized) return;
@@ -85,7 +106,11 @@ export function UploadPreviewControls({ draft, selection, connection, connection
     if (!refreshed) setError('Maximo đã xác nhận thay đổi, nhưng bảng chưa được làm mới. Hãy thử làm mới lại từ đây.');
   }
   async function submitOrRecover() {
-    if ((!requestId && !currentPreview) || busy || !active) return;
+    if ((!requestId && !currentPreview) || busy || submittingRef.current || !active) return;
+    submittingRef.current = true;
+    hiddenStopRef.current = false;
+    autoContinueRef.current = uploadAll;
+    const startedSignature = signature;
     const controller = new AbortController(); operationController.current = controller;
     setBusy(true); setError('');
     try {
@@ -96,6 +121,8 @@ export function UploadPreviewControls({ draft, selection, connection, connection
       if (!id) {
         const fresh = await previewUpload(draft, apiItems, controller.signal);
         if (controller.signal.aborted) return;
+        if (!activeRef.current || !permittedRef.current || hiddenStopRef.current || signatureRef.current !== startedSignature ||
+          (uploadAll && !autoContinueRef.current)) return;
         setPreview(fresh); verified = fresh;
         if (!fresh.send_enabled || fresh.gate !== null || fresh.items.some((item) => item.code !== 'ready')) {
           setError('Maximo chưa thay đổi. Dữ liệu cần được đối chiếu trước khi gửi.'); return;
@@ -111,16 +138,32 @@ export function UploadPreviewControls({ draft, selection, connection, connection
       const receipt = await submitUpload(submittedDraft, id, verified, submittedConnection, controller.signal);
       if (!controller.signal.aborted) {
         setStatus(receipt); setNeedsStatusCheck(false); await finalize(receipt);
+        let previous = receipt;
+        while (uploadAll && autoContinueRef.current && !hiddenStopRef.current && activeRef.current && permittedRef.current &&
+          signatureRef.current === startedSignature && safeAutoAdvance(previous, verified.items.length)) {
+          const next = await continueUpload(previous.batch_id, submittedDraft, submittedConnection, verified.items, controller.signal);
+          if (controller.signal.aborted) break;
+          if (!safeAutoProgress(previous, next, verified.items.length)) {
+            autoContinueRef.current = false;
+            setNeedsStatusCheck(true);
+            setError('Upload tự động đã dừng vì trạng thái chưa tiến triển an toàn. Kiểm tra trạng thái trước khi tiếp tục.');
+            setStatus(next);
+            break;
+          }
+          previous = next; setStatus(next); setNeedsStatusCheck(false); await finalize(next);
+        }
+        autoContinueRef.current = false;
       }
     } catch (cause) {
       if (!controller.signal.aborted) {
         handleError(cause);
-        setError('Chưa xác định được kết quả. Dùng nút lấy kết quả yêu cầu trước; hệ thống sẽ tra cứu cùng yêu cầu.');
+        setNeedsStatusCheck(true);
+        setError('Chưa xác định được kết quả. Kiểm tra kết quả yêu cầu trước khi tiếp tục; hệ thống sẽ giữ nguyên yêu cầu hiện tại.');
       }
-    } finally { if (operationController.current === controller) operationController.current = null; if (!controller.signal.aborted) setBusy(false); }
+    } finally { submittingRef.current = false; if (operationController.current === controller) { operationController.current = null; setBusy(false); } }
   }
   async function advance(action: 'continue' | 'reconcile') {
-    if (!status || busy || needsStatusCheck) return;
+    if (!status || busy || submittingRef.current || needsStatusCheck) return;
     const expected = workflow ?? (preview ? { draft, preview, connectionId } : null);
     if (!expected) return;
     const controller = new AbortController(); operationController.current = controller;
@@ -130,17 +173,61 @@ export function UploadPreviewControls({ draft, selection, connection, connection
       const next = action === 'continue'
         ? await continueUpload(status.batch_id, expected.draft, expected.connectionId, expected.preview.items, controller.signal)
         : await reconcileUpload(status.batch_id, expected.draft, expected.connectionId, expected.preview.items, controller.signal);
-      if (!controller.signal.aborted) { setStatus(next); setNeedsStatusCheck(false); await finalize(next); }
+      if (!controller.signal.aborted) { statusCheckRequiredRef.current = false; setStatus(next); setNeedsStatusCheck(false); await finalize(next); }
     } catch (cause) { if (!controller.signal.aborted) { handleError(cause); setNeedsStatusCheck(action === 'continue'); } }
-    finally { if (operationController.current === controller) operationController.current = null; if (!controller.signal.aborted) setBusy(false); }
+    finally { if (operationController.current === controller) { operationController.current = null; setBusy(false); } }
   }
   const counts = status?.counts ?? {};
   const pending = counts.pending ?? 0;
   const unknown = counts.unknown ?? 0;
   const sending = counts.sending ?? 0;
-  const safeToContinue = pending > 0 && unknown === 0 && sending === 0 && !needsStatusCheck;
-  const needsExplicitStatus = pending > 0 || sending > 0 || unknown > 0;
+  const safeToContinue = pending > 0 && unknown === 0 && sending === 0 && (counts.failed ?? 0) === 0 &&
+    (counts.conflict ?? 0) === 0 && !needsStatusCheck && !statusCheckRequiredRef.current;
+  const needsExplicitStatus = pending > 0 || sending > 0 || unknown > 0 || statusCheckRequiredRef.current;
   const showReceiptRecovery = canRecoverRequest && !status;
+
+  function safeAutoAdvance(value: UploadStatus, total: number) {
+    return !value.source_finalized && total > 0 && value.items.length === total &&
+      (value.counts.pending ?? 0) > 0 && (value.counts.sending ?? 0) === 0 &&
+      (value.counts.unknown ?? 0) === 0 && (value.counts.failed ?? 0) === 0 &&
+      (value.counts.conflict ?? 0) === 0 && (value.counts.confirmed ?? 0) < total;
+  }
+  function safeAutoProgress(before: UploadStatus, after: UploadStatus, total: number) {
+    const complete = after.source_finalized && (after.counts.confirmed ?? 0) === total &&
+      (after.counts.pending ?? 0) === 0 && (after.counts.sending ?? 0) === 0 &&
+      (after.counts.unknown ?? 0) === 0 && (after.counts.failed ?? 0) === 0 && (after.counts.conflict ?? 0) === 0;
+    return after.items.length === total && (complete || safeAutoAdvance(after, total)) &&
+      (after.counts.confirmed ?? 0) > (before.counts.confirmed ?? 0) &&
+      (after.counts.confirmed ?? 0) <= total;
+  }
+  async function resumeAll() {
+    if (!status || !workflow || submittingRef.current || needsStatusCheck || statusCheckRequiredRef.current || !activeRef.current || !permittedRef.current ||
+      !safeAutoAdvance(status, workflow.preview.items.length)) return;
+    submittingRef.current = true;
+    hiddenStopRef.current = false;
+    autoContinueRef.current = true;
+    const startedSignature = signature;
+    const controller = new AbortController(); operationController.current = controller;
+    setBusy(true); setError('');
+    try {
+      let previous = status;
+      while (autoContinueRef.current && !hiddenStopRef.current && activeRef.current && permittedRef.current &&
+        signatureRef.current === startedSignature && safeAutoAdvance(previous, workflow.preview.items.length)) {
+        const next = await continueUpload(previous.batch_id, workflow.draft, workflow.connectionId, workflow.preview.items, controller.signal);
+        if (controller.signal.aborted) break;
+        if (!safeAutoProgress(previous, next, workflow.preview.items.length)) {
+          autoContinueRef.current = false; setNeedsStatusCheck(true);
+          setError('Upload tự động đã dừng vì trạng thái chưa tiến triển an toàn. Kiểm tra trạng thái trước khi tiếp tục.');
+          setStatus(next); break;
+        }
+        previous = next; setStatus(next); await finalize(next);
+      }
+      autoContinueRef.current = false;
+    } catch (cause) {
+      autoContinueRef.current = false;
+      if (!controller.signal.aborted) { handleError(cause); setNeedsStatusCheck(true); }
+    } finally { submittingRef.current = false; if (operationController.current === controller) { operationController.current = null; setBusy(false); } }
+  }
 
   return <>
     {(!workflow || panelVisible) && <button className={styles.tertiary} disabled={!active || busy || (!!status && !status.source_finalized) || (!canRecoverRequest && !status && !enabled)} onClick={() => {
@@ -151,9 +238,12 @@ export function UploadPreviewControls({ draft, selection, connection, connection
     {panelVisible && <section className={styles.editorSection} aria-label="Preview upload Maximo">
       <h3>Đối chiếu trước khi upload</h3>
       {connection && <p>{connection.label} · {connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'Test' : 'Production'}</p>}
-      {busy && <p role="status">{status ? 'Đang cập nhật trạng thái…' : 'Đang đối chiếu với Maximo…'}</p>}
+      {busy && <p role="status">{requestId ? 'Đang xử lý yêu cầu upload và kiểm tra kết quả…' : status ? 'Đang cập nhật trạng thái…' : 'Đang đối chiếu với Maximo…'}</p>}
+      {uploadAll && busy && autoContinueRef.current && <button className={styles.tertiary} onClick={() => { autoContinueRef.current = false; }}>
+        Dừng sau đợt đang gửi
+      </button>}
       {error && <p role="alert" className={styles.error}>{error}</p>}
-      {currentPreview && !status && <>
+      {currentPreview && !status && !requestId && <>
         <div className={styles.tableWrap}><table><thead><tr><th>WO</th><th>Trường</th><th>Maximo hiện tại</th><th>Giá trị nháp</th><th>Kết quả</th></tr></thead>
           <tbody>{currentPreview.items.flatMap((item) => [...(Object.keys(item.changes).length ? Object.keys(item.changes).map((rawField) => {
             const field = rawField as typeof editableFields[number];
@@ -175,8 +265,9 @@ export function UploadPreviewControls({ draft, selection, connection, connection
           <button className={styles.primary} disabled>Upload chưa khả dụng</button>
         </>}
       </>}
-      {showReceiptRecovery && <p role="status">Kết quả yêu cầu chưa xác định; dữ liệu nháp được giữ nguyên.</p>}
+      {showReceiptRecovery && !busy && <p role="status">Kết quả yêu cầu chưa xác định; dữ liệu nháp được giữ nguyên.</p>}
       {status && <>
+        {uploadAll && <p role="status">Tiến độ: {counts.confirmed ?? 0}/{status.items.length} WO đã xác nhận.</p>}
         <h4>Kết quả từng WO</h4>
         <ul>{Object.entries(counts).filter(([, count]) => (count ?? 0) > 0).map(([state, count]) =>
           <li key={state}>{stateLabels[state as keyof typeof stateLabels]}: {count}</li>)}</ul>
@@ -191,8 +282,9 @@ export function UploadPreviewControls({ draft, selection, connection, connection
           : status.items.every((item) => ['confirmed', 'failed', 'conflict'].includes(item.state))
             ? <p role="status">Draft được giữ lại vì dữ liệu hiện tại hoặc phiên bản nháp chưa đủ điều kiện hoàn tất.</p>
             : <p role="status">Kết quả chưa hoàn tất. Kiểm tra trạng thái để quyết định bước tiếp theo.</p>}
-        {(needsStatusCheck || error || needsExplicitStatus) && <button className={styles.tertiary} disabled={busy || !active} onClick={() => void refreshStatus()}>Kiểm tra trạng thái</button>}
-        {safeToContinue && <button className={styles.primary} disabled={busy || !active} onClick={() => void advance('continue')}>Tiếp tục gửi tối đa 10 WO</button>}
+        {(needsStatusCheck || error || needsExplicitStatus) && <button className={styles.tertiary} disabled={busy || !active || !permitted} onClick={() => void refreshStatus()}>Kiểm tra trạng thái</button>}
+        {safeToContinue && <button className={styles.primary} disabled={busy || !active || !permitted} onClick={() => uploadAll
+          ? void resumeAll() : void advance('continue')}>{uploadAll ? 'Tiếp tục upload toàn bộ nhóm' : 'Tiếp tục gửi tối đa 10 WO'}</button>}
         {unknown > 0 && <button className={styles.tertiary} disabled={busy || !active} onClick={() => void advance('reconcile')}>Đối chiếu WO chưa xác định</button>}
         {status.source_finalized && error && <button className={styles.tertiary} disabled={busy || !active} onClick={() => void refreshStatus()}>Làm mới dữ liệu Maximo</button>}
       </>}

@@ -1,10 +1,41 @@
 # Quyền DB và retention
 
-Cập nhật: 2026-10-08. Công cụ trong repo dành cho DB scheduler riêng; quyền DB và
+Cập nhật: 2026-10-12. Công cụ trong repo dành cho DB scheduler riêng; quyền DB và
 backup staging cần IT kiểm tra. Retention nghiệp vụ đã chốt bên dưới.
 Không chạy provisioning trên database chung.
 
+Migration `0014_assignment_snapshots` thêm cache nhu cầu task đã xác minh.
+Sau upgrade cần provisioning quyền SELECT/INSERT/UPDATE cho runtime trên
+`assignment_planning_snapshot`; không cấp DELETE/TRUNCATE. TTL tối đa300giây,
+cache hết hạn được xem là chưa xác minh. Development đã backup và upgrade,
+schema check và kiểm tra đặc quyền đạt; bằng chứng trong
+[cập nhật phân công nhẹ](incremental-assignment-updates.md).
+
 ## Tách người sở hữu schema và ứng dụng
+
+Rota staging dùng migration `0009_rota_staging`. Sau upgrade, chạy lại provisioning
+script để cấp SELECT bảng mới, INSERT/UPDATE `rota_import`, INSERT `rota_event`.
+`resource_pool`/`resource_pool_grant` do operator quản lý; runtime không được sửa.
+Trigger giữ source/cancelled revision bất biến và rota audit append-only. Chi tiết
+trong [rota staging thật](rota-live-staging.md).
+
+Kích hoạt rota dùng migration `0010_rota_activation` và bốn bảng mới:
+`resource_pool_state`, `resource_person`, `rota_activation`, `person_day_capacity`.
+Sau upgrade, chạy lại provisioning để runtime được INSERT/UPDATE state,
+INSERT person identity/revision và INSERT/DELETE daily capacity. Runtime không
+UPDATE person/revision/capacity hoặc sửa registry pool/grants. Revision activation
+append-only và import đã activated bất biến bằng trigger PostgreSQL.
+Activation/đọc diff dùng khóa advisory transaction theo pool; không cần mở
+UPDATE cho `resource_pool`. Assignment ledger dùng cùng khóa.
+Migration này không hỗ trợ downgrade xóa lịch sử activation; khôi phục bằng
+backup đã được kiểm tra khi cần rollback deployment. Chi tiết
+[kích hoạt rota](rota-activation.md).
+
+Phân bổ nhân lực dùng migration `0011_assignments`: `assignment_allocation`,
+`assignment_event`, `assignment_submission`. Sau upgrade, provisioning cấp
+INSERT/UPDATE allocation và chỉ SELECT/INSERT audit/biên nhận. Xóa qua API là
+chuyển allocation sang released; runtime không có DELETE bảng phân bổ hoặc
+quyền UPDATE/DELETE biên nhận/audit. Xem [phân bổ WO](workforce-allocations.md).
 
 `backend/sql/provision_roles.sql` dùng psql variables `owner_role` và `runtime_role`.
 IT tạo hai LOGIN role riêng, không membership cho runtime, đặt password qua kênh
@@ -53,7 +84,7 @@ Khởi tạo DB/role qua DBA trước khi chạy cả stack; không trỏ cả h
 | --- | --- | --- |
 | Login flow | Có expires_at; chỉ dọn đã hết hạn, không lưu token exchange/flow nội dung trong report | Tần suất cleanup/giám sát và backup chứa PKCE/nonce |
 | Login session | Phiên cố định 8 giờ; chỉ dọn đã hết hạn, không gia hạn | Tần suất cleanup, emergency revoke và thời gian lưu backup |
-| Draft/draft item | Không purge theo tuổi; tự xóa sau toàn bộ upload confirmed bằng read-back | Finalizer chưa có; phải liên kết đúng draft/version/members, giữ partial/conflict/unknown hoặc nháp sửa tiếp. Chủ động bỏ nháp scoped/version vẫn có |
+| Draft/draft item | Không purge theo tuổi; TEST finalizer đã có, tự xóa sau toàn bộ upload confirmed bằng read-back | Giữ linkage draft/version/members, partial/conflict/unknown và nháp sửa tiếp; chưa mở upload production. Chủ động bỏ nháp scoped/version vẫn có |
 | Draft submission receipts | Giữ; receipt còn cần chặn gửi trùng dù draft bị xóa | Giữ receipts kể cả khi nháp bị xóa; không bật purge |
 | Upload batch/item | Giữ mọi state; pending/sending/unknown giữ recovery và khóa WO | Giữ upload history và khóa recovery; không bật purge |
 | Audit/authorization/admin authority events | Append-only; runtime không sửa/xóa | Giữ audit append-only; quyền đọc và backup/restore do IT vận hành |
@@ -61,7 +92,8 @@ Khởi tạo DB/role qua DBA trước khi chạy cả stack; không trỏ cả h
 
 Chủ dự án chốt giữ nguyên dữ liệu nghiệp vụ và tự xóa nháp sau upload thành công.
 HTTP 2xx chưa đủ: phải read-back toàn bộ items, lưu outcomes/audit bền vững,
-khóa/đối chiếu version nháp trước xóa. Upload/finalizer chưa triển khai.
+khóa/đối chiếu version nháp trước xóa. TEST upload/finalizer đã triển khai;
+production upload và worker/lease vẫn chưa nghiệm thu.
 Không chọn 30/90/365 ngày cho dữ liệu nghiệp vụ. Cleanup expired auth là
 công việc kỹ thuật theo expires_at, không thay quyết định retention của draft/audit.
 Không xóa receipt để mở lại request cũ hoặc xóa unknown để bỏ khóa WO.
@@ -74,6 +106,11 @@ khi duyệt lịch/cutoff và kiểm tra đúng DB. Local dry-run 07/10 có 6 se
 0 flow hết hạn; không xóa hàng nào, chưa bật lịch tự động hay execute cleanup thật.
 
 ## Backup và restore trước rollout
+
+Đã chuẩn bị [policy](backup-policy.md), job mẫu trong `deployment/backup/` và
+[runbook restore](backup-restore-runbook.md) ngày10/10. Approval mặc định false,
+timer chưa có lịch thật; không bật backup staging, chưa duyệt RPO/RTO/offsite/retention.
+Job vận hành và rehearsal synthetic bên dưới là hai công cụ riêng.
 
 IT ghi RPO/RTO, DB/volume/secret references cần phục hồi, người có quyền đọc backup,
 window và thời hạn lưu. Thử restore vào DB cô lập cùng schema revision và grants;

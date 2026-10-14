@@ -1,0 +1,2681 @@
+{
+  "date": "2026-10-12",
+  "environment": "Onshore Test",
+  "read_only": true,
+  "object_structure": "BDSCHED_WO",
+  "assignment_schema": {
+    "apptrequired": {
+      "subType": "YORN",
+      "title": "Appointment Required",
+      "persistent": true,
+      "type": "boolean"
+    },
+    "wplaborid": {
+      "subType": "ALN",
+      "title": "WP Labor ID",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 20
+    },
+    "localref": {
+      "type": "string"
+    },
+    "craft": {
+      "subType": "UPPER",
+      "title": "Craft",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 8
+    },
+    "scheduledate": {
+      "subType": "DATETIME",
+      "title": "Scheduled Start",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 10
+    },
+    "appointment": {
+      "subType": "YORN",
+      "title": "Schedule Lock",
+      "persistent": true,
+      "type": "boolean"
+    },
+    "startdate": {
+      "subType": "DATETIME",
+      "title": "Start Date",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 10
+    },
+    "assignmentid": {
+      "subType": "BIGINT",
+      "title": "ASSIGNMENTID",
+      "persistent": true,
+      "type": "integer",
+      "maxLength": 19
+    },
+    "_rowstamp": {
+      "type": "string"
+    },
+    "skilllevel": {
+      "subType": "UPPER",
+      "title": "Skill Level",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 15
+    },
+    "ggdate": {
+      "subType": "DATETIME",
+      "title": "GGDATE",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 10
+    },
+    "_imagelibref": {
+      "type": "string"
+    },
+    "vendor": {
+      "subType": "UPPER",
+      "title": "Vendor",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 128
+    },
+    "crewworkgroup": {
+      "subType": "UPPER",
+      "title": "Crew Work Group",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 8
+    },
+    "resourcelock": {
+      "subType": "YORN",
+      "title": "Resource Lock",
+      "persistent": true,
+      "type": "boolean"
+    },
+    "href": {
+      "type": "string"
+    },
+    "contractnum": {
+      "subType": "UPPER",
+      "title": "Contract",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 9
+    },
+    "status_description": {
+      "type": "string"
+    },
+    "workdate": {
+      "subType": "DATE",
+      "title": "Work Date",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 4
+    },
+    "changeby": {
+      "subType": "UPPER",
+      "title": "Change By",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 30
+    },
+    "finishdate": {
+      "subType": "DATETIME",
+      "title": "Scheduled Finish",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 10
+    },
+    "amcrewtype": {
+      "subType": "UPPER",
+      "title": "Crew Type",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 8
+    },
+    "changedate": {
+      "subType": "DATETIME",
+      "title": "Changed Date",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 10
+    },
+    "orgid": {
+      "subType": "UPPER",
+      "title": "Organization",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 8
+    },
+    "plusgqualificationuid": {
+      "subType": "BIGINT",
+      "title": "Qualification ID",
+      "persistent": true,
+      "type": "integer",
+      "maxLength": 19
+    },
+    "laborcode": {
+      "subType": "UPPER",
+      "title": "Labor",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 30
+    },
+    "amcrew": {
+      "subType": "UPPER",
+      "title": "Crew",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 8
+    },
+    "_id": {
+      "type": "string"
+    },
+    "worklog": {
+      "subType": "YORN",
+      "title": "WORKLOG",
+      "persistent": true,
+      "type": "boolean"
+    },
+    "parentassignid": {
+      "subType": "BIGINT",
+      "title": "Parent Assignment ID",
+      "persistent": true,
+      "type": "integer",
+      "maxLength": 19
+    },
+    "laborhrs": {
+      "subType": "DURATION",
+      "title": "Hours",
+      "persistent": true,
+      "type": "number",
+      "maxLength": 8
+    },
+    "status": {
+      "subType": "UPPER",
+      "title": "Status",
+      "persistent": true,
+      "type": "string",
+      "maxLength": 12
+    }
+  },
+  "october_parent_wo_count": 117,
+  "long_assignments": [
+    {
+      "wo": "P13431393",
+      "site": "BD1",
+      "parent_id": "254285",
+      "task_id": null,
+      "task_workorder_id": "254285",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 265571,
+        "_rowstamp": "600031607",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 300.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13431393",
+      "site": "BD1",
+      "parent_id": "254285",
+      "task_id": 10,
+      "task_workorder_id": "254293",
+      "schedstart": "2021-11-01T15:02:00+07:00",
+      "schedfinish": "2021-11-10T15:02:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 265571,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 300.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13439902",
+      "site": "BD1",
+      "parent_id": "325283",
+      "task_id": null,
+      "task_workorder_id": "325283",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": "2023-09-01T15:33:00+07:00",
+        "assignmentid": 370815,
+        "_rowstamp": "2167725627",
+        "finishdate": "2023-09-04T22:33:00+07:00",
+        "laborcode": "SONNA",
+        "laborhrs": 79.0,
+        "status": "ASSIGNED"
+      }
+    },
+    {
+      "wo": "P13439902",
+      "site": "BD1",
+      "parent_id": "325283",
+      "task_id": 20,
+      "task_workorder_id": "387805",
+      "schedstart": "2023-09-01T15:33:00+07:00",
+      "schedfinish": "2025-05-28T20:59:42+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": "2023-09-01T15:33:00+07:00",
+        "assignmentid": 370815,
+        "_rowstamp": null,
+        "finishdate": "2023-09-04T22:33:00+07:00",
+        "laborcode": "SONNA",
+        "laborhrs": 79.0,
+        "status": "ASSIGNED"
+      }
+    },
+    {
+      "wo": "P13465911",
+      "site": "BD1",
+      "parent_id": "528909",
+      "task_id": null,
+      "task_workorder_id": "528909",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 537275,
+        "_rowstamp": "2570924783",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13465911",
+      "site": "BD1",
+      "parent_id": "528909",
+      "task_id": 10,
+      "task_workorder_id": "528911",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 537275,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13468109",
+      "site": "BD1",
+      "parent_id": "533353",
+      "task_id": null,
+      "task_workorder_id": "533353",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 546239,
+        "_rowstamp": "2914193725",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 28.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13468109",
+      "site": "BD1",
+      "parent_id": "533353",
+      "task_id": 20,
+      "task_workorder_id": "533357",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 546239,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 28.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13468162",
+      "site": "BD1",
+      "parent_id": "533459",
+      "task_id": null,
+      "task_workorder_id": "533459",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 546441,
+        "_rowstamp": "2917677373",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13468162",
+      "site": "BD1",
+      "parent_id": "533459",
+      "task_id": 20,
+      "task_workorder_id": "533463",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 546441,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13468282",
+      "site": "BD1",
+      "parent_id": "533699",
+      "task_id": null,
+      "task_workorder_id": "533699",
+      "schedstart": "2026-10-01T16:57:00+07:00",
+      "schedfinish": "2026-10-30T16:57:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 546915,
+        "_rowstamp": "2934096807",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13468282",
+      "site": "BD1",
+      "parent_id": "533699",
+      "task_id": 20,
+      "task_workorder_id": "533703",
+      "schedstart": "2026-10-01T16:57:00+07:00",
+      "schedfinish": "2026-10-30T16:57:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 546915,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13468596",
+      "site": "BD1",
+      "parent_id": "534327",
+      "task_id": null,
+      "task_workorder_id": "534327",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 548443,
+        "_rowstamp": "2985044249",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 40.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13468596",
+      "site": "BD1",
+      "parent_id": "534327",
+      "task_id": 20,
+      "task_workorder_id": "534331",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 548443,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 40.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469038",
+      "site": "BD1",
+      "parent_id": "535211",
+      "task_id": null,
+      "task_workorder_id": "535211",
+      "schedstart": "2026-10-01T10:38:00+07:00",
+      "schedfinish": "2026-10-31T10:38:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 549821,
+        "_rowstamp": "3036713859",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469038",
+      "site": "BD1",
+      "parent_id": "535211",
+      "task_id": null,
+      "task_workorder_id": "535211",
+      "schedstart": "2026-10-01T10:38:00+07:00",
+      "schedfinish": "2026-10-31T10:38:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 549827,
+        "_rowstamp": "3036713861",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 200.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469038",
+      "site": "BD1",
+      "parent_id": "535211",
+      "task_id": null,
+      "task_workorder_id": "535211",
+      "schedstart": "2026-10-01T10:38:00+07:00",
+      "schedfinish": "2026-10-31T10:38:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 549833,
+        "_rowstamp": "3036713863",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469038",
+      "site": "BD1",
+      "parent_id": "535211",
+      "task_id": 20,
+      "task_workorder_id": "535215",
+      "schedstart": "2026-09-01T08:31:00+07:00",
+      "schedfinish": "2026-09-30T08:31:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 549821,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469038",
+      "site": "BD1",
+      "parent_id": "535211",
+      "task_id": 30,
+      "task_workorder_id": "535217",
+      "schedstart": "2026-09-01T08:31:00+07:00",
+      "schedfinish": "2026-09-30T08:31:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 549827,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 200.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469038",
+      "site": "BD1",
+      "parent_id": "535211",
+      "task_id": 40,
+      "task_workorder_id": "535219",
+      "schedstart": "2026-09-01T08:31:00+07:00",
+      "schedfinish": "2026-09-30T08:31:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 549833,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469393",
+      "site": "BD1",
+      "parent_id": "535921",
+      "task_id": null,
+      "task_workorder_id": "535921",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551027,
+        "_rowstamp": "3082982773",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 70.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469393",
+      "site": "BD1",
+      "parent_id": "535921",
+      "task_id": null,
+      "task_workorder_id": "535921",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551025,
+        "_rowstamp": "3082982775",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 70.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469393",
+      "site": "BD1",
+      "parent_id": "535921",
+      "task_id": null,
+      "task_workorder_id": "535921",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551023,
+        "_rowstamp": "3082982777",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 70.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469393",
+      "site": "BD1",
+      "parent_id": "535921",
+      "task_id": 30,
+      "task_workorder_id": "535927",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551027,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 70.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469393",
+      "site": "BD1",
+      "parent_id": "535921",
+      "task_id": 30,
+      "task_workorder_id": "535927",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551025,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 70.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469393",
+      "site": "BD1",
+      "parent_id": "535921",
+      "task_id": 30,
+      "task_workorder_id": "535927",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551023,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 70.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469440",
+      "site": "BD1",
+      "parent_id": "536015",
+      "task_id": null,
+      "task_workorder_id": "536015",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551173,
+        "_rowstamp": "3092177575",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469440",
+      "site": "BD1",
+      "parent_id": "536015",
+      "task_id": null,
+      "task_workorder_id": "536015",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551175,
+        "_rowstamp": "3092177583",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 40.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469440",
+      "site": "BD1",
+      "parent_id": "536015",
+      "task_id": null,
+      "task_workorder_id": "536015",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551177,
+        "_rowstamp": "3092177591",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469440",
+      "site": "BD1",
+      "parent_id": "536015",
+      "task_id": 20,
+      "task_workorder_id": "536019",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551173,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469440",
+      "site": "BD1",
+      "parent_id": "536015",
+      "task_id": 30,
+      "task_workorder_id": "536021",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551175,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 40.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469440",
+      "site": "BD1",
+      "parent_id": "536015",
+      "task_id": 40,
+      "task_workorder_id": "536023",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551177,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469642",
+      "site": "BD1",
+      "parent_id": "536451",
+      "task_id": null,
+      "task_workorder_id": "536451",
+      "schedstart": "2026-10-01T13:55:00+07:00",
+      "schedfinish": "2026-10-31T13:54:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551879,
+        "_rowstamp": "3117901537",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469642",
+      "site": "BD1",
+      "parent_id": "536451",
+      "task_id": 20,
+      "task_workorder_id": "536455",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 551879,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469691",
+      "site": "BD1",
+      "parent_id": "536549",
+      "task_id": null,
+      "task_workorder_id": "536549",
+      "schedstart": "2026-10-30T06:30:00+07:00",
+      "schedfinish": "2026-10-31T17:30:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 552349,
+        "_rowstamp": "3131620183",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469691",
+      "site": "BD1",
+      "parent_id": "536549",
+      "task_id": 20,
+      "task_workorder_id": "536557",
+      "schedstart": "2026-10-30T06:30:00+07:00",
+      "schedfinish": "2026-10-31T17:30:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 552349,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469841",
+      "site": "BD1",
+      "parent_id": "536849",
+      "task_id": null,
+      "task_workorder_id": "536849",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 552893,
+        "_rowstamp": "3150859397",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13469841",
+      "site": "BD1",
+      "parent_id": "536849",
+      "task_id": 10,
+      "task_workorder_id": "536851",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 552893,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13470485",
+      "site": "BD1",
+      "parent_id": "538137",
+      "task_id": null,
+      "task_workorder_id": "538137",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "DECK",
+        "scheduledate": null,
+        "assignmentid": 555667,
+        "_rowstamp": "3242624187",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 52.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13470485",
+      "site": "BD1",
+      "parent_id": "538137",
+      "task_id": 20,
+      "task_workorder_id": "538155",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "DECK",
+        "scheduledate": null,
+        "assignmentid": 555667,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 52.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13470641",
+      "site": "BD1",
+      "parent_id": "538449",
+      "task_id": null,
+      "task_workorder_id": "538449",
+      "schedstart": "2026-10-01T06:30:00+07:00",
+      "schedfinish": "2026-10-31T18:30:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 556157,
+        "_rowstamp": "3261252777",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 40.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13470641",
+      "site": "BD1",
+      "parent_id": "538449",
+      "task_id": null,
+      "task_workorder_id": "538449",
+      "schedstart": "2026-10-01T06:30:00+07:00",
+      "schedfinish": "2026-10-31T18:30:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 556163,
+        "_rowstamp": "3261252779",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13470641",
+      "site": "BD1",
+      "parent_id": "538449",
+      "task_id": 20,
+      "task_workorder_id": "538463",
+      "schedstart": "2026-10-01T06:30:00+07:00",
+      "schedfinish": "2026-10-31T18:30:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 556157,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 40.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13470641",
+      "site": "BD1",
+      "parent_id": "538449",
+      "task_id": 30,
+      "task_workorder_id": "538465",
+      "schedstart": "2026-10-01T06:30:00+07:00",
+      "schedfinish": "2026-10-31T18:30:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 556163,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13470663",
+      "site": "BD1",
+      "parent_id": "538493",
+      "task_id": null,
+      "task_workorder_id": "538493",
+      "schedstart": "2026-10-01T06:30:00+07:00",
+      "schedfinish": "2026-10-31T18:30:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 556249,
+        "_rowstamp": "3262267103",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 60.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "P13470663",
+      "site": "BD1",
+      "parent_id": "538493",
+      "task_id": 20,
+      "task_workorder_id": "538507",
+      "schedstart": "2026-10-01T06:30:00+07:00",
+      "schedfinish": "2026-10-31T18:30:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 556249,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 60.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14299587",
+      "site": "BD1",
+      "parent_id": "2484082",
+      "task_id": null,
+      "task_workorder_id": "2484082",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1956648,
+        "_rowstamp": "3573285136",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14299587",
+      "site": "BD1",
+      "parent_id": "2484082",
+      "task_id": 20,
+      "task_workorder_id": "2484086",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1956648,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14299716",
+      "site": "BD1",
+      "parent_id": "2484340",
+      "task_id": null,
+      "task_workorder_id": "2484340",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1956856,
+        "_rowstamp": "3573289352",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 120.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14299716",
+      "site": "BD1",
+      "parent_id": "2484340",
+      "task_id": 10,
+      "task_workorder_id": "2484342",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1956856,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 120.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14299880",
+      "site": "BD1",
+      "parent_id": "2484668",
+      "task_id": null,
+      "task_workorder_id": "2484668",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1957020,
+        "_rowstamp": "3573294470",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 30.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14299880",
+      "site": "BD1",
+      "parent_id": "2484668",
+      "task_id": 10,
+      "task_workorder_id": "2484670",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1957020,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 30.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14300199",
+      "site": "BD1",
+      "parent_id": "2485306",
+      "task_id": null,
+      "task_workorder_id": "2485306",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1957538,
+        "_rowstamp": "3573305508",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 18.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14300199",
+      "site": "BD1",
+      "parent_id": "2485306",
+      "task_id": 30,
+      "task_workorder_id": "2485312",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1957538,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 18.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14300694",
+      "site": "BD1",
+      "parent_id": "2486296",
+      "task_id": null,
+      "task_workorder_id": "2486296",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1958418,
+        "_rowstamp": "3573322544",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 18.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14300694",
+      "site": "BD1",
+      "parent_id": "2486296",
+      "task_id": 30,
+      "task_workorder_id": "2486302",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1958418,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 18.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14301318",
+      "site": "BD1",
+      "parent_id": "2487544",
+      "task_id": null,
+      "task_workorder_id": "2487544",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1959516,
+        "_rowstamp": "3573343694",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14301318",
+      "site": "BD1",
+      "parent_id": "2487544",
+      "task_id": null,
+      "task_workorder_id": "2487544",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1959528,
+        "_rowstamp": "3573343754",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 18.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14301318",
+      "site": "BD1",
+      "parent_id": "2487544",
+      "task_id": 20,
+      "task_workorder_id": "2487548",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1959516,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14301318",
+      "site": "BD1",
+      "parent_id": "2487544",
+      "task_id": 80,
+      "task_workorder_id": "2487560",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1959528,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 18.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14301552",
+      "site": "BD1",
+      "parent_id": "2488012",
+      "task_id": null,
+      "task_workorder_id": "2488012",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1959930,
+        "_rowstamp": "3573351576",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 32.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14301552",
+      "site": "BD1",
+      "parent_id": "2488012",
+      "task_id": 10,
+      "task_workorder_id": "2488014",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1959930,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 32.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14301722",
+      "site": "BD1",
+      "parent_id": "2488352",
+      "task_id": null,
+      "task_workorder_id": "2488352",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1960068,
+        "_rowstamp": "3573356476",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 10.833333333333334,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14301722",
+      "site": "BD1",
+      "parent_id": "2488352",
+      "task_id": 10,
+      "task_workorder_id": "2488354",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1960068,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 10.833333333333334,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14301984",
+      "site": "BD1",
+      "parent_id": "2488876",
+      "task_id": null,
+      "task_workorder_id": "2488876",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1960522,
+        "_rowstamp": "3573365466",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 11.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14301984",
+      "site": "BD1",
+      "parent_id": "2488876",
+      "task_id": 10,
+      "task_workorder_id": "2488878",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1960522,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 11.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302042",
+      "site": "BD1",
+      "parent_id": "2488992",
+      "task_id": null,
+      "task_workorder_id": "2488992",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1960596,
+        "_rowstamp": "3573367566",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 24.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302042",
+      "site": "BD1",
+      "parent_id": "2488992",
+      "task_id": 10,
+      "task_workorder_id": "2488994",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1960596,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 24.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302054",
+      "site": "BD1",
+      "parent_id": "2489016",
+      "task_id": null,
+      "task_workorder_id": "2489016",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1960608,
+        "_rowstamp": "3573367940",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 60.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302054",
+      "site": "BD1",
+      "parent_id": "2489016",
+      "task_id": 10,
+      "task_workorder_id": "2489018",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1960608,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 60.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302528",
+      "site": "BD1",
+      "parent_id": "2489964",
+      "task_id": null,
+      "task_workorder_id": "2489964",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961130,
+        "_rowstamp": "3573383812",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 60.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302528",
+      "site": "BD1",
+      "parent_id": "2489964",
+      "task_id": 10,
+      "task_workorder_id": "2489966",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961130,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 60.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302624",
+      "site": "BD1",
+      "parent_id": "2490156",
+      "task_id": null,
+      "task_workorder_id": "2490156",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961226,
+        "_rowstamp": "3573386636",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302624",
+      "site": "BD1",
+      "parent_id": "2490156",
+      "task_id": 10,
+      "task_workorder_id": "2490158",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961226,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302749",
+      "site": "BD1",
+      "parent_id": "2490406",
+      "task_id": null,
+      "task_workorder_id": "2490406",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961376,
+        "_rowstamp": "3573390364",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 16.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302749",
+      "site": "BD1",
+      "parent_id": "2490406",
+      "task_id": null,
+      "task_workorder_id": "2490406",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961378,
+        "_rowstamp": "3573390374",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302749",
+      "site": "BD1",
+      "parent_id": "2490406",
+      "task_id": 10,
+      "task_workorder_id": "2490408",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961376,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 16.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14302749",
+      "site": "BD1",
+      "parent_id": "2490406",
+      "task_id": 20,
+      "task_workorder_id": "2490410",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961378,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303029",
+      "site": "BD1",
+      "parent_id": "2490966",
+      "task_id": null,
+      "task_workorder_id": "2490966",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961768,
+        "_rowstamp": "3573399714",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303029",
+      "site": "BD1",
+      "parent_id": "2490966",
+      "task_id": 40,
+      "task_workorder_id": "2490970",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961768,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303065",
+      "site": "BD1",
+      "parent_id": "2491038",
+      "task_id": null,
+      "task_workorder_id": "2491038",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961824,
+        "_rowstamp": "3573401244",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303065",
+      "site": "BD1",
+      "parent_id": "2491038",
+      "task_id": null,
+      "task_workorder_id": "2491038",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961826,
+        "_rowstamp": "3573401254",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 25.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303065",
+      "site": "BD1",
+      "parent_id": "2491038",
+      "task_id": null,
+      "task_workorder_id": "2491038",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961830,
+        "_rowstamp": "3573401274",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 17.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303065",
+      "site": "BD1",
+      "parent_id": "2491038",
+      "task_id": null,
+      "task_workorder_id": "2491038",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961852,
+        "_rowstamp": "3573401384",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303065",
+      "site": "BD1",
+      "parent_id": "2491038",
+      "task_id": null,
+      "task_workorder_id": "2491038",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961856,
+        "_rowstamp": "3573401404",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 30.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303065",
+      "site": "BD1",
+      "parent_id": "2491038",
+      "task_id": 30,
+      "task_workorder_id": "2491044",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961824,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303065",
+      "site": "BD1",
+      "parent_id": "2491038",
+      "task_id": 40,
+      "task_workorder_id": "2491046",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961826,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 25.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303065",
+      "site": "BD1",
+      "parent_id": "2491038",
+      "task_id": 60,
+      "task_workorder_id": "2491050",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961830,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 17.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303065",
+      "site": "BD1",
+      "parent_id": "2491038",
+      "task_id": 210,
+      "task_workorder_id": "2491072",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961852,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14303065",
+      "site": "BD1",
+      "parent_id": "2491038",
+      "task_id": 230,
+      "task_workorder_id": "2491076",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1961856,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 30.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14306569",
+      "site": "BD1",
+      "parent_id": "2498046",
+      "task_id": null,
+      "task_workorder_id": "2498046",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1968518,
+        "_rowstamp": "3573523432",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14306569",
+      "site": "BD1",
+      "parent_id": "2498046",
+      "task_id": 20,
+      "task_workorder_id": "2498050",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1968518,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14306704",
+      "site": "BD1",
+      "parent_id": "2498316",
+      "task_id": null,
+      "task_workorder_id": "2498316",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1968714,
+        "_rowstamp": "3573527748",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 40.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14306704",
+      "site": "BD1",
+      "parent_id": "2498316",
+      "task_id": 10,
+      "task_workorder_id": "2498318",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1968714,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 40.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14306788",
+      "site": "BD1",
+      "parent_id": "2498484",
+      "task_id": null,
+      "task_workorder_id": "2498484",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": "2026-10-01T00:00:00+07:00",
+        "assignmentid": 1968812,
+        "_rowstamp": "3573530034",
+        "finishdate": "2026-10-01T15:00:00+07:00",
+        "laborcode": "ENITECH1",
+        "laborhrs": 15.0,
+        "status": "ASSIGNED"
+      }
+    },
+    {
+      "wo": "H14306788",
+      "site": "BD1",
+      "parent_id": "2498484",
+      "task_id": 10,
+      "task_workorder_id": "2498486",
+      "schedstart": "2026-10-01T00:00:00+07:00",
+      "schedfinish": "2026-10-01T15:00:00+07:00",
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": "2026-10-01T00:00:00+07:00",
+        "assignmentid": 1968812,
+        "_rowstamp": null,
+        "finishdate": "2026-10-01T15:00:00+07:00",
+        "laborcode": "ENITECH1",
+        "laborhrs": 15.0,
+        "status": "ASSIGNED"
+      }
+    },
+    {
+      "wo": "H14306824",
+      "site": "BD1",
+      "parent_id": "2498556",
+      "task_id": null,
+      "task_workorder_id": "2498556",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1968848,
+        "_rowstamp": "3573531118",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14306831",
+      "site": "BD1",
+      "parent_id": "2498570",
+      "task_id": null,
+      "task_workorder_id": "2498570",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1968854,
+        "_rowstamp": "3573531310",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 50.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14306831",
+      "site": "BD1",
+      "parent_id": "2498570",
+      "task_id": 10,
+      "task_workorder_id": "2498572",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1968854,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 50.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14306835",
+      "site": "BD1",
+      "parent_id": "2498578",
+      "task_id": null,
+      "task_workorder_id": "2498578",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1968860,
+        "_rowstamp": "3573531446",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 40.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14306835",
+      "site": "BD1",
+      "parent_id": "2498578",
+      "task_id": 10,
+      "task_workorder_id": "2498580",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1968860,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 40.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307093",
+      "site": "BD1",
+      "parent_id": "2499094",
+      "task_id": null,
+      "task_workorder_id": "2499094",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969046,
+        "_rowstamp": "3578173956",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307093",
+      "site": "BD1",
+      "parent_id": "2499094",
+      "task_id": 10,
+      "task_workorder_id": "2499096",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969046,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307430",
+      "site": "BD1",
+      "parent_id": "2499768",
+      "task_id": null,
+      "task_workorder_id": "2499768",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969410,
+        "_rowstamp": "3578689378",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307430",
+      "site": "BD1",
+      "parent_id": "2499768",
+      "task_id": 10,
+      "task_workorder_id": "2499770",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969410,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307474",
+      "site": "BD1",
+      "parent_id": "2499856",
+      "task_id": null,
+      "task_workorder_id": "2499856",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969468,
+        "_rowstamp": "3578690828",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 20.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307756",
+      "site": "BD1",
+      "parent_id": "2500420",
+      "task_id": null,
+      "task_workorder_id": "2500420",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969748,
+        "_rowstamp": "3579723682",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307756",
+      "site": "BD1",
+      "parent_id": "2500420",
+      "task_id": 10,
+      "task_workorder_id": "2500422",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969748,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307771",
+      "site": "BD1",
+      "parent_id": "2500450",
+      "task_id": null,
+      "task_workorder_id": "2500450",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969768,
+        "_rowstamp": "3579724176",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 37.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307771",
+      "site": "BD1",
+      "parent_id": "2500450",
+      "task_id": 10,
+      "task_workorder_id": "2500452",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969768,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 37.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307796",
+      "site": "BD1",
+      "parent_id": "2500500",
+      "task_id": null,
+      "task_workorder_id": "2500500",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969790,
+        "_rowstamp": "3580239084",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 16.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307796",
+      "site": "BD1",
+      "parent_id": "2500500",
+      "task_id": null,
+      "task_workorder_id": "2500500",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969792,
+        "_rowstamp": "3580239106",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 18.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307796",
+      "site": "BD1",
+      "parent_id": "2500500",
+      "task_id": 10,
+      "task_workorder_id": "2500502",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969790,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 16.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307796",
+      "site": "BD1",
+      "parent_id": "2500500",
+      "task_id": 20,
+      "task_workorder_id": "2500504",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969792,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 18.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307926",
+      "site": "BD1",
+      "parent_id": "2500760",
+      "task_id": null,
+      "task_workorder_id": "2500760",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969998,
+        "_rowstamp": "3580243540",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 39.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307926",
+      "site": "BD1",
+      "parent_id": "2500760",
+      "task_id": null,
+      "task_workorder_id": "2500760",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1970000,
+        "_rowstamp": "3580243550",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 16.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307926",
+      "site": "BD1",
+      "parent_id": "2500760",
+      "task_id": null,
+      "task_workorder_id": "2500760",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1970002,
+        "_rowstamp": "3580243560",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 17.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307926",
+      "site": "BD1",
+      "parent_id": "2500760",
+      "task_id": 10,
+      "task_workorder_id": "2500762",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1969998,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 39.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307926",
+      "site": "BD1",
+      "parent_id": "2500760",
+      "task_id": 20,
+      "task_workorder_id": "2500764",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1970000,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 16.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14307926",
+      "site": "BD1",
+      "parent_id": "2500760",
+      "task_id": 30,
+      "task_workorder_id": "2500766",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1970002,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 17.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14308171",
+      "site": "BD1",
+      "parent_id": "2501250",
+      "task_id": null,
+      "task_workorder_id": "2501250",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1970390,
+        "_rowstamp": "3580251800",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14308171",
+      "site": "BD1",
+      "parent_id": "2501250",
+      "task_id": null,
+      "task_workorder_id": "2501250",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1970392,
+        "_rowstamp": "3580251810",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14308171",
+      "site": "BD1",
+      "parent_id": "2501250",
+      "task_id": 10,
+      "task_workorder_id": "2501252",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1970390,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14308171",
+      "site": "BD1",
+      "parent_id": "2501250",
+      "task_id": 20,
+      "task_workorder_id": "2501254",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1970392,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14308337",
+      "site": "BD1",
+      "parent_id": "2501582",
+      "task_id": null,
+      "task_workorder_id": "2501582",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1970622,
+        "_rowstamp": "3580769474",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14308337",
+      "site": "BD1",
+      "parent_id": "2501582",
+      "task_id": 10,
+      "task_workorder_id": "2501584",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1970622,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 12.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14308395",
+      "site": "BD1",
+      "parent_id": "2501698",
+      "task_id": null,
+      "task_workorder_id": "2501698",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 1970664,
+        "_rowstamp": "3582289782",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 50.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14323730",
+      "site": "BD1",
+      "parent_id": "2532408",
+      "task_id": null,
+      "task_workorder_id": "2532408",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 2001314,
+        "_rowstamp": "3607755512",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 30.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14323730",
+      "site": "BD1",
+      "parent_id": "2532408",
+      "task_id": 10,
+      "task_workorder_id": "2532410",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 2001314,
+        "_rowstamp": null,
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 30.0,
+        "status": "WAITASGN"
+      }
+    },
+    {
+      "wo": "H14323745",
+      "site": "BD1",
+      "parent_id": "2532438",
+      "task_id": null,
+      "task_workorder_id": "2532438",
+      "schedstart": null,
+      "schedfinish": null,
+      "assignment": {
+        "craft": "E&I",
+        "scheduledate": null,
+        "assignmentid": 2001324,
+        "_rowstamp": "3608433932",
+        "finishdate": null,
+        "laborcode": null,
+        "laborhrs": 15.0,
+        "status": "WAITASGN"
+      }
+    }
+  ],
+  "assigned_long_count": 2,
+  "relationship_long_row_count": 130,
+  "unique_long_assignment_count": 67,
+  "deduplication_note": "Parent and task relations can expose the same assignment; counts deduplicated by assignmentid within this configured connection."
+}

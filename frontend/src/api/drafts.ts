@@ -62,6 +62,7 @@ async function call(path: string, signal: AbortSignal, method = 'GET', body?: un
       404: 'WO hoặc nháp không còn tồn tại hoặc không còn trong quyền truy cập.',
       409: 'WO hoặc nháp đã thay đổi. Mở lại để đối chiếu trước khi lưu.',
       422: 'Thay đổi không hợp lệ. Kiểm tra ngày, PIC và duration.',
+      504: 'Yêu cầu xử lý quá thời gian. Nội dung sửa vẫn được giữ; kiểm tra trạng thái trước khi thử lại.',
     };
     throw new RetrievalError(response.status, messages[response.status] ?? 'Không hoàn tất yêu cầu. Nội dung sửa vẫn được giữ; có thể thử lại.');
   }

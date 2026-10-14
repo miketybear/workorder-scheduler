@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-12",
+  "environment": "Onshore Test",
+  "wo": "H14306907",
+  "task_id": 10,
+  "assignment_id": "1968934",
+  "write_attempt": "5f511e57-6010-4c73-804b-09a4a8b4d742",
+  "write_response": "accepted",
+  "assignment_after": {
+    "laborcode": "HAIDQ",
+    "scheduledate": "2026-10-03T06:30:00+07:00",
+    "finishdate": "2026-10-04T02:30:00+07:00",
+    "startdate": null,
+    "workdate": null,
+    "parentassignid": 0,
+    "laborhrs": 20.0,
+    "status": "ASSIGNED"
+  },
+  "task_schedule_after": {
+    "schedstart": "2026-10-03T06:30:00+07:00",
+    "schedfinish": "2026-10-04T02:30:00+07:00"
+  },
+  "elapsed_hours": 20.0,
+  "assignment_count_before": 2,
+  "assignment_count_after": 2,
+  "auto_split_observed": false,
+  "siblings_preserved": true,
+  "restore_attempt": "3d993ce4-6894-4310-b1a7-7668d0ce3e06",
+  "restore_response": "accepted",
+  "assignment_fields_and_task_parent_schedules_restored": true,
+  "local_reservations_changed": false
+}

@@ -1,0 +1,28 @@
+{
+  "phase": "edited",
+  "original_records_preserved": true,
+  "active": 8,
+  "trial_allocations": [
+    {
+      "id": "cc1f5c6d-03f6-4d56-a83f-c00ac097df62",
+      "workorder_id": "528909",
+      "task_id": 10,
+      "date": "2026-10-03",
+      "minutes": 630,
+      "version": 1,
+      "state": "reserved",
+      "sync_state": "local"
+    },
+    {
+      "id": "1f3fdd11-b198-4613-8202-4874f67d3974",
+      "workorder_id": "528909",
+      "task_id": 10,
+      "date": "2026-10-05",
+      "minutes": 540,
+      "version": 3,
+      "state": "reserved",
+      "sync_state": "local"
+    }
+  ],
+  "trial_upload_attempts": 0
+}

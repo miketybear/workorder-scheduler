@@ -1,0 +1,32 @@
+{
+  "policy": "rota-2026-10-12-v5",
+  "file": "1-POB-Plan-Q4-2026.ods",
+  "pool": "Onshore Test — rota 5 craft",
+  "coverage_from": "2026-01-01",
+  "coverage_before": "2027-01-01",
+  "pre_activation_diff": {
+    "added_people": 85,
+    "removed_people": 0,
+    "changed_people": 0,
+    "changed_days": 31025,
+    "before_hours": 0,
+    "after_hours": 154696.5
+  },
+  "excluded_positions": 2,
+  "blocking_count": 0,
+  "receipt": {
+    "id": "09f30419-cd09-4446-b81b-565e12b6f49a",
+    "displayed_at": "2026-10-12 10:31:26 Asia/Bangkok",
+    "person_count": 85,
+    "day_count": 31025,
+    "total_hours": 154696.5
+  },
+  "verification": "Authenticated UI upload, diff, activation and server receipt read-back",
+  "frontend_focused_tests": 24,
+  "labels": [
+    "Person",
+    "Position"
+  ],
+  "maximo_writes": 0,
+  "assignments_created": 0
+}

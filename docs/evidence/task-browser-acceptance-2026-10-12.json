@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-12",
+  "browser_upload_confirmed": "1a2ba496-cdec-4b8d-960b-c41f26ce78a5",
+  "allocation_id": "8bfa3b15-3f4c-46af-88e4-f0de81507426",
+  "assignment_id": "535771",
+  "status_after_upload": "ASSIGNED",
+  "effective_load_after_upload": {
+    "local_minutes": 600,
+    "external_minutes": 30,
+    "synced_minutes": 30,
+    "allocated_minutes": 630
+  },
+  "no_double_count": true,
+  "restore_attempt": "46040b1a-dee2-459b-a135-51ee4eb4eb10",
+  "restore_response": "accepted",
+  "remote_and_task_parent_schedule_restored": true,
+  "local_trial_ready_for_release": true
+}

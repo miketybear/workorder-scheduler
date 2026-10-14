@@ -66,6 +66,19 @@ GRANT INSERT, UPDATE, DELETE ON access_grant, planner_permission, user_connectio
 GRANT INSERT ON maximo_person_binding, draft_submission, upload_batch,
     audit_event, authorization_event TO :"runtime_role";
 GRANT INSERT, UPDATE ON upload_item TO :"runtime_role";
+GRANT INSERT, UPDATE ON rota_import TO :"runtime_role";
+GRANT INSERT ON rota_event TO :"runtime_role";
+GRANT INSERT, UPDATE ON resource_pool_state TO :"runtime_role";
+GRANT INSERT ON resource_person, rota_activation TO :"runtime_role";
+GRANT INSERT, DELETE ON person_day_capacity TO :"runtime_role";
+GRANT INSERT, UPDATE ON assignment_allocation TO :"runtime_role";
+GRANT INSERT ON assignment_plan TO :"runtime_role";
+GRANT UPDATE (state) ON assignment_plan TO :"runtime_role";
+GRANT INSERT ON assignment_event, assignment_submission TO :"runtime_role";
+GRANT INSERT ON assignment_upload TO :"runtime_role";
+GRANT UPDATE (state) ON assignment_upload TO :"runtime_role";
+-- Pool registry/grants are operator-owned; runtime SELECT never implies resource access.
 -- Bootstrap audit inserts and app_user.is_admin changes belong to trusted operators only.
 -- No business retention DELETE permission for submissions, uploads or audit history.
+GRANT INSERT, UPDATE ON assignment_planning_snapshot TO :"runtime_role";
 COMMIT;

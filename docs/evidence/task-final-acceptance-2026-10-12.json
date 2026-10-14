@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-12",
+  "environment": "Onshore Test",
+  "atomic_batch": "tasks10/20/30 saved together,630minutes",
+  "native_move": "task20 moved03\u219204October withoutmovingtasks10/30",
+  "edit": "task20 changed9\u21928h",
+  "overcapacity": "edit0.5\u21921h made11h andwasblocked",
+  "trials_released": [
+    {
+      "task": 10,
+      "state": "released",
+      "version": 3,
+      "minutes": 30,
+      "date": "2026-10-03"
+    },
+    {
+      "task": 20,
+      "state": "released",
+      "version": 4,
+      "minutes": 480,
+      "date": "2026-10-04"
+    },
+    {
+      "task": 30,
+      "state": "released",
+      "version": 2,
+      "minutes": 60,
+      "date": "2026-10-03"
+    }
+  ],
+  "user_allocations_preserved": {
+    "count": 4,
+    "minutes": 240,
+    "versions_unchanged": true
+  },
+  "upload_attempts": {
+    "confirmed": 4,
+    "conflict": 1
+  },
+  "audit_events": {
+    "create": 3,
+    "probe_intent": 4,
+    "probe_response": 3,
+    "probe_readback": 2,
+    "probe_restored": 2,
+    "upload_intent": 1,
+    "upload_outcome": 1,
+    "update": 2,
+    "release": 3
+  },
+  "all_audit_has_actor": true,
+  "remote_sample_restored_waitasgn": true,
+  "task_upload_gate": "verified Onshore Test existing WAITASGN only",
+  "remote_create_delete_enabled": false
+}

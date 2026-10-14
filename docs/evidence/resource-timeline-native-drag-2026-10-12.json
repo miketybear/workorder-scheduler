@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-12",
+  "environment": "local Onshore Test E&I",
+  "native_pointer_drag": {
+    "backlog_to_person_day": "P13457667 → Dao Quang Hai (1B), 2026-10-03; dialog opened; saved 2h",
+    "assignment_to_day": "native drag → 2026-10-04; confirmed and saved",
+    "over_capacity": "2 + 9 = 11h rejected before mutation"
+  },
+  "trial": {
+    "id": "fd8c268b-f18c-41bb-a3d4-e63d2bc28300",
+    "state": "released",
+    "version": 3,
+    "final_date": "2026-10-04",
+    "minutes": 120,
+    "audit_events": {
+      "update": 1,
+      "release": 1,
+      "create": 1
+    },
+    "receipts": 3,
+    "all_events_have_actor": true
+  },
+  "user_allocations_preserved": {
+    "count": 4,
+    "minutes": 240,
+    "versions": [
+      1,
+      1,
+      1,
+      1
+    ]
+  },
+  "maximo_writes": 0
+}

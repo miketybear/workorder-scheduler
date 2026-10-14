@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-12",
+  "scope": "authenticated local Onshore Test E&I timeline + runtime DB read-back",
+  "activation_receipt": "09f30419-cd09-4446-b81b-565e12b6f49a",
+  "scoped_people": 21,
+  "roles": {
+    "SUP": 2,
+    "ASST_SUP": 2,
+    "TECH": 17
+  },
+  "backlog_wo_count": 117,
+  "layout": "PoC backlog left; timeline right; craft/role collapse; working/off/blank colors; monthly craft totals",
+  "trial": {
+    "id": "37d5273e-32f0-4a4a-9c5e-3bb3cf93b964",
+    "create_hours": 2,
+    "created_date": "2026-10-03",
+    "moved_date": "2026-10-04",
+    "edited_hours": 4,
+    "released": true,
+    "version": 4,
+    "audit_events": {
+      "create": 1,
+      "update": 2,
+      "release": 1
+    },
+    "submission_receipts": 4,
+    "over_10_5_guard": "4+7 hours blocked before submission"
+  },
+  "existing_allocations_preserved": {
+    "count": 2,
+    "minutes": 120,
+    "unchanged_versions": true
+  },
+  "checks": {
+    "backend_focused": 58,
+    "backend_offline": 562,
+    "frontend_full": 286,
+    "frontend_final_focused": 11,
+    "lint_typecheck_build": "passed",
+    "native_browser_drag": "IAB automation did not trigger HTML drag; native manual acceptance pending",
+    "drag_drop_handler_tests": "passed"
+  },
+  "review": "Backend independent scope review no finding; FE P1 stale-session disclosure fixed and tested by main; consolidated review stopped due agent credits",
+  "maximo_writes": 0
+}

@@ -117,6 +117,7 @@
 .connectionOption strong { font-weight: 600; }
 .connectionOption input { width: 16px; height: 16px; margin: 2px 0; flex-shrink: 0; accent-color: var(--accent); }
 :global(main) { width: 100%; max-width: 1600px; margin: 0 auto; padding: 24px; flex: 1; }
+.fullWidth { max-width: none; }
 :global(footer) { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 16px 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 16px; }
 .back { display: inline-block; color: var(--muted); font-size: 12px; line-height: 16px; margin-bottom: 16px; }
 .pageTitle { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }

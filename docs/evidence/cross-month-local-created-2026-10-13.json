@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-13",
+  "phase": "created",
+  "plans": [
+    {
+      "id": "cc054138-71d4-4028-9e6e-1995b3cc8f3e",
+      "state": "reserved",
+      "demand_minutes": 1200
+    }
+  ],
+  "segments": [
+    {
+      "id": "82784b1c-219c-4b70-80dc-6a4ffc031c0f",
+      "plan_id": "cc054138-71d4-4028-9e6e-1995b3cc8f3e",
+      "date": "2026-10-31",
+      "minutes": 630,
+      "version": 1,
+      "state": "reserved",
+      "sync_state": "local"
+    },
+    {
+      "id": "9678bad8-f831-42ce-8130-509e462a4101",
+      "plan_id": "cc054138-71d4-4028-9e6e-1995b3cc8f3e",
+      "date": "2026-11-01",
+      "minutes": 570,
+      "version": 1,
+      "state": "reserved",
+      "sync_state": "local"
+    }
+  ],
+  "effective_load": {
+    "2026-10-31": {
+      "local_minutes": 630,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 630
+    },
+    "2026-11-01": {
+      "local_minutes": 570,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 570
+    },
+    "2026-11-02": {
+      "local_minutes": 0,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 0
+    }
+  },
+  "upstream_waitasgn_20_hours_unchanged": true,
+  "plan_upload_attempts": 0,
+  "original_four_allocations_preserved": true
+}

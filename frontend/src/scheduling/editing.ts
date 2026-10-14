@@ -46,10 +46,44 @@ export function validateChanges(baseline: Baseline, changes: Changes, pics: stri
     const duration = changes.estdur ?? baseline.estdur;
     if (start && (duration === null || !duration.trim())) return 'Nhập Est. Duration (giờ) để tính Scheduled Finish.';
   }
-  for (const [start, end] of [['schedstart', 'schedfinish'], ['targstartdate', 'targcompdate']] as const) {
+  for (const [start, end] of [['schedstart', 'schedfinish']] as const) {
     if (changes[start] === undefined && changes[end] === undefined) continue;
     const a = changes[start] ?? baseline[start], b = changes[end] ?? baseline[end];
     if (!a || !b || Date.parse(b) < Date.parse(a)) return 'Cần đủ ngày bắt đầu/kết thúc; kết thúc không được trước bắt đầu.';
+  }
+  const scheduleFields = ['schedstart', 'schedfinish', 'estdur'] as const;
+  const targetFields = ['targstartdate', 'targcompdate'] as const;
+  const scheduleTouched = scheduleFields.some((field) => changes[field] !== undefined);
+  const targetTouched = targetFields.some((field) => changes[field] !== undefined);
+  if (targetTouched) {
+    const start = changes.targstartdate ?? baseline.targstartdate;
+    const finish = changes.targcompdate ?? baseline.targcompdate;
+    if (!start || !finish || !isAwareDate(start) || !isAwareDate(finish) || Date.parse(finish) < Date.parse(start)) {
+      return 'Cần đủ ngày bắt đầu/kết thúc; kết thúc không được trước bắt đầu.';
+    }
+  }
+  if (scheduleTouched || targetTouched) {
+    const scheduleStart = changes.schedstart ?? baseline.schedstart;
+    const scheduleFinish = changes.schedfinish ?? baseline.schedfinish;
+    const targetStart = changes.targstartdate ?? baseline.targstartdate;
+    const targetFinish = changes.targcompdate ?? baseline.targcompdate;
+    if (scheduleStart && scheduleFinish && (!isAwareDate(scheduleStart) || !isAwareDate(scheduleFinish) ||
+        Date.parse(scheduleFinish) < Date.parse(scheduleStart))) {
+      return 'Cần đủ ngày bắt đầu/kết thúc; kết thúc không được trước bắt đầu.';
+    }
+    if (targetStart && (!isAwareDate(targetStart) || !Number.isFinite(Date.parse(targetStart))) ||
+        targetFinish && (!isAwareDate(targetFinish) || !Number.isFinite(Date.parse(targetFinish)))) {
+      return 'Ngày Target hiện có không hợp lệ; hãy sửa Target trước khi thay đổi lịch.';
+    }
+    if (targetStart && targetFinish && Date.parse(targetFinish) < Date.parse(targetStart))
+      return 'Target Finish không được trước Target Start.';
+    for (const [scheduleValue, scheduleName] of [[scheduleStart, 'Scheduled Start'], [scheduleFinish, 'Scheduled Finish']] as const) {
+      if (!scheduleValue) continue;
+      if (!isAwareDate(scheduleValue) || !Number.isFinite(Date.parse(scheduleValue))) return 'Ngày lịch hiện có không hợp lệ.';
+      const instant = Date.parse(scheduleValue);
+      if (targetStart && instant < Date.parse(targetStart)) return `${scheduleName} phải bằng hoặc sau Target Start.`;
+      if (targetFinish && instant > Date.parse(targetFinish)) return `${scheduleName} phải bằng hoặc trước Target Finish.`;
+    }
   }
   return '';
 }

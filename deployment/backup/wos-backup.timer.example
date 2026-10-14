@@ -1,0 +1,11 @@
+# Deliberately incomplete. Do not install/enable until schedule/RPO approval.
+[Unit]
+Description=Approved Work Order Scheduler backup schedule
+
+[Timer]
+OnCalendar=REPLACE_WITH_APPROVED_SYSTEMD_CALENDAR
+Unit=wos-backup.service
+Persistent=true
+
+# Add WantedBy=timers.target under Install only after approval.
+# Nothing in this repository enables the timer or deletes retained backup sets.

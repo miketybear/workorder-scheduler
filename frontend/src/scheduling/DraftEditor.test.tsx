@@ -10,22 +10,24 @@ afterEach(() => { vi.resetAllMocks(); vi.restoreAllMocks(); });
 const scope = { connection_id: 'one', discipline: 'MECH' };
 const selection = { key: { ...scope, site_id: 'TEST', workorder_id: '100' } };
 const baseline = { worktype: 'CM', schedstart: '2026-09-30T08:00:00+07:00', schedfinish: '2026-09-30T16:00:00+07:00',
-  assignedtechname: 'TECH', estdur: '8', targstartdate: '2026-09-30T08:00:00+07:00', targcompdate: '2026-09-30T16:00:00+07:00' };
+  assignedtechname: 'TECH', estdur: '8', targstartdate: '2026-09-01T00:00:00+07:00', targcompdate: '2026-11-30T23:59:00+07:00' };
 const detail: Detail = { baseline, baseline_token: 'a'.repeat(64), allowed_pics: ['TECH', 'OTHER'], item: {
   ...Object.fromEntries(columns.map(([field]) => [field, null])), ...baseline, siteid: 'TEST', workorderid: '100',
   wonum: 'WO-100', status: 'APPR', bdpocdiscipline: 'MECH', wopriority: 0,
 } as WorkOrder };
 const props = { selection, scope, timezone: 'Asia/Ho_Chi_Minh', writable: true, suspended: false, onDirty: vi.fn(), onDenied: vi.fn(), onClose: vi.fn() };
 
-it('preserves edits after a failed save and retries with the same request ID; supports updating the saved version', async () => {
+it.each([new Error('Network lost'), new RetrievalError(504, 'Yêu cầu xử lý quá thời gian.')])('preserves edits after a failed save (%s) and retries with the same request ID; supports updating the saved version', async (failure) => {
   vi.mocked(getDetail).mockResolvedValue(detail);
-  vi.mocked(saveDraft).mockRejectedValueOnce(new Error('Network lost')).mockResolvedValue({ draft_id: 'id', version: 1, state: 'draft' });
+  vi.mocked(saveDraft).mockRejectedValueOnce(failure).mockResolvedValue({ draft_id: 'id', version: 1, state: 'draft' });
   render(<DraftEditor {...props} />);
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
   expect(screen.getByRole('table')).toHaveTextContent('89');
   fireEvent.click(screen.getByText('Lưu nháp'));
-  await screen.findByText('Network lost');
+  await screen.findByText(failure.message);
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
+  expect(saveDraft).toHaveBeenCalledTimes(1);
+  expect(props.onDenied).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText('Lưu nháp'));
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   expect(vi.mocked(saveDraft).mock.calls[0][3]).toBe(vi.mocked(saveDraft).mock.calls[1][3]);
@@ -59,6 +61,27 @@ it('previews only the saved single-WO version and hides that response as soon as
   expect(screen.queryByText('Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Est. Duration'), { target: { value: '11' } });
   expect(screen.queryByText('Upload chưa khả dụng')).not.toBeInTheDocument();
+});
+
+it('shows schedule containment errors immediately and blocks save and preview for an invalid saved draft', async () => {
+  vi.mocked(getDetail).mockResolvedValue({ ...detail, baseline: { ...baseline,
+    targstartdate: '2026-09-30T08:00:00+07:00', targcompdate: '2026-09-30T16:00:00+07:00' } });
+  const first = render(<DraftEditor {...props} />);
+  fireEvent.change(await screen.findByLabelText('Scheduled Start'), { target: { value: '2026-09-30T07:59' } });
+  expect(await screen.findByRole('alert')).toHaveTextContent('Scheduled Start phải bằng hoặc sau Target Start.');
+  expect(screen.getByText('Lưu nháp')).toBeDisabled();
+  expect(saveDraft).not.toHaveBeenCalled();
+  first.unmount();
+
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, baseline: { ...baseline,
+    targstartdate: '2026-09-30T08:00:00+07:00', targcompdate: '2026-09-30T16:00:00+07:00' },
+    draft_id: 'legacy', version: 1, state: 'draft',
+    changes: { estdur: '9', schedfinish: '2026-09-30T17:00:00+07:00' }, baseline_changed: false, changes_valid_now: true });
+  const view = render(<DraftEditor {...props} selection={{ draftId: 'legacy' }} />);
+  await view.findByLabelText('Est. Duration');
+  expect(screen.getByRole('alert')).toHaveTextContent('Scheduled Finish phải bằng hoặc trước Target Finish.');
+  expect(screen.getByText('Đối chiếu với Maximo trước upload')).toBeDisabled();
+  expect(previewUpload).not.toHaveBeenCalled();
 });
 
 it('aborts and discards an in-flight preview when the workspace is hidden, without fetching again on return', async () => {
@@ -151,7 +174,8 @@ it('retains the same request ID after an uncertain server error and recovers wit
 });
 
 it('warns on PM schedule preview and shows the confirmed Maximo duration after upload', async () => {
-  vi.mocked(openDraft).mockResolvedValue({ ...detail, item: { ...detail.item, worktype: 'PM' }, baseline: { ...detail.baseline, worktype: 'PM' },
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, item: { ...detail.item, worktype: 'PM' }, baseline: { ...detail.baseline, worktype: 'PM',
+    schedstart: '2026-10-01T08:00:00+07:00', schedfinish: '2026-10-01T16:00:00+07:00' },
     draft_id: 'saved', version: 4, state: 'draft', changes: { schedstart: '2026-10-01T09:00:00+07:00' }, baseline_changed: false, changes_valid_now: true });
   vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'saved', version: 4, preview_hash: 'a'.repeat(64), send_enabled: true, gate: null,
     items: [{ site_id: 'TEST', workorder_id: '100', code: 'ready', warnings: ['pm_duration_recalculation'],
@@ -170,7 +194,8 @@ it('warns on PM schedule preview and shows the confirmed Maximo duration after u
 });
 
 it('keeps an unknown PM duration mismatch unconfirmed and preserves the draft for explicit reconciliation', async () => {
-  vi.mocked(openDraft).mockResolvedValue({ ...detail, item: { ...detail.item, worktype: 'PM' }, baseline: { ...detail.baseline, worktype: 'PM' },
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, item: { ...detail.item, worktype: 'PM' }, baseline: { ...detail.baseline, worktype: 'PM',
+    schedstart: '2026-10-01T08:00:00+07:00', schedfinish: '2026-10-01T16:00:00+07:00' },
     draft_id: 'saved', version: 4, state: 'draft', changes: { schedstart: '2026-10-01T09:00:00+07:00' }, baseline_changed: false, changes_valid_now: true });
   vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'saved', version: 4, preview_hash: 'a'.repeat(64), send_enabled: true, gate: null,
     items: [{ site_id: 'TEST', workorder_id: '100', code: 'ready', warnings: ['pm_duration_recalculation'],
@@ -206,7 +231,7 @@ it('warns for a restored PM finish-only change against the original baseline', a
 });
 
 it('requires target intent, resets targets when unchecked, and validates duration and dates before saving', async () => {
-  vi.mocked(getDetail).mockResolvedValue(detail);
+  vi.mocked(getDetail).mockResolvedValue({ ...detail, baseline: { ...baseline, targstartdate: '2026-09-30T08:00:00+07:00', targcompdate: '2026-09-30T16:00:00+07:00' } });
   render(<DraftEditor {...props} />);
   expect(await screen.findByLabelText('Target Finish')).toBeEnabled();
   fireEvent.change(screen.getByLabelText('Target Finish'), { target: { value: '2026-10-01T16:00' } });

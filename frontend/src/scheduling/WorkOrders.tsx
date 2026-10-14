@@ -720,7 +720,8 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
               <td><button className={styles.woLink} onClick={() => openRow(row)}>{row.wonum}</button><small>{row.worktype}</small>
                 {!!row.drafts?.length && <small className={styles.draftMarker}>{row.drafts.length > 1 ? plan ? `${plan.is_batch ? 'Nháp nhóm' : 'Nháp'} · v${plan.version} · ${row.drafts.length} nháp` : `${row.drafts.length} nháp · chọn để mở` :
                   `${row.drafts[0].is_batch ? 'Nháp nhóm' : 'Nháp'} · v${row.drafts[0].version}`}
-                  {plan?.baseline_changed && ' · Cần đối chiếu'}</small>}</td>
+                  {plan?.baseline_changed && ' · Cần đối chiếu'}</small>}
+              </td>
               <td className={styles.descriptionCell}>{row.description ?? '—'}<small>{row.location ?? 'Chưa có Tag Name'}</small></td>
               <td><span className={styles.statusBadge} data-status={row.status}>{row.status}</span><small>{row.wopriority_description ?? '—'} ({row.wopriority ?? '—'})</small></td>
               <td data-draft={changed(['schedstart', 'schedfinish'])}>{displayDate(row.schedstart, grant.timezone)}<small>→ {displayDate(row.schedfinish, grant.timezone)}</small>{changed(['schedstart', 'schedfinish']) && <small>Nháp</small>}</td>

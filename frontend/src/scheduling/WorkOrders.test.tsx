@@ -1154,7 +1154,7 @@ it('refreshes and closes a finalized saved batch for the exact batch scope', asy
   const latest = { ...row, estdur: '9' };
   vi.mocked(getDetail).mockResolvedValue({ ...editorDetail, item: latest });
   expect(submitUpload).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByText('Upload nhóm lên Offshore test'));
+  fireEvent.click(screen.getByText('Upload toàn bộ nhóm lên Offshore test'));
   await waitFor(() => expect(submitUpload).toHaveBeenCalledTimes(1));
   await screen.findByText(/Đã xác nhận 1 WO trong Maximo/);
   expect(screen.queryByRole('dialog', { name: 'Lập lịch hàng loạt' })).not.toBeInTheDocument();
@@ -1238,7 +1238,7 @@ it('ignores a finalized batch refresh after the connection scope changes', async
   await prepareBatchUpload();
   let finish!: (value: typeof editorDetail) => void;
   vi.mocked(getDetail).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
-  fireEvent.click(screen.getByText('Upload nhóm lên Offshore test'));
+  fireEvent.click(screen.getByText('Upload toàn bộ nhóm lên Offshore test'));
   await waitFor(() => expect(getDetail).toHaveBeenCalledTimes(1));
   await chooseConnection('one');
   expect(screen.queryByRole('dialog', { name: 'Lập lịch hàng loạt' })).not.toBeInTheDocument();

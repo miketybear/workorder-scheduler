@@ -38,6 +38,12 @@ xác nhận test dùng DB sao chép production; không yêu cầu sửa server t
 Production pagination chưa được kiểm chứng; URL guard vẫn giữ.
 History đầy đủ và worker/lease còn pending.
 
+Phân bổ nhân lực theo WO dùng roster đã kích hoạt từ rota và reservation nội bộ
+PostgreSQL (migration0011). Mỗi người/ngày dùng chung tối đa10,5giờ qua các
+WO/site trong pool; thêm/sửa/xóa có version, audit và biên nhận chống gửi trùng.
+Xem [hướng dẫn và giới hạn](docs/workforce-allocations.md). Chưa ghi ASSIGNMENT
+Maximo hoặc thay PIC/estdur; roster thật vẫn cần xử lý các lỗi LABOR trước activation.
+
 ## Phạm vi đã chốt
 
 - Khoảng 10 người dùng đồng thời; frontend và backend riêng.
@@ -53,12 +59,23 @@ History đầy đủ và worker/lease còn pending.
 ## Tài liệu
 
 - [Kiến trúc và quy tắc nghiệp vụ](docs/architecture.md)
+- [Kiến trúc resource timeline và policy rota](docs/assignment-resource-timeline.md)
+- [PoC timeline nhân lực theo tháng](docs/assignment-timeline-poc.md)
+- [Preview staging rota và đối chiếu LABOR](docs/rota-staging-preview.md)
+- [Upload rota thật, PostgreSQL staging và LABOR REST](docs/rota-live-staging.md)
+- [Kích hoạt roster và capacity từ staging](docs/rota-activation.md)
+- [Phân bổ nhân lực nội bộ cho WO](docs/workforce-allocations.md)
 - [Danh sách công việc chi tiết](docs/todos.md)
 - [Đối soát checklist 1–6 và kế hoạch tiếp theo](docs/checklist-review.md)
 - [Trạng thái và bằng chứng kiểm tra](docs/implementation-status.md)
 - [Lý do chọn dependency](docs/dependencies.md)
 - [CI trên GitHub Actions](docs/ci.md)
 - [Kiểm tra container và Linux](docs/container-checks.md)
+- [Rà soát deployment và backup/restore](docs/deployment-readiness-review.md)
+- [Cấu hình staging và runbook deploy/upgrade/rollback](docs/staging-deployment.md)
+- [Policy backup cần IT phê duyệt](docs/backup-policy.md)
+- [Kiểm thử 10 phiên API và lỗi vận hành](docs/ten-session-operational-rehearsal.md)
+- [Job backup và runbook restore](docs/backup-restore-runbook.md)
 - [Nhóm 100/200 WO và phím/focus](docs/large-batch-keyboard-tests.md)
 - [Quản trị Planner và bootstrap admin](docs/planner-access.md)
 - [Quyền DB và retention](docs/database-operations.md)
@@ -110,6 +127,17 @@ npm run dev
 Mở `http://127.0.0.1:5173`. Vite proxy `/api` tới backend local. Mở `/demo` để thử
 chỉnh ngày, preview và reset. Thay đổi demo mất khi rời trang/tải lại, không lưu lên server.
 
+Mở `/assignment-demo` để thử timeline nhân lực theo tháng với5craft, TECH/SUP/
+Assistant SUP riêng và giới hạn10.5giờ/người/ngày. Dữ liệu hoàn toàn giả lập;
+nháp giữ trong bộ nhớ khi chuyển tháng/trang, mất khi reload hoặc đóng tab.
+PoC không import file, lưu server hay gửi assignment Maximo. Xem
+[hướng dẫn nghiệm thu PoC](docs/assignment-timeline-poc.md).
+
+Mở `/rota-staging-demo` để thử đối chiếu rota/LABOR, xử lý mapping và xem lỗi/diff
+trước khi kích hoạt. Đây là staging mô phỏng trong bộ nhớ, chọn mẫu thay vì upload
+file thật; chưa lưu PostgreSQL hoặc đổi roster timeline. Xem
+[preview staging rota](docs/rota-staging-preview.md).
+
 `/work-orders` tự nhận phạm vi tài khoản đăng nhập. Nếu chỉ có một phạm vi hợp lệ,
 không cần chọn hệ thống/discipline. Trang `/settings` cho chọn trong các kết nối/URL
 đã cấu hình và đã được cấp quyền; lựa chọn lưu riêng cho tài khoản trên PostgreSQL,
@@ -138,9 +166,16 @@ docker compose ps
 
 Service `migrate` chạy Alembic trước backend; readiness yêu cầu schema đúng revision.
 Database lưu trong volume `postgres_data`. Không xóa volume để xử lý lỗi cấu hình.
-Migration online đã kiểm tra trên PostgreSQL 17 test riêng; full application image builds chưa xác minh.
+Migration online đã kiểm tra trên PostgreSQL 17 test riêng; backend/web image builds
+và smoke Linux local có [bằng chứng](docs/container-checks.md). Full Compose staging
+và HTTPS trên Ubuntu chưa nghiệm thu.
 
 ## Kiểm tra
+
+Mẫu staging riêng: [compose.staging.yaml](compose.staging.yaml), TLS ingress và
+env examples trong `deployment/staging/`; xem [runbook](docs/staging-deployment.md).
+Mẫu giữ upload disabled và yêu cầu operator chạy migration/grants trước khi mở app.
+Ubuntu staging và backup vận hành chưa nghiệm thu; không dùng Compose local cho production.
 
 [Workflow CI](.github/workflows/ci.yml) chạy các kiểm tra backend/frontend và migration
 round-trip trên PostgreSQL test riêng cho mỗi push/PR. Xem [phạm vi và giới hạn](docs/ci.md).

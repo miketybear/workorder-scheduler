@@ -166,6 +166,17 @@ def test_provisioned_runtime_has_dml_but_no_ddl_admin_or_audit_mutation():
                 "INSERT INTO login_flow VALUES (%s,'{}',now() - interval '1 second')", ("a" * 64,)
             )
             db.execute("DELETE FROM login_flow WHERE expires_at <= now()")
+            for table, privileges in (
+                ("assignment_allocation", ("SELECT", "INSERT", "UPDATE")),
+                ("assignment_event", ("SELECT", "INSERT")),
+                ("assignment_submission", ("SELECT", "INSERT")),
+                ("assignment_planning_snapshot", ("SELECT", "INSERT", "UPDATE")),
+            ):
+                for privilege in privileges:
+                    assert db.execute(
+                        "SELECT has_table_privilege(current_user, %s, %s)",
+                        (table, privilege),
+                    ).fetchone() == (True,)
             denied = [
                 "CREATE TABLE forbidden(id integer)",
                 "CREATE SCHEMA forbidden",
@@ -179,16 +190,38 @@ def test_provisioned_runtime_has_dml_but_no_ddl_admin_or_audit_mutation():
                 "INSERT INTO app_user(id,tenant_id,object_id,display_name,active,is_admin) "
                 "VALUES(gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),'Admin',true,true)",
                 "UPDATE maximo_connection SET enabled=true",
+                "UPDATE resource_pool SET enabled=true",
+                "DELETE FROM resource_pool_grant",
+                "UPDATE resource_pool_grant SET capability='write'",
+                "INSERT INTO resource_pool_grant(pool_id,user_id,capability) "
+                "VALUES(gen_random_uuid(),gen_random_uuid(),'write')",
                 "DELETE FROM draft_submission",
                 "DELETE FROM upload_item",
                 "DELETE FROM upload_batch",
+                "UPDATE resource_person SET person_key='changed'",
+                "DELETE FROM resource_person",
+                "UPDATE person_day_capacity SET capacity_hours=10.5",
+                "UPDATE rota_activation SET pool_version=999",
+                "DELETE FROM rota_activation",
+                "TRUNCATE rota_activation",
+                "DELETE FROM assignment_allocation",
+                "UPDATE assignment_submission SET result='{}'",
+                "DELETE FROM assignment_submission",
+                "DELETE FROM assignment_planning_snapshot",
+                "TRUNCATE assignment_planning_snapshot",
                 "SELECT * FROM future_table",
                 "SELECT public.future_function()",
                 "INSERT INTO admin_authority_event(id,user_id,operator,reason,details) "
                 f"VALUES(gen_random_uuid(),'{user_id}','Runtime','Escalation','{{}}')",
                 f'SET ROLE "{owner}"',
             ]
-            for table in ("audit_event", "authorization_event", "admin_authority_event"):
+            for table in (
+                "audit_event",
+                "authorization_event",
+                "admin_authority_event",
+                "rota_event",
+                "assignment_event",
+            ):
                 denied.extend(
                     [
                         f"UPDATE {table} SET details='{{}}'",

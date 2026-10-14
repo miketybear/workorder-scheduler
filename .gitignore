@@ -12,3 +12,11 @@
 **/coverage/
 **/*.tsbuildinfo
 *.log
+deployment/staging/*.env
+deployment/staging/*.pem
+deployment/staging/*.key
+deployment/backup/config.json
+deployment/backup/pg_service.conf
+deployment/backup/pgpass
+deployment/backup/*.pem
+deployment/backup/*.key

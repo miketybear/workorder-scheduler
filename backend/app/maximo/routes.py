@@ -6,14 +6,16 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import AwareDatetime
 from sqlalchemy import select
 
+from app.assignments.summary import list_summaries
 from app.auth.person_access import sync_person_access
 from app.auth.sessions import SESSION_COOKIE, resolve_session
 from app.db.models import AccessGrant, MaximoConnection
 from app.maximo.connections import configured_connection
 from app.maximo.reader import MaximoReadError, read_open_orders
+from app.request_deadline import ReadDraftDeadlineRoute
 from app.scheduling.markers import planning_markers
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api", route_class=ReadDraftDeadlineRoute)
 
 
 async def authorized_connection(db, token, connection_id, discipline):
@@ -73,12 +75,23 @@ async def list_work_orders(
         configured_connection(request.app.state.settings, connection)
         actor = await resolve_session(db, token)
         markers = await planning_markers(db, actor.user_id, connection_id, discipline, orders)
+        summaries = await list_summaries(
+            db,
+            connection_id,
+            discipline,
+            orders,
+            request.app.state.settings.assignment_summary_ttl_seconds,
+        )
     return {
         "connection_id": str(connection_id),
         "discipline": discipline,
         "count": len(orders),
         "items": [
-            {**order.model_dump(mode="json"), "drafts": markers[(order.siteid, order.workorderid)]}
+            {
+                **order.model_dump(mode="json"),
+                "drafts": markers[(order.siteid, order.workorderid)],
+                "allocation_summary": summaries[(order.siteid, order.workorderid)],
+            }
             for order in orders
         ],
     }

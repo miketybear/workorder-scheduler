@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-14",
+  "environment": "Onshore Test",
+  "stage": "disposable WAIT child href-delete only",
+  "source_assignment_id": "2001466",
+  "steps": [
+    {
+      "purpose": "stage1_add_disposable_wait_child",
+      "attempt_id": "ccfbec9a-3f6f-444a-8d21-59c0e435ca29",
+      "response": "accepted"
+    },
+    {
+      "purpose": "stage1_stale_root_href_delete",
+      "attempt_id": "90c7c89f-9cc5-47ae-a766-e35ea49b5469",
+      "response": "conflict"
+    },
+    {
+      "purpose": "stage1_fresh_root_href_delete",
+      "attempt_id": "c6ff2007-4fde-470e-8313-32310917a95c",
+      "response": "accepted"
+    }
+  ],
+  "public_create_delete_enabled": false,
+  "owned_trial_child_id": "2001468",
+  "add_original_business_state_preserved": true,
+  "stale_root_delete_only_cas_verified": true,
+  "stage1_confirmed": false,
+  "fresh_href_delete_effective": false,
+  "outcome": "unknown",
+  "current_ids": [
+    "2001466",
+    "2001468"
+  ],
+  "no_automatic_retry": true
+}

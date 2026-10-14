@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-13",
+  "scope": "Resource timeline, authenticated Onshore Test E&I, October 2026",
+  "api": "/api/work-orders/page",
+  "page_size": 20,
+  "source_scan_limit_per_request": 3,
+  "source_row_limit_per_request": 60,
+  "live": {
+    "page_1_cards": 20,
+    "page_2_cards": 20,
+    "all_total_from_maximo": 117,
+    "page_2_first_wo": "H14301552",
+    "search": {"query": "P13469691", "items": 1, "remaining_tasks": 3, "remaining_hours": 25},
+    "completed_known_fresh_candidates": 0,
+    "source_parser": "OR/NOT/composite expressions returned 400/BMXAA8744E; page20/priority-desc returned 200",
+    "browser_mutations_saved": 0,
+    "maximo_business_writes": 0
+  },
+  "checks": {
+    "frontend_full": 361,
+    "frontend_api_timeline": 87,
+    "frontend_typecheck_lint_build": "passed",
+    "backend_related_including_postgres": 99,
+    "backend_broad_offline_passed_first_run": 650,
+    "backup_mock_tests_passed_with_temp_directory_permission": 20,
+    "initial_backup_failures": "3 failures and 6 setup errors from Windows sandbox temp-directory permissions; focused rerun passed",
+    "ruff_changed_backend_files": "passed",
+    "page_navigation_timeline_request_count": "one initial request in UI behavior test; no request on page changes",
+    "independent_review": "unavailable because sub-agent workspace credits exhausted; main reviewed integration and related authorization paths"
+  },
+  "limits": [
+    "Filtered source windows may return fewer than20 matches or zero with has_more=true; no automatic full scan",
+    "Filtered total_count is null unless exact; Completed reflects fresh verified planning snapshots only",
+    "Maximo mutations between pages are not proven to provide a stable upstream snapshot",
+    "Existing Work Orders table route still uses its legacy complete retrieval API"
+  ]
+}

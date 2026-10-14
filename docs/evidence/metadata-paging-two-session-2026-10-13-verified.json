@@ -1,0 +1,697 @@
+{
+  "recorded_at": "2026-10-13T13:51:09.658991+00:00",
+  "method": "Actual FastAPI route via ASGITransport",
+  "authentication": "Two generated database-backed Planner sessions; not genuine Entra accounts",
+  "safety": "Isolated guarded scheduler_test schema; live app DB read-only; Maximo GET only",
+  "sampling": "3 cold pairs, 5 warm page pairs, 5 warm search pairs; no percentile/SLO claim",
+  "limitations": [
+    "ASGI transport excludes browser/network-server/Entra login latency",
+    "Synthetic grants in isolated DB; live operator PERSON separately verified",
+    "Synthetic 5000-WO stress: in-process MockTransport; no artificial network delay"
+  ],
+  "month_counts": [
+    {
+      "month": "2026-09",
+      "status": 200,
+      "total_count": 166
+    },
+    {
+      "month": "2026-10",
+      "status": 200,
+      "total_count": 117
+    },
+    {
+      "month": "2026-11",
+      "status": 200,
+      "total_count": 55
+    },
+    {
+      "month": "2026-12",
+      "status": 200,
+      "total_count": 77
+    }
+  ],
+  "live_onshore_test": {
+    "month": "2026-09",
+    "status": "verified",
+    "metadata_rows": 166,
+    "cold": {
+      "min_ms": 315.64,
+      "median_ms": 322.54,
+      "max_ms": 383.11,
+      "samples": [
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 383.11,
+              "count": 20,
+              "total_count": 166
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 382.68,
+              "count": 20,
+              "total_count": 166
+            }
+          ],
+          "upstream_requests": {
+            "metadata": 1,
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 322.89,
+              "count": 20,
+              "total_count": 166
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 322.19,
+              "count": 20,
+              "total_count": 166
+            }
+          ],
+          "upstream_requests": {
+            "metadata": 1,
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 316.4,
+              "count": 20,
+              "total_count": 166
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 315.64,
+              "count": 20,
+              "total_count": 166
+            }
+          ],
+          "upstream_requests": {
+            "metadata": 1,
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        }
+      ]
+    },
+    "warm_page": {
+      "min_ms": 81.5,
+      "median_ms": 86.46,
+      "max_ms": 96.28,
+      "samples": [
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 86.65,
+              "count": 20,
+              "total_count": 166
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 86.27,
+              "count": 20,
+              "total_count": 166
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 96.28,
+              "count": 20,
+              "total_count": 166
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 95.94,
+              "count": 20,
+              "total_count": 166
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 96.21,
+              "count": 20,
+              "total_count": 166
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 95.88,
+              "count": 20,
+              "total_count": 166
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 83.37,
+              "count": 20,
+              "total_count": 166
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 81.51,
+              "count": 20,
+              "total_count": 166
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 82.25,
+              "count": 20,
+              "total_count": 166
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 81.5,
+              "count": 20,
+              "total_count": 166
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        }
+      ]
+    },
+    "warm_search": {
+      "min_ms": 60.47,
+      "median_ms": 64.69,
+      "max_ms": 70.96,
+      "samples": [
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 70.96,
+              "count": 1,
+              "total_count": 1
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 70.62,
+              "count": 1,
+              "total_count": 1
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 62.89,
+              "count": 1,
+              "total_count": 1
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 62.72,
+              "count": 1,
+              "total_count": 1
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 64.81,
+              "count": 1,
+              "total_count": 1
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 64.57,
+              "count": 1,
+              "total_count": 1
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 69.47,
+              "count": 1,
+              "total_count": 1
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 68.7,
+              "count": 1,
+              "total_count": 1
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 61.59,
+              "count": 1,
+              "total_count": 1
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 60.47,
+              "count": 1,
+              "total_count": 1
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        }
+      ]
+    },
+    "upstream_total": {
+      "metadata": 3,
+      "scope_guard": 26
+    },
+    "verification": {
+      "all_statuses_200": true,
+      "all_pairs_share_snapshot": true,
+      "cold_singleflight_request_budget": true,
+      "warm_no_metadata_reload": true,
+      "dense_twenty_row_pages_and_exact_totals": true,
+      "selected_number_search_has_one_match": true,
+      "passed": true
+    },
+    "live_authority_rechecked_before_after_each_stage": true
+  },
+  "authority_and_count_probe_requests": {
+    "person": 8,
+    "metadata": 4
+  },
+  "live_scope_verified_before_and_after": true,
+  "synthetic_5000": {
+    "month": "2026-10",
+    "status": "verified",
+    "metadata_rows": 5000,
+    "cold": {
+      "min_ms": 98.47,
+      "median_ms": 118.09,
+      "max_ms": 129.99,
+      "samples": [
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 118.29,
+              "count": 20,
+              "total_count": 5000
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 117.89,
+              "count": 20,
+              "total_count": 5000
+            }
+          ],
+          "upstream_requests": {
+            "metadata": 25,
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 129.99,
+              "count": 20,
+              "total_count": 5000
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 129.01,
+              "count": 20,
+              "total_count": 5000
+            }
+          ],
+          "upstream_requests": {
+            "metadata": 25,
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 99.3,
+              "count": 20,
+              "total_count": 5000
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 98.47,
+              "count": 20,
+              "total_count": 5000
+            }
+          ],
+          "upstream_requests": {
+            "metadata": 25,
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        }
+      ]
+    },
+    "warm_page": {
+      "min_ms": 21.45,
+      "median_ms": 22.8,
+      "max_ms": 25.34,
+      "samples": [
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 22.39,
+              "count": 20,
+              "total_count": 5000
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 21.45,
+              "count": 20,
+              "total_count": 5000
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 21.53,
+              "count": 20,
+              "total_count": 5000
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 23.23,
+              "count": 20,
+              "total_count": 5000
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 22.66,
+              "count": 20,
+              "total_count": 5000
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 21.91,
+              "count": 20,
+              "total_count": 5000
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 23.31,
+              "count": 20,
+              "total_count": 5000
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 22.93,
+              "count": 20,
+              "total_count": 5000
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 25.34,
+              "count": 20,
+              "total_count": 5000
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 24.4,
+              "count": 20,
+              "total_count": 5000
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        }
+      ]
+    },
+    "warm_search": {
+      "min_ms": 25.65,
+      "median_ms": 28.15,
+      "max_ms": 32.58,
+      "samples": [
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 28.49,
+              "count": 1,
+              "total_count": 1
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 27.81,
+              "count": 1,
+              "total_count": 1
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 32.58,
+              "count": 1,
+              "total_count": 1
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 31.88,
+              "count": 1,
+              "total_count": 1
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 30.96,
+              "count": 1,
+              "total_count": 1
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 30.57,
+              "count": 1,
+              "total_count": 1
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 25.88,
+              "count": 1,
+              "total_count": 1
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 25.65,
+              "count": 1,
+              "total_count": 1
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        },
+        {
+          "requests": [
+            {
+              "planner": "A",
+              "status": 200,
+              "elapsed_ms": 27.26,
+              "count": 1,
+              "total_count": 1
+            },
+            {
+              "planner": "B",
+              "status": 200,
+              "elapsed_ms": 26.89,
+              "count": 1,
+              "total_count": 1
+            }
+          ],
+          "upstream_requests": {
+            "scope_guard": 2
+          },
+          "same_snapshot": true
+        }
+      ]
+    },
+    "upstream_total": {
+      "metadata": 75,
+      "scope_guard": 26
+    },
+    "verification": {
+      "all_statuses_200": true,
+      "all_pairs_share_snapshot": true,
+      "cold_singleflight_request_budget": true,
+      "warm_no_metadata_reload": true,
+      "dense_twenty_row_pages_and_exact_totals": true,
+      "selected_number_search_has_one_match": true,
+      "passed": true
+    },
+    "live_authority_rechecked_before_after_each_stage": false
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-12",
+  "environment": "Onshore Test",
+  "wo": "P13465570",
+  "task": 10,
+  "assignment_id": "535771",
+  "steps": [
+    {
+      "purpose": "assign_existing_waitasgn",
+      "attempt_id": "c08e3fd5-7b27-4b6d-b072-43bf726bec60",
+      "outcome": "accepted"
+    },
+    {
+      "purpose": "reject_stale_native_revision",
+      "attempt_id": "48b6093d-58f8-4d14-bc0f-4b91070decd8",
+      "outcome": "conflict"
+    },
+    {
+      "purpose": "restore_assignment_and_task_schedule",
+      "attempt_id": "03f11d19-257d-4b10-99e0-e307a4330ddc",
+      "outcome": "accepted"
+    }
+  ],
+  "write_confirmed": true,
+  "status_after_assign": "ASSIGNED",
+  "stale_revision_rejected": true,
+  "task_schedule_side_effect": true,
+  "parent_schedule_side_effect": false,
+  "restored": true,
+  "allocation_id": "8bfa3b15-3f4c-46af-88e4-f0de81507426"
+}

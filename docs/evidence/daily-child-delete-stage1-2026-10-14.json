@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-14",
+  "environment": "Onshore Test",
+  "stage": "disposable WAIT child href-delete only",
+  "source_assignment_id": "2001466",
+  "steps": [],
+  "public_create_delete_enabled": false,
+  "stage1_confirmed": false,
+  "outcome": "STOP; unknown until read-only reconciliation",
+  "failure_type": "NoReferencedTableError",
+  "no_automatic_retry": true,
+  "stale_root_delete_only_cas_verified": false,
+  "conditional_guard_status": "unverified",
+  "observed_ids": {}
+}

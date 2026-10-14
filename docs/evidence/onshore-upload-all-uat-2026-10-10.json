@@ -1,0 +1,101 @@
+{
+  "captured_at": "2026-10-10T14:11:53.516513+00:00",
+  "milestone_since": "2026-10-10T13:59:55.355195+00:00",
+  "system": "Onshore TEST",
+  "discipline": "E&I",
+  "fixture_count": 12,
+  "fixture_worktypes": [
+    "CM"
+  ],
+  "edited_field": "estdur",
+  "forward_delta": "0.25",
+  "upload_item_count": 48,
+  "batch_count": 4,
+  "batches": [
+    {
+      "batch_id": "de4df88c-5ba8-4501-86bb-e59864d519f2",
+      "request_ids": [
+        "61e656da-2cf2-4761-92a1-817910d06d39"
+      ],
+      "items": 12,
+      "prepared_at": "2026-10-10T14:02:34.571377+00:00",
+      "source_finalized_at": "2026-10-10T14:02:46.593143+00:00",
+      "audit_prepared_to_finalized_seconds": 12.021766
+    },
+    {
+      "batch_id": "d2ccc55b-0b2e-4151-949b-d89ce6c17ada",
+      "request_ids": [
+        "07c19dd3-199c-4b70-8ca3-b6a9c2003de7"
+      ],
+      "items": 12,
+      "prepared_at": "2026-10-10T14:05:11.256096+00:00",
+      "source_finalized_at": "2026-10-10T14:05:24.257271+00:00",
+      "audit_prepared_to_finalized_seconds": 13.001175
+    },
+    {
+      "batch_id": "1caa707c-1854-4621-a65f-d4fe33564617",
+      "request_ids": [
+        "07b9f746-eb00-4477-8c64-845548593f8c"
+      ],
+      "items": 12,
+      "prepared_at": "2026-10-10T14:07:55.812360+00:00",
+      "source_finalized_at": "2026-10-10T14:09:41.526464+00:00",
+      "audit_prepared_to_finalized_seconds": 105.714104
+    },
+    {
+      "batch_id": "6f6ffca5-b73a-420a-8ae7-b07d29e819fb",
+      "request_ids": [
+        "907ddf5d-4eb4-4066-9aae-99c52cbe031d"
+      ],
+      "items": 12,
+      "prepared_at": "2026-10-10T14:10:56.414548+00:00",
+      "source_finalized_at": "2026-10-10T14:11:09.829975+00:00",
+      "audit_prepared_to_finalized_seconds": 13.415427
+    }
+  ],
+  "all_original_six_fields_exact": true,
+  "non_duration_fields_unchanged": true,
+  "old_draft_count": 4,
+  "old_draft_member_count": 5,
+  "old_drafts_exact": true,
+  "active_reservation_count": 0,
+  "all_items_confirmed": true,
+  "all_sources_finalized": true,
+  "all_responses_204": true,
+  "all_intents_before_response": true,
+  "only_selected_actor_scope": true,
+  "duration_only_writes": true,
+  "requested_edits_exact": true,
+  "each_batch_exact12_unique_identity": true,
+  "exactly_one_intent_conditional_request_and_response_per_item": true,
+  "temporary_drafts_absent_final": true,
+  "pause": {
+    "batch_id": "1caa707c-1854-4621-a65f-d4fe33564617",
+    "confirmed": 10,
+    "pending": 2,
+    "no_source_finalized": true,
+    "pending_only_prepared_events": true,
+    "same_batch_and_request_after_resume": true,
+    "source_draft_retained": true
+  },
+  "conditional_request_to_response_audit_interval_seconds": {
+    "samples": 48,
+    "min": 0.16234,
+    "p50": 0.186627,
+    "p95": 0.292427,
+    "max": 0.310824
+  },
+  "timing_limitation": "Audit created_at uses PostgreSQL transaction timestamps. Conditional request-to-response intervals are persistence event intervals, NOT upstream HTTP latency or whole API response time. Prepared-to-finalized includes checks/readback and human pause for batch3.",
+  "method_evidence": {
+    "source": "backend/app/maximo/sender.py",
+    "method": "POST",
+    "override": "PATCH",
+    "note": "Method proven by executed sender implementation; persisted DB response records status/transaction ID, not wire method."
+  },
+  "limitations": [
+    "12 CM fixtures; no live 200-WO capacity claim",
+    "No live fault injection/network timeout or simulated unknown outcome",
+    "First restoration completed before manual pause reached UI; second forward run used read-only DB timing signal and successfully paused at10/12",
+    "Rowstamp revision changes from intended writes; six editable business fields restored exactly"
+  ]
+}

@@ -47,7 +47,8 @@ Reviewer mặc định review-only và có sandbox mặc định `read-only`. Ma
 nhận finding rồi tự sửa hoặc giao cho frontend/backend. Reviewer chỉ implement
 khi Main giao rõ phạm vi và phiên làm việc thực sự cho phép ghi. Sandbox/quyền
 runtime của Main có thể được áp lại khi spawn; hướng dẫn review-only vẫn áp dụng.
-Các sub-agent không tự tạo thêm agent; Main quản lý tài liệu chung và TODO.
+Các sub-agent chỉ được tạo thêm agent khi được cho phép rõ ràng; mặc định các
+role native cấm tự spawn. Main quản lý tài liệu chung và TODO.
 
 Vẫn chỉ có ba role. File native reviewer cố định Sol/High; khi nâng mức có lý do,
 Main dùng spawn generic/default, truyền model/effort và cùng hướng dẫn review-only
@@ -57,6 +58,22 @@ giá trị trong file custom agent được ưu tiên.
 Reviewer Astra/High đã tạo trước thay đổi này vẫn giữ model/effort cũ. Main phải
 dùng reviewer Sol/High mới cho review thường, không tiếp tục đánh thức phiên Astra
 cũ. Cập nhật file không đổi model của sub-agent đang chạy hoặc đã tồn tại.
+
+## Subagent Lifecycle Policy
+
+- Ưu tiên dùng lại subagent hiện có cho việc tiếp nối trong cùng tính năng/module.
+- Không tạo agent mới nếu agent phù hợp hiện có có thể tiếp tục hiệu quả.
+- Tạo agent mới cho việc không liên quan hoặc khi context cũ đã lỗi thời/quá lớn.
+- Dùng reviewer mới cho các lượt review lớn, độc lập.
+- Giữ tối đa 3 subagent mở đồng thời, không tính Main.
+- Tránh giao quyền sửa cùng file cho nhiều agent khi làm song song.
+- Đóng agent đã hoàn thành khi không còn cần dùng.
+- Main chịu trách nhiệm tích hợp và kiểm chứng cuối cùng.
+- Subagent không được tạo thêm agent nếu chưa được cho phép rõ ràng.
+
+Giới hạn review và routing model/effort hiện có vẫn áp dụng. Reviewer mới không
+đặt lại giới hạn review cho cùng tính năng/mốc. Chính sách gốc nằm trong
+[AGENTS.md](../AGENTS.md#subagent-lifecycle-policy).
 
 ## Cách dùng
 

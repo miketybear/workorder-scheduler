@@ -1,0 +1,69 @@
+{
+  "task": [
+    {
+      "siteid": "BD1",
+      "workorderid": 2498724,
+      "wonum": "H14306908",
+      "assignment": [
+        {
+          "_rowstamp": "3626753688",
+          "status_description": "Assigned",
+          "localref": "https://maximo.biendongpoc.vn/maximo/oslc/os/bdsched_wo/_QkQxL0gxNDMwNjkwOA--/showassignment/0-1968934",
+          "craft": "E&I",
+          "scheduledate": "2026-10-03T06:30:00+07:00",
+          "href": "http://childkey#V09SS09SREVSL0FTU0lHTk1FTlQvMTk2ODkzNA--",
+          "assignmentid": 1968934,
+          "laborhrs": 5.0,
+          "laborcode": "HAIDQ",
+          "status": "ASSIGNED"
+        }
+      ],
+      "showassignment": [
+        {
+          "status_description": "Assigned",
+          "craft": "E&I",
+          "scheduledate": "2026-10-03T06:30:00+07:00",
+          "assignmentid": 1968934,
+          "taskid": null,
+          "laborhrs": 5.0,
+          "laborcode": "HAIDQ",
+          "status": "ASSIGNED"
+        }
+      ]
+    }
+  ],
+  "parent": [
+    {
+      "siteid": "BD1",
+      "workorderid": 2498722,
+      "wonum": "H14306907",
+      "assignment": [
+        {
+          "_rowstamp": "3626753688",
+          "status_description": "Assigned",
+          "localref": "https://maximo.biendongpoc.vn/maximo/oslc/os/bdsched_wo/_QkQxL0gxNDMwNjkwNw--/showassignment/0-1968934",
+          "craft": "E&I",
+          "scheduledate": "2026-10-03T06:30:00+07:00",
+          "href": "http://childkey#V09SS09SREVSL0FTU0lHTk1FTlQvMTk2ODkzNA--",
+          "assignmentid": 1968934,
+          "laborhrs": 5.0,
+          "laborcode": "HAIDQ",
+          "status": "ASSIGNED"
+        }
+      ],
+      "showassignment": [
+        {
+          "status_description": "Assigned",
+          "craft": "E&I",
+          "scheduledate": "2026-10-03T06:30:00+07:00",
+          "assignmentid": 1968934,
+          "taskid": 10,
+          "laborhrs": 5.0,
+          "laborcode": "HAIDQ",
+          "status": "ASSIGNED"
+        }
+      ]
+    }
+  ],
+  "second_assignment": []
+}

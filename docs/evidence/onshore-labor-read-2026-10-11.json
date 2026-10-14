@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-11",
+  "scope": "Explicit operator-authorized read-only Onshore TEST LABOR probe",
+  "endpoint_path": "/maximo/oslc/os/mxlabor",
+  "method": "GET",
+  "mutations": 0,
+  "queries": [
+    {
+      "select": "laborcode,personid,person{displayname},laborcraftrate{craft,defaultcraft}",
+      "where": "status=\"ACTIVE\"",
+      "page_size": 5,
+      "http_status": 200,
+      "rows": 5,
+      "next_page_origin_matches_configured_test": false,
+      "next_page_followed": false
+    },
+    {
+      "select": "laborcode,personid,orgid,status,person{displayname},laborcraftrate{craft,defaultcraft}",
+      "where": "status=\"ACTIVE\"",
+      "page_size": 200,
+      "http_status": 200,
+      "rows": 147,
+      "total_count": 147,
+      "total_pages": 1,
+      "next_page_present": false
+    },
+    {
+      "select": "laborcode,personid,orgid,status,person{displayname},laborcraftrate{craft,defaultcraft}",
+      "where": "status=\"ACTIVE\" and orgid=\"BDPOC\"",
+      "page_size": 200,
+      "http_status": 200,
+      "rows": 147,
+      "total_count": 147,
+      "total_pages": 1,
+      "next_page_present": false
+    }
+  ],
+  "response_contract": {
+    "collection": "member",
+    "person_relationship": "array",
+    "laborcraftrate_relationship": "array",
+    "defaultcraft_type": "boolean",
+    "orgids": ["BDPOC"],
+    "statuses": ["ACTIVE"],
+    "missing_laborcode": 0,
+    "missing_personid": 0,
+    "missing_displayname": 0,
+    "duplicate_org_labor": 0
+  },
+  "distinct_default_craft_labor_counts": {
+    "E&I": 54, "MECH": 27, "RES": 7, "P&P": 39, "DECK": 12,
+    "CRANE": 4, "HSE": 3
+  },
+  "target_craft_labor_count": 139,
+  "no_default_craft_labor_count": 1,
+  "multiple_default_rows_labor_count": 1,
+  "multiple_default_row_crafts": ["RES", "RES"],
+  "limitations": [
+    "Single read sequence, not an atomic snapshot or implemented roster reader",
+    "Advertised pagination origin differs from configured TEST; no foreign-origin link followed",
+    "No Offshore, requirements, existing assignments or assignment write verification",
+    "No rota-to-person identity mapping or working-day headcount verification",
+    "No credentials, names or individual labor identifiers retained in this evidence"
+  ]
+}

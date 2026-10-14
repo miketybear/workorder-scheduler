@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-13",
+  "environment": "Onshore Test / E&I / October 2026",
+  "backend_related_passed": 119,
+  "main_count_page_recheck_passed": 28,
+  "frontend_passed": 366,
+  "frontend_api_timeline_passed": 92,
+  "typecheck_lint_build": "passed; existing chunk size warning 553.80 kB",
+  "independent_review": "initial findings fixed; focused P1 recheck passed",
+  "live": {
+    "pages_1_to_4": "20 WO each; total 117",
+    "search_beyond_first_60": "H14307245 from page 4 returned page 1, 1 WO / 1, Next disabled",
+    "completed": "0 WO / 0",
+    "maximo_scope_guard": "IN query accepted",
+    "business_writes": 0
+  },
+  "limits": "120-second process-local metadata cache; each returned page still has a bounded live scope read; no atomic upstream snapshot; large month/multi-worker load not measured",
+  "screenshot": "metadata-snapshot-2026-10-13.png"
+}

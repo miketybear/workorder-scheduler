@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-12",
+  "environment": "Onshore Test",
+  "read_only": true,
+  "structure": "BDSCHED_WO",
+  "filter": "assignment.laborcode=\"HAIDQ\" and assignment.scheduledate>=\"2026-10-01T00:00:00+07:00\" and assignment.scheduledate<\"2026-11-01T00:00:00+07:00\"",
+  "select": "siteid,workorderid,wonum,istask,assignment{assignmentid,laborcode,craft,scheduledate,laborhrs,status,_rowstamp}",
+  "root_records": 0,
+  "assignment_arrays_present": true,
+  "unique_matching_assignments": 0,
+  "statuses": [],
+  "scheduled_hours": 0,
+  "pagination_complete": true,
+  "verification": {
+    "known_assignment": {
+      "http_status": 200,
+      "root_records": 1,
+      "known_root_ids": [
+        528227
+      ],
+      "next_page_present": false,
+      "assigned_dates": []
+    },
+    "assigned_sample": {
+      "http_status": 200,
+      "root_records": 2,
+      "known_root_ids": [],
+      "next_page_present": true,
+      "assigned_dates": [
+        "2015-01-01T23:12:00+07:00",
+        "2016-01-29T18:32:35+07:00",
+        "2016-01-29T18:32:51+07:00",
+        "2016-01-30T17:53:59+07:00"
+      ]
+    },
+    "historical_paging": {
+      "root_records": 6,
+      "pages": 3,
+      "completed": true,
+      "has_task_roots": true
+    }
+  }
+}

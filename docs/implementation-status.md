@@ -1,6 +1,134 @@
 # Trạng thái triển khai — foundation
 
-Cập nhật: 2026-10-09. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
+Cập nhật: 2026-10-14. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
+
+Contract Test tạo assignment theo ngày đã có proof với sibling: giữ1968934,
+Add2001470 cho ngày sau, sibling2001462 giữ field/revision; GET recovery khi
+handler giả lập mất phản hồi không gửi lại; stale root chặn duplicate. Trials
+đã dọn bằng targetedchildDELETE/operatorsourceMERGE, originalIDs giữ/load0.
+35new/122relatedtests/Ruff đạt. ConditionalDELETE vẫn chưaverified, module
+operator chưa nối public plan upload/ledger. [Contract và giới hạn](daily-assignment-contract.md).
+
+Backlog timeline dùng snapshot metadata đầy đủ tại backend, TTL120giây;
+search/filter toàn snapshot, trả20WO/trang và tổng chính xác của snapshot.
+Mỗi trang recheck phạm vi bằng truy vấn Maximo nhỏ, không tải lại full list.
+119BE liên quan/366FE/typecheck/lint/build đạt; review và P1 recheck đạt.
+Live trang1–4 đều20/117; search WO ở trang4 trả1/1; không ghi Maximo.
+[Contract, cache và giới hạn](maximo-backlog-pagination.md).
+
+Đã đo hai phiên Planner API test độc lập với PostgreSQL thật và Maximo Onshore
+Test: tháng9/2026 có166WO, median cold323ms/page cache86ms/search65ms.
+26response200, cold metadata dùng chung/warm không tải lại.5.000WO giả lập
+cũng đạt; ASGI không gồm socket/proxy/Entra và stress không có network delay.
+User chọn API test trước; [báo cáo đo tải](metadata-cache-load-verification.md).
+
+Đầu cột WO bỏ tiêu đề/tổng lặp và thanh tổng hợp người/phân công/giới hạn;
+ba tab/tìm kiếm/tổng ở phân trang giữ nguyên. Giải thích Completed rút một câu.
+57tests timeline/typecheck đạt; live117WO vẫn6trang, không đổi bộ lọc hoặc ghi dữ liệu.
+
+Thẻ task được chuẩn hóa: checkbox/ID cùng hàng, mô tả riêng, ô giờ80px kèm
+đơn vị, assignment nhỏ bên dưới và viền nhẹ cho thẻ được chọn. Ngày bảng phân
+bổ/tóm tắt hiện dd/mm/yyyy; state/API vẫn ISO. Live897×742 ba ô giờ80px,
+previewP13469691 giữ25h từ02/10. Chưa lưu/ghi Maximo.
+
+Hộp phân công hiện tách task picker và bảng ngày thành hai vùng cuộn riêng,
+Phân bổ task chỉ có một Ngày bắt đầu cạnh Nhân lực; sửa phân công/WO không có
+task giữ Ngày rota. Đổi ngày cập nhật preview và tóm tắt; hướng dẫn rút gọn.
+57tests timeline/typecheck/lint đạt cho lần gộp ngày. Task ngoài discipline giữ ID/mô tả ở thẻ chỉ đọc,
+không cho chọn. Một assignment khả dụng tự chọn và hiện thông tin chỉ đọc;
+nhiều assignment vẫn cần chọn nguồn. FE đọc marker safe bool từ API hiện có,
+không mở rộng dữ liệu craft. Dialog tối đa1200px, pane ngày dùng phần rộng còn lại;
+897×742 hiện đủ4task và tổng ngày.56tests timeline/typecheck/lint/build đạt
+cho lần chỉnh này; preview chưa lưu.
+Làm mới timeline chuyển cạnh tháng, bỏ dòng nhóm/tháng. LiveP13470485 bốn task
+E&I tổng16h→10,5+5,5h, Task20/30 ngoài nhóm; preview chưa lưu.347frontend,
+70API/timeline,24backend/typecheck/lint/build đạt; bảng ngày vẫn hiện ở1010/
+600px. [Chi tiết](automatic-task-allocation.md).
+
+Header Resource timeline đã chuyển summary tháng thành3donut chức danh cạnh
+bộ chọn tháng, bỏ hai dòng mô tả theo note user và căn prioritybadge cố định.
+Số liệu dùng snapshot hiện có, tải chưa đủ/0capacity không suy0% còn trống;
+role khác vẫn trong bảng/text tổng hợp.54tests timeline/typecheck/lint/build
+đạt;1033/1270/600px không tràn ngang. Không đổi API hoặc ghi phân công/Maximo.
+
+Resource timeline hiện rộng100% màn hình, có thanh kéo giữa Backlog và khung
+ngày; Backlog/Completed/Tất cả phân trang20WO. Summary tự đọc cho card đang
+hiện, tối đa2request đồng thời, không tải chi tiết toàn danh sách. Hủy request
+và chặn phản hồi cũ khi đổi trang/scope/ẩn tab hoặc mở editor. Live117WO/6trang,
+P13469440 hiện5task/84h;342frontend/typecheck/lint/build đạt. Không đổi API
+list, nghiệp vụ phân công hoặc Maximo. Chi tiết ở contract cập nhật nhẹ.
+
+[Cập nhật phân công nhẹ](incremental-assignment-updates.md) đã triển khai:
+sau lưu merge các ô bị ảnh hưởng, không reload toàn danh sách; Backlog/Completed/
+Tất cả dựa nhu cầu task mọi ngày và snapshot đã xác minh, TTL tối đa5phút.
+Completed chỉ là đủ labor; Maximo status không đổi. Migration0014 và quyền
+cache tối thiểu đã nâng trên development, readiness200. 336FE/61BE/37PG và
+1rolePG đạt; live tạo/chuyển/giảm/xóa trial qua, giữ dữ liệu gốc trong đợt thử.
+Yêu cầu xóa P13431393/HAIDQ/01-10/1h đã gửi lại đúngUUID theo xác nhận user,
+receipt và ledger released. Nghiệm thu hai Planner thật còn pending;
+upload plan nhiều ngày vẫn khóa. Chi tiết và giới hạn kiểm chứng ở contract.
+
+Ngày13/10: [timeline nhiều ngày local](multiday-local-timeline.md) có preview
+chia giờ theo capacity, atomic plans/migration0013, kéo/sửa/xóa từng đoạn và
+backend chặn630phút/người/ngày hoặc rota thấp hơn. Live UI20h→10,5+9,5 qua,
+trial dọn/Maximo khôngđổi/4phân công gốc giữnguyên. UI đã mở range qua tháng,
+tải capacity theo lô31ngày; live31/10→01/11, sửa/xóa và chặn11h đã qua.
+Đợt [phân bổ tự động](automatic-task-allocation.md) giữ nhiều task, chia budget
+chung theo ngày, tự tải lịch kế tiếp/qua tháng và lưu batch atomic đã hoàn tất.
+50tests API/timeline,20PG,43offline qua; fullfrontend325/325 sau thu hẹp query
+DOM của test PoC timeout, lint/typecheck/build qua;
+plan upload luônkhóa, kểcả còn1đoạn. Lịch remote giao ngày nhưng chưa rõ daily
+distribution làm tải failclosed; không suy rota từ20h continuous assignment.
+
+[Task timeline](task-assignments.md) đã lazy-load BDSCHED_WO, atomic task batch,
+tổng tải Maximo/local khử trùng và Test-only existing WAITASGN upload có durable
+intent/rowstamp/read-back/recovery (migration0012). Browser sample P13465570 qua
+batch10,5h/kéo/sửa/xóa/chặn11h, actual upload và restore; giữ4phân công user.
+Remote create/edit/delete assignment và sender lịch WO object mới chưa bật.
+Quantity2 H14306907/task10 đã nghiệm thu hai public uploads5h/người, không
+double count. Lần đầu phát hiện default PATCH xóa sibling; đã sửa MERGE/full
+sibling baseline và kiểm chứng hai lần gửi giữ dòng còn lại. Recovery Test
+khôi phục business fields/lịch nhưng Maximo thay ID1968932 bằng2001462;
+4trials đã released,4phân công gốc giữ nguyên.612offline/12taskPG/Ruff qua.
+[Biên bản](evidence/quantity-final-acceptance-2026-10-12.json).
+
+Policy rota mới v5 loại Material Controller khỏi Labor/capacity, đọc PERSON.title
+để đối chiếu tên trùng. Refresh browser thật newest stagingv8 đã lưu149LABOR/
+147title,85mapped/0LABORblocker, loại2MC; ProductionTechnicianNguyenManhHung
+vẫn giữ đúng HUNGNM/title. Sourcev3/87rows không viết lại; đã reupload và activate v5 ngày12/10
+(85người,31.025người-ngày,154.696,5giờ). [Bằng chứng](evidence/rota-title-policy-2026-10-12.json). Các73mapping/
+14blockers phía dưới là lịch sử trước khi Maximo admin sửa và áp policy mới.
+
+Rota staging thật tại `/rota-imports` đã nối native XLSX/ODS → PostgreSQL0009 →
+LABOR REST Onshore Test. Browser Entra thật upload file mẫu87×365 và restore sau
+reload,73mapping/14blocker (lịch sử). Hiện import/staging/activation Admin-only;
+WOscope không thay đổi. FullFE257tests/checks qua; backend fast463tests trước
+suffixfix, focused cuối54parser/LABOR/PG tests và runtime-role PG qua. Schema/model
+check qua. [Hướng dẫn và giới hạn](rota-live-staging.md); chưa remote deployment.
+Milestone mới: activation và diff từ staging sang revision/daily capacity
+PostgreSQL (migration0010), dùng snapshot LABOR đã lưu, không gọi Maximo.
+Version pool/import, full-coverage replacement, immutable receipt và GET recovery
+được kiểm tra bằng dữ liệu giả lập. [Phân bổ nhân lực WO](workforce-allocations.md)
+thêm ledger/API (migration0011), dùng active rota và budget
+630phút/người/ngày. Tổng tải dùng chung qua các WO/site trong pool; thay rota
+không được vô hiệu hóa phân công hiện có. Đây là reservation nội bộ, chưa đọc
+hoặc ghi ASSIGNMENT Maximo; không thay PIC/estdur và chưa remote nghiệm thu.
+Development0011 đã được áp dụng ngày2026-10-12, schema owner/runtime tách riêng;
+live/ready và HTTPS proxy200, dữ liệu trước/sau giữ nguyên. Browser Entra UAT trên roster v5 đã đạt thêm/sửa/xóa và
+biên10,5giờ trên2WO; vượt11giờ bị chặn cảUI vàbackend khi tab giữ snapshotcũ.
+Sau UAT, user hủy panel phân bổ dạng bảng vì yêu cầu Resource timeline; action/
+panel tại WO đã gỡ. [Resource timeline thật](resource-timeline.md) đã nối roster/API,
+bố cục theo PoC; Planner chỉ nhận người/phân công cùng discipline. Import rota
+tổng thể Admin-only. FE286/BE562offline +58focused qua, browser E&I CRUD đạt;
+[UAT mới](evidence/resource-timeline-2026-10-12.json). [Kéo thả native IAB](evidence/resource-timeline-native-drag-2026-10-12.json)
+đã đạt sau chuyển sang Pointer Events: kéo WO, chuyển thanh, chặn 11 giờ và xóa trial;
+giữ 4 phân công người dùng. PoC riêng vẫn dùng giả.
+Dữ liệu thử đã released, pool0phútreserved, audit/receipt giữ nguyên;
+xem [UAT](evidence/assignments-acceptance-2026-10-12.json) và
+[development](evidence/assignments-development-2026-10-12.json).
+Policy v4 chỉ nhận Company BD POC/BDPOC; mẫu thật cả87người thuộc company này.
+Theo xác nhận mới, preview có bảng lỗi LABOR/craft để Maximo admin xử lý upstream;
+không có mapping thủ công trên UI. Refresh tự đối chiếu lại identity/craft mọi dòng.
 
 ## Đã triển khai
 

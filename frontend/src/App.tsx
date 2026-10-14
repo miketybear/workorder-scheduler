@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { getLiveness } from './api/client';
 import { DemoScheduler } from './scheduling/DemoScheduler';
@@ -9,6 +9,10 @@ import { WorkOrders } from './scheduling/WorkOrders';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Settings } from './components/Settings';
 import { Admin, AdminLink } from './components/Admin';
+import { AssignmentTimelineDemo } from './assignmentTimeline/AssignmentTimelineDemo';
+import { RotaStagingPreview } from './rotaStaging/RotaStagingPreview';
+import { RotaImports } from './rotaImports/RotaImports';
+import { ResourceTimeline } from './resourceTimeline/ResourceTimeline';
 
 function Overview() {
   const [status, setStatus] = useState('Đang kiểm tra…');
@@ -25,6 +29,9 @@ function Overview() {
         <p>Lên kế hoạch công việc cho Onshore và Offshore,<br />với phạm vi riêng cho từng discipline.</p>
         <Link className={styles.primary} to="/demo">Khám phá bảng lập lịch <span>↗</span></Link>
         <p><Link to="/work-orders">Mở danh sách WO theo quyền →</Link></p>
+        <p><Link to="/assignment-demo">Thử timeline nhân lực theo tháng →</Link></p>
+        <p><Link to="/rota-staging-demo">Kiểm tra rota trước khi kích hoạt →</Link></p>
+        <p><Link to="/rota-imports">Upload rota và mở staging đã lưu →</Link></p>
       </div>
       <aside className={styles.progress}><span>NỀN TẢNG DỰ ÁN</span><strong>01 <small>/ 05</small></strong>
         <div className={styles.track}><i /></div><p>Khởi tạo ứng dụng</p><small>Tiếp theo: SSO & phân quyền</small>
@@ -42,16 +49,46 @@ function Overview() {
 }
 
 export function App() {
-  const workOrdersActive = useLocation().pathname === '/work-orders';
+  const pathname = useLocation().pathname;
+  const workOrdersActive = pathname === '/work-orders';
+  const assignmentDemoActive = pathname === '/assignment-demo';
+  const rotaStagingActive = pathname === '/rota-staging-demo';
+  const rotaImportsActive = pathname === '/rota-imports';
+  const resourceTimelineActive = pathname === '/resource-timeline';
+  const [assignmentDemoVisited, setAssignmentDemoVisited] = useState(assignmentDemoActive);
+  const [rotaStagingVisited, setRotaStagingVisited] = useState(rotaStagingActive);
+  const [rotaImportsVisited, setRotaImportsVisited] = useState(rotaImportsActive);
+  const [resourceTimelineVisited, setResourceTimelineVisited] = useState(resourceTimelineActive);
+  const [resourceMutationPending, setResourceMutationPending] = useState(false);
+  const [navigationBlocked, setNavigationBlocked] = useState(false);
+  const reportMutationPending = useCallback((value: boolean) => setResourceMutationPending(value), []);
+  const guardNavigation = useCallback((event: MouseEvent<HTMLElement>) => {
+    if (resourceMutationPending && (event.target as HTMLElement).closest('a')) {
+      event.preventDefault(); setNavigationBlocked(true);
+    }
+  }, [resourceMutationPending]);
+  if (assignmentDemoActive && !assignmentDemoVisited) setAssignmentDemoVisited(true);
+  if (rotaStagingActive && !rotaStagingVisited) setRotaStagingVisited(true);
+  if (rotaImportsActive && !rotaImportsVisited) setRotaImportsVisited(true);
+  if (resourceTimelineActive && !resourceTimelineVisited) setResourceTimelineVisited(true);
   return <div className={styles.shell}>
-    <header className={styles.header}><Link to="/" className={styles.brand}><img className={styles.brandLogo} src={bdpocLogo} alt="Petrovietnam Biendong POC" />WORKORDER <b>/ Scheduler</b></Link>
-      <div className={styles.headerActions}><span className={styles.badge}>Bản phát triển · Lập lịch & nháp</span><Link to="/settings">Settings</Link><AdminLink /><ThemeToggle /></div></header>
-    <main><Routes><Route path="/" element={<Overview />} /><Route path="/demo" element={<DemoScheduler />} />
+    <header className={styles.header} onClickCapture={guardNavigation}><Link to="/" className={styles.brand}><img className={styles.brandLogo} src={bdpocLogo} alt="Petrovietnam Biendong POC" />WORKORDER <b>/ Scheduler</b></Link>
+      <div className={styles.headerActions}><span className={styles.badge}>Bản phát triển · Lập lịch & nháp</span><Link to="/resource-timeline">Resource timeline</Link><Link to="/assignment-demo">Timeline thử nghiệm</Link><Link to="/rota-staging-demo">Preview rota</Link><Link to="/rota-imports">Rota staging</Link><Link to="/settings">Settings</Link><AdminLink /><ThemeToggle /></div></header>
+    <main className={resourceTimelineActive ? styles.fullWidth : undefined} onClickCapture={guardNavigation}>{navigationBlocked && resourceMutationPending && <p role="status">Đang có yêu cầu phân công chưa đối soát. Hoàn tất hoặc đối soát để chuyển trang.</p>}<Routes><Route path="/" element={<Overview />} /><Route path="/demo" element={<DemoScheduler />} />
       <Route path="/work-orders" element={null} />
+      <Route path="/assignment-demo" element={null} />
+      <Route path="/rota-staging-demo" element={null} />
+      <Route path="/rota-imports" element={null} />
+      <Route path="/resource-timeline" element={null} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="*" element={<p>Không tìm thấy trang. <Link to="/">Về tổng quan</Link></p>} /></Routes>
-      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} /></div></main>
+      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} /></div>
+      {assignmentDemoVisited && <div hidden={!assignmentDemoActive}><AssignmentTimelineDemo /></div>}
+      {rotaStagingVisited && <div hidden={!rotaStagingActive}><RotaStagingPreview /></div>}
+      {rotaImportsVisited && <div hidden={!rotaImportsActive}><RotaImports active={rotaImportsActive} /></div>}
+      {resourceTimelineVisited && <div hidden={!resourceTimelineActive}><ResourceTimeline active={resourceTimelineActive} onPendingChange={reportMutationPending} /></div>}
+    </main>
     <footer>Work Order Scheduler <span>Onshore + Offshore · Nội bộ</span></footer>
   </div>;
 }

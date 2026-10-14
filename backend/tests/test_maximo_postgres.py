@@ -34,7 +34,8 @@ pytestmark = pytest.mark.integration
         "http-reclassified",
     ],
 )
-def test_retrieval_api_enforces_scope_and_revocation(monkeypatch, case):
+@pytest.mark.parametrize("endpoint", ["/api/work-orders", "/api/work-orders/page"])
+def test_retrieval_api_enforces_scope_and_revocation(monkeypatch, case, endpoint):
     async def scenario():
         async with database() as sessions:
             user, admin, connections = await seed(sessions)
@@ -77,7 +78,7 @@ def test_retrieval_api_enforces_scope_and_revocation(monkeypatch, case):
                     200,
                     json={
                         "member": [record(bdpocdiscipline="MECH")],
-                        "responseInfo": {"totalCount": 999},
+                        "responseInfo": {"totalCount": 1 if endpoint.endswith("/page") else 999},
                     },
                 )
 
@@ -105,7 +106,7 @@ def test_retrieval_api_enforces_scope_and_revocation(monkeypatch, case):
                     params["discipline"] = "ELEC"
                 if case == "raw-query":
                     params["oslc.where"] = 'status="APPR"'
-                response = await client.get("/api/work-orders", params=params)
+                response = await client.get(endpoint, params=params)
                 expected = {
                     "allowed": 200,
                     "anonymous": 401,
@@ -125,8 +126,11 @@ def test_retrieval_api_enforces_scope_and_revocation(monkeypatch, case):
                 else:
                     assert "DEMO" not in response.text
                 assert "synthetic-test-key" not in response.text
-                assert len(calls) == (
+                expected_calls = (
                     1 if case in {"allowed", "revoked", "http-test", "http-reclassified"} else 0
                 )
+                if endpoint.endswith("/page") and case in {"allowed", "http-test"}:
+                    expected_calls = 2  # Full snapshot plus selected-page live scope validation.
+                assert len(calls) == expected_calls
 
     asyncio.run(scenario(), loop_factory=asyncio.SelectorEventLoop)

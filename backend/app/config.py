@@ -70,6 +70,29 @@ class MaximoSettings(BaseModel):
     crew_groups: dict[str, str] = Field(default_factory=dict)
     person_login_domain: str | None = None
     conditional_write_contract: Literal["native_rowstamp_test"] | None = None
+    assignment_write_contract: Literal["native_assignment_rowstamp_test"] | None = None
+    task_load_contract: Literal["bdsched_assignment_test"] | None = None
+    paging_origin_aliases: list[str] = Field(default_factory=list, max_length=3)
+
+    @field_validator("paging_origin_aliases")
+    @classmethod
+    def trusted_paging_origins(cls, values):
+        for value in values:
+            url = urlsplit(value)
+            if (
+                url.scheme not in {"https", "http"}
+                or not url.hostname
+                or url.username
+                or url.password
+                or url.path
+                or url.query
+                or url.fragment
+                or "\\" in value
+            ):
+                raise ValueError(
+                    "Paging aliases must be explicit origins without credentials or paths"
+                )
+        return values
 
     @field_validator("person_login_domain")
     @classmethod
@@ -110,7 +133,10 @@ class MaximoSettings(BaseModel):
             or "\\" in value
             or "/../" in url.path
             or "/./" in url.path
-            or not url.path.rstrip("/").endswith("/oslc/os/oslcmxwodetail")
+            or not any(
+                url.path.rstrip("/").endswith("/oslc/os/" + name)
+                for name in ("oslcmxwodetail", "BDSCHED_WO")
+            )
         ):
             raise ValueError("A WO collection URL without credentials/query is required")
         return value.rstrip("/")
@@ -153,13 +179,21 @@ class Settings(BaseSettings):
     entra: EntraSettings | None = None
     maximo: dict[UUID, MaximoSettings] = Field(default_factory=dict)
     maximo_ca_bundle: FilePath | None = None
+    read_draft_request_timeout_seconds: int = Field(default=180, ge=1, le=300)
+    assignment_summary_ttl_seconds: int = Field(default=300, ge=1, le=300)
+    work_order_snapshot_ttl_seconds: int = Field(default=120, ge=1, le=300)
+    work_order_snapshot_max_entries: int = Field(default=8, ge=1, le=32)
+    work_order_snapshot_max_rows: int = Field(default=20000, ge=20, le=50000)
+    work_order_snapshot_max_bytes: int = Field(default=33554432, ge=1024, le=134217728)
 
     @model_validator(mode="after")
     def require_production_identity(self):
         if self.environment in {"staging", "production"} and self.entra is None:
             raise ValueError("Entra configuration is required outside local development/test")
         if self.environment not in {"development", "test"} and any(
-            connection.conditional_write_contract is not None for connection in self.maximo.values()
+            connection.conditional_write_contract is not None
+            or connection.assignment_write_contract is not None
+            for connection in self.maximo.values()
         ):
             raise ValueError("Verified conditional write contract is TEST-only")
         if self.environment == "production" and any(

@@ -9,18 +9,23 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.assignments.routes import router as assignments_router
 from app.auth.entra import router as entra_router
 from app.auth.planner import router as planner_router
 from app.auth.sessions import logout, session_info
 from app.auth.settings import router as settings_router
 from app.config import Settings
+from app.maximo.page_routes import router as maximo_page_router
 from app.maximo.reader import MaximoReadError
 from app.maximo.routes import router as maximo_router
+from app.maximo.snapshots import SnapshotCache
+from app.rota.activation_routes import router as rota_activation_router
+from app.rota.routes import router as rota_router
 from app.scheduling.batches import router as batches_router
 from app.scheduling.routes import router as scheduling_router
 from app.scheduling.upload_routes import router as uploads_router
 
-SCHEMA_REVISION = "0008_admin_authority"
+SCHEMA_REVISION = "0014_assignment_snapshots"
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -49,17 +54,42 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
+            await app.state.work_order_snapshots.close()
             await engine.dispose()
 
     app = FastAPI(title="Work Order Scheduler", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
+    app.state.work_order_snapshots = SnapshotCache(
+        settings.work_order_snapshot_ttl_seconds,
+        settings.work_order_snapshot_max_entries,
+        settings.work_order_snapshot_max_rows,
+        settings.work_order_snapshot_max_bytes,
+    )
     app.include_router(entra_router)
     app.include_router(planner_router)
     app.include_router(settings_router)
     app.include_router(maximo_router)
+    app.include_router(maximo_page_router)
     app.include_router(scheduling_router)
     app.include_router(batches_router)
     app.include_router(uploads_router)
+    app.include_router(rota_router)
+    app.include_router(rota_activation_router)
+    app.include_router(assignments_router)
+
+    @app.middleware("http")
+    async def prevent_resource_caching(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith(
+            (
+                "/api/rota-imports",
+                "/api/resource-pools",
+                "/api/assignments",
+                "/api/assignment-submissions",
+            )
+        ):
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.exception_handler(MaximoReadError)
     async def upstream_unavailable(request: Request, error: MaximoReadError):

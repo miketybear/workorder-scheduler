@@ -7,7 +7,10 @@ def configured_connection(app_settings, connection):
     settings = app_settings.maximo.get(connection.id)
     if settings is None:
         raise HTTPException(503, "Maximo connection is not configured")
-    if settings.collection_url != connection.base_url.rstrip("/") + "/oslc/os/oslcmxwodetail":
+    if settings.collection_url not in {
+        connection.base_url.rstrip("/") + "/oslc/os/" + name
+        for name in ("oslcmxwodetail", "BDSCHED_WO")
+    }:
         raise HTTPException(503, "Maximo connection configuration mismatch")
     if urlsplit(settings.collection_url).scheme == "http" and (
         not settings.allow_http_for_test

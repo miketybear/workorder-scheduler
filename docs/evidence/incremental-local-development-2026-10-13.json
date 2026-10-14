@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-13",
+  "database": "scheduler_entra_local",
+  "before_revision": "0013_assignment_plans",
+  "revision": "0014_assignment_snapshots",
+  "backup_created": true,
+  "existing_records_fingerprints_preserved": true,
+  "runtime_snapshot_grants": {
+    "SELECT": true,
+    "INSERT": true,
+    "UPDATE": true,
+    "DELETE": false,
+    "TRUNCATE": false
+  },
+  "runtime_plan_state_update": true,
+  "alembic_check": "passed"
+}

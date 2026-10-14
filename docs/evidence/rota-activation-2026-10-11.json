@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-11",
+  "scope": "Offline synthetic activation API/UI verification with actual guarded PostgreSQL test infrastructure; no live Maximo calls",
+  "schema": "0010_rota_activation",
+  "test_schema_upgrade_and_alembic_check": "passed",
+  "local_schema_upgrade_and_alembic_check": "passed",
+  "local_existing_staged_imports": 2,
+  "local_real_activation_count": 0,
+  "backend_focused_tests_passed": 103,
+  "runtime_provisioning_test_passed": 1,
+  "frontend_full_tests_passed": 270,
+  "frontend_full_files_passed": 27,
+  "frontend_test_timeout_ms": 15000,
+  "lint_format_typecheck_build": "passed",
+  "independent_review": "One Sol/high review; no backend P1/P2; two frontend P2 recovery findings fixed and verified by main",
+  "verified_behaviors": [
+    "Full replacement inside coverage, preservation outside coverage and removal of absent people",
+    "Stable pool/PERSONID identity with immutable activation revisions and activated imports",
+    "Company, LABOR identity/craft, date/code/hour and snapshot validation",
+    "Import/pool optimistic versions, scoped authority, CSRF and no-store",
+    "Two independent PostgreSQL connections and planners: one activation succeeds, one receives 409",
+    "Actual restricted runtime role executes preview, activation and active-rota APIs without pool UPDATE permission",
+    "Rollback and durable receipt replay/reconciliation",
+    "Unknown POST cannot be resubmitted before GET reconciliation; navigation return refreshes saved stage version/status"
+  ],
+  "limits": [
+    "No real roster activation, Ubuntu deployment or browser acceptance in this milestone",
+    "Saved LABOR snapshot does not prove current Maximo state",
+    "Assignment ledger and allocation conflict checks remain unimplemented"
+  ]
+}

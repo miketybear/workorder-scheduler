@@ -25,6 +25,7 @@ def write_enabled(settings, connection):
     config = settings.maximo.get(connection.id)
     return bool(
         config
+        and config.collection_url.endswith("/oslc/os/oslcmxwodetail")
         and config.conditional_write_contract == "native_rowstamp_test"
         and settings.environment in {"development", "test"}
         and connection.enabled

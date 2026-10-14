@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-13",
+  "wo": "P13468351",
+  "person": "Le Duc Chan (3A)",
+  "preview": [
+    {
+      "task": 10,
+      "date": "2026-10-01",
+      "hours": 10
+    },
+    {
+      "task": 20,
+      "date": "2026-10-01",
+      "hours": 0.5
+    },
+    {
+      "task": 20,
+      "date": "2026-10-02",
+      "hours": 9.5
+    }
+  ],
+  "cross_month_preview": [
+    {
+      "task": 10,
+      "date": "2026-10-15",
+      "hours": 10
+    },
+    {
+      "task": 20,
+      "date": "2026-10-15",
+      "hours": 0.5
+    },
+    {
+      "task": 20,
+      "date": "2026-11-13",
+      "hours": 9.5
+    }
+  ],
+  "existing_load_person": "Dao Quang Hai (1B)",
+  "existing_load_preview": [
+    {
+      "task": 10,
+      "date": "2026-10-01",
+      "hours": 8.5
+    },
+    {
+      "task": 10,
+      "date": "2026-10-02",
+      "hours": 1.5
+    },
+    {
+      "task": 20,
+      "date": "2026-10-02",
+      "hours": 7
+    },
+    {
+      "task": 20,
+      "date": "2026-10-03",
+      "hours": 3
+    }
+  ],
+  "manual11h_save_blocked": true,
+  "browser_save_performed": false,
+  "maximo_write_performed": false
+}

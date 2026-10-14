@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-12",
+  "wo": "H14306907",
+  "task_id": 10,
+  "quantity": 2,
+  "per_assignment_hours": 5,
+  "both_public_uploads_confirmed": true,
+  "sibling_preservation_verified_after_each_upload": true,
+  "both_people_effective_minutes_after_upload": 300,
+  "remote_business_fields_restored": true,
+  "replacement_assignment": {
+    "old": "1968932",
+    "new": "2001462",
+    "reason": "Maximo allocated new identity when recreating deleted slot"
+  },
+  "owned_trials_released": [
+    "d8d8fde2-0743-4657-b153-304f58255c6b",
+    "4a10b8e3-555e-4f12-b6d9-f2ec52c1e841",
+    "ddf53379-e4d9-4f59-b0de-0dcc93b7d58f",
+    "7b284d6d-3a0b-4ca5-9318-7658810aa16f"
+  ],
+  "original_user_allocations_preserved": 4,
+  "original_minutes_preserved": 240,
+  "all_original_versions_preserved": true,
+  "effective_load_after_cleanup": {
+    "HAIDQ": {
+      "local_minutes": 0,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 0
+    },
+    "CHANLD": {
+      "local_minutes": 0,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 0
+    }
+  }
+}

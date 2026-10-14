@@ -1,0 +1,73 @@
+.page { color: var(--ink); }
+.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; margin-bottom: 20px; background: var(--tag-warm-bg); border-left: 3px solid var(--accent); }
+.banner span, .heading p, .panelTitle span, .toolbar > span, .note, .eyebrow { color: var(--muted); }
+.heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 16px; }
+.heading h1 { margin: 4px 0 8px; font-size: 32px; line-height: 38px; }
+.heading p { margin: 0; }
+.eyebrow { font-size: 11px; letter-spacing: .8px; }
+.controls, .toolbar, .toolbar > div, .panelTitle { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.controls label, .form label, .search { display: grid; gap: 6px; color: var(--muted); font-size: 12px; min-width: 0; }
+.controls input, .controls select { min-width: 130px; }
+.toolbar { justify-content: space-between; margin: 14px 0; font-size: 12px; }
+.toolbar button, .form button { min-height: 36px; }
+.preview { padding: 12px 16px; margin: 12px 0; background: var(--accent-tint); border-left: 3px solid var(--link); }
+.preview p { margin: 6px 0 0; }
+.error { padding: 10px 14px; color: var(--error); background: var(--tag-warm-bg); }
+.workspace { display: grid; grid-template-columns: minmax(230px, 280px) minmax(0, 1fr); align-items: start; gap: 16px; }
+.backlog, .timelineSection, .editor, .summary { min-width: 0; background: var(--layer); border: 1px solid var(--line); }
+.backlog { padding: 14px; }
+.panelTitle { justify-content: space-between; margin-bottom: 12px; }
+.panelTitle h2 { margin: 0; font-size: 18px; }
+.panelTitle span { font-size: 11px; }
+.search { margin-bottom: 10px; }
+.woList { display: grid; gap: 7px; max-height: 570px; overflow: auto; }
+.woCard { display: grid; gap: 4px; width: 100%; padding: 9px; text-align: left; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.woCard[aria-pressed="true"] { border-color: var(--link); box-shadow: inset 3px 0 var(--link); }
+.woCard span, .woCard small { color: var(--muted); font-size: 11px; }
+.timelineSection { padding: 14px 0 12px 14px; }
+.timelineSection > .panelTitle { padding-right: 14px; }
+.tableScroll { max-height: 70vh; overflow: auto; scrollbar-gutter: stable; overscroll-behavior: contain; }
+.timeline { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.timeline th, .timeline td { min-width: 75px; max-width: 100px; padding: 4px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); vertical-align: top; }
+.timeline thead th { position: sticky; top: 0; z-index: 5; min-width: 45px; text-align: center; background: var(--hover); }
+.timeline thead th small { display: block; font-size: 9px; font-weight: 400; color: var(--muted); }
+.timeline .resourceHead { position: sticky; left: 0; z-index: 7; min-width: 190px; width: 190px; text-align: left; }
+.stickyPerson { position: sticky; left: 0; z-index: 3; min-width: 190px !important; width: 190px; background: var(--layer); text-align: left; }
+.stickyPerson small { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; font-weight: 400; }
+.craftRow th, .craftRow td { position: sticky; top: 27px; z-index: 2; background: var(--accent-tint); font-size: 11px; font-weight: 600; }
+.craftRow .stickyPerson { z-index: 6; }
+.roleRow th, .roleRow td { background: var(--hover); }
+.roleRow th button { padding: 2px 0; border: 0; background: none; color: var(--ink); font-weight: 600; cursor: pointer; }
+.roleRow .stickyPerson { z-index: 4; }
+.personRow th { font-weight: 500; }
+.personRow td { height: 70px; }
+.working { background: color-mix(in srgb, var(--tag-green-bg) 28%, var(--layer)); }
+.offCell { background: var(--ground); }
+.blankCell { background: repeating-linear-gradient(135deg, var(--ground), var(--ground) 5px, var(--hover) 5px, var(--hover) 10px); }
+.cellButton { display: block; width: 100%; min-height: 22px; padding: 2px; border: 0; background: transparent; color: var(--ink); text-align: center; font-size: 11px; cursor: pointer; }
+.cellButton:hover, .cellButton:focus-visible { outline: 2px solid var(--link); outline-offset: -1px; }
+.cellButton small { color: var(--muted); font-size: 10px; }
+.allocation { position: relative; display: block; margin: 3px 0 0; padding: 3px 12px 3px 4px; overflow: hidden; border-left: 2px solid var(--link); background: var(--accent-tint); color: var(--ink); font-size: 10px; white-space: nowrap; text-overflow: ellipsis; }
+.allocation i { display: inline-block; margin-left: 3px; color: var(--muted); font-style: normal; }
+.allocation .editAllocation { position: static; display: inline; min-height: 16px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; padding: 0; border: 0; background: transparent; color: inherit; font-size: inherit; cursor: pointer; }
+.allocation button:not(.editAllocation) { position: absolute; top: 0; right: 0; padding: 0 3px; min-height: 16px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.stateLabel { display: block; margin: 3px; text-align: center; color: var(--muted); font-size: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 14px 0 0; color: var(--muted); font-size: 10px; }
+.legend i { display: inline-block; width: 10px; height: 10px; margin-right: 3px; border: 1px solid var(--line); vertical-align: -1px; }
+.legend .work { background: var(--tag-green-bg); }.legend .off { background: var(--ground); }.legend .blank { background: repeating-linear-gradient(135deg, var(--ground), var(--ground) 3px, var(--hover) 3px, var(--hover) 6px); }
+.editor, .summary { margin-top: 16px; padding: 16px; }
+.editor h2, .summary h2 { margin: 4px 0; font-size: 18px; }
+.editor p { color: var(--muted); font-size: 12px; }
+.form { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(220px, 2fr) minmax(150px, 1fr) minmax(100px, .7fr) auto; align-items: end; gap: 10px; }
+.form select, .form input { width: 100%; }
+.note { margin: 12px 0 0; }
+.summaryGrid { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 10px; overflow-x: auto; }
+.summaryGrid article { min-width: 150px; padding: 10px; border: 1px solid var(--line); }
+.summaryGrid h3 { margin: 0 0 8px; }
+.summaryGrid p { margin: 8px 0; font-size: 10px; }
+.summaryGrid p span, .summaryGrid p b { display: flex; justify-content: space-between; gap: 4px; }
+.summaryGrid p b { margin-top: 3px; font-weight: 500; }
+.summaryGrid i { display: block; height: 3px; margin-top: 4px; background: var(--ground); }
+.summaryGrid em { display: block; height: 100%; background: var(--link); }
+@media (max-width: 1050px) { .workspace { grid-template-columns: 1fr; }.woList { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 320px; }.form { grid-template-columns: repeat(2, minmax(0, 1fr)); }.summaryGrid { grid-template-columns: repeat(3, minmax(150px, 1fr)); } }
+@media (max-width: 600px) { .heading { align-items: start; flex-direction: column; }.controls { width: 100%; }.controls label { flex: 1; }.woList { grid-template-columns: 1fr; }.form { grid-template-columns: 1fr; }.timelineSection { padding-left: 8px; }.timeline .resourceHead, .stickyPerson { min-width: 150px !important; width: 150px; }.summaryGrid { grid-template-columns: repeat(2, minmax(150px, 1fr)); } }

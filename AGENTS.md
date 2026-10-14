@@ -51,7 +51,7 @@ Routing instructions for the main agent:
   in its scoped task. Use bounded task context when the client requires it for overrides.
   Do not silently substitute models if unavailable; report the limitation.
 - Give each sub-agent its task, owned files, acceptance criteria, relevant context and checks.
-  Sub-agents do not spawn more agents. Keep this team to one main and these three roles.
+  Keep this team to one main and these three roles; follow the lifecycle policy below.
 - Reviewer is review-only by default: return evidence, file/line references and fixes to
   consider; do not edit files or implement without an explicit main assignment. Any such
   assignment must also fit the effective session permissions; reviewer never grants itself
@@ -69,6 +69,21 @@ Routing instructions for the main agent:
   follow-up work; do not leave required work undone just to list it as a next step.
 - Preserve existing uncommitted work. Coordinate shared-file changes through the main;
   do not overwrite other agents' edits or run migrations concurrently.
+
+## Subagent Lifecycle Policy
+
+- Prefer reusing an existing subagent for follow-up tasks within the same feature or module.
+- Do not spawn a new agent if an existing suitable agent can continue efficiently.
+- Spawn a fresh agent for unrelated tasks or when accumulated context is stale or excessively large.
+- Use fresh reviewers for independent major reviews.
+- Keep at most 3 subagents open concurrently.
+- Avoid overlapping file ownership during parallel work.
+- Close completed agents when no longer needed.
+- Main agent owns integration and final verification.
+- Do not let subagents spawn additional agents unless explicitly authorized.
+
+The existing review budget and model/effort routing still apply. A fresh reviewer
+does not reset the review budget for the same feature or milestone.
 
 ## Purpose and status
 

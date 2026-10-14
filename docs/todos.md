@@ -1,6 +1,1187 @@
 # TODO — Work Order Scheduler
 
-Cập nhật: 2026-10-09.
+Cập nhật: 2026-10-14.
+
+## Khởi động lại local backend/API — 2026-10-14
+
+- [x] Khởi động backend loopback8000 và ViteHTTPS5173 bằng cấu hình hiện có.
+      API health live/ready200; HTTPSproxy ready200 với certificate verification
+      dùng cert local hiện có. Ready chỉ xác nhận DB/schema, không kiểm tra Maximo.
+- Tiếp theo: tải lại Resource timeline để tiếp tục nghiệm thu; mapping/preview
+      đồng bộ nhiều ngày vẫn theo mục contract bên dưới.
+
+## Contract tạo assignment theo ngày và đối soát — 2026-10-14
+
+- [x] TestH14306907/task10:1968934 giữ ID cho03/10 2,5h, Add2001470 cho04/10
+      2,5h; sibling2001462 giữ protectedfields/rowstamp, total task10h/source5h.
+      Mô phỏng mất phản hồi ở handler sau một send, GETreconcile/persist mapping
+      không Addretry; stale root conflict, không duplicate. Cleanup targeted
+      ownedchild +sourceMERGErestore giữ originalIDs, lịch/targets/planned/local;
+      tải hai ngày về0/0. [Bằng chứng/contract](daily-assignment-contract.md).
+- [x] MERGEchildDelete vẫn bị bỏ qua ngay cả observedhref, giữ outcomeunknown.
+      DELETEobservedlocalref dọn đúngownedtrial giữIDs; conditionalguard chưa
+      verified(noETag), không dùngREPLACE, không bật publicDelete/autorollback.
+- [x] Operator/Testmodule builder/fullreader/readonlyreconciler/sendonce +35tests;
+      122relatedtests gồm30PG/Ruff đạt, reviewprotocol/focusedP1recheck đạt.
+      TestRAMschema mất khiDockerrestart: nạp migration hiện có vào DBtest riêng
+      rồi chạy lại; appDB không migrate, không thêm migration/dependency/UI.
+- [ ] Tiếp theo ưu tiên: nối durable childmapping, ledger tải khử trùng và preview
+      Đồng bộ Maximo vào API/UI. Create+readonlyrecovery đã có Testproof; không
+      dùng automaticrollback/delete cho unknown. ConditionalremoteDelete/edit
+      cần xác minh riêng trước mở lifecycle thay đổi đã gửi.
+
+## Làm rõ đồng bộ phân bổ timeline vào Maximo — 2026-10-13
+
+- [x] Kiểm tra code hiện tại: Xác nhận lưu chỉ lưu nội bộ; Completed nghĩa đủ
+      giờ phân bổ, không phải đã đồng bộ. Upload assignment chỉ xuất hiện trong
+      dialog của legacy task allocation không có plan_id khi contract được bật.
+      Luồng tự động hiện tạo plan_id kể cả một đoạn nên không hiện nút upload.
+- [ ] Chưa có đồng bộ hàng loạt kế hoạch tự động. Contract create/readonlyrecovery
+      đã đạt ở mục14/10; còn tích hợp preview WO/task/người/ngày và biên nhận
+      mapping từng nguồn. Không dùng collectionREPLACE/automaticDelete rollback
+      hoặc suy đã gửi từ Completed.
+
+## Đo tải metadata với hai phiên Planner API — 2026-10-13
+
+- [x] User chọn hai phiên API test trước vì chưa có hai tài khoản Planner thật.
+      Hai identity/cookie/grant độc lập trong schema riêng của guarded scheduler_test;
+      Maximo Test GET thật, live DB chỉ đọc, không ghi phân công/Maximo.
+- [x] Khảo sát9–12/2026:166/117/55/77WO; chọn9/2026=166, lớn nhất trong4tháng.
+      Ba cặp cold +5cặp warm page +5cặp search:26response200; median323/86/65ms.
+      Cold mỗi cặp1metadata+2guard; warm0metadata+2guard, shared snapshot đạt.
+- [x] Stress5.000WO giả lập:26response200,25sourcepages/cặp cold dùng chung;
+      warm không đọc metadata, median118/23/28ms không gồm network delay.
+      4harness guardtests/Ruff đạt, schemas test đã dọn. UI117WO một mẫu:
+      refresh1,823s/page0,840s/search1,363s gồm debounce và automation overhead.
+      [Phương pháp, raw samples và giới hạn](metadata-cache-load-verification.md).
+- Tiếp theo: đo qua HTTPS/proxy Ubuntu khi IT cấp hạ tầng; nghiệm thu hai tài
+      khoản Entra Planner thật khi có tài khoản được cấp phạm vi hợp lệ.
+      Chưa kết luận capacity production từ ASGI/local và upstream giả lập.
+
+## Cache metadata và phân trang WO — 2026-10-13
+
+- [x] Thay bounded scan60WO bằng snapshot metadata đầy đủ theo scope, TTL120giây;
+      backend search/filter toàn snapshot, trả20WO và tổng chính xác của snapshot.
+      Browser chỉ giữ trang hiện tại/WO chọn; task/assignment vẫn lazy-load.
+- [x] Cache bounded8entry/20.000row/32MiB, singleflight, refresh rõ ràng; cursor
+      gắn thế hệ/user/query/membership. Mỗi trang có live scope guard nhỏ kể cả
+      trang đầu; lỗi guard discard đúng thế hệ. Count thiếu/đổi bị từ chối.
+- [x] 119BE liên quan/366FE/92API-timeline/typecheck/lint/build/Ruff đạt.
+      Independent review và focused P1 recheck đạt sau sửa guard/count.
+      Live trang1–4 đều20/117; search H14307245 ở trang4 trả1/1, không ghi Maximo.
+      Build còn warning chunk553,80kB. [Contract/evidence](maximo-backlog-pagination.md).
+- Đo tải hai phiên API đã hoàn tất ở mục trên. Nhiều worker có cache riêng;
+      cần tài khoản/phạm vi Mech hoặc Deck được cấp hợp lệ để nghiệm thu
+      isolation live ngoài E&I.
+
+## Rút gọn đầu danh sách timeline — 2026-10-13
+
+- [x] Bỏ tiêu đề Backlog/tổng WO đầu cột và thanh người/phân công/giới hạn.
+      Giữ ba tab, tìm kiếm, phân trang/tổng WO và donut; giải thích còn
+      “Completed: đã phân bổ đủ.” Không đổi filter hoặc kiểm tra10,5h.
+- [x] 57tests timeline và typecheck đạt. Live897×742 không còn các dòng lặp,
+      pagination vẫn1–20/117WO trang1/6; không ghi phân công/Maximo,
+      viewport override đã reset.
+      [Ảnh giao diện gọn](evidence/timeline-cleanup-2026-10-13.png).
+- Tiếp theo: nghiệm thu lọc Completed sau khi WO được phân bổ đủ hoặc giảm giờ
+      để đối chiếu chuyển danh sách, theo mục cập nhật phân công nhẹ.
+
+## Chuẩn hóa thẻ task và ngày hiển thị — 2026-10-13
+
+- [x] Checkbox/Task ID cùng hàng, mô tả riêng; hàng Giờ phân công có ô80px
+      và đơn vị giờ. Assignment nhỏ bên dưới, viền nhẹ cho thẻ được chọn;
+      task ngoài nhóm giữ chỉ đọc và nhiều assignment vẫn chọn rõ dòng nguồn.
+- [x] Tiêu đề ngày bảng phân bổ/tóm tắt hiện dd/mm/yyyy; state/API/aria identity
+      vẫn ISO, không đổi phân bổ/capacity hoặc payload.
+- [x] 57tests timeline/typecheck/lint/build đạt; chunk550,07kB còn warning.
+      Live897×742: ba ô giờ đúng80px, previewP13469691 từ02/10 giữ25h
+      xếp10,5+10,5+4h. Chưa lưu/ghi Maximo; viewport override đã reset.
+      [Ảnh thẻ task mới](evidence/task-card-polish-2026-10-13.png).
+- Tiếp theo: nghiệm thu một WO có nhiều assignment WAITASGN để đối chiếu
+      dropdown nguồn với thẻ chỉ có một dòng; không cần mở rộng quyền.
+
+## Gộp ngày bắt đầu phân bổ — 2026-10-13
+
+- [x] Phân bổ task chỉ có một Ngày bắt đầu cạnh Nhân lực, bỏ bộ chọn rota
+      và ngày bắt đầu lặp trong pane ngày. Tóm tắt/capacity theo ngày đã chọn;
+      đổi người giữ ngày bắt đầu. Giữ anchor min/max365 và kiểm tra capacity.
+      Sửa phân công/WO không có task giữ Ngày rota. Hướng dẫn còn một câu.
+- [x] 57tests timeline/typecheck/lint/build đạt; chunk549,49kB còn warning.
+      Test đổi ngày và đổi người giữ anchor,
+      các test tải capacity từ ngày ngoài tháng/lưu đúng preview vẫn qua.
+      LiveP13469691 đổi01→02/10:25h xếp10,5+10,5+4h ngày02/03/04;
+      không lưu/ghi Maximo. Preview hiện ở02/10.
+      [Ảnh một ngày bắt đầu](evidence/task-single-start-2026-10-13.png).
+- Tiếp theo: nghiệm thu cùng WO bằng Planner Mech/Deck; cần tài khoản có quyền
+      discipline tương ứng để đối chiếu task/nhân lực thật.
+
+## Rút gọn thông tin thẻ task — 2026-10-13
+
+- [x] Bỏ dòng planned labor/quantity/số assignment khả dụng ở note1 vì trùng
+      thông tin Assignment Maximo ở note2. Giữ ID/mô tả, tổng giờ chỉnh được,
+      dòng nguồn assignment và thông báo task hỗn hợp/không có nguồn khả dụng.
+      Không đổi cách tính giờ, chọn nguồn hoặc payload.
+- [x] LiveP13469691: task20/30/10 chỉ còn nguồn21h/3h/1h ở vùng Assignment;
+      preview25h giữ nguyên, chưa lưu.56tests timeline và typecheck đạt.
+      [Ảnh thẻ task](evidence/task-card-no-duplicate-2026-10-13.png).
+- Tiếp theo: nghiệm thu Planner Mech/Deck theo mục dưới; cần tài khoản có quyền.
+
+## Task chỉ đọc và mở rộng khung ngày — 2026-10-13
+
+- [x] Task ngoài discipline giữ số task và mô tả do API trả, kèm nhãn ngoài
+      nhóm; không chọn được, không thêm vào bảng ngày hoặc payload lưu.
+      Cách hiển thị này thay thế note chỉ có TaskID ở lần chỉnh trước.
+- [x] Một assignment WAITASGN khả dụng tự chọn và hiện thông tin chỉ đọc;
+      nhiều dòng vẫn cần chọn nguồn rõ ràng. Không đổi identity nguồn hoặc API.
+- [x] Dialog rộng tối đa1200px, task picker khoảng270px, pane ngày chiếm phần
+      còn lại và bỏ giới hạn25vh của bảng.56tests timeline/typecheck/lint/build
+      đạt; chunk549,74kB còn warning. Live897×742: bảng489×282px hiện đủ
+      task10/40/50/60 và tổng ngày; Task20/30 có mô tả nhưng không có điều khiển.
+      Preview16h→10,5+5,5h; chưa lưu/ghi Maximo. Viewport override đã reset.
+      [Ảnh nghiệm thu](evidence/task-dialog-readonly-expanded-2026-10-13.png).
+- Tiếp theo: nghiệm thu cùng WO bằng Planner Mech/Deck; cần tài khoản đã có
+      quyền discipline tương ứng để đối chiếu phạm vi task và nhân lực thật.
+
+## Hộp phân công theo discipline và giữ bảng ngày — 2026-10-13
+
+- [x] Bỏ dòng nhóm/tháng; chuyển Làm mới timeline cạnh bộ chọn tháng.
+      Nhân lực/Ngày rota cùng hàng. Task picker và bảng ngày là hai vùng
+      cuộn riêng; tổng giờ/ngày giữ ở cuối bảng khi cuộn, footer lưu vẫn thấy.
+      Màn hình hẹp xếp hai pane theo chiều dọc và giới hạn cuộn độc lập.
+- [x] FE đọc/validate safe bool has_out_of_scope_demand từ API hiện có.
+      Task chỉ có nhu cầu ngoài nhóm tách thành note TaskID, không cho chọn;
+      task hỗn hợp giữ mô tả chung và chỉ chọn labor trong discipline.
+      Không suy task ngoài nhóm từ labor trống nếu thiếu marker; không fallback
+      phân công WO chung khi WO chỉ có task ngoài nhóm. Payload chỉ gồm task
+      phù hợp; backend vẫn lọc craft và recheck quyền như trước.
+- [x] 70tests API/timeline, full347frontend/typecheck/lint/build và24backend
+      mixedcraft/summary đạt. Chunk548,92kB còn warning.
+      LiveP13470485: note20/30 ngoàiE&I, chọn10/40/50/60 tổng16h;
+      preview01/10:10,5h,02/10:5,5h. Tại1010×884 tableheight282px,
+      person/datecùngy251,7px và nút lưu trongviewport;600px vẫn có bảng.
+      Preview chưa lưu/không ghi Maximo; viewportoverride đã reset.
+      [Ảnh hộp phân công](evidence/task-dialog-scope-days-2026-10-13.png).
+- Tiếp theo: nghiệm thu Planner Mech/Deck bằng tài khoản có quyền discipline
+      tương ứng, kết hợp kiểm tra hai phiên Planner ở mục đồng bộ nhẹ.
+
+## Header donut và căn nhãn ưu tiên — 2026-10-13
+
+- [x] Bỏ hai dòng scope/mô tả theo note user; toolbar vẫn giữ discipline/tháng.
+      Chuyển summary tháng ở cuối trang thành3donut Technician/Supervisor/
+      Assistant Supervisor, panel438px phía trên cạnh bộ chọn tháng.
+      Hiện người, tỷ lệ và giờ tải/capacity từ snapshot timeline; role khác
+      vẫn trong bảng và có text tổng hợp riêng. Không thêm request/dependency.
+- [x] Tải thiếu/0capacity/nhóm không có người không suy0% còn trống;
+      tỷ lệ vượt100% giữ số thực, chỉ giới hạn vòng vẽ; 0% không có chấm giả.
+      Nhãn ưu tiên cố định cột bên phải, WO heading/grid chiếm toàn card.
+- [x] 54tests timeline/typecheck/lint/build đạt; chunk547,86kB còn warning.
+      Browser1033/1270px:3donut đúng vùng trên, không overflow;600px xếp gọn,
+      splitterẩn. Live17Tech/2Sup/2AsstSup khớp0/2.394h,0/325,5h,0/357h;
+      mép phải10prioritybadge cùng284px tại lần kiểm tra. Không ghi phân công
+      hoặc Maximo; overrideviewport đã reset sau nghiệm thu.
+      [Ảnh1033px](evidence/timeline-donuts-1033-2026-10-13.png).
+- Tiếp theo: nghiệm thu hai Planner thật và đối chiếu donut sau cập nhật
+      phân công trên phiên khác theo mục đồng bộ nhẹ bên dưới.
+
+## Backlog phân trang, tải summary và thanh kéo — 2026-10-13
+
+- [x] Backlog/Completed/Tất cả phân trang20WO sau tìm kiếm/xếp ưu tiên;
+      range/tổng/trang và Trước/Sau, reset khi thay bộ lọc/scope, clamp khi
+      danh sách giảm; giữ WO đang chọn, cuộn về đầu khi đổi trang.
+- [x] Tự đọc task/summary cho card đang hiện trên trang hiện tại, tối đa2
+      request đồng thời. Không eagerload117WO, không reload list; hủy khi
+      card rời viewport/trang, đổi scope, ẩn tab hoặc mở editor/đang ghi.
+      Chặn stale response/identity sai, giữ summary mới hơn sau mutation;
+      lỗi có nút retry riêng, không suy số giờ từ estdur.
+- [x] Resource timeline bỏ giới hạn1600px của shell, main rộng100% màn hình.
+      Thanh kéo Backlog/khung ngày hỗ trợ chuột và phím trái/phải/Home/End,
+      clamp giữ chỗ cho khung ngày; mobile xếp dọc và ẩn thanh kéo.
+- [x] 342/342frontend, typecheck/lint/build đạt; chunk546,59kB còn warning.
+      Live117WO→6trang, 20card/page; trang2:21–40; main1018px bằng viewport,
+      max-width:none. Kéo chuột300→370px và phím300→320px qua.
+      P13469440 tự hiện5task/84h, P13469691:3task/25h. Không tạo/sửa/xóa
+      phân công hoặc ghi Maximo trong nghiệm thu này.
+      [Ảnh phân trang và thanh kéo](evidence/backlog-pagination-splitter-2026-10-13.png).
+- Tiếp theo: nghiệm thu hai Planner đồng thời theo mục đồng bộ nhẹ bên dưới.
+
+## Nhãn giờ còn lại trên WO card — 2026-10-13
+
+- [x] Theo note của user, thống nhất dòng “Còn N task · còn X giờ”, bỏ
+      thông báo kỹ thuật chưa xác minh trên card. Giữ số liệu đã tải khi
+      snapshot hết hạn trong phiên; tooltip nêu cần mở WO để cập nhật.
+      Chưa có số liệu hiển thị dấu —, không suy từ estdur. Completed vẫn
+      cần snapshot mới theo quy tắc hiện hành, không dùng số cũ để xác nhận.
+- [x] 45tests timeline, typecheck và lint đạt; browser P13468351 hiển thị
+      “Còn 2 task · còn 20 giờ”, P13431393 “Còn 1 task · còn 300 giờ”.
+      Không ghi phân công/Maximo trong lượt chỉnh nhãn.
+      [Ảnh](evidence/backlog-remaining-label-2026-10-13.png).
+- Tiếp theo: nghiệm thu hai Planner thật theo mục đồng bộ nhẹ bên dưới.
+
+## Đồng bộ nhẹ và Backlog/Completed — 2026-10-13
+
+- [x] Kiểm tra code: refreshAfterMutation/refreshTaskBatch/refreshTaskPlan
+      merge receipt rồi setReload, gây tải toàn workspace. Backlog hiện lọc
+      danh sách WO theo tìm kiếm, chưa lọc theo nhu cầu task còn lại; giờ trên
+      card chỉ cộng reservation của tháng đang xem.
+- [x] Mutation trả affected_days, current allocation_updates, WO descriptor,
+      summary và revision trước/sau. UI merge ô bị ảnh hưởng, giữ backlog,
+      roster và scroll; không reload toàn danh sách sau lưu. Receipt replay
+      giữ bằng chứng gốc, metadata hiện tại không hồi sinh chip cũ. Kiểm tra
+      revision mỗi30giây hiện thông báo, không tự refresh toàn workspace.
+- [x] Tab Backlog/Completed/Tất cả; summary mọi task và mọi ngày/pool liên
+      quan, không dựa estdur. TTL tối đa300giây, thiếu/ngoài discipline hoặc
+      snapshot cũ giữ WO chưa xác minh ở Backlog. Lazy task read, không gọi
+      detail toàn117WO; list summary dùng tối đa2DBqueries. Completed chỉ là
+      đủ labor, không thay Maximo status.
+- [x] Migration0014/cache quyền tối thiểu; backupdevelopment/upgrade/schema
+      và dữ liệu cũ kiểm chứng. Readiness cập nhật0014 và trả200. ReviewerP1
+      deadlock nested authsession đã sửa bằng recheck cùng transaction;
+      focusedrecheck khôngfinding. 336FE/61BE/37PG +1rolePG đạt;
+      lint/typecheck/build/Ruff đạt, còn warningchunk~540kB.
+- [x] Live20h→10,5+9,5: Completed ngay; chuyển ngày, giảm0,5h trởBacklog;
+      xóa trial giữ dữ liệu gốc tại thời điểm thử, không uploadMaximo.
+      WO2task đã có P13468351 cũng được xác minh Completed/WMATL.
+- [x] Theo xác nhận user, gửi lại đúng UUID61916eba-edfd-4a37-ab42-04a17151c293
+      xóa P13431393/HAIDQ/01-10/1h: receipt/ledger released/version2, còn10,5h.
+      Sửa dialog unknown để đóng và truy cập nút đối soát, không mất requestID.
+- [Contract và bằng chứng](incremental-assignment-updates.md).
+- [ ] Ưu tiên tiếp: nghiệm thu hai Planner thật để đối chiếu notice/reload
+      thủ công và conflict; kiểm tra snapshot hết hạn/WO nhiều discipline.
+      Upload plan nhiều ngày còn chặn, cần contract delete/rollbackidentity
+      của Maximo trước khi mở. Không cần mở upload để nghiệm thu local.
+
+## Phân bổ tự động nhiều task theo rota — 2026-10-13
+
+- [x] Thay thao tác bỏ chọn/lập từng task bằng bảngtask×ngày. Giữ mọi task
+      đã chọn, xếpTaskID tăng dần vào budget chungminrota630phút, trừexternal/
+      globallocal; tự tải ngày kế tiếp lô31ngày, tối đa366ngày, bỏnghỉ vàqua tháng.
+      Chỉnhgiờtừngô; tổngtask/dailybudget phảiđúng trước lưu. Thiếu/incomplete
+      load chặnpreview/lưu; chỉnhmanualthiếugiờkhôngtựfetch366ngày vôích.
+- [x] API task-plan-batches atomic1–50task, mộttransaction/receiptUUID,
+      aggregatetấtcảtask/date, nguồnunique, freshscope/WO/source sauI/O;
+      recoveryplans[] vàsingleendpoint tươngthích, planuploadvẫnkhóa.
+- [x] ReviewerP2 person/date/cellâm/autofetch/stalefallback đãfix;
+      focusedrecheckcuối khôngfinding. 50FE API/timeline,20PG,43offline qua;
+      full325FE/typecheck/lint/build/Ruff qua. TestPoCtimeout đãxửlý bằng
+      queryDOM hẹp hơn, giữassertions vàtimeout. Buildchunk528,73kBwarning.
+- [x] Livepreview P13468351/Chan20h→10+.5 ngày01/10,9.5ngày02;
+      đổiHAIDQ trừ2h/ngày đãgiữchỗ;11h bịchặn. Chọn15/10 tựtiếp13/11
+      đúngrotalàmviệc. Trảpreview01/10, chưabấmlưu/khôngghiMaximo;
+      4reservation gốcvẫnhiểnthị. Backendlocal đãrestart phục vụAPI mới.
+- [Contract/bằng chứng](automatic-task-allocation.md).
+- [ ] Ưu tiên tiếp: nghiệm thu lưu batch nhiều task trên UI theo lịch Planner
+      thực tế. Remoteuploadnhiềungày vẫnbịkhóa; xácminhdelete/rollbackidentity
+      trước khi bật. Khôngcòn việc xửlýtimeoutPoC ởcácmục lịch sử bên dưới.
+
+## Giải thích nút lưu bị chặn do tổng giờ task — 2026-10-13
+
+- [x] Dialog hiển thị alert sát nút lưu khi tổng nhiều task vượt giờ còn trống,
+      nêu tổng/capacity/ngày, giới hạn10,5h và cách giảm/chuyển ngày/lập từng plan.
+      Giữ chặn capacity; không tự đổi selection hoặc lưu dữ liệu của người dùng.
+- [x] Browser P13468351/Le Duc Chan/01-10: hai task10h tổng20h, còn10,5h;
+      thông báo rõ, chưaPOST. Regression xác nhận alert/nút khóa và alert hết
+      khi chọn riêng task plan. 36tests timeline và typecheck qua.
+      [Ảnh](evidence/task-batch-save-capacity-2026-10-13.png).
+- Tiếp theo: phân hai task sang các ngày còn capacity; các công việc kiểm thử
+      PoC và contract upload remote vẫn theo danh mục bên dưới.
+
+## Sửa nút nhiều ngày khi chọn nhiều task — 2026-10-13
+
+- [x] Guard cũ thoát im lặng khi chọn hai task. Nút trên task hiện chọn riêng
+      task đó, mở range/preview theo giờ của task và bỏ chọn task khác;
+      thêm giải thích cạnh danh sách. Không gộp giờ của các task vào một source.
+- [x] Regression chọn hai task rồi bấm task20: preview10h/source riêng,
+      task10 bỏ chọn, chưaPOST. 36tests timeline/typecheck/ESLint qua.
+      Browser P13468351 task10 mởrange01/10 với10h, task20 bỏ chọn;
+      không lưu hoặc ghiMaximo. [Ảnh](evidence/multitask-plan-button-2026-10-13.png).
+- Tiếp theo: nghiệm thu chọn khoảng và sửa giờ từng ngày trên preview;
+      xử lý test PoC timeout/contract remote theo danh mục bên dưới.
+
+## Thông tin và ưu tiên WO backlog — 2026-10-13
+
+- [x] Mỗi WO hiển thị Worktype và số giờ ước tính từ estdur; bỏ Siteid khỏi
+      dòng thông tin. Giữ Siteid trong định danh/scope và tìm kiếm.
+      Xếp wopriority giảm dần, thiếu priority cuối; badge số kèm màu:4đỏ,
+      3cam,2xanh,1trung tính. Mức4/3 có viền trái rõ; selection vẫn giữ.
+- [x] Typecheck và ESLint tập trung qua; browser117WO xếp giảm dần3/2/1,
+      estdur/worktype hiển thị đúng, khôngBD1 trong card. Dữ liệu đang xem
+      không có priority4. [Ảnh](evidence/backlog-priority-2026-10-13.png).
+- Tiếp theo: nghiệm thu mức4 khi có WO trong scope; tiếp tục xử lý test PoC
+      timeout và contract remote theo danh mục bên dưới.
+
+## Mở rộng panel phân công — 2026-10-13
+
+- [x] Dialog phân công/sửa rộng tối đa900px thay460px, vùng task tăng55vh;
+      giới hạn chiều cao theo viewport và cuộn khi cần. Backlog thu còn220px,
+      timeline có thêm chiều ngang; màn hình dưới700px xếp hai panel thành một cột.
+      Kiểm tra trực tiếp browser desktop và diff whitespace qua; chỉ CSS,
+      không đổi dữ liệu/API. [Ảnh panel](evidence/assignment-panel-wide-2026-10-13.png).
+- Tiếp theo: nghiệm thu panel với WO nhiều task; test PoC timeout và contract
+      remote delete/rollback vẫn theo danh mục bên dưới.
+
+## Cập nhật màn hình Maximo đang sử dụng — 2026-10-13
+
+- [x] Chủ dự án sửa thông tin: chỉ dùng tab Assignments của Work Order Tracking;
+      thay thế trả lời trước về sử dụng Assignment Manager. Đồng bộ biên bản;
+      không suy ứng dụng đó đã cài/cấp quyền hay chưa. Không đổi mã ứng dụng.
+- Timeline local nhiều ngày không phụ thuộc Assignment Manager; UI chọn range
+      qua tháng đã hoàn tất bên dưới. Upload nhiều ngày tiếp tục khóa theo
+      kết quả contract API đã kiểm chứng, không theo ứng dụng UI đang dùng.
+
+## Timeline nhiều ngày local và capacity — 2026-10-13
+
+- [x] Giữ bố cục PoC; dialog một task/assignment có Phân bổ nhiều ngày,
+      preview front-load theo giờ còn trống, bỏ nghỉ/tải thiếu, chỉnh từng ngày.
+      Tổng theo assignment chọn, không nhânqty; chỉlưu khiđủ tổng vàcapacity.
+- [x] Atomic task-plans/API/header demand/migration0013; sourceownership,
+      immutable request UUID/receipt và local segments bền vững. Backend minrota/
+      630phút, external+global local; fresh WO/source/grants/pool sauI/O.
+- [x] Thanh từng ngày kéo/sửa/xóa; cùngperson, groupkhôngtrùngngày/tổngkhôngvượt
+      demand; xóa hết freesource. plan_id vẫnchặn upload khichỉcòn1đoạn.
+- [x] Carry-in finishdate load qua2ANDqueriesOnshoreTest đãread-onlysmoke qua;
+      crossdayremote chưa rõ phân bổ failclosed, khônggiảđịnh ngày sautrống.
+- [x] Backup0013/Alembiccheck/grants/localfingerprints giữ nguyên dữliệu.
+      Live UI20h→10,5+9,5, reload, chặn11h, kéo04→05, sửa9,5→9 vàxóa2trials;
+      Maximo20hWAIT khôngđổi/zero planupload;4reservation gốc240phút nguyên.
+- [x] Review mới tìm UUID P1/freshness P2 đãfix/regressions; reviewcuốikhôngP1/P2.
+      Main thêm2requestconcurrent trueindependenttransactions, cùngUUIDreceipt/
+      khácUUIDsamesource1plan qua; không mô phỏng nhiều pool/processproduction.
+- [x] Kiểm tra cuối622backend offline/Ruff;60focused gồm22PG qua. Frontend
+      full306 +2edge bổ sung qua; TypeScript/lint/build qua, chunk519,60kBwarning
+      giữnguyên. Docslinks/diffcheck qua; khôngcommit/push/deploy.
+- [Contract và bằng chứng](multiday-local-timeline.md),
+      [dọn cuối](evidence/multiday-local-final-2026-10-13.json).
+- [x] UI range qua tháng tối đa366ngày; capacity riêng theo lô31ngày,
+      kiểm tra person/craft/labor/poolversion, cancellation/cache invalidation.
+      Khóa demand khi tải; mất identity/scope401/403/404 ẩn workspace cũ.
+- [x] Live20h→10,5h31/10+9,5h01/11; chuyển tháng xem/sửa ngày02 thành9h,
+      chặn11h, xóa hai trial; bốn phân công gốc/Maximo nguyên, zero planupload.
+      45FE API/timeline và11PG qua; Ruff/typecheck/lint/build qua; review/recheck
+      P1scope đãfix. FullFE319/320, test PoC cũ timeout15s cả khi chạy riêng.
+- [ ] Ưu tiên sẵn sàng: chẩn đoán/tối ưu test PoC synthetic timeout để full suite
+      ổn định. Remote upload nhiều ngày tiếp tục khóa, cần contract delete/rollback
+      bảo toàn identity bên dưới trước bật; không cần Graphical Assignment addon.
+
+## Probe API assignment chuẩn chia20h — 2026-10-12
+
+- [x] P13465911/task10 có planned20h/quantity1. Audited Test MERGE cập nhật
+      assignment537275 thành10,5h ngày03/10 06:30→17:00; Add tạo2001464 với9,5h
+      ngày04/10 06:30→16:00, cùng HAIDQ/E&I/OPSTECH/wplaborid, parentassignid537275.
+      Tổng20h; load630/570phút; stale root/child transaction conflict, không dòng trùng.
+- [x] Đã đối soát cleanup thật: MERGE `_action: Delete` giữ nguyên dòng mới,
+      trong khi update dòng gốc về20h thành công (partial read-back, intentunknown).
+      Complete collection PATCH phục hồi business fields và bỏ dòng thử nhưng
+      tái tạo assignment gốc với ID2001466 thay537275; không khôi phục nguyênID.
+      Không được dùng REPLACE làm rollback/create/delete cho Planner.
+- [x] Cuối cùng chỉ một dòng WAITASGN20h/null labor/ngày, planned20h/quantity1;
+      lịch WO/task và target giữ baseline, load thử0;4reservation gốc240phút/
+      versions giữ nguyên. Audit anchor released, không reservation mới; outcomes
+      partial/identitychanged vẫnunknown. Không mởpublic create/delete; không đổi app/schema.
+- [Bằng chứng](evidence/daily-assignment-api-2026-10-12.json),
+      [biên bản](multiday-assignment-verification.md#probe-api-chia20h-thành-hai-ngày).
+- [ ] Ưu tiên tiếp: điều tra contract xóa child trên BDSCHED_WO/SHOWASSIGNMENT
+      và cách rollback bảo toàn identity; chỉ thử thêm khi đã biết điều kiện đúng,
+      không lặp Delete/REPLACE hoặc coiHTTP204 làxác nhận. Đối chiếu Assign Labor
+      UI chỉ optional cho semantics calendar/shift, không điều kiện bắt buộc củaAPI.
+
+## Xác minh assignment nhiều ngày — Maximo chuẩn — 2026-10-12
+
+- [x] Thông tin UI cập nhật13/10: chỉ dùng tab Assignments trong Work Order
+      Tracking, không có Graphical addon; trả lời Assignment Manager trước đã thay thế.
+      Đọc schema BDSCHED_WO có finishdate/parentassignid và117WO E&I tháng10;
+      dữ liệu79h/15h có finishdate đúng elapsed liên tục, không suy lịch rota.
+- [x] Probe Test có audit20h trên dòng1968934 đãreleased: API nhận và trả
+      03/10 06:30→04/10 02:30, ASSIGNED; không tạo đoạn/dòng mới. MERGE giữ
+      sibling. Restore business fields và lịch WO/task/target đúngbaseline;
+      không tạo reservation local hoặc thay đổi bốn phân công gốc. Read-back
+      thật qua; docs links/diffcheck qua; không đổi app/schema/deploy.
+- [Biên bản](multiday-assignment-verification.md),
+      [bằng chứng](evidence/multiday-direct-write-2026-10-12.json).
+- [x] Đã thử create/update chia20h thành hai ngày ở mục trên. Delete/rollback
+      bảo toàn identity chưa đạt; chưa mở create/delete cho Planner.
+- [ ] Tùy chọn đối chiếu tab Assignments trong Work Order Tracking khi cần tương đươngUI;
+      không là blocker cho API. Không tuyên bố đã nghiệm thu UI hoặc explicit
+      finishdate/calendar semantics chỉ từ direct PATCH.
+
+## Quantity > 1 — nghiệm thu hai người và bảo toàn assignment — 2026-10-12
+
+- [x] WO H14306907/task10 E&I: quantity2 tạo hai dòng WAITASGN, mỗi dòng5h.
+      Timeline chọn từng dòng riêng; slot đã reserve không được chọn lại.
+      Hai public uploads HAIDQ/CHANLD ngày03/10 confirmed; mỗi người300phút,
+      không double count; sibling giữ nguyên sau mỗi upload.
+- [x] Phát hiện P1 ở lần thử đầu: PATCH mặc định thay collection, xóa sibling
+      1968932. Dừng upload, thêm `patchtype: MERGE`, durable full sibling baseline;
+      read-back/reconcile thiếu/thêm/đổi sibling giữ unknown, không tự retry.
+      Intent cũ đã gửi không có sibling baseline cũng không được xác nhận lại.
+- [x] Recovery Test có actor/audit: Maximo tái tạo slot với ID2001462 thay1968932;
+      không thể tuyên bố phục hồi nguyên ID. Hai slot đã về WAITASGN/null labor/
+      null ngày/5h; lịch WO/task về baseline, target dates giữ nguyên. Bốn trial
+      local released; bốn phân công gốc240phút/version1 giữ nguyên.
+- [x] Review độc lập mới cho P1: không còn P1 MERGE;38tests tập trung qua.
+      P2 duplicate/lost-authority có intent nhưng báo not_sent đã sửa bằng lookup
+      mới theo actor/request; regression không lộ receipt ngoài quyền, zeroPOST.
+      Main kiểm tra sửa P2;612offline/12taskPG/Ruff qua,3warnings cũ.
+- [Bằng chứng cuối](evidence/quantity-final-acceptance-2026-10-12.json),
+      [hai upload](evidence/quantity-merge-both-upload-2026-10-12.json),
+      [restore](evidence/quantity-merge-restored-2026-10-12.json),
+      [ảnh](evidence/quantity-two-people-upload-2026-10-12.png).
+- [ ] Sẵn sàng tiếp: nghiệm thu nhiều task trong một WO hoặc nhiều ngày trên
+      E&I. Planned70h/quantity3 cần quy tắc chia ngày trước triển khai; chưa bật
+      tạo/split assignment, remote edit/delete hoặc production upload.
+- [ ] Discipline khác cần chủ dự án cung cấp tài khoản/quyền và WO/roster mẫu;
+      Ubuntu deployment tiếp tục chờ IT HTTPS/Entra redirect/routing.
+
+## Task timeline, tải Maximo và upload Test — 2026-10-12
+
+- [x] BDSCHED_WO scoped lazy tasks/assignment, atomic batch và migration0012;
+      legacy WO allocations giữ nguyên. Timeline PoC thêm task picking,
+      thanh task kéo riêng/người/ngày, sửa/xóa local, không hiển thị ID kỹ thuật.
+- [x] Load Maximo qua mọi WO/task/site trong connection, paging đầy đủ/canonical
+      origin, khử trùng assignment và ledger synced; fail closed thiếu load.
+      External overbook vẫn hiển thị. Capacity khóa connection+pool.
+- [x] Durable upload Test-only: intent trước send, root/child rowstamp,
+      read-back/receipt/reconcile; unknown giữ request/context, chặn gửi lại.
+      Pre-intent rejection not_sent; phải lưu thay đổi local trước upload.
+- [x] Live WAITASGN task10: HAIDQ/0,5h, tự ASSIGNED; stale token conflict.
+      Restore đúng assignment/lịch task. Browser upload confirmed; remote30
+      + local600 =630phút không double count. Parent schedule giữ nguyên.
+- [x] Browser batch630phút; chặn11h; kéo task20 03→04/10, sửa9→8h; dọn riêng
+     3trials. Giữ4phân công user240phút/version1; Test labor trial đã restore.
+- [x] Local backup/owner0012/check/runtime state-only grants qua; isolated
+      PG13tests qua gồm atomic/recovery/revoke/upload-edit/release overlaps.
+- [x] Backend603offline/Ruff qua (3known warnings); frontend30files/300tests
+      với1worker, TypeScript/lint/build/diffcheck qua. Build có cảnh báo chunk
+      510,90kB; không thêm dependency hoặc bỏ cảnh báo để che vấn đề.
+- [x] Review2P1/2P2 đã xử lý/regression tests; agent credits dừng focused
+      independent recheck, Main tự tích hợp và kiểm tra.
+- [Contract và bằng chứng](task-assignments.md),
+      [UAT cuối](evidence/task-final-acceptance-2026-10-12.json).
+- [x] Quantity2/multiple WAITASGN nghiệm thu thêm ở mục trên; discipline khác
+      vẫn cần dữ liệu/quyền chủ dự án chọn.
+- [ ] Maximo admin/contract: tạo/split assignment mới hoặc sửa/xóa đã gửi cần
+      mapping task writable/lifecycle riêng. Sender lịch/PIC WO trên object
+      mới cần nghiệm thu lại trước mở write contract đó.
+- [ ] Remote deployment cần IT Ubuntu/HTTPS/Entra redirect/routing.
+
+## Cập nhật vòng đời subagent — 2026-10-12
+
+- [x] Thêm Subagent Lifecycle Policy vào [AGENTS.md](../AGENTS.md#subagent-lifecycle-policy)
+      và đồng bộ [hướng dẫn Codex](codex-agents.md#subagent-lifecycle-policy): ưu tiên
+      dùng lại agent phù hợp, tạo mới khi việc/context cần, reviewer mới cho review
+      lớn độc lập, tối đa 3 subagent mở, file ownership riêng, đóng khi hết nhu cầu,
+      Main tích hợp/kiểm chứng và chỉ cho phép spawn lồng khi được cho phép rõ ràng.
+- [x] Đối chiếu cấu hình hiện có: giới hạn đồng thời đã là 3; giữ routing model/effort
+      và review budget, reviewer mới không đặt lại budget. Kiểm tra diff, liên kết
+      local và placeholder cho các tài liệu sửa; không đổi mã ứng dụng.
+- Giới hạn: không chạy phiên subagent mới để nghiệm thu lifecycle runtime;
+      các role native vẫn mặc định cấm tự spawn. Không cần kiểm thử ứng dụng cho
+      thay đổi tài liệu này.
+
+## Đánh giá task và assignment BDSCHED_WO — 2026-10-12
+
+- [x] Probe read-only Onshore Test P13465570: call mẫu/expanded/schema/child
+      identity HTTP 200. Ba task 10/20/30, 0,5/9/1 giờ, mỗi task một WAITASGN
+      chưa laborcode/ngày; cùng assignment xuất hiện ở WO-level và task-level.
+- [x] Schema có assignment/woactivity; child assignment có rowstamp, relation
+      SHOWASSIGNMENT không trả rowstamp. Child schema không expose taskid;
+      mapping task phải join relation bằng assignmentid. Config runtime vẫn
+      hard-code object structure cũ; chưa chuyển URL hoặc sửa sender.
+- [x] Hoàn tất [đánh giá và lộ trình](task-assignments-assessment.md),
+      [bằng chứng](evidence/task-assignment-contract-2026-10-12.json).
+      Chỉ đọc; không thay dữ liệu, UI, migration hoặc ghi Maximo. Evidence
+      một WO chưa chứng minh paging/contract write/toàn bộ tải labor-ngày.
+- [x] Bước 1: reader/API BDSCHED_WO scoped, lazy-load task dialog và ledger
+      phân công theo task; giữ timeline PoC, labor binding và audit/receipt.
+- [x] Bước 2: tải Maximo theo labor/ngày/khử trùng; status tính bảo thủ,
+      chưa suy quantity/shift/multi-day khi chưa nghiệm thu.
+- [x] Bước 3: existing WAITASGN child upload Test đã nghiệm thu quyền ghi,
+      conflict/side effects/read-back/restore; dòng mới/lifecycle chưa bật.
+
+## Nghiệm thu kéo thả native và sửa focus — 2026-10-12
+
+- [x] Bỏ refetch timeline/WO khi window focus/blur; không hủy proposal khi
+      cửa sổ lấy lại focus. Hidden-tab return chỉ recheck session/grants;
+      cùng scope giữ dữ liệu, authfail ẩn cache và cho explicit recheck.
+- [x] Thay HTML drag bằng Pointer Events, pointer capture và hit-test ô đích;
+      có preview kéo, bỏ thả ở ngày nghỉ/ngoài ô, hủy khi scope thay đổi.
+- [x] IAB kéo chuột thật: P13457667 → Dao Quang Hai (1B), 03/10/2026 mở đúng
+      dialog; lưu 2 giờ, kéo thanh sang 04/10 và xác nhận thành công. Đề xuất
+      thêm 9 giờ bị chặn vì tổng 11 > 10,5 giờ. Xóa riêng trial sau nghiệm thu.
+- [x] DB read-back: trial released version 3, 3 audit/3 receipts có actor;
+      giữ 4 phân công người dùng (240 phút, tất cả version 1). Không ghi Maximo.
+- [x] Full frontend 30 files/290 tests qua với 1 worker; 17 tests tập trung qua
+      (12 timeline, 3 API, 2 PoC); TypeScript/lint/build và diffcheck qua.
+      PoC timeout khi chạy nhiều worker trên máy local; không thay timeout source.
+- Bằng chứng: [read-back](evidence/resource-timeline-native-drag-2026-10-12.json),
+      [đề xuất 9 giờ sau kéo thanh](evidence/resource-timeline-native-drag-2026-10-12.jpg),
+      [timeline sau dọn trial](evidence/resource-timeline-native-drag-cleanup-2026-10-12.jpg).
+
+## Resource timeline thật theo bố cục PoC — 2026-10-12
+
+- [x] Route `/resource-timeline` nối active roster v5/API ledger và scoped WO
+      backlog. Đối chiếu source và ảnh PoC `/assignment-demo`: backlog trái
+      230–280px, timeline phải, sticky người/ngày, craft + nhóm Technician/
+      Supervisor/Assistant Supervisor thu gọn, màu working/off/blank và tổng
+      giờ theo craft ở dưới. Không phục hồi panel/table CRUD tại WO.
+- [x] Kéo thả WO→người/ngày và thanh→người/ngày mở đề xuất rồi
+      xác nhận. Bấm/chọn hỗ trợ bàn phím; dialog nhập giờ, đổi người/ngày,
+      sửa/xóa, focus trap/Escape. Giữ một WO trong backlog để phân công nhiều
+      người/ngày; không suy demand từ estdur. Giờ đổi thành phút nguyên.
+- [x] Endpoint snapshot max31ngày/200WO; đọc lại scope WO từ Maximo, kiểm tra
+      revision sau I/O. Planner chỉ nhận resource craft trùng discipline trên
+      connection đã cấp quyền, cả CRUD/receipt. Tải toàn pool/người/ngày vẫn
+      cộng global, không lộ danh tính WO ngoài scope. Active-rota lọc current
+      grants; Admin không bypass quyền WO. Import/staging/activation tổng thể
+      chuyển Admin-only để chặn Planner xem nguồn nhân lực nhóm khác.
+- [x] Mutation có recheck principal/grants/context, version/CSRF/request UUID;
+      unknown response giữ request/body, đối soát trước retry, validation result.
+      App giữ component qua navigation, khóa thao tác/navigation khi pending;
+      trở lại sau401/identitychange ẩn cache ngay. Reviewer phát hiện P1 cache
+      tái hiện khi authfail, Main đã sửa bằng context epoch và regression tests.
+- [x] Backend58focused/562offline qua (3known warnings), Ruff qua; bổ sung
+      4PG lifecycle/race qua sau final scope test. FE full30files/286tests qua;
+      final11focused qua, TypeScript/lint/build qua. Không dependency/migration.
+- [x] Browser Entra thật E&I:21resource (17TECH/2SUP/2ASST_SUP),117WO; thêm2h
+      03/10, đổi04/10, sửa4h, chặn4+7h, xóa thử. DBreadback released version4,
+      4audit +4receipts có actor; giữ2phân công có sẵn (120phút/version1),
+      không ghi Maximo. Roster activation receipt giữ nguyên.
+- Bằng chứng: [JSON](evidence/resource-timeline-2026-10-12.json),
+      [bố cục theo PoC](evidence/resource-timeline-poc-aligned-2026-10-12.jpg),
+      [contract và cách dùng](resource-timeline.md).
+- Giới hạn review: review độc lập BE chưa tìm finding; phiên FE/reviewer dừng
+      do hết credits trước consolidated review. Main đã tích hợp/kiểm tra và
+      xử lý P1 có bằng chứng; không tuyên bố full independent review hoàn tất.
+- [x] Nghiệm thu kéo chuột native IAB đã đạt sau chuyển sang Pointer Events;
+      xem bằng chứng đầu trang. Remote deployment chưa nghiệm thu.
+
+## Hủy giao diện phân bổ dạng bảng — 2026-10-12
+
+- [x] Theo yêu cầu user, hủy panel phân bổ từng WO vì lệch yêu cầu Resource
+      timeline. Gỡ nút Phân bổ nhân lực, component/form/table CRUD và các state/
+      scroll-lock riêng khỏi WorkOrders; xóa AssignmentPanel và test của panel.
+      Giữ chức năng WO/draft hiện có, API/ledger/capacity/audit và roster active;
+      không xóa dữ liệu nghiệp vụ, không rollback migrations.
+- [x] 84 tests WorkOrders/Resource timeline PoC/App navigation qua;
+      TypeScript/lint/diff check qua. Browser xác nhận không còn action/panel
+      phân bổ sau khi retrieve117WO. Bản timeline hiện có vẫn dùng dữ liệu giả.
+- Bằng chứng: [WO sau khi gỡ panel](evidence/wo-allocation-table-removed-2026-10-12.jpg).
+- Quyết định thay thế: các mốc UI panel và UAT bên dưới là lịch sử của phương án
+      đã hủy, không chứng minh hoàn thành Resource timeline với dữ liệu thật.
+- [x] Đã nối Resource timeline thật theo mốc đầu trang (người × ngày, backlog WO và
+      thanh phân công) với active roster v5 và API ledger hiện có; thêm/sửa/xóa
+      trực tiếp trên timeline, kiểm tra tổng630phút/người/ngày. Không phục hồi
+      bảng/form phân bổ riêng tại WO.
+
+## Nghiệm thu phân công WO trên roster v5 — 2026-10-12
+
+- [x] Browser Entra thật, Onshore Test E&I, retrieve117WO tháng10. Dùng
+      Dao Quang Hai(1B), ngày working2026-10-30: WO P13457667 thêm4giờ,
+      sửa6giờ; WO P13462960 nhận đúng4,5giờ còn lại. Tổng10,5giờ lưu thành công.
+- [x] 6+5giờ trên WO khác: UI báo vượt giờ, khóa Thêm. Kiểm tra tab cũ:
+      tabA giữ snapshot6+4giờ và cho sửa6,5; tabB tăng4→4,5 thành công;
+      tabA gửi6,5 bị backend từ chối “Daily allocation exceeds active rota
+      capacity (630 minutes)”, assignmentA vẫn6giờ/version2.
+- [x] Xóa cả2phân công thử bằng UI; PostgreSQL read-back xác nhận released,
+      versions3/4, toàn pool0phút reserved; giờ ngày hoàn trả10,5 và giờ tháng
+      hoàn trả13.419. Giữ7audit events có actor (2create/3update/2release)
+      và7durable receipts; roster v5/biên nhận kích hoạt giữ nguyên.
+      Không ghi Maximo, không đổi WO/PIC/draft.
+- [x] 13backend offline,4PostgreSQL lifecycle/capacity/race và11frontend
+      assignment/API/capacity tests qua; 1known Starlette deprecation warning.
+      Diff check qua. Không thay code ứng dụng trong lần nghiệm thu này.
+- Bằng chứng: [ledger và UAT](evidence/assignments-acceptance-2026-10-12.json),
+      [UI chặn vượt giờ](evidence/assignments-over-capacity-2026-10-12.jpg),
+      [backend chặn tab cũ](evidence/assignments-server-capacity-2026-10-12.jpg),
+      [hoàn trả giờ](evidence/assignments-cleanup-2026-10-12.jpg).
+- Việc sẵn sàng tiếp theo: sửa cảnh báo kích hoạt lại trên biên nhận thành công.
+      Remote deployment và assignment Maximo vẫn ngoài phạm vi local UAT.
+
+## Nhãn số người và bản ghi rota — 2026-10-12
+
+- [x] Biên nhận tách “Số người” và “Bản ghi người/ngày”, định dạng số theo
+      vi-VN (85 và 31.025). Giải thích mỗi bản ghi là một người trong một ngày,
+      gồm ngày làm việc/nghỉ/ô trống, không phải ngày công. Không đổi dữ liệu.
+- [x] 6 existing activation UI tests qua; browser xác nhận biên nhận hiện hành
+      hiển thị đúng nhãn và giải thích. Diff check qua.
+- Bằng chứng: [ảnh nhãn mới](evidence/rota-receipt-labels-2026-10-12.jpg).
+- Tiếp theo: nghiệm thu phân công WO trên roster active; cảnh báo kích hoạt lại
+      ở biên nhận đã lưu vẫn là mục sửa UI riêng được ghi bên dưới.
+
+## Kích hoạt rota v5 và nhãn Person / Position — 2026-10-12
+
+- [x] Đổi nhãn mapped row/candidate và hướng dẫn từ tên field database sang
+      Person / Position. Giữ nguyên API và logic đối chiếu; 24 focused frontend
+      tests qua, browser xác nhận Person HUNGNM / Position Production Technician.
+- [x] Upload lại đúng `1-POB-Plan-Q4-2026.ods`, sheet ROTA_2026, qua phiên Entra
+      hiện hành vào Onshore Test pool. Source policy `rota-2026-10-12-v5`,
+      85 người/85 mapped/0 blockers; loại 2 Material Controller.
+- [x] Xem diff trước kích hoạt: 85 thêm/0 gỡ/0 đổi, 31.025 người-ngày,
+      0 → 154.696,5 giờ, phạm vi 2026-01-01 đến trước 2027-01-01.
+      Theo yêu cầu user, xác nhận và kích hoạt; đọc lại biên nhận server lúc
+      10:31:26, ID `09f30419-cd09-4446-b81b-565e12b6f49a`, cùng tổng/người/ngày.
+      Chỉ tạo roster nội bộ; chưa tạo phân công WO hoặc ghi Maximo.
+- Bằng chứng: [biên nhận](evidence/rota-v5-activation-2026-10-12.json),
+      [giao diện](evidence/rota-v5-activation-2026-10-12.jpg).
+- [x] Đã nghiệm thu thêm/sửa/xóa phân công WO trên roster vừa kích hoạt,
+      gồm tổng giờ nhiều WO và chặn vượt 10,5 giờ/người/ngày.
+- [ ] UI biên nhận hiện còn hiển thị lý do không thể kích hoạt lại
+      “Import is cancelled or already activated”; biên nhận thành công vẫn đúng.
+      Cần bỏ cảnh báo này khi đã có biên nhận để tránh nhầm là kích hoạt lỗi.
+
+## Loại Material Controller và đối chiếu PERSON.title — 2026-10-12
+
+- [x] Theo xác nhận mới: Material Controller không tính Labor/headcount/giờ/
+      capacity và không được phân công. Policy `rota-2026-10-12-v5` loại position
+      trước validation ngày/enrollment; Control RM Engineer vẫn được tính.
+      Preview source v3/v4 cũ lọc2MC theo policy hiện tại, không sửa source đã lưu.
+      Roster active cũ không đưa MC vào capacity/selector/tổng, nhưng giữ lịch sử
+      và reservation cũ để xem/xóa; replacement diff vẫn đọc projection gốc.
+- [x] LABOR request `person{displayname,title}`; title nullable/bounded200chars,
+      kiểu sai bị từ chối. Hiển thị PERSON.title cùng PERSONID trên mapped row
+      và mỗi candidate. Khi trùng tên, chỉ map nếu đúng1title khớp chính xác
+      position nguồn sau chuẩn hóa case/whitespace; thiếu/trùngtitle vẫn chặn,
+      không chọn theo craft/role chung hoặc tên gần giống. Singleton giữ hành vi
+      cũ, trừ title Material Controller không đủ điều kiện. Mapping API/refresh/
+      activation dùng cùng eligibility; không thêm schema/dependency/WO grants.
+- [x] Browser Entra thật refresh newest stage thànhv8; snapshot149LABOR với
+      147title có giá trị, storedmapping85, preview85people/85mapped/0LABORerrors,
+      gross154.696,5giờ (giảm3.780giờ). Row95NguyenHoaiGiang và96NguyenManhHung
+      MaterialController chỉ hiện ở mục loại trừ; row34NguyenManhHung(3A) vẫn
+      ProductionTechnician/HUNGNM, PERSON.title=ProductionTechnician.
+      Audit refresh có authenticatedactor/version8; sourcepolicyv3/87rows bất biến,
+      zeroactivation/assignment/Maximowrites. Backend reload/readiness giữ0011.
+- [x] Backend112focusedoffline/41PostgreSQL qua; sau P2fix thêm31activation/
+      assignment checks qua, gồm legacyMC active bị loại ở read projection,
+      create409 và legacy release vẫn hoạt động. Main full559offline/3knownwarnings
+      qua. Frontend24focused vàfull30files/285tests qua; lint/typecheck/build qua.
+      Một focusedreview Sol/high khôngP1; P2legacyactive read đã sửa, Main xem
+      filters/coverage, không gọi recheck. Diffcheck/local links qua.
+- Bằng chứng: [JSON](evidence/rota-title-policy-2026-10-12.json),
+      [browser preview](evidence/rota-title-policy-2026-10-12.jpg).
+- [x] Đã thực hiện trong task kích hoạt v5 phía trên: upload lại cùng file rồi xem
+      activation diff; v3/v4 cũ không được relabel hoặc activate dù LABOR đã hết
+      lỗi. Chưa activate roster/phân công/live upload WO trong task này. Các14
+      LABOR blockers lịch sử đã hết trong snapshot mới; không còn là việc chờ IT.
+
+## Phân bổ nhân lực WO theo rota — 2026-10-11–12
+
+- Phạm vi: reservation chung nội bộ, thêm/sửa/xóa theo người × ngày × WO;
+      tổng 630phút/người/ngày trên mọi WO/site trong pool. Không thay PIC,
+      estdur hoặc ghi ASSIGNMENT Maximo; số giờ còn lại là local-only.
+- [x] API/ledger migration0011, audit và submission receipts; cùng khóa pool với
+      activation. Kiểm tra quyền WO riêng với pool, CSRF, current discipline,
+      version và rota working-day; off/blank/missing không được phân công.
+      Replacement rota phải giữ đủ giờ và craft/role/labor binding đã reserve.
+- [x] Backend47focused tests qua:12validation,3PostgreSQL lifecycle/race,
+      7app/readiness và25rota activation (14pure/11PG). Hai planner và
+      activation/reservation dùng transaction riêng với barrier cùng khóa pool.
+      Closed WO vẫn đọc/xóa reservation được; thêm/sửa yêu cầu WO eligible.
+      Regression PIC upstream lỗi không chặn phân bổ; no PIC request.
+      Test DB guarded upgrade0011/Alembic check qua; runtime-role test1pass
+      xác nhận INSERT/UPDATE allocation, INSERT-only audit/biên nhận.
+      Main full534offline tests qua/3knownwarnings trước fix PIC, focused47
+      sau fix qua; Ruff qua. Lượt full đầu gặp quyền Windows temp ở9backup
+      cases; rerun20backup rồi full với quyền phù hợp đều qua, không đổi code.
+- [x] UI tại từng WO trong `/work-orders`, chọn active rota person/ngày, xem tải
+      dùng chung, thêm/sửa/xóa; không dùng dữ liệu PoC để lưu kế hoạch thật.
+      Giữ bảng7cột, action dưới WONUM; chọn tháng, giữ craft/role theo từng ngày
+      dù API có nhiều metadata rows cùng person UUID. Giờ là phút nguyên, UI
+      không làm tròn input âm thầm; native step any tránh lỗi floating step.
+- [x] Frontend30files/282tests qua, gồm80focused UI/API/capacity/WorkOrders.
+      CRUD→refresh capacity, readonlyWO/writepool, cross-WOload, duplicate UUID
+      effective role, unknown add/delete, same-ID retry, navigation/reload lỗi,
+      conflict retry unlock và scope reset có regression. Lint/TypeScript/build
+      qua. Vite cần process-spawn escalation trong sandbox Windows; không đổi
+      dependencies. Main diffcheck/local docs links qua.
+- [x] Một independent Sol/high review: khôngP1; P2 PIC coupling đã sửa và có
+      PostgreSQL regression noPICrequests. Hai P2 frontend về stale allocation
+      context và definitive retry lock đã sửa; Main kiểm tra fixes với tests
+      đổiWO/connection và409retry, không gọi review thứ hai. Session/principal,
+      snapshot key và response identity/version được kiểm tra; pending receipts
+      giữ riêng để không hiển thị dữ liệu cũ dưới identity/scope mới.
+- Giới hạn: migration0011 chỉ áp dụng designated test DB; chưa migrate/restart
+      ứng dụng development thật ở milestone code; bước1 đã áp dụng bên dưới.
+      Chưa browser UAT, Maximo Test roster activation,
+      remote deployment hoặc ASSIGNMENT writes. Không commit/push. Toàn bộ test
+      WO/LABOR trong milestone này là synthetic; capability còn lại local-only.
+- [x] Áp dụng0011/grants ở development: hoàn tất ở bước1 bên dưới.
+- [ ] Nghiệm thu browser với một
+      pool/rota Test hợp lệ, gồm6h+4,5h đạt biên và thêm1phút bị chặn, edit/delete
+      trả lại giờ, hai planner cùng người/ngày. Không activate staging còn lỗi.
+- Phụ thuộc nghiệm thu dữ liệu thật: Maximo admin xử lý14dòng LABOR/craft,
+      reupload policy hiện tại và refresh/activate roster hợp lệ. Chưa dùng
+      staging thật để reserve hoặc ghi Maximo. Binding qua nhiều connection,
+      requirements/skill và external ASSIGNMENT vẫn chưa triển khai.
+
+Hướng dẫn: [phân bổ nhân lực WO](workforce-allocations.md).
+
+## Bật phân bổ tại development — bước1 — 2026-10-12
+
+- [x] Xác minh đúng development DB `scheduler_entra_local`, loopback55433,
+      schema0010 và backend chưa chạy. Local trước đó dùng DB superuser;
+      tạo LOGIN riêng `wos_local_owner` và `wos_local_runtime`, không membership.
+      Giữ DB administrator riêng; chuyển28tables/schema functions sang owner
+      sau snapshot0010 và bản cấu hình recovery trong thư mục private/Gitignored.
+- [x] Migration owner upgrade0011/Alembic check qua; chạy đúng provisioning SQL
+      hiện có bằng DB admin. Runtime khôngsuperuser/createdb/createrole/bypassrls,
+      khôngownobjects/schema/functions, khôngCREATEpublic. Allocation SELECT/
+      INSERT/UPDATE; audit/receipt SELECT/INSERT, khôngUPDATE/DELETE/TRUNCATE.
+      Runtime login thật qua SQL zero-row FORUPDATE user/session và UPDATE
+      allocation;6negative SQL privilege checks bị từ chối đúng expectation.
+- [x] `.env` local chuyển sang runtime; `.env.migration.local` riêng cho schema
+      owner, giữ nguyên Entra/Maximo settings. Environment files/recovery folder
+      giới hạn Windows user/SYSTEM/Administrators và Gitignored; khônginsecret.
+      Không thay passwords/config của DB administrator hoặc PostgreSQL Test55432.
+- [x] Fingerprint/count mọi bảng nghiệp vụ trước/sau migration/grants bằng nhau.
+      Giữ2rota imports/4drafts/0activation;3bảng assignment mới đều0rows. Không
+      sửa WO/draft/rota, activate roster, gọi Maximo write hoặc deploy remote.
+- [x] Khởi động backend SelectorEventLoop và frontend HTTPS localhost trong
+      background hidden. Backend live/ready200, frontend HTTPS200/proxyready200
+      với certificate verification; Entra configuration200/login_available=true.
+      Readiness chỉDB/schema, chưa authenticated browser UAT. Khôngcommit/push.
+- Bằng chứng: [development0011](evidence/assignments-development-2026-10-12.json).
+- Tiếp theo: nghiệm thu UI theo630phút/người/ngày với rota Test hợp lệ; roster
+      thật còn chờ Maximo admin sửa14LABOR/craft rồi reupload/refresh trước activate.
+
+## Kích hoạt rota từ staging — 2026-10-11
+
+- [x] Implement activation-preview, explicit full-replacement confirmation và
+      activate API/UI tại `/rota-imports`; diff người thêm/bớt/đổi, craft/role,
+      code/hours, tổng số ngày và tối đa 20 ngày chi tiết mỗi người (ghi rõ sample).
+      Không gọi Maximo khi xem diff/kích hoạt. Giờ public và DB là giờ.
+- [x] Migration0010 tạo pool state/version, stable person UUID theo pool/PERSONID,
+      immutable activation receipt/snapshot và materialized daily capacity.
+      Thay toàn bộ pool trong coverage kể cả người vắng khỏi file, giữ ngoài
+      coverage; blank/off 0 giờ và working 10,5 giờ. Source/LABOR lỗi chặn toàn
+      import; không loại âm thầm, không kích hoạt một phần hoặc override craft.
+- [x] Backend độc lập kiểm tra company-only/current parser policy, unique exact
+      LABOR identity, connection/org, craft/role, coverage/date/code/hour trước
+      khi kích hoạt. Tenant/session/Planner/Admin/pool authority/CSRF/no-store.
+      Activated import và revision/audit bất biến; pool registry/grants vẫn
+      operator-only. Advisory transaction lock theo pool serialize replacement.
+- [x] Guarded test DB và local development DB upgrade0010/Alembic check qua;
+      staging thật không được kích hoạt. Backend focused103tests qua gồm actual
+      PostgreSQL hai planner/kết nối riêng một winner, rollback, removed-person,
+      outside coverage, stableUUID, replay receipt sau revision mới và runtime
+      role thực thi API không có UPDATE pool. Runtime provisioning test riêng
+      qua; Ruff/checkformat qua. Không thêm dependency.
+- [x] Một focused independent Sol/high review cho milestone: không backend
+      P1/P2; sửa hai P2 UI về unknown outcome retry và stale staged preview sau
+      navigation cùng regression. GET receipt tự reload stage; unknown khóa
+      POST/checkbox cho đến GET reconciliation. Main review và xác minh fixes.
+- [x] Frontend full27files/270tests, lint/typecheck/build qua. Full run dùng
+      `--testTimeout=15000` sau timeout5s của AppAssignmentDemo trong lượt chạy
+      agent (file đó pass khi rerun riêng). Targeted cuối19tests qua, bao gồm
+      receipt poolversion baseline+1, nullable coverage khi source lỗi, ack reset,
+      read-only/activated guards, unknown recovery và navigation state reload.
+      Diffcheck và links docs mới qua; không browser/live Maximo nghiệm thu ở bước này.
+- Giới hạn: nghiệm thu bằng dữ liệu giả lập và DB local, chưa Maximo Test/Ubuntu;
+      snapshot được lưu không bảo đảm trạng thái LABOR upstream hiện tại.
+      Mẫu thật vẫn 14 lỗi và policy cũ cần reupload, chưa activate roster thật.
+      Giới hạn ledger của milestone0010 đã được xử lý ở mốc0011 phía trên.
+- [x] Assignment ledger/API trên active daily capacity, cùng pool lock,
+      phân quyền WO và tổng tải/ngày đã triển khai/kiểm tra trong mốc0011.
+      Resource timeline với dữ liệu thật vẫn chưa triển khai; panel từng WO
+      đã hủy theo yêu cầu user ngày12/10, xem quyết định đầu trang.
+- [ ] Phụ thuộc Maximo admin/access: sửa 14 dòng LABOR/craft trên Test, upload
+      revision current-policy và refresh để nghiệm thu activation dữ liệu thật.
+
+Hướng dẫn và giới hạn: [kích hoạt rota](rota-activation.md).
+
+## Preview báo lỗi để Maximo admin xử lý — 2026-10-11
+
+- [x] Theo xác nhận chủ dự án: uploader chỉ upload và xem lỗi; không chọn
+      LABOR, tạo alias hoặc override craft. Preview có bảng lỗi riêng trước lịch
+      với dòng/tên/chức danh, craft rota và tất cả LABOR candidates gồm mã,
+      PERSONID, organization, tên và default crafts; nêu nguyên nhân/hướng xử lý.
+      Missing LABOR, ambiguous, thiếu/nhiều default craft, lệch craft và duplicate
+      identity đều được báo. Upload được lưu staging dù còn lỗi LABOR/craft.
+- [x] Sau khi Maximo admin sửa trên server Maximo, planner dùng Làm mới LABOR.
+      Backend đọc REST và tính lại mọi binding tự động, chỉ nhận identity duy
+      nhất/craft khớp; newly fixed row được map, newly ambiguous/craft-conflicting
+      row mất binding. REST lỗi giữ snapshot/mapping cũ và báo chưa đầy đủ.
+      Không ghi Maximo. API mapping cũ giữ cho lịch sử, UI không sử dụng.
+- [x] Backend 61 fast parser/LABOR tests và 10 PostgreSQL tests qua; kiểm tra
+      hồi phục sau đổi tên/craft và xử lý ambiguity, restore bền vững; Ruff qua.
+- [x] Frontend 14 focused UI/API tests qua, lint/typecheck/build qua. Kiểm tra
+      upload có lỗi vẫn lưu, candidate details, refresh sau admin fix, stale
+      A→B→A, cancelled/read-only, 409 reload và REST/network failure. Snapshot
+      cũ được giữ nhưng lỗi cũ không hiển thị như trạng thái Maximo hiện tại;
+      HTTP200 có labor_error không báo làm mới thành công. Main review/diffcheck qua.
+- Giới hạn: chưa admin sửa dữ liệu thật trên Maximo; 14 dòng live vẫn còn lỗi.
+      Chưa activation hoặc assignment ledger, không biến dòng lỗi thành resource
+      dùng được và không loại âm thầm khỏi source staging.
+- [ ] Ưu tiên 1 — phụ thuộc Maximo admin: xử lý 14 dòng trên server rồi refresh
+      snapshot để xác minh lỗi hết. Uploader không cần quyết định alias/craft.
+- [ ] Ưu tiên 2 — sẵn sàng triển khai: activation với coverage/diff/version và
+      conflict checks, sau đó nối roster đã xác minh sang assignment ledger.
+
+## Rota chỉ lấy nhân lực công ty và báo cáo 14 dòng — 2026-10-11
+
+- [x] Đối chiếu 14 dòng chưa map trong PostgreSQL staging với cột C Company
+      của ODS mẫu: cả 87 người hiện tại đều ghi `BD POC`, gồm cả 14 dòng.
+      Kết quả chính xác: 6 không có exact-name candidate trong snapshot LABOR,
+      1 trùng hai LABOR (Ta Xuan Nam: NAMT/NAMTX), 7 lệch craft. Không dùng
+      thiếu LABOR hoặc lệch craft làm bằng chứng người đó là nhà thầu.
+- [x] Theo xác nhận mới của chủ dự án, parser policy v4 chỉ giữ Company
+      BD POC/BDPOC (chuẩn hóa hoa/thường/khoảng trắng). Công ty khác loại trước
+      role/day validation, mapping và capacity, kể cả có LABOR ACTIVE trùng tên.
+      Company trống/formula không enroll, báo lỗi C[row] để sửa/reupload.
+      Chỉ lưu company của nhân lực được nhận và số dòng loại; không thêm dependency.
+- [x] Main parse v4 trên ODS thật và đối chiếu snapshot đã lưu: vẫn 87 người,
+      73 mapped/14 blockers, không lỗi nguồn, không có dòng công ty khác trong
+      năm craft. Evidence aggregate: `docs/evidence/rota-company-policy-2026-10-11.json`.
+- [x] Backend 68 focused tests qua (58 parser/LABOR, 10 PostgreSQL), Ruff
+      check/format qua. Tests ODS/XLSX xác minh Company trống/formula,
+      nhà thầu có LABOR trùng tên vẫn bị loại khỏi mapping/headcount/giờ;
+      PostgreSQL restore giữ đúng kết quả. Frontend không đổi, DTO additive.
+- Giới hạn: phiên PostgreSQL v3 giữ nguyên lịch sử; v4 áp dụng upload mới.
+      Kiểm tra này đọc snapshot LABOR đã lưu, không thực hiện REST mới hoặc
+      sửa staging/Maximo; chưa activation. Dựa vào Company trong file nguồn,
+      chưa có xác minh độc lập tình trạng hợp đồng lao động.
+- Yêu cầu xử lý 14 dòng đã được thay bằng policy báo lỗi cho Maximo admin
+      ở mục phía trên; uploader không chọn identity hoặc chốt alias/craft.
+- [ ] Sau mapping: upload revision v4, triển khai activation và assignment ledger
+      với coverage/diff/version/conflict checks như milestone kế tiếp.
+
+## Upload rota → PostgreSQL staging → LABOR REST thật — 2026-10-11
+
+- [x] `/rota-imports` upload native XLSX/ODS tối đa8MB, đọc nguồn bounded, giữ
+      ô trống0giờ/working10,5giờ; source validation, mapping, restore/list,
+      refresh LABOR và cancel nối API/PostgreSQL. Chưa activation hoặc Maximo write.
+- [x] Migration0009 áp dụng DB test cô lập và local Entra; source/cancelled stage
+      bất biến, audit append-only, optimistic version/CSRF/no-store, runtime không
+      sửa pool/grants/audit. Schema/model Alembic check qua; không thêm dependency.
+- [x] Theo xác nhận chủ dự án: Admin và Planner của pool connection được xử lý
+      chung5craft rota; WO discipline không mở rộng. Backend kiểm tra server role,
+      tenant/session/account/pool/config trước/sau REST; optional audited grant.
+- [x] Một independent Sol/high review cho milestone. Sửa mất manual mapping khi
+      REST lỗi, reload409, stale response A→B→A, gap header, UTF16/entity và binding
+      mất candidate sau rename LABOR. Main xác minh fixes và runtime grants.
+- [x] Browser Entra thật upload ODS mẫu, LABOR Onshore Test/BDPOC147ACTIVE;
+      PostgreSQL read-back source87×365, không lỗi nguồn/REST, audit có actor;
+      reload mở lại policyv3, xem tháng10 capacity giờ. Hậu tố1A–9B chuẩn hóa đúng,
+      tên trùng không auto-map:73mapped/14blocking;66LABOR ngoài exact-name roster
+      bỏ qua. Evidence aggregate không tên/credential trong
+      `docs/evidence/rota-live-read-2026-10-11.json`.
+- [x] Full frontend25files/257tests, lint/typecheck/build qua. Backend fast suite
+      trước fix hậu tố463tests qua; targeted cuối parser/LABOR/PG54tests qua và
+      runtime-role PG riêng qua. Ruff/checkformat/diffcheck và Alembic check qua.
+      Native XLSX kiểm tra bằng fixture; chưa live workbook XLSX khác template.
+- Giới hạn: local development mới được xác minh; không Ubuntu/remote deployment,
+      không activation/ledger.14dòng còn6không exactname và8craft/candidate khác;
+      gross capacity158.476,5giờ cả năm chưa phải capacity verified để assignment.
+- [x] Báo cáo14dòng chưa map; theo xác nhận mới, hiển thị đầy đủ lỗi trong
+      preview để Maximo admin sửa dữ liệu trên server, uploader không map thủ công.
+- [ ] Ưu tiên2 sau mapping: activation với coverage/diff/version, kiểm tra conflict
+      và nối roster đã xác nhận sang resource timeline/assignment ledger.
+- [ ] Remote nghiệm thu phụ thuộc IT: Ubuntu/HTTPS/Entra redirect/routing được
+      duyệt; localhost không dùng từ iPhone từ xa.
+
+Hướng dẫn: [staging thật](rota-live-staging.md). Các mục prototype dưới đây là
+lịch sử trước milestone này, không còn phản ánh trạng thái importer hiện tại.
+
+## Preview rota hiển thị giờ — 2026-10-11
+
+- [x] Theo yêu cầu chủ dự án, đổi toàn bộ capacity trên staging preview sang
+      giờ: working10,5giờ, blank/off0giờ; tổng capacity và per-date before/after
+      diff chuyển đơn vị đúng, định dạng vi-VN. Timeline đã hiển thị giờ.
+      Không đổi đơn vị tính nội bộ hoặc quy tắc budget/person/day.
+- [x] Staging2files/11tests qua, lint/typecheck/build qua; browser xác minh
+      code1/W=10,5giờ, AL/blank=0giờ; screenshot cập nhật. Diffcheck qua.
+- Luồng importer/LABOR/PostgreSQL đã hoàn thành ở milestone phía trên.
+
+## Staging preview rota tương tác — 2026-10-11
+
+- [x] Theo flow planner đã đồng ý, frontend sub-agent xây riêng
+      `frontend/src/rotaStaging`; Main tích hợp `/rota-staging-demo`, nav link và
+      giữ workspace khi đi Settings rồi quay lại. Không thêm dependency.
+- [x] Synthetic sample source/coverage/revision, readonly name/craft/position/
+      date/code, LABOR composite candidate selection, unmatched/ambiguous/
+      duplicate/craft/active/default-craft blockers. Outside-rota LABOR không
+      thể tự vào pool; nhiều default rows cùng craft gộp, không tăng headcount.
+      Control RM Engineer→P&P, Material Controller→MECH và SUP/ASST_SUP giữ riêng.
+- [x] Source validation ngày Gregorian/mã known/blank, raw row/date errors;
+      person-ID based added/removed/role/craft/date-capacity/mapping diff.
+      Hủy bỏ stage giữ active revision; thử reupload reset mapping; simulated
+      activation chỉ đổi local active roster/bindings/revision, không ghi DB.
+- [x] Một independent review Sol/high cho milestone: sửa stale confirmation
+      sau remap và renderer W-only không khớp model1/AL; regression và main QA
+      xác minh. Full frontend23files/246tests qua; lint/typecheck/build qua;
+      docs links/diffcheck qua. Backend không đổi, không chạy backend tests.
+- [x] Browser IAB: ambiguous resolve, missing LABOR→sample reupload, remap làm
+      checkbox hết hiệu lực, activation6mappingsR04, invalid NH4 blocked, cancel
+      giữ activeR04; code1=630/AL=0; source specialroles đúng. Tab và screenshot
+      preview giữ cho user thử. [Hướng dẫn](rota-staging-preview.md).
+- Giới hạn: bước này là UX prototype chọn samples; chưa upload Excel/ODS, live
+      LABOR reader, API/DB/pool grants/activation locking/reservation conflict,
+      không nối activation sang assignment-demo. Reload mất local state; tests
+      client không chứng minh persistence hoặc authorization thật.
+- [ ] Ưu tiên sẵn sàng: nghiệm thu flow preview/mapping/diff trên UI; triển khai
+      importer backend+PostgreSQL staging và bounded LABOR reader theo contract.
+      Resource-pool grants, coverage full replacement/patch và matching aliases
+      thực tế cần chốt trước khi kích hoạt roster dùng chung.
+
+## Policy rota thay thế loại trừ trước — 2026-10-11
+
+- [x] Chủ dự án đổi xác nhận: Control RM Engineer thuộc P&P và Material
+      Controller thuộc MECH như section/count rota; cả hai tính capacity ngày
+      working630phút, blank vẫn0. Policy này thay quyết định EXCLUDED cũ bên dưới.
+      Giữ chức danh riêng; SUP/ASST_SUP hỗ trợ và shared person/day budget giữ nguyên.
+- [x] Chỉ labor đã map đúng người có tên trong rota vào pool; ACTIVE không đủ
+      chứng minh đang làm việc. Labor ngoài rota không có capacity/allocation;
+      unmatched/ambiguous để ngoài pool, resolve staging, không map tên gần giống.
+- [x] Architecture và PoC docs cập nhật. PoC thêm8Control RM Engineer/P&P và
+      2Material Controller/MECH,87synthetic resources; role rows/summary/craft
+      totals và editor dùng cùng630phút budget, không gán họ thành TECH.
+      Targeted4testfiles/15tests qua, typecheck/lint qua; diff check qua.
+- Giới hạn: dữ liệu vẫn synthetic; chưa importer, LABOR reader hoặc real-name
+      matching gate trên backend. Parser/seed attachment không sửa, còn policy
+      EXCLUDED cũ và phải được cập nhật khi triển khai importer.
+- [ ] Ưu tiên sẵn sàng: staging map người trong rota với LABOR REST, review
+      unmatched/ambiguous/craft mismatch; không auto-enroll139Maximo labor.
+
+## LABOR REST Onshore Test — 2026-10-11
+
+- [x] Đối chiếu tên hai labor bất thường với cột Name toàn sheet ROTA_2026
+      trong ODS mẫu: không có exact normalized match cho cả hai tên. Các tên
+      gần giống thuộc người khác; không tự gán craft/identity theo tên gần giống.
+      Roster ACTIVE Maximo không tự thành pool technician: chỉ đưa vào sau khi
+      map được người/role hợp lệ trong rota, áp dụng EXCLUDED đã chốt.
+- [x] GET kiểm tra lại theo yêu cầu xác định labor bất thường:147ACTIVE/BDPOC,
+      HTTP200/1page; trả mã/person/name và craft rows của2trường hợp cho chủ dự án.
+      Một trường hợp không có LABORCRAFTRATE rows, trường hợp còn lại có2default
+      rows cùng RES cùng2non-default rows. Chưa sửa dữ liệu; evidence aggregate
+      giữ không chứa mã/tên cá nhân. Cần kiểm tra skill/rate trước khi kết luận
+      hai default rows là bản ghi dư phải xóa.
+- [x] Theo yêu cầu chủ dự án, gọi GET `/maximo/oslc/os/mxlabor` theo comment
+      `maximo_labor.sql` với credential/configured connection hiện có; HTTP200.
+      Bổ sung orgid/status và xác minh filter ACTIVE/BDPOC:147records,
+      pageSize200/totalCount147/totalPages1, không có nextPage. Không ghi Maximo,
+      không truy vấn trực tiếp Maximo DB; chỉ đọc internal DB connection metadata.
+- [x] Nested PERSON/LABORCRAFTRATE arrays, defaultcraft boolean; không thiếu
+      laborcode/personid/displayname, không duplicate org/labor. Năm craft139labor:
+      E&I54/MECH27/RES7/P&P39/DECK12;7ngoài scope CRANE/HSE,1thiếu default.
+      Một labor có2default rows cùng RES, cần deduplicate craft trước khi map.
+- [x] Mẫu5records quảng bá nextPage khác TEST origin; không theo link đó.
+      [Evidence chỉ aggregate](evidence/onshore-labor-read-2026-10-11.json),
+      architecture cập nhật; documentation/evidence-only, chưa thêm runtime reader.
+- [ ] Sẵn sàng: LABOR bounded reader + staging person mapping từ rota, xử lý
+      thiếu/default trùng và foreign-origin pagination; giữ capacity theo rota.
+      Chưa xác minh Offshore, requirements/ASSIGNMENT GET hoặc write contract.
+      Các contract này còn cần metadata/quyền và designated test scope từ IT.
+
+## PoC resource timeline tháng — 2026-10-11
+
+- [x] Frontend sub-agent xây scope riêng `frontend/src/assignmentTimeline`;
+      Main tích hợp route `/assignment-demo`, nav link và giữ workspace sau
+      lần mở đầu khi chuyển trang. Native React table/form + CSS Modules,
+      không thêm dependency, không đổi backend/schema/Maximo write allowlist.
+- [x] Năm craft,77eligible synthetic people từ87source-count/10EXCLUDED,
+      200synthetic WOs; TECH/SUP/Assistant SUP hiển thị riêng theo craft/ngày,
+      monthly totals/load/remaining, role collapse, search/craft filter và
+      backlog giới hạn30kết quả. Pool theo người, không chia site/connection;
+      dữ liệu chỉ mô phỏng số lượng, không copy workbook names/rota cá nhân.
+- [x] Form add/edit/move/delete minutes; chặn blank/off/invalid date/resource,
+      craft mismatch, nonpositive/fractional minutes, oversupply và630phút
+      tổng/người/ngày. Composite WO identity; undo/reset và before/after từng
+      allocation, kể cả khác tháng/tổng giờ không đổi. SUP/ASST_SUP hỗ trợ cùng
+      budget, không sửa PIC/estdur/target/status WO, không save/upload/import.
+- [x] Main review sửa preview aggregate-only, reset/undo giữ edit ID cũ và CSS
+      edit/delete buttons bị chồng và native-input min làm một phút underflow;
+      bổ sung regression tests, working Sunday, seeded validity, invalid boundary
+      và atomic day move. Full frontend21files/233tests qua, lint/typecheck/build
+      qua, docs links/diffcheck qua.
+- [x] Browser local IAB:render5craft, E&I filter, SUP4h→3.5h/Assistant SUP1h,
+      TECH9h+2h rejection giữ9h, delete/undo khôi phục1h; keyboard month→December
+      31ngày→November giữ support load. Screenshot layout và tab PoC được giữ.
+      [Hướng dẫn và evidence](assignment-timeline-poc.md).
+- Giới hạn: PoC synthetic/client memory; reload mất nháp, chưa REST/import/
+      server persistence/authorization/concurrency, actual assignment hoặc
+      drag/resize/auto split. Chưa representative benchmark/10browser Ubuntu;
+      không dùng prototype tests để đóng backend reservation hoặc Maximo UAT.
+- [ ] Ưu tiên: user thử flow chọn WO/người/ngày/giờ và SUP hỗ trợ, chốt UX;
+      sau đó importer staging/native ODS regression + person mapping và ledger
+      contract. LABOR Onshore GET đã có evidence bên trên; paging an toàn và
+      roster mapping chưa triển khai, Offshore còn cần Maximo admin; full
+      replacement policy và role mapping còn lại theo mục architecture.
+
+## Xác nhận policy rota — 2026-10-11
+
+- [x] Chủ dự án xác nhận SUP/Assistant SUP từng craft tính capacity theo rota
+      trong mục riêng và được phân công hỗ trợ khi thiếu nhân lực. TECH/SUP/
+      ASST_SUP hiển thị riêng; mỗi người tối đa630phút/ngày working, load dùng
+      chung person/day ledger, không đếm đôi và không tự đổi role/quyền WO.
+      Cập nhật kiến trúc/summary; không thêm workflow approval cho từng lần chọn.
+- [x] Chủ dự án xác nhận bỏ qua ô rota trống: không tạo capacity/allocation từ
+      ô đó, giữ identity và các ngày có mã hợp lệ. Control Room Engineer (alias
+      Control RM Engineer trong mẫu) và Material Controller EXCLUDED khỏi
+      capacity/danh sách phân công; chỉ đổi khi chủ dự án xác nhận lại.
+- [x] Cập nhật kiến trúc và backlog; phân biệt blank trong coverage với thiếu
+      người/ngày/coverage hoặc unknown code. Mẫu87người gồm10EXCLUDED đã chốt;
+      77TECH/SUP/ASST_SUP theo seed không phải headcount làm việc mỗi ngày.
+      Main kiểm tra links/consistency/whitespace; documentation-only, chưa đổi
+      parser/schema/UI hoặc nạpDB. Native ODS và LABOR REST vẫn chưa kiểm chứng.
+- Tiếp theo sẵn sàng: PoC/import staging áp dụng policy đã xác nhận. Mapping
+      position còn lại và full replacement vẫn cần chốt; REST binding
+      còn cần metadata/quyền Maximo admin.
+
+## Đối chiếu rota ODS mẫu — 2026-10-11
+
+- [x] Đọc attachment POB Plan Q4 2026.ods trực tiếp OpenDocument ZIP/XML bằng
+      bundled Python, chỉ đọc; xác minh hai sheet, ROTA H4:NH4 đủ365 ngày2026,
+      date uniqueness/continuity, năm section và87 người/31755 person-day cells.
+      Q4 có92 ngày/8004 cells; không trùng normalized name/unknown code/position
+      theo policy attachment; numeric/string codes, không formula trong rota cells.
+- [x] Bổ sung [đối chiếu workbook trong kiến trúc](assignment-resource-timeline.md#11-đối-chiếu-workbook-rota-mẫu--2026-10-11):
+      61TECH/16SUP-ASST_SUP/10EXCLUDED theo seed đề xuất, gross TECH capacity
+      tháng10/11/12, ba row trống toànQ4 và weekday row typed dates1900.
+      Main kiểm tra source counts, calendar boundaries, local link và whitespace.
+- Giới hạn: blank và hai position EXCLUDED đã được user xác nhận ở mục trên;
+      WORK_CODES/role còn lại theo đề xuất và user10.5h, chưa xác minh LABOR REST
+      mapping/tải ngoài. Chưa chạy native
+      parser với pandas ODF engine vì bundled runtime thiếuodfpy; không cài thêm,
+      sửa file mẫu, nạp DB, thêm UI/API hoặc gọi Maximo. Không lưu thông tin cá nhân.
+- [x] Chốt bỏ qua blank (đặc biệt rows38/65/71), loại Control RM Engineer và
+      Material Controller theo xác nhận chủ dự án2026-10-11.
+- [x] Chốt SUP/ASST_SUP tính capacity riêng và hỗ trợ khi thiếu nhân lực theo
+      xác nhận chủ dự án2026-10-11; không coi là TECH hoặc capacity đếm thêm lần hai.
+- [ ] Chốt mapping position còn lại và snapshot replacement; sau đó làm importer
+      staging + PoC tháng từ87source rows, loại10EXCLUDED khỏi assignment rows.
+      Native ODS parser regression và REST binding là kiểm chứng implementation
+      riêng; LABOR metadata/quyền còn cần Maximo admin theo backlog bên dưới.
+
+## Kiến trúc assignment timeline theo rota — 2026-10-11
+
+- [x] Đọc năm file đính kèm rota_parser.py, maximo_labor.sql,
+      position_role_seed.sql, README.md và schema.sql; đối chiếu code reader,
+      WO allowlist, elapsed duration, identity/grants và TODO timeline hiện có.
+      User yêu cầu explicit Astra: một review độc lập Astra/high, read-only,
+      scope identity/capacity/import/concurrency/quyền và semantics assignment.
+- [x] Lưu [kiến trúc đề xuất](assignment-resource-timeline.md): năm craft,
+      tháng/ngày, một người/một craft, pool không chia giàn/site; 630 phút/ngày,
+      person UUID + labor binding connection/org, rota revision staging/activate,
+      reservation ledger dùng chung và scenario draft không chiếm đôi capacity.
+      Tách PIC/estdur/labor allocation; ghi assignment Maximo là contract riêng.
+- [x] Ghi các lỗi thiết kế trong attachment: name_key/trùng tên, unknown code
+      thành off, removed people giữ lịch cũ, hard-code policy, thiếu connection/
+      workorderid/org namespace và concurrency/version/unknown recovery.
+      Đối chiếu tài liệu IBM REST/Assignment Manager và FullCalendar/Bryntum
+      chính thức; Main kiểm tra Markdown links nội bộ và diff whitespace.
+- [ ] Chốt bảng mã (đặc biệt F/AF), mapping position còn lại, craft alias và
+      P&P/PROD mapping, coverage full replacement, quyền resource summary theo
+      pool/craft và mục tiêu phân bổ nội bộ hay actual ASSIGNMENT outbound.
+- [ ] PoC tháng bằng dữ liệu giả theo contract daily minutes; benchmark timeline
+      adapter/license, keyboard, two-planner race, month clipping, capacity
+      reduction và multi-site cùng người. Chưa chọn/cài dependency.
+- [ ] Xác minh LABOR/PERSON/CRAFT/org/defaultcraft/paging bằng REST trên TEST;
+      requirement/external assignment reads trước tuyên bố remaining toàn bộ.
+      Actual assignment writes còn cần metadata/quyền/conditional create-change-
+      cancel contract, audit/reconciliation và UAT riêng với Maximo admin/IT.
+- Giới hạn: chỉ thiết kế/documentation, chưa chạy parser với Excel thật,
+      chưa thêm UI/API/migration/assignment allowlist hoặc gọi Maximo live.
+      Capacity theo ngày chống vượt budget, chưa chống trùng interval trong ca;
+      chưa đọc đủ external assignment phải báo local-only/incomplete.
+- Tiếp theo ưu tiên cho feature này: chốt contract + PoC synthetic; metadata
+      REST và business policy còn cần chủ dự án/Maximo admin. Ubuntu staging/
+      10 browser/SLO vẫn chờ IT; backup/restore và history phase2 còn tạm gác.
+
+## Đề xuất resource timeline và backlog — 2026-10-10
+
+- [x] Nghiên cứu thiết kế màn hình chính backlog + timeline theo PIC/nhân sự/crew,
+      heatmap craft × ngày và phân tầng cảnh báo; đối chiếu reader/detail,
+      allowlist thay đổi, elapsed duration, quyền và trạng thái upload hiện có.
+      Đề xuất React/TypeScript + FastAPI/PostgreSQL, reuse draft/audit/upload,
+      tách work event/resource/allocation và calendar/requirement/constraint.
+- [x] Đối chiếu tài liệu chính thức IBM Assignment Manager 7.6.1.2,
+      FullCalendar resource timeline/external dragging/license, Bryntum
+      Scheduler/Pro. FullCalendar Premium là ứng viên MVP; Bryntum là ứng viên
+      nếu cần multi-assignment/calendar/dependency sâu. Chưa chọn/mua/cài thư viện.
+- [x] Mockup hội thoại bằng dữ liệu giả: backlog, timeline, ngoài ca, capacity,
+      chọn/kéo WO, gán nháp, cảnh báo craft/trùng lịch/ngoài ca, preview và undo.
+      Main kiểm tra JavaScript syntax và DOM bằng jsdom: render ban đầu, craft
+      filter, craft/overlap rejection, gán nháp, preview và undo qua.
+      Mockup không nằm trong ứng dụng và không gọi Maximo; không có resize thật,
+      persist backend, viewport screenshot hoặc benchmark/browser UAT.
+- Quyết định đề xuất: giai đoạn đầu chỉ ánh xạ PIC vào assignedtechname; không
+      gọi đây là Maximo labor assignment. Giữ estdur là elapsed hours và Finish
+      tính từ Start; không tự đổi sang working hours hoặc suy labor-hours từ estdur.
+      Heatmap thiếu planned labor/calendar phải báo thiếu dữ liệu; không giả
+      định crew PIC từ mxpersongroup là actual crew/craft/skill/calendar.
+- [ ] Chốt ngữ nghĩa PIC hay actual assignment, trạng thái APPR/WSCH theo synonym
+      domain từng connection, backlog chưa/thiếu phân công, calendar/timezone,
+      planned labor units và nguồn permit/downtime; cần chủ dự án/Maximo admin.
+      Xác minh read-only LABOR/craft/skill/crew/shift/availability/object structure
+      trên TEST trước mở API/resource capacity hoặc ghi assignment mới.
+- [ ] PoC frontend với dữ liệu giả và adapter timeline: chọn thư viện/phiên bản/
+      license sau đo dữ liệu đại diện; kiểm chứng keyboard, resize, ngày/tuần,
+      undo, multi-resource identity, scope reset và bảo toàn nháp/bảng hiện có.
+- [ ] Triển khai timeline PIC dùng contract/draft/upload hiện có sau chốt UX;
+      thêm retrieval theo schedule overlap (không chỉ target finish), unscheduled
+      backlog và read completeness. Không thay status/target theo thao tác kéo.
+- [ ] Giai đoạn sau: requirements/allocations/calendars/capacity/conflicts có
+      nguồn + revision + completeness; không đếm đôi crew/person hoặc worker
+      nhiều craft; không lộ WO ngoài scope. Actual assignment writes cần quyết
+      định mở allowlist, contract probe, migration/audit/recovery và UAT riêng.
+- Giới hạn: đây là phân tích/thiết kế, chưa thay màn hình chính, schema, API,
+      dependency hoặc write permissions. Bằng chứng upload 12 CM hiện có không
+      chứng minh actual labor assignment, calendar/capacity hoặc timeline mới.
+- Tiếp theo sẵn sàng: nghiệm thu mockup và PoC dữ liệu giả. Phụ thuộc IT/Maximo:
+      metadata và quyền đọc resource/calendar/planned labor/constraints trên TEST;
+      Ubuntu staging/10 browser/SLO vẫn theo các mục nghiệm thu hiện có.
+
+## Upload toàn bộ nháp nhóm — 2026-10-10
+
+- [x] Một lần bấm cho nháp nhóm tối đa200 WO: tự gửi các đợt tuần tự tối đa10,
+      cùng request/batch; tiến độ confirmed/total, dừng sau đợt đang gửi và tiếp
+      tục phần pending khi trạng thái an toàn. Không gom nhiều nháp riêng.
+- [x] Kiểm chứng timeout/ambiguous outcome, context/scope/navigation changes,
+      double click, failed/conflict/unknown/sending/no progress, final refresh
+      và regression UI/API hiện có. Không đổi backend/schema/dependency/gates.
+- Bằng chứng: 12 behavioral tests mới, gồm200 WO/20 đợt, dừng và tra cứu trước
+      resume; full frontend218 tests/17files, TypeScript/ESLint/production build
+      qua. Main chạy lại12 tests mới qua (Vitest cần quyền spawn ngoài sandbox
+      Windows; lần đầu EPERM chưa chạy tests). Một review Sol/high phát hiện P1
+      context-abort dùng receipt cũ; đã chặn resume cho đến GET thành công, có
+      regression và một focused recheck xác nhận sửa. Docs/diffcheck qua; xem
+      [thao tác upload nhóm](upload-workflow.md#upload-toàn-bộ-nháp-nhóm--2026-10-10).
+- Giới hạn nghiệm thu: tests frontend với API giả không chứng minh upload200 WO
+      trên Maximo thật; staging/production/Offshore vẫn khóa. Historyphase2 và
+      backup/restore tiếp tục tạm gác.
+- Tiếp theo: nghiệm thu thao tác một lần bấm, dừng/tiếp tục và kết quả trên
+      Onshore TEST bằng danh sách WO được chuẩn bị cho UAT; không lấy tests giả
+      thay cho bằng chứng thay đổi Maximo thật.
+
+## Nghiệm thu upload toàn bộ nhóm — Onshore TEST — 2026-10-10
+
+- [x] Browser/Entra thật, E&I/Onshore TEST: retrieve117 WO tháng10, chọn12 CM
+      không trùng nháp/reservation, baseline bất biến trước gửi. Một lần bấm gửi
+      tự động10+2; UI12confirmed, panel đóng/bảng fresh. Chỉ Duration mỗi WO+.25h.
+- [x] Dừng live ở10confirmed/2pending, nháp v1/full12members giữ lại; hai pending
+      chưa intent/request và Duration gốc. Kiểm tra trạng thái rồi resume chỉ2 WO,
+      cùng batch/request và đúng một conditional write/item; không gửi trùng.
+      Watcher DB read-only báo lúc batchprepared để bấm pause; lần thử pause trước
+      đó đến sau khi upload hoàn tất được ghi là chưa kiểm chứng, không gọi là lỗi.
+- [x] Final read-back độc lập: cả12 WO đúng sáu trường original, năm trường ngoài
+      Duration không đổi xuyên suốt, rowstamp tiến lên;48items/4batches đều204/
+      confirmed/finalized,0reservation/0nháp thử còn lại. Bốn nháp cũ/năm members
+      nguyên vẹn. Watchers kết thúc, dịch vụ local giữ; không deploy/migrate/grant.
+- [x] Sửa nhãn preview vẫn nói Maximo chưa thay đổi khi request đang gửi; ẩn
+      preview trước gửi khi đã có requestID, hiện đang xử lý upload/kiểm tra kết
+      quả và chỉ báo recovery chưa rõ khi không còn busy. Regression deferred
+      submit bổ sung; full frontend219tests/17files, lint/TypeScript/build qua.
+      Đây là sửa thông báo sau UAT, không đổi orchestration/backend/gates.
+- Bằng chứng: [báo cáo](upload-workflow.md#nghiệm-thu-upload-toàn-bộ-nhóm-trên-onshore-test--2026-10-10),
+      [evidence](evidence/onshore-upload-all-uat-2026-10-10.json); audit và ảnh local
+      `.cache/upload-all-uat-*`. Prepared→finalized12.02/13.00/13.42s cho ba lượt
+      không dừng; lượt pause105.71s gồm thời gian người thao tác. Timestamps DB
+      không được xem là latency HTTP/API. Main docs/evidence/diffcheck qua.
+- Giới hạn:12 CM/duration-only/một tài khoản; chưa live200 WO/10browser/Ubuntu,
+      fault injection timeout/unknown hoặc recovery sau đóng browser. Backup DB
+      và historyphase2 vẫn tạm gác; restore giá trị WO thử không phải restore DB.
+- Tiếp theo sẵn sàng: tăng quy mô nhóm UAT để đo response thực và chốt SLO; chưa
+      dùng mốc12 WO này để đóng capacity200. Ubuntu staging cần IT cấp server/
+      DNS/TLS/routing/tài nguyên/test roster trước nghiệm thu môi trường đích.
 
 ## Cách sử dụng
 
@@ -468,7 +1649,10 @@ thật, thay nháp thật, deploy, commit hoặc push trong mốc UI này. Khôn
 - [ ] Đối soát timeout/mất mạng sau send; không blind retry.
 - [ ] Phục hồi attempt khi backend restart hoặc DB lưu kết quả thất bại sau upstream write.
 - [ ] Cho retry có kiểm tra lại đối với lỗi đã xác định; giữ liên kết các attempts trong audit.
-- [ ] Xây màn hình tiến độ/kết quả upload và lịch sử before/after đúng scope.
+- [x] Màn hình tiến độ/kết quả từng batch đã có (mốc P7 ngày 2026-10-08).
+- [ ] **Phase 2 — theo quyết định 2026-10-10:** màn hình/API lịch sử upload/audit
+      tổng thể, filters/paging và before/after đúng scope. Ưu tiên hiện tại là
+      hoàn thiện chức năng lập lịch chính; chưa triển khai phần lịch sử ở phase 1.
 - [ ] Redact response lỗi và log; tránh lộ WO ngoài quyền qua thông báo.
 
 Nghiệm thu: không có upload thiếu actor/audit intent; mixed batch có kết quả đúng từng dòng;
@@ -489,7 +1673,11 @@ Phụ thuộc: 4–7; test Maximo và users theo discipline.
 - [ ] Test mixed batch, timeout trước/sau send, duplicate submission và restart recovery.
 - [ ] Kiểm tra frontend build/log/fixtures không có key hoặc token.
 - [ ] Chạy E2E login → retrieve → draft → preview → upload → read-back → history.
-- [ ] Kiểm thử khoảng 10 phiên đồng thời; ghi số WO, batch size và latency thực đo.
+- [x] Kiểm thử synthetic10 phiên API đồng thời, nháp/nhóm200WO, latency và lỗi
+      vận hành thật qua Linux Uvicorn/PostgreSQL (2026-10-10):
+      [báo cáo và giới hạn](ten-session-operational-rehearsal.md).
+- [ ] Nghiệm thu10 planner/browser với Entra/Maximo/Ubuntu staging thực và SLO
+      được duyệt; synthetic API không thay kiểm thử này.
 - [ ] Cùng planner đối chiếu các trường cập nhật với VBA trên WO test được chỉ định.
 - [ ] Chủ dự án nghiệm thu kết quả và các hạn chế còn lại; ghi biên bản UAT.
 
@@ -500,8 +1688,19 @@ VBA đã giải thích, đặc biệt bộ lọc ngày, PIC và target.
 
 Phụ thuộc: 2–8; DNS/TLS, credentials và chính sách vận hành từ IT.
 
-- [ ] Tạo Dockerfiles và Compose cho frontend/reverse proxy, backend và PostgreSQL.
-- [ ] Pin images, healthchecks, restart policy và persistent database volume.
+- [x] Dockerfiles và Compose local cho frontend/reverse proxy, backend và PostgreSQL;
+      build/smoke Linux có bằng chứng ngày 07/10; đối chiếu source ngày 09/10.
+- [x] Base images pin digest, DB/backend healthchecks, restart policy service dài hạn
+      và persistent DB volume trong Compose local; chưa nghiệm thu Ubuntu staging.
+- [ ] Hoàn thiện cấu hình staging/production, HTTPS ingress và release images ứng dụng.
+- [x] Chuẩn bị mẫu staging/HTTPS/env riêng và runbook deploy/upgrade/rollback
+      (2026-10-09); [phạm vi và giới hạn](staging-deployment.md). Chưa deploy Ubuntu.
+- [x] Deadline chung WO read/local draft handlers, cancellation/drain và rollback
+      synthetic PostgreSQL (2026-10-09); timeout504/no-store và UI giữ phần sửa/
+      request ID. Nghiệm thu Ubuntu/upstream thật còn mở.
+- [x] Rà cấu hình/công cụ deployment và backup/restore trong repo (2026-10-09):
+      [findings, tiêu chí nghiệm thu và phụ thuộc IT](deployment-readiness-review.md).
+      Compose config qua với biến DB giả; không deploy hay chạy backup DB vận hành.
 - [ ] Chỉ expose HTTPS proxy; DB/backend không mở trực tiếp ra mạng ngoài nếu không cần.
 - [ ] Cấu hình DNS/certificate/CA và kiểm tra đường mạng browser/server → Entra/Maximo.
 - [ ] Tách cấu hình/secret test và production; không có fallback sang production.
@@ -1967,3 +3166,315 @@ Work Orders đúng Onshore test/E&I, bằng chứng `.cache/p7-login-workorders-
 - [x] Theo browser comment mới: dời nút Ẩn/Hiện bộ lọc khỏi tiêu đề xuống ngay bên phải Cập nhật; mặc định bộ lọc ẩn. Giữ số điều kiện đang áp dụng, aria-expanded/aria-controls và toggle không xóa điều kiện/dòng chọn.
 - [x] 68 WorkOrders tests, TypeScript/build/lint và diffcheck qua. Regression xác nhận mặc định hidden, toggle ngay sau Cập nhật và không nằm trong title. Browser Onshore test Retrieve172WO xác nhận mặc định ẩn; show/hide hoạt động, hai nút cùng y255 và toggle nằm bên phải. Preview giữ172WO, bộ lọc ẩn, selection0; không save/delete/upload. Evidence `.cache/wo-filter-toggle-next-to-refresh.png`.
 - Tiếp theo: nghiệm thu hàng Cập nhật mới; sau chốt UI tiếp tục rà soát deployment/backup/restore, thông tin production/certificate/Entra cần IT trước rollout.
+
+## Nghiệm thu hàng thao tác mới trên preview — 2026-10-09
+
+- [x] Live Onshore test tại928×884: Cập nhật và Hiện/Ẩn bộ lọc cùng y255, cao40px, toggle ngay bên phải (x325.53 so với Cập nhật x218.36). Bộ lọc bắt đầu ẩn; mở/search P13431393/chọn dòng/ẩn giữ1/172, checkbox và nhãn Hiện bộ lọc(1). Cập nhật chuyển disabled khi xác minh/tải, hoàn tất đổi timestamp17:22:59→17:27:10 và giữ search, dòng chọn, trạng thái ẩn.
+- [x] Nháp của tôi có5WO và cùng hàng thao tác, show/hide đúng; quay lại WO giữ1/172 và dòng chọn. Gray10/Gray100 hiển thị đúng; keyboard focus Cập nhật và toggle có outline2px (blue #0f62fe sáng, #78a9ff tối). Không phát hiện lỗi trong phạm vi nghiệm thu. Trả preview Gray10/172WO/search rỗng/selection0/bộ lọc ẩn. Không save/delete/upload.
+- Evidence `.cache/uat-toolbar-light-final.png`, `.cache/uat-toolbar-dark-focus.png`, `.cache/uat-toolbar-drafts-dark.png`. Task này chỉ browser UAT và docs, không đổi code; 68 tests/TypeScript/build/lint đã qua ở task triển khai, không chạy lại. Diffcheck qua.
+- Tiếp theo sẵn sàng: rà soát deployment Ubuntu/Docker/HTTPS và quy trình backup/restore. Rollout production phụ thuộc IT cung cấp endpoint/certificate/Entra đã chốt.
+
+## Rà soát deployment và backup/restore trong repo — 2026-10-09
+
+- [x] Rà Compose/Dockerfiles/dockerignore, nginx, Settings/readiness, migrations,
+      grants và công cụ rehearsal/recovery. Ghi 11 findings D1–D5/B1–B4/O1–O2,
+      ưu tiên, tiêu chí nghiệm thu và đầu vào IT trong
+      [báo cáo rà soát](deployment-readiness-review.md). Phân biệt read-only staging
+      với cổng upload production đang khóa; không mở write bằng cấu hình development.
+- [x] `docker compose --env-file .env.example -f compose.yaml config --quiet`
+      với biến DSN/password synthetic trong process qua. Kiểm tra links local,
+      placeholder và diffcheck. Chỉ rà source/tài liệu; không chạy lại application
+      tests/build hoặc diễn tập restore cũ, không đọc secrets thật/khởi động container/
+      deploy/migrate DB ứng dụng/upload/commit/push. Giữ thay đổi TODO có sẵn.
+- [x] Đối soát mục 9: đánh dấu đúng phần Docker/Compose local và base digest đã có
+      bằng chứng; staging/production/backup vận hành vẫn chưa hoàn thành.
+- Tiếp theo sẵn sàng: chuẩn bị cấu hình staging mẫu và runbook D1–D4, rồi policy/job
+      backup và runbook B1–B4. Nghiệm thu Ubuntu/restore cluster mới cần IT cung cấp
+      server/hostname/TLS/Entra/DBA/kho backup và duyệt RPO/RTO.
+
+## Chuẩn bị cấu hình staging và runbook — 2026-10-09
+
+- [x] Thêm Compose staging độc lập: release image references bắt buộc, env files raw
+      runtime/owner riêng, DBA password file, volume riêng, migration profiles/tools
+      chạy theo operator, chỉ publish443, healthcheck/backend và log rotation.
+- [x] Thêm nginx TLS ingress trực tiếp/cert mounts, backend bỏ proxy headers,
+      forwarded headers được thay tại ingress; timeout read310s vượt single-reader
+      budget300s, proxy không retry. Multi-step endpoints vẫn có thể vượt310s;
+      deadline toàn request cần xử lý/kiểm chứng trước nghiệm thu D3.
+      Log path/status/time; error log tắt để tránh
+      lộ request credentials, ghi rõ yêu cầu monitoring thay thế.
+- [x] Runbook D1–D4: release/secrets/IT inputs, DB provisioning → migration owner →
+      grants/runtime login check → app; upgrade quiesce/backup/migrate/grants/smoke;
+      rollback theo schema compatibility, không downgrade/xóa volume tự động.
+- Giới hạn: template/read-only staging; chưa triển khai Ubuntu, chưa nghiệm thu
+      Entra/Maximo/DB roles thật hay backup/restore/rollback có dữ liệu. Private CA
+      mount, release registry/digests thực tế, monitoring và upload production vẫn pending.
+- [x] Synthetic checks: Compose5.3.1 config/role separation/ports/manual migration/
+      raw secret giữ `$` trong container/missing-input failure; staging Settings
+      reject thiếu Entra và TEST write contract. nginx-t/TLS trusted synthetic/SPA/
+      header spoof overwrite/log markers không lộ qua; fake read33.0s trả200.
+      Dọn containers/networks thử, không migrate DB hoặc gọi upstream thật.
+      Docs links/placeholders/diffcheck qua; không đổi app code/runtime dependencies.
+- [x] Một review độc lập Sol/high phạm vi config/runbook: không thấy P1; findingP2
+      timeout được phản ánh đúng trong comment/runbook/TODO, không khẳng định310s
+      bao phủ mọi endpoint. Deadline/backend negative tests còn mở; Main kiểm tra
+      sửa tài liệu, không gọi recheck hay mở rộng task sang refactor backend.
+- Tiếp theo sẵn sàng: xử lý/kiểm chứng deadline toàn endpoint read/draft trước
+      nghiệm thu D3; chuẩn bị policy/job backup và runbook restore B1–B4.
+      IT cần cấp Ubuntu/DNS/TLS/Entra/secret channel/DBA trước staging acceptance;
+      chốt kho backup và RPO/RTO trước bật backup thực tế.
+
+## Deadline chung cho WO read và nháp — 2026-10-09
+
+- [x] Backend `ReadDraftDeadlineRoute` áp vào WO list/detail và local draft/batch
+      routers; Settings.read_draft_request_timeout_seconds mặc định180, range1..300,
+      deadline monotonic chung bao validation/dependencies/PERSON/crew/WO/rechecks/DB.
+      Hết hạn trả504/no-store; inner timeout/upstream/auth errors giữ semantics.
+      Không áp vào remote upload/auth/session. Fanout drain children trước đóng client.
+- [x] 417 backend offline tests qua; sau fix commit worker,54 related PostgreSQL
+      regressions và1 PERSON delayed-commit test bổ sung qua. Tổng16 deadline cases
+      (11 offline/5 DB). PostgreSQL test riêng hủy `pg_sleep` sau draft/item/receipt flush: create/
+      update chưa commit rollback atomic; retry request ID cũ/replay không tạo trùng;
+      restore/list/delete timeout giữ nháp hiện hữu. Ruff lint và scoped format qua.
+- [x] FE504 messages có hướng dẫn trạng thái, không lộ upstream body/auto retry;
+      regression single/batch save giữ edits/request ID khi người dùng retry.
+      86 focused tests/typecheck/lint/build qua. Vitest/Vite cần quyền spawn ngoài
+      sandbox Windows, đã chạy lại thành công; không đổi runtime dependencies.
+- [x] Synthetic HTTPS/nginx → actual deadline route với budget1s và2 bước0.6s:
+      504/no-store khoảng1s server, client3.05s có DNS Windows; probe cancelled1/
+      completed0/started1, fast200. Script/fixtures trong .cache, containers/networks
+      thử đã dọn. Không dùng DB app/Maximo/Entra thật, không upload/deploy/commit/push.
+- Giới hạn: cancellation cooperative, cleanup/socket response có thể vượt budget;
+      timeout sát commit không chứng minh chưa lưu. Durable receipts/request ID cũ
+      tiếp tục bảo vệ manual retry; không hứa rollback giao dịch đã commit.
+      Ubuntu/upstream thực, full10-session load và shutdown drain còn pending.
+- [x] Một reviewer Sol/high tìm P2 sessionmaker.begin shield commit worker; đã sửa
+      cả5 contexts draft/batch/PERSON sang session/direct transaction context.
+      Delayed-exit tests chứng minh không còn worker commit tách khỏi request khi504,
+      draft/update/receipts và PERSON grants/audit chưa commit rollback. Không có
+      P1/P2 khác trong review; Main kiểm chứng fix, không mở review/recheck thứ hai.
+      Main chạy lại3 delayed-exit/PERSON PostgreSQL cases:3passed/2deselected;
+      Ruff format8files và diffcheck qua, docs links/placeholders qua.
+- Tiếp theo sẵn sàng: chuẩn bị policy/job backup và runbook restore B1–B4.
+      Staging acceptance D1–D4/O1 cần IT cấp Ubuntu/DNS/TLS/Entra/DBA/secrets;
+      backup thực tế cần kho lưu và RPO/RTO được duyệt.
+
+## Chuẩn bị policy/job backup và runbook restore — 2026-10-10
+
+- [x] Thêm [policy](backup-policy.md) với inventory DB/tài sản ngoài DB, RPO/RTO,
+      schedule/retention/offsite/owners/key custody/provenance/session policy cần
+      duyệt; không tự đặt lịch/lưu bao lâu. Config approval false và timer chưa có
+      lịch hợp lệ; không bật service/timer hay backup DB ứng dụng.
+- [x] Job Ubuntu Python stdlib/PostgreSQL17/OpenSSL CMS AES-256-GCM: private
+      service/passfile, source/server/schema/release guards, shared exported snapshot
+      cho dump và counts16 bảng nghiệp vụ, recipient fingerprint/expiry, flock,
+      mount source/device/inode checks, encrypted inventory/hash và atomic publish.
+      Không copy secret env, không retention-delete/restore/Maximo write; cleanup chỉ
+      temp/new set do run sở hữu, diagnostics không lộ credential/tool stderr.
+- [x] [Runbook](backup-restore-runbook.md): freeze ingress/senders/writes, DB mới
+      cô lập, trusted-set decrypt trước restore atomic, roles/secrets recovery riêng,
+      schema/grants/auth gates và script auth invalidation có guard expectedDB/case.
+      Đối soát cả khoảng Maximo sau snapshot dù receipt không còn trong backup;
+      giữ unknown/chưa rõ outcome bị khóa, không auto retry hay đánh confirmed bằng SQL.
+- [x] 10 Linux stdlib tests qua; Windows7pass/3Linux-onlyskip. Failures gồm missing
+      approval/passfile override, wrong/mất mount/inode replacement, certificate,
+      dump/encryption/diagnostic/timeout, fsync/publish và collision; giữ backup cũ.
+      Main chạy lại cả10 Linux tests sau fixes:10pass; Docker Desktop cần escalation
+      để truy cập named pipe, chạy lại thành công trong container thử đã tự dọn.
+- [x] Rehearsal thật bằng PostgreSQL17/OpenSSL3.5 trên DB UUID tạm của designated
+      scheduler_test: encrypted shared snapshot → decrypt → pg_restore single
+      transaction, schema/data equality17bảng/32rows/revision0008. Mutation source
+      sau export không lọt vào dump/counts; GCM corruption bị từ chối; source identity
+      mismatch không tạo success set. Auth SQL source/wrongDB/invalidcase refusals
+      không đổi dữ liệu; validcase chỉ xóa đúng restored flows/sessions, giữ history.
+      Temp DBs/files/container đã dọn; không restore DB ứng dụng hay deploy/upload.
+- [x] Một reviewer Sol/high/fresh reader: không thấy P1, hai P2 mount-loss/local
+      fallback và service-passfile override đã sửa; Main xem fixes/chạy10 Linux
+      regressions, không gọi review thứ hai. Ruff lint/format4 Python files qua;
+      docs local links/diffcheck qua. README/DB operations/staging/readiness liên kết
+      đúng trạng thái chuẩn bị, không đóng B1–B4 acceptance vận hành.
+- Giới hạn: chưa thử Ubuntu/offsite/TLS route, cluster mới mất source, backup-role/
+      runtime login, alert delivery/freshness, key rotation, Maximo-gap thực hoặc
+      RPO/RTO đo được. SIGKILL/power loss có thể còn plaintext temp; runbook yêu cầu
+      encrypted local disk và cleanup/quarantine có xác minh. Host job chưa có route/
+      PostgreSQL TLS từ Compose; mountpoint dưới mount phải root-owned/unwritable.
+- Tiếp theo ưu tiên: IT/chủ dự án duyệt RPO/RTO/lịch/retention/session policy, cấp
+      owners/kho ngoài máy chủ/keys/DB principal và private route/TLS/CA; đây là đầu
+      vào đang chặn bật job. Sau đó diễn tập Ubuntu staging sang cluster mới, thử
+      quyền/auth/Maximo-gap/alerts và đo RPO/RTO trước bật timer hoặc rollout.
+
+## Hoàn thiện validation Schedule trong Target — 2026-10-10
+
+- Chủ dự án chuyển lịch sử upload/audit tổng thể sang **phase 2**; ưu tiên hoàn
+      thiện chức năng lập lịch chính. Backup/restore và kiểm thử tải/lỗi vận hành
+      tạm gác theo yêu cầu, không coi đã nghiệm thu hoặc loại khỏi backlog.
+- [x] Kiểm tra code: trước đây frontend/backend chỉ kiểm tra date pairs/order,
+      chưa có containment Schedule trong Target. Bổ sung helper UI dùng chung:
+      mọi endpoint schedule hiện có phải nằm trong các target bounds đã biết,
+      cho phép bằng biên và so instant có timezone. Dùng effective target mới nếu
+      đang sửa; Finish từ Start + Duration cũng bị kiểm tra. Malformed/reversed
+      bounds hoặc ngày lịch không hợp lệ bị chặn khi sửa schedule/duration/target.
+- [x] Editor đơn hiển thị lỗi tức thời và khóa Lưu nháp/preview upload; nhóm có lỗi
+      theo WO, khóa lưu/preview qua validator sẵn có. Sửa dòng/áp nhóm/dán Excel/
+      mở lại saved draft dùng cùng rule, paste lỗi giữ nguyên cả nhóm. Giữ edits
+      để sửa, không tự clamp ngày; PM/CFT vẫn không đổi target. Target thiếu một
+      mốc chỉ áp mốc có khi sửa lịch; khi sửa target vẫn yêu cầu đủ pair như backend.
+      PIC-only/nochanges không bị khóa bởi lịch cũ ngoài target.
+- [x] 57 focused editing/DraftEditor/BatchPlanner +68 WorkOrders regressions qua
+      (125 tổng); equality/offsets/one-sided bounds/duration overflow/target overrides/
+      reversed dates/single & batch legacy preview/group/paste đều có coverage.
+      Điều chỉnh fixture luồng hợp lệ để pair ngày nhất quán, giữ các assertions
+      trước đó. Typecheck/lint/production build qua; Main rà helper/gates và fixtures,
+      diffcheck/docs links qua. Không thêm dependency/API/schema, không live Maximo
+      write, browser UAT, load/DR test, deploy, commit hoặc push trong task này.
+- Giới hạn: theo yêu cầu chỉ thêm validation UI. Backend vẫn chưa áp containment
+      cho API client trực tiếp; upload re-read/so baseline đầy đủ vẫn chặn target
+      trên Maximo đổi sau khi lưu. Những request upload đã tồn tại vẫn giữ chức năng
+      tra cứu/đối soát, không làm mất receipt hoặc tự retry.
+- Quyết định chủ dự án 2026-10-10: validation containment chỉ trên UI, **không cần
+      bổ sung backend**; phần yêu cầu hiện tại đã hoàn tất. Lịch sử tổng thể để
+      phase 2; load/backup acceptance vẫn tạm gác, triển khai thực tế còn cần đầu
+      vào IT đã ghi ở mốc trước. Khi tiếp tục nghiệm thu, xác nhận thông báo/khóa
+      lưu trên editor đơn và nhóm theo rule đã triển khai.
+
+## Kiểm thử 10 phiên API và lỗi vận hành — 2026-10-10
+
+- Chủ dự án yêu cầu tiếp tục phần tải/lỗi vận hành đã tạm gác. Backup/restore vẫn
+      tạm gác; lịch sử upload phase 2 và validation Schedule chỉ trên UI giữ nguyên.
+- [x] Thêm runner/orchestrator synthetic riêng, không sửa app/API/schema/dependencies.
+      Real HTTP/Linux Uvicorn, PostgreSQL17 schema0008,10 users/10 clients,2 PERSON
+      scopes/connections cùng site/WOID/WONUM; thêm1 session cùng actor chỉ cho race.
+      Guard private run UUID/DB/hosts trước seed; mock chỉ GET, không Maximo thật.
+- [x] 3 vòng ×10 requests ×8 pha =240 load requests;270 response samples gồm warmup và
+      checks, không có status ngoài expectation. Retrieve 200 WO P95=0.412s, lưu đơn
+      0.244s, prepare200=1.017s, lưu nhóm200=2.651s, mở lại=2.884s, cập nhật=2.461s.
+      [Báo cáo](ten-session-operational-rehearsal.md) và
+      [JSON evidence](evidence/ten-session-2026-10-10.json) giữ samples/thống kê.
+- [x] Same-scope owner GET/PUT404, wrong connection/discipline/guessed ID404;
+      moved WO 502 fail closed. Hai phiên cùng owner/version cho200+409. Duplicate ID
+      đúng1 receipt/cùng result; replay sau process restart không tạo thêm rows.
+- [x] Deadline 1s trả504/drain 4 children/không draft-item-receipt mới; private PG stop
+      cho503, start lại cùng backend/session200. Process/container thay mới giữ
+      session và nháp version 2/200 items. SIGTERM drain request trả201/exit0/receipt 1;
+      grace 5s bị giữ cho500 ở 5.97s/không draft commit trong ca này. Commit trước giữ
+      response rồi SIGKILL cho RemoteProtocolError; replay ID sau restart trả đúng
+      receipt, không tăng counts. Hai fault response đặc biệt ghi riêng, ngoài 270 samples.
+- [x] Một reviewer Sol/high không thấy P1, 5 P2 harness đã sửa: guard DB, owner check
+      same scope, after-commit replay, moved 502 expected, verify cleanup. Main kiểmtra
+      fixes/evidence, chạy lại6 guard tests = 6 pass; Ruff lint/format3 files qua.
+      Main Docker CLI xác minh không còn owned prefix containers/network; worker
+      đã dọn owned volumes/private config. Docs links/diffcheck qua; không app changes,
+      live writes/SSO/browser/backup/deploy/commit/push. Không gọi review thứ hai.
+- [x] Ưu tiên tối ưu danh sách nháp: baseline P95 tăng3.153→6.091→9.211s khi mỗi user tích
+      lũy1→2→3 nhóm 200 WO và số nháp đơn tương ứng. Endpoint re-read toàn bộ thành viên
+      từng nháp tuần tự trước trả summary. Cần giảmread lặp/bounded work mà giữ scope
+      và current discipline checks. Đã sửa/đo lại trong task tiếp theo dưới đây;
+      ngưỡng phản hồi production vẫn cần nghiệm thu môi trường thật.
+- [x] Chuẩn hóa cấu hình stop budget/graceful deadline trước staging: task bước1
+      phía dưới đặt backend/nginx320s, Compose330s và stop web rồi backend tuần tự.
+      5s rehearsal không chứng minh 330s; kiểm thử cấu hình mới khi có request
+      đang lưu vẫn pending. Client mất response/500 phải giữ request ID để tra
+      cứu/replay, không suy chưa commit.
+- Giới hạn: mock WO 5ms, Docker Desktop 16 CPU/~15.37GiB RAM không container limits,
+      Cookie/CSRF thủ công HTTP loopback; chưa 10 browser/Entra/TLS/proxy/Maximo thật,
+      remote upload/worker lease, long soak hoặc production SLO. Final run 82.1s,
+      số đo không chứng minh live capacity. IT cần Ubuntu/TLS/routing/test roster trước
+      nghiệm thu thật. Báo cáo tách lỗi cố ý gây ra với lỗi ngoài dự kiến.
+- Tiếp theo sẵn sàng: xử lý danh sách nháp chậm rồi chạy lại tải tương ứng; chốt
+      shutdown contract/cấu hình stop trước staging. Nghiệmthu môi trường thật còn
+      chờ IT, backup/restore và lịch sửphase 2 không mở rộng trong task này.
+
+## Tối ưu danh sách nháp — 2026-10-10
+
+- [x] `/api/drafts` đọc metadata/thành viên theo tập; trả DB connection trước I/O,
+      dedup theo connection/site/WO trong mỗi request, crew một lần/fanout4. Một
+      current grant check cho tập đồng nhất thay SQL từng thành viên; không cache
+      giữa requests. Summary tránh expanded payload, `include_items=true` giữ
+      baseline/changes/PIC/token/flags và contract frontend. Pagination20 giữ nguyên.
+- [x] Giữ owner/scope/current discipline/eligibility mọi thành viên và recheck
+      session/grant sau I/O. Nháp đổi version/membership hoặc nhóm không xác minh
+      đủ bị bỏ toàn bộ. Không giữ transaction network I/O, timeout hủy/drain tasks.
+      Reviewer Sol/high không P1, một P2 version/changes khác SQL snapshot đã sửa
+      bằng joinedstatement; Main kiểm tra fix và regression interleaving. Không
+      gọi review thứ hai; không API/schema/runtime dependency hoặc UI change.
+- [x] 55 distinct PostgreSQL regressions qua các lượt chạy: 13 list tests gồm overlap,
+      distinct401keys, mixed discipline, moved member, revoke, version change và
+      coherent snapshot; cùng marker/draft/batch/deadline. 425 offline tests qua;
+      Ruff check/format qua. Deadline test inject vào page reader mới cho list.
+- [x] Final-source Docker rehearsal10 users/3 vòng qua, thêm expanded list:
+      270 load requests/300 response samples, zero unexpected statuses; cố ý gây
+      grace-expiry500 và response-loss được tách riêng. Summary P95 9.210→1.207s
+      (giảm86.9%); vòng3 9.211→1.209s. Expanded P95=1.484s/max1.525s.
+      Owner/isolation/race/duplicate/deadline/DB outage/restart/shutdown/replay qua.
+      Counts63drafts/6033items/94receipts; owned cleanup verified. Báo cáo và
+      [evidence](evidence/ten-session-draft-list-optimized-2026-10-10.json) giữ
+      baseline riêng; docs/diffcheck qua, không deploy/commit/push/live writes.
+- Giới hạn: upstream giả lập5ms, Docker Desktop không resource limits; chưa SLO
+      production/10browser/Entra/TLS/Maximo thật. Distinct WO tăng vẫn phải đọc đủ,
+      tối ưu này giảm read lặp và SQL dư, không bỏ current verification. Schedule
+      containment vẫn UI-only; historyphase2 và backup/restore tiếp tục tạm gác.
+- Tiếp theo sẵn sàng: stop budget và `stop_grace_period` đã cấu hình ở bước1 dưới
+      đây; xác minh request đang chạy và replay khi mất response. Nghiệm thu thật còn
+      chờ IT cấp Ubuntu/tài nguyên/routing/TLS/test roster, rồi đo response/monitoring
+      với Maximo thật và chốt ngưỡng phản hồi.
+
+## Chuẩn hóa shutdown — bước1 cấu hình — 2026-10-10
+
+- [x] Giữ deadline WO/nháp mặc định180s, tối đa300s và nginx proxy read310s.
+      Compose staging đặt Uvicorn `--timeout-graceful-shutdown 320`, backend
+      SIGTERM/stop330s; nginx `worker_shutdown_timeout 320s`, web SIGQUIT/stop330s.
+      Không đổi app handlers, deadline phạm vi khác hoặc local foundation Compose.
+- [x] Runbook dùng stop web trước rồi stop backend, giữ DB hoạt động và dùng budget
+      trong Compose thay override CLI. Thêm restart ứng dụng không migration,
+      các margin/cooperative cleanup/forced kill/receipt caveats và giải thích
+      mỗi service330s riêng. Sửa YAML không tự áp lên container đã tồn tại.
+- [x] Kiểm chứng local bằng synthetic inputs: Docker Compose render xác nhận330s/
+      TERM/QUIT/graceful320; image Uvicorn hỗ trợ option, image nginx `-t` qua
+      với config mới/certificate giả. Fixtures dọn, containers `--rm`; Main
+      kiểm tra docs links/diffcheck. Không start stack/restart dịch vụ thật,
+      deploy/migrate/live Maximo write/commit/push; không cần dependency mới.
+- [x] Bước2 synthetic local: kiểm thử lưu đang chạy qua quy trình stop/restart mới; xác minh drain,
+      dữ liệu/receipt/replay và outcome khi hết grace. Rehearsal5s trước đó không
+      đóng kiểm chứng320/330s; task bên dưới thử budgets thật. Thời gian đệm không
+      bảo đảm cứng cho cleanup/lifespan; nghiệm thu Ubuntu vẫn chưa đóng.
+- Tiếp theo: bước2 synthetic đã hoàn tất bên dưới. Nghiệm thu Ubuntu thật còn chờ IT cấp server/
+      routing/TLS/tài nguyên/test roster; backup/restore và historyphase2 vẫn tạm gác.
+
+## Shutdown — bước2 runtime/restart/receipt — 2026-10-10
+
+- [x] Harness opt-in riêng, real LinuxUvicorn/PostgreSQL17/nginx với TLS giả được
+      client trust/verify; source/Compose/nginx/image hashes trong evidence. Dùng
+      request180s/grace320s/Docker330s thật, không scale5s. Reader fixture300s
+      thay default120s để cô lập outerdeadline180s; upstream GET-only giả lập.
+      Tài nguyên UUID riêng, không stop shared DB hoặc chạy stack staging thật.
+- [x] A: batch200 đang lưu qua HTTPS, SIGQUIT web ngừng nhận kết nối mới, request
+      cũ trả201; webstop3.284s rồi backendTERM1.101s/exit0. Restart/TLS replay cùng
+      ID không tăng1draft/200items/1receipt. B: hold trước commit trả504 ở179.935s,
+      active0/cancelled4/no newrows; backendstop180.810s/exit0; cùng ID sau restart
+      lưu một lần rồi replay đúng/không tăng rows.
+- [x] C: commit200items/1receipt rồi giữ response; thật320s grace gây500 ở320.199s,
+      backendstop321.031s/exit0 trước330s. Restart/TLS replay exactreceipt giữ đúng
+      WO/scopes/changesestdur9/version1, không lưu trùng. B/C trực tiếp backend
+      để cô lập fault boundary; không suy đã thử proxy310/nginx320 ở đúng biên
+      hoặc forcedDockerSIGKILL330s.
+- [x] Hai lượt: lượt đầu A/B qua, C dừng ở harnessstdout-only logassert; raw report
+      failed giữ nguyên. Sửa capturestderr/regression, chạy riêng C từ đầu với320s
+      thật và assertions đầy đủ qua. Reviewer Sol/high khôngP1, mộtP2 restore
+      content coverage đã bổ sung exactkeys/scope/version/changes/negativecases;
+      Main kiểm tra helper, API restore3nháp qua process thay thế ở lượt đầu và
+      C runtime sau restart. 28guards/assertions qua, Ruff lint/format qua.
+- [x] Lượt đầu cleanup rỗngWindowsdir bịPermissionError; Main guardedRemove-Item
+      -Force sau xác minh đúng childworkspace/rỗng, Docker kiểm tra containers/
+      network/volumes tạo trong timewindow đều không còn. Harness clearread-only
+      chỉdir UUIDrỗng trênWindows; lượt cuối CLIexit0/cleanupverified containers,
+      network/volume/privatefiles. Main kiểm tra lại, docs links/diffcheck qua.
+      [Báo cáo](staging-deployment.md#kết-quả-runtime--2026-10-10) và
+      [evidence](evidence/shutdown-180-320-330-2026-10-10.json) tách rõ hai lượt và
+      đối chiếu bổ sung. Không app/schema/dependency change/deploy/commit/push.
+- Giới hạn: DockerDesktop/DB role synthetic/sessionseed/manualCookie-CSRF,
+      không10browser/Entra/Ubuntu/Maximo thật, monitoring/liveuploads/backuprestore.
+      500/mấtresponse không chứng minh chưacommit; phải giữ requestID để đối soát.
+- Tiếp theo ưu tiên: nghiệm thu cùng contract trên Ubuntu staging với resource
+      limits/TLS/routing và Maximo/Entra thật; chờ IT cấp server/quyền truy cập,
+      DNS/certificate/routes/test roster. Cần đo10browser/latency và chốt SLO trước
+      nghiệm thu capacity; backup/restore và historyphase2 tiếp tục tạm gác.

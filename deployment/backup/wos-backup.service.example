@@ -1,0 +1,27 @@
+# Install/configure only after IT approval. Requires PostgreSQL17 clients,
+# Python3, OpenSSL supporting CMS AES-256-GCM and findmnt.
+[Unit]
+Description=Work Order Scheduler encrypted PostgreSQL backup
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/mnt/wos-backup
+
+[Service]
+Type=oneshot
+User=wos-backup
+Group=wos-backup
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/workorder-scheduler/deployment/backup/backup_job.py --config /etc/wos-backup/config.json
+# Job enforces its own30..3600-second limit. Give cleanup time before forced kill.
+TimeoutStartSec=3660
+TimeoutStopSec=30
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/wos-backup /mnt/wos-backup
+RestrictSUIDSGID=true
+LockPersonality=true
+
+# No Install section: manual start only unless an approved timer is installed.

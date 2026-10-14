@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-12",
+  "restores": [
+    {
+      "assignment_id": "1968934",
+      "allocation_id": "ddf53379-e4d9-4f59-b0de-0dcc93b7d58f",
+      "restore_attempt": "b8793dad-318c-43c4-a365-a465f0a8ba6a",
+      "result": "accepted",
+      "business_fields_restored": true,
+      "siblings_unchanged": true
+    },
+    {
+      "assignment_id": "2001462",
+      "allocation_id": "7b284d6d-3a0b-4ca5-9318-7658810aa16f",
+      "restore_attempt": "88ba28b5-5e27-469b-a1f5-25beb30c9b87",
+      "result": "accepted",
+      "business_fields_restored": true,
+      "siblings_unchanged": true
+    }
+  ],
+  "parent_and_task_schedules_restored": true,
+  "target_dates_unchanged": true,
+  "replacement_assignment": {
+    "old": "1968932",
+    "new": "2001462"
+  }
+}

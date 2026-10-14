@@ -1,8 +1,10 @@
 from alembic import context
 from sqlalchemy import create_engine, pool
 
+from app.assignments import models as assignment_models  # noqa: F401
 from app.config import Settings
 from app.db.models import Base
+from app.rota import models as rota_models  # noqa: F401 -- register resource/staging metadata
 
 url = Settings().database_url.get_secret_value()
 

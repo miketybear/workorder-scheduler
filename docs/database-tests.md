@@ -1,5 +1,23 @@
 # PostgreSQL integration tests
 
+2026-10-10: có [rehearsal 10 phiên API/lỗi vận hành](ten-session-operational-rehearsal.md)
+riêng dùng UUID containers/network/database/volume; chạy Uvicorn Linux qua HTTP,
+PostgreSQL thật và Maximo giả lập. Không stop/recreate shared DB `wos-tests-db-1`.
+Kết quả này không thay nghiệm thu Ubuntu/SSO/Maximo thật.
+
+Diễn tập shutdown riêng dùng [harness](../backend/tests/operational_rehearsal/shutdown.py):
+TLS/nginx, PostgreSQL thật và nhóm200WO, với deadline180s/grace320s/Docker330s
+không rút ngắn. Lệnh opt-in từ backend:
+
+```powershell
+.\.venv\Scripts\python.exe tests/operational_rehearsal/shutdown.py --run-owned-synthetic-shutdown
+```
+
+Chỉ tạo/dừng tài nguyên UUID riêng có prefix `wos-shutdown-`; không dùng shared DB.
+Maximo GET được giả lập, session DB có thật nhưng không chạy Entra/browser login.
+Xem [shutdown staging](staging-deployment.md#thời-gian-chờ-và-restart-có-kiểm-soát)
+cho cấu hình, cách vận hành và bằng chứng runtime.
+
 Đã kiểm tra lại ngày 2026-10-01 với PostgreSQL 17 trong Docker Desktop.
 Không dùng database chung hoặc production. `compose.test.yaml` chỉ mở loopback port 55432,
 lưu dữ liệu tạm trong RAM; dừng/recreate container có thể làm mất dữ liệu test.

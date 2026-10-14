@@ -1,0 +1,46 @@
+{
+  "pool_environment": "Onshore Test / local development",
+  "date": "2026-10-30",
+  "person": "Dao Quang Hai (1B)",
+  "roster_policy": "rota-2026-10-12-v5",
+  "activation_receipt": "09f30419-cd09-4446-b81b-565e12b6f49a",
+  "capacity_minutes": 630,
+  "released_test_allocations": [
+    {
+      "id": "4d03814a-b0fe-4b60-84fc-b7cad8e86e4c",
+      "workorder_id": "522801",
+      "version": 4,
+      "state": "released",
+      "minutes_before_release": 270
+    },
+    {
+      "id": "697f7617-378d-4fc7-b5b7-bbaad5ee8fb1",
+      "workorder_id": "471931",
+      "version": 3,
+      "state": "released",
+      "minutes_before_release": 360
+    }
+  ],
+  "attributed_audit_events": {
+    "create": 2,
+    "update": 3,
+    "release": 2
+  },
+  "durable_submission_receipts": 7,
+  "pool_reserved_minutes_after_cleanup": 0,
+  "browser_acceptance": {
+    "create_hours": 4,
+    "update_hours": 6,
+    "second_wo_boundary_hours": 4.5,
+    "frontend_block_total_hours": 11,
+    "stale_tab_server_block_total_hours": 11,
+    "server_error": "Daily allocation exceeds active rota capacity (630 minutes)",
+    "cleanup": "both released; capacity restored"
+  },
+  "tests": {
+    "backend_offline": 13,
+    "backend_postgres": 4,
+    "frontend": 11
+  },
+  "maximo_mutations": 0
+}

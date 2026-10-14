@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-12",
+  "database": "scheduler_entra_local",
+  "before_revision": "0012_task_assignments",
+  "revision": "0013_assignment_plans",
+  "backup_created": true,
+  "existing_records_fingerprints_preserved": true,
+  "runtime_plan_grants": {
+    "SELECT": true,
+    "INSERT": true,
+    "UPDATE": false,
+    "DELETE": false,
+    "TRUNCATE": false
+  },
+  "runtime_plan_state_update": true,
+  "alembic_check": "passed"
+}

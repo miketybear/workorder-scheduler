@@ -85,8 +85,10 @@ def next_page_url(link: str, settings: MaximoSettings, original: dict[str, str])
     target = urlsplit(urljoin(settings.collection_url, link))
     base = urlsplit(settings.collection_url)
     if (
-        target.scheme != base.scheme
-        or target.netloc != base.netloc
+        (
+            (target.scheme != base.scheme or target.netloc != base.netloc)
+            and f"{target.scheme}://{target.netloc}" not in settings.paging_origin_aliases
+        )
         or target.path.rstrip("/") != base.path
         or target.username
         or target.password
@@ -129,15 +131,7 @@ async def read_open_orders(
     end: datetime,
 ) -> list[WorkOrder]:
     def validate(raw):
-        order = map_work_order(raw)
-        if (
-            order.bdpocdiscipline != discipline
-            or order.status not in settings.open_statuses
-            or order.istask
-            or order.parent not in (None, "")
-            or not start <= order.targcompdate < end
-        ):
-            raise MaximoReadError("Maximo response outside requested scope")
+        order = validate_open_order(raw, settings, discipline, start, end)
         return order, (order.siteid, order.workorderid)
 
     return await read_collection(
@@ -145,16 +139,32 @@ async def read_open_orders(
     )
 
 
+def validate_open_order(raw, settings, discipline, start, end):
+    order = map_work_order(raw)
+    if (
+        order.bdpocdiscipline != discipline
+        or order.status not in settings.open_statuses
+        or order.istask
+        or order.parent not in (None, "")
+        or not start <= order.targcompdate < end
+    ):
+        raise MaximoReadError("Maximo response outside requested scope")
+    return order
+
+
 async def read_collection(
     client: httpx.AsyncClient,
     settings: MaximoSettings,
     original: dict[str, str],
     validate: Callable,
+    *,
+    require_complete_count: bool = False,
 ) -> list:
     url = str(httpx.URL(settings.collection_url).copy_merge_params(original))
     seen_pages: set[str] = set()
     seen_records: set[tuple[str, str]] = set()
     orders = []
+    expected_count = None
     try:
         async with asyncio.timeout(settings.retrieval_timeout_seconds):
             for _ in range(settings.max_pages):
@@ -197,8 +207,23 @@ async def read_collection(
                 info = body.get("responseInfo", {})
                 if not isinstance(info, dict):
                     raise MaximoReadError("Invalid paging response")
+                if require_complete_count and "totalCount" in info:
+                    count = info["totalCount"]
+                    if type(count) is not int or count < len(orders):
+                        raise MaximoReadError("Invalid total count response")
+                    if expected_count is not None and count != expected_count:
+                        raise MaximoReadError("Total count changed during snapshot retrieval")
+                    if count > settings.max_rows:
+                        raise MaximoReadError("Result limit exceeded; narrow the date range")
+                    expected_count = count
                 link = info.get("nextPage")
                 if link is None:
+                    if (
+                        require_complete_count
+                        and expected_count is not None
+                        and (len(orders) != expected_count)
+                    ):
+                        raise MaximoReadError("Incomplete Maximo snapshot paging response")
                     return orders
                 if isinstance(link, dict):
                     link = link.get("href")

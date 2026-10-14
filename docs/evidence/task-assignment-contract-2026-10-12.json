@@ -1,0 +1,438 @@
+{
+  "date": "2026-10-12",
+  "environment": "Onshore Test",
+  "object_structure": "BDSCHED_WO",
+  "wonum": "P13465570",
+  "read_only": true,
+  "probes": {
+    "example": {
+      "http_status": 200,
+      "bytes": 1681,
+      "member_count": 1,
+      "next_page_present": false,
+      "members": [
+        {
+          "wopriority_description": "Low",
+          "woactivitytask": [
+            {
+              "workorderid": 528227,
+              "showassignment": [
+                {
+                  "status_description": "Waiting for Assignment",
+                  "craft": "E&I",
+                  "assignmentid": 535771,
+                  "taskid": 10,
+                  "laborhrs": 0.5,
+                  "status": "WAITASGN"
+                }
+              ],
+              "description": "Prepare PTW, WO",
+              "showplanlabor": [
+                {
+                  "quantity": 1,
+                  "craft": "E&I",
+                  "laborhrs": 0.5
+                }
+              ],
+              "taskid": 10
+            },
+            {
+              "workorderid": 528229,
+              "showassignment": [
+                {
+                  "status_description": "Waiting for Assignment",
+                  "craft": "E&I",
+                  "assignmentid": 535777,
+                  "taskid": 20,
+                  "laborhrs": 9.0,
+                  "status": "WAITASGN"
+                }
+              ],
+              "description": "Replace, function test",
+              "showplanlabor": [
+                {
+                  "quantity": 1,
+                  "craft": "E&I",
+                  "laborhrs": 9.0
+                }
+              ],
+              "taskid": 20
+            },
+            {
+              "workorderid": 528231,
+              "showassignment": [
+                {
+                  "status_description": "Waiting for Assignment",
+                  "craft": "E&I",
+                  "assignmentid": 535783,
+                  "taskid": 30,
+                  "laborhrs": 1.0,
+                  "status": "WAITASGN"
+                }
+              ],
+              "description": "Finish job, close PTW , WO",
+              "showplanlabor": [
+                {
+                  "quantity": 1,
+                  "craft": "E&I",
+                  "laborhrs": 1.0
+                }
+              ],
+              "taskid": 30
+            }
+          ],
+          "targstartdate": "2026-10-20T06:30:00+07:00",
+          "workorderid": 528213,
+          "wopriority": 1,
+          "description": "Replace Oring, Silicon for ESD and MAC station PQP - MT1",
+          "targcompdate": "2026-10-20T18:30:00+07:00",
+          "status": "APPR",
+          "wonum": "P13465570"
+        }
+      ]
+    },
+    "expanded": {
+      "http_status": 200,
+      "bytes": 2650,
+      "member_count": 1,
+      "next_page_present": false,
+      "members": [
+        {
+          "woactivitytask": [
+            {
+              "workorderid": 528227,
+              "showassignment": [
+                {
+                  "status_description": "Waiting for Assignment",
+                  "craft": "E&I",
+                  "assignmentid": 535771,
+                  "taskid": 10,
+                  "laborhrs": 0.5,
+                  "status": "WAITASGN"
+                }
+              ],
+              "description": "Prepare PTW, WO",
+              "showplanlabor": [
+                {
+                  "quantity": 1,
+                  "craft": "E&I",
+                  "laborhrs": 0.5
+                }
+              ],
+              "taskid": 10
+            },
+            {
+              "workorderid": 528229,
+              "showassignment": [
+                {
+                  "status_description": "Waiting for Assignment",
+                  "craft": "E&I",
+                  "assignmentid": 535777,
+                  "taskid": 20,
+                  "laborhrs": 9.0,
+                  "status": "WAITASGN"
+                }
+              ],
+              "description": "Replace, function test",
+              "showplanlabor": [
+                {
+                  "quantity": 1,
+                  "craft": "E&I",
+                  "laborhrs": 9.0
+                }
+              ],
+              "taskid": 20
+            },
+            {
+              "workorderid": 528231,
+              "showassignment": [
+                {
+                  "status_description": "Waiting for Assignment",
+                  "craft": "E&I",
+                  "assignmentid": 535783,
+                  "taskid": 30,
+                  "laborhrs": 1.0,
+                  "status": "WAITASGN"
+                }
+              ],
+              "description": "Finish job, close PTW , WO",
+              "showplanlabor": [
+                {
+                  "quantity": 1,
+                  "craft": "E&I",
+                  "laborhrs": 1.0
+                }
+              ],
+              "taskid": 30
+            }
+          ],
+          "targstartdate": "2026-10-20T06:30:00+07:00",
+          "wopriority": 1,
+          "bdpocdiscipline_description": "Electric & Instrument",
+          "description": "Replace Oring, Silicon for ESD and MAC station PQP - MT1",
+          "worktype": "CM",
+          "orgid": "BDPOC",
+          "wonum": "P13465570",
+          "wopriority_description": "Low",
+          "worktype_description": "Corrective Maintenance",
+          "workorderid": 528213,
+          "bdpocdiscipline": "E&I",
+          "showassignment": [
+            {
+              "status_description": "Waiting for Assignment",
+              "craft": "E&I",
+              "assignmentid": 535771,
+              "taskid": 10,
+              "laborhrs": 0.5,
+              "status": "WAITASGN"
+            },
+            {
+              "status_description": "Waiting for Assignment",
+              "craft": "E&I",
+              "assignmentid": 535777,
+              "taskid": 20,
+              "laborhrs": 9.0,
+              "status": "WAITASGN"
+            },
+            {
+              "status_description": "Waiting for Assignment",
+              "craft": "E&I",
+              "assignmentid": 535783,
+              "taskid": 30,
+              "laborhrs": 1.0,
+              "status": "WAITASGN"
+            }
+          ],
+          "istask": false,
+          "siteid": "BD1",
+          "location": "PQP",
+          "targcompdate": "2026-10-20T18:30:00+07:00",
+          "estdur": 10.5,
+          "status": "APPR"
+        }
+      ],
+      "existing_reader_compatible": true
+    },
+    "schema": {
+      "http_status": 200,
+      "bytes": 364014,
+      "root_keys": [
+        "$ref",
+        "description",
+        "pk",
+        "properties",
+        "required",
+        "resource",
+        "title",
+        "type"
+      ],
+      "child_objects": {
+        "assignment": {
+          "type": "array",
+          "relation": "SHOWASSIGNMENT",
+          "objectName": "ASSIGNMENT",
+          "properties": {
+            "wplaborid": {
+              "subType": "ALN",
+              "persistent": true,
+              "type": "string",
+              "maxLength": 20
+            },
+            "craft": {
+              "subType": "UPPER",
+              "persistent": true,
+              "type": "string",
+              "maxLength": 8
+            },
+            "scheduledate": {
+              "subType": "DATETIME",
+              "persistent": true,
+              "type": "string",
+              "maxLength": 10
+            },
+            "assignmentid": {
+              "subType": "BIGINT",
+              "persistent": true,
+              "type": "integer",
+              "maxLength": 19
+            },
+            "skilllevel": {
+              "subType": "UPPER",
+              "persistent": true,
+              "type": "string",
+              "maxLength": 15
+            },
+            "orgid": {
+              "subType": "UPPER",
+              "persistent": true,
+              "type": "string",
+              "maxLength": 8
+            },
+            "laborcode": {
+              "subType": "UPPER",
+              "persistent": true,
+              "type": "string",
+              "maxLength": 30
+            },
+            "laborhrs": {
+              "subType": "DURATION",
+              "persistent": true,
+              "type": "number",
+              "maxLength": 8
+            },
+            "status": {
+              "subType": "UPPER",
+              "persistent": true,
+              "type": "string",
+              "maxLength": 12
+            }
+          },
+          "children": {}
+        },
+        "woactivity": {
+          "type": "array",
+          "relation": "WOACTIVITYTASK",
+          "objectName": "WOACTIVITY",
+          "properties": {
+            "orgid": {
+              "subType": "UPPER",
+              "persistent": true,
+              "type": "string",
+              "maxLength": 8
+            },
+            "status": {
+              "subType": "UPPER",
+              "persistent": true,
+              "type": "string",
+              "maxLength": 16
+            },
+            "taskid": {
+              "subType": "INTEGER",
+              "persistent": true,
+              "type": "integer",
+              "maxLength": 12
+            },
+            "workorderid": {
+              "subType": "BIGINT",
+              "persistent": true,
+              "type": "integer",
+              "maxLength": 19
+            }
+          },
+          "children": {
+            "wplabor": {
+              "type": "array",
+              "relation": "SHOWPLANLABOR",
+              "objectName": "WPLABOR",
+              "properties": {
+                "wplaborid": {
+                  "subType": "ALN",
+                  "persistent": true,
+                  "type": "string",
+                  "maxLength": 20
+                },
+                "craft": {
+                  "subType": "UPPER",
+                  "persistent": true,
+                  "type": "string",
+                  "maxLength": 8
+                },
+                "skilllevel": {
+                  "subType": "UPPER",
+                  "persistent": true,
+                  "type": "string",
+                  "maxLength": 15
+                },
+                "quantity": {
+                  "subType": "INTEGER",
+                  "persistent": true,
+                  "type": "integer",
+                  "maxLength": 12
+                },
+                "orgid": {
+                  "subType": "UPPER",
+                  "persistent": true,
+                  "type": "string",
+                  "maxLength": 8
+                },
+                "laborcode": {
+                  "subType": "UPPER",
+                  "persistent": true,
+                  "type": "string",
+                  "maxLength": 30
+                },
+                "laborhrs": {
+                  "subType": "DURATION",
+                  "persistent": true,
+                  "type": "number",
+                  "maxLength": 8
+                }
+              },
+              "children": {}
+            }
+          }
+        }
+      }
+    },
+    "resource_identity": {
+      "http_status": 200,
+      "bytes": 3391,
+      "member_count": 1,
+      "rows": [
+        {
+          "workorderid": 528213,
+          "href_present": true,
+          "rowstamp_present": true,
+          "relation_assignment_rowstamps": [
+            false,
+            false,
+            false
+          ],
+          "child_assignments": [
+            {
+              "assignmentid": 535771,
+              "taskid": null,
+              "laborcode": null,
+              "laborhrs": 0.5,
+              "status": "WAITASGN",
+              "_rowstamp": "2519818235"
+            },
+            {
+              "assignmentid": 535777,
+              "taskid": null,
+              "laborcode": null,
+              "laborhrs": 9.0,
+              "status": "WAITASGN",
+              "_rowstamp": "2519818237"
+            },
+            {
+              "assignmentid": 535783,
+              "taskid": null,
+              "laborcode": null,
+              "laborhrs": 1.0,
+              "status": "WAITASGN",
+              "_rowstamp": "2519818239"
+            }
+          ],
+          "child_tasks": [
+            {
+              "workorderid": 528227,
+              "taskid": 10,
+              "assignment": null
+            },
+            {
+              "workorderid": 528229,
+              "taskid": 20,
+              "assignment": null
+            },
+            {
+              "workorderid": 528231,
+              "taskid": 30,
+              "assignment": null
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

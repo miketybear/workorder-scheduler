@@ -1,0 +1,116 @@
+{
+  "date": "2026-10-12",
+  "environment": "Onshore Test",
+  "wo": "P13465911",
+  "task_id": 10,
+  "split_confirmed": true,
+  "source_assignment_id": "537275",
+  "created_segment_id": "2001464",
+  "split_hours_total": 20,
+  "segments": [
+    {
+      "assignmentid": 537275,
+      "laborcode": "HAIDQ",
+      "craft": "E&I",
+      "skilllevel": "OPSTECH",
+      "wplaborid": "P13273796",
+      "laborhrs": 10.5,
+      "scheduledate": "2026-10-03T06:30:00+07:00",
+      "finishdate": "2026-10-03T17:00:00+07:00",
+      "parentassignid": 0,
+      "status": "ASSIGNED"
+    },
+    {
+      "assignmentid": 2001464,
+      "laborcode": "HAIDQ",
+      "craft": "E&I",
+      "skilllevel": "OPSTECH",
+      "wplaborid": "P13273796",
+      "laborhrs": 9.5,
+      "scheduledate": "2026-10-04T06:30:00+07:00",
+      "finishdate": "2026-10-04T16:00:00+07:00",
+      "parentassignid": 537275,
+      "status": "ASSIGNED"
+    }
+  ],
+  "daily_minutes_after_split": {
+    "2026-10-03": 630,
+    "2026-10-04": 570
+  },
+  "stale_revision_rejected": true,
+  "merge_child_delete_effective": false,
+  "merge_restore_partial_original_restored_child_unchanged": true,
+  "cleanup_replace_changed_original_identity": true,
+  "identity_replacement": {
+    "old": "537275",
+    "new": "2001466"
+  },
+  "original_identity_restored": false,
+  "owned_child_removed": true,
+  "assignment_business_fields_restored": true,
+  "task_and_parent_schedules_restored": true,
+  "target_dates_unchanged": true,
+  "restored_assignment": {
+    "assignmentid": 2001466,
+    "laborcode": null,
+    "scheduledate": null,
+    "finishdate": null,
+    "startdate": null,
+    "workdate": null,
+    "parentassignid": 0,
+    "laborhrs": 20.0,
+    "status": "WAITASGN",
+    "craft": "E&I",
+    "skilllevel": "OPSTECH",
+    "wplaborid": "P13273796",
+    "orgid": "BDPOC"
+  },
+  "planned_labor_after": [
+    {
+      "craft": "E&I",
+      "labor_hours": "20.0",
+      "quantity": "1"
+    }
+  ],
+  "local_original_reservations_preserved": 4,
+  "local_original_minutes_preserved": 240,
+  "local_original_versions_preserved": true,
+  "cleanup_load": {
+    "3": {
+      "local_minutes": 0,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 0
+    },
+    "4": {
+      "local_minutes": 0,
+      "external_minutes": 0,
+      "synced_minutes": 0,
+      "allocated_minutes": 0
+    }
+  },
+  "audit_anchor_id": "d539b9d3-f4a7-4bde-9a66-164d989318a6",
+  "attempts": [
+    {
+      "id": "11cacc2f-2b20-4260-a6fe-4416246360f2",
+      "state": "confirmed",
+      "purpose": "daily_split_10_5_plus_9_5"
+    },
+    {
+      "id": "9af95b74-819b-4f3d-8b34-55357c8db8df",
+      "state": "conflict",
+      "purpose": "daily_stale_root_rejected"
+    },
+    {
+      "id": "2bb2e30f-5287-4bf9-870d-fbb9ecc2f709",
+      "state": "unknown",
+      "purpose": "daily_restore_original_and_remove_owned_child"
+    },
+    {
+      "id": "8686685e-57d1-478e-8fb6-b7df4d100dad",
+      "state": "unknown",
+      "purpose": "cleanup_owned_child_full_baseline_replace"
+    }
+  ],
+  "public_create_delete_enabled": false
+}

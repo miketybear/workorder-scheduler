@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.db.models import Draft, DraftItem
 from app.maximo.detail import current_snapshot, read_detail, read_pics
 from app.maximo.reader import MaximoReadError
+from app.request_deadline import ReadDraftDeadlineRoute
 from app.scheduling.changes import ScheduleChanges, build_changes
 from app.scheduling.drafts import WorkOrderKey, require_scope
 from app.scheduling.routes import (
@@ -21,7 +22,7 @@ from app.scheduling.routes import (
     submission,
 )
 
-router = APIRouter(prefix="/api/draft-batches")
+router = APIRouter(prefix="/api/draft-batches", route_class=ReadDraftDeadlineRoute)
 
 
 class BatchKey(BaseModel):
@@ -89,11 +90,19 @@ async def snapshots(request, payload, *, write=True, csrf=True):
                     }
 
         # Bound the entire batch as well as each HTTP call; cancel children on timeout.
+        tasks = [asyncio.create_task(read(item)) for item in payload.items]
         try:
             async with asyncio.timeout(config.retrieval_timeout_seconds):
-                results = await asyncio.gather(*(read(item) for item in payload.items))
+                results = await asyncio.gather(*tasks)
         except TimeoutError:
             raise HTTPException(503, "Batch verification timed out") from None
+        finally:
+            # Drain children before closing their shared HTTP client, also on outer
+            # request cancellation or an unexpected failure in one of the reads.
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
     fresh_identity, _ = await checked_settings(
         request, key, payload.discipline, write=write, csrf=csrf
     )
@@ -143,7 +152,8 @@ async def persist_batch(request, payload, draft_id=None):
             )
     if errors:
         raise HTTPException(409, {"errors": errors})
-    async with request.app.state.sessions.begin() as db:
+    # Avoid sessionmaker.begin()'s shielded commit worker outliving a request timeout.
+    async with request.app.state.sessions() as db, db.begin():
         actor = await actor_after_io(request, db, identity)
         for _, current in results:
             await require_scope(db, actor.user_id, current.key, payload.discipline, write=True)

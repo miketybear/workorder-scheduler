@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-13",
+  "month": "2026-10",
+  "woCount": 117,
+  "method": "host performance.now from UI action through first expected card visible; automation overhead included; one sample each; task summaries not awaited",
+  "samples": [
+    {
+      "phase": "explicit_refresh_to_first_card",
+      "seconds": 1.8234846999943257
+    },
+    {
+      "phase": "cached_next_page_to_first_card",
+      "seconds": 0.8400254000127315
+    },
+    {
+      "phase": "cached_search_including_debounce_to_first_card",
+      "seconds": 1.3630082000046968
+    }
+  ]
+}
