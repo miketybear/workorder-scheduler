@@ -237,3 +237,11 @@
   .capacity small:not([data-alert]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .grid td:hover .capacity small:not([data-alert]) { position: static; width: auto; height: auto; clip-path: none; }
 }
+
+/* Scrolling: size scroll areas to the viewport so both scrollbars stay reachable; chain wheel to the page. */
+.gridWrap { max-height: max(320px, calc(100dvh - 372px)); overscroll-behavior-x: contain; overscroll-behavior-y: auto; }
+.backlog { position: sticky; top: 8px; align-self: start; display: flex; flex-direction: column; max-height: max(420px, calc(100dvh - 372px)); }
+.backlog .woList { flex: 1 1 auto; min-height: 120px; max-height: none; overflow: auto; }
+.toast { position: fixed; z-index: 40; left: 24px; bottom: 24px; display: flex; align-items: flex-start; gap: 12px; max-width: min(440px, calc(100vw - 48px)); padding: 12px 8px 12px 16px; background: var(--success-bg); color: var(--success-ink); border-left: 3px solid var(--success-border); box-shadow: var(--shadow-overlay); }
+.toast button { min-height: 28px; padding: 0 8px; border: 0; background: transparent; color: inherit; font-size: 20px; line-height: 24px; cursor: pointer; }
+@media (max-width: 760px) { .backlog { position: static; max-height: none; } .backlog .woList { max-height: 220px; } .gridWrap { max-height: 70vh; } .toast { left: 12px; right: 12px; bottom: 12px; max-width: none; } }

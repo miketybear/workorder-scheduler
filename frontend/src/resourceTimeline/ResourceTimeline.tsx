@@ -971,6 +971,12 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     if (!shownTimeline || scrolledMonth.current === key || !dates.includes(today)) return;
     if (scrollToToday('auto')) scrolledMonth.current = key;
   });
+  // Saved-to-plan notices are confirmations, not state: let them go away instead of pinning above the grid.
+  useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(''), 10000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
   if (error && !shownTimeline && !(pending && unknown)) return <section className={styles.page}><h1>Resource timeline</h1><p role="alert">{error}</p><button onClick={refreshTimeline}>Kiểm tra lại quyền và tải</button></section>;
   return <section className={styles.page}>
     <div className={styles.heading}><div className={styles.headingTitle}><h1>Resource timeline</h1></div>
@@ -979,7 +985,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
       </div>
       <div className={styles.headingActions}><label>Tháng <input aria-label="Tháng timeline" type="month" value={month} onChange={event => setMonth(event.target.value)} disabled={busy || !!pending || uploading || !!uploadUnknownRequest || bulkUploadLocked || !!planMove} /></label><button type="button" className={styles.refreshButton} disabled={busy || !!pending || uploading || !!uploadUnknownRequest || bulkUploadLocked || !!planMove} onClick={refreshTimeline}>Làm mới timeline</button>{canWrite&&<button type="button" disabled={!shownPool||!month||busy||!!pending||uploading||!!uploadUnknownRequest||bulkUploadLocked||!!planMove} onClick={()=>setBulkUploadOpen(true)}>Đồng bộ Maximo theo tháng</button>}</div>
     </div>
-    {message && <p role="status" className={styles.success}>{message}</p>}{error && <p role="alert" className={styles.error}>{error}</p>}
+    {message && <div className={styles.toast} role="status"><span>{message}</span><button type="button" aria-label="Đóng thông báo" onClick={() => setMessage('')}>×</button></div>}{error && <p role="alert" className={styles.error}>{error}</p>}
     {bulkUploadOpen&&shownPool&&<PlanUploadBatch key={`${shownPool.id}:${shownPool.connection_id}:${discipline}:${month}`} poolId={shownPool.id} connectionId={shownPool.connection_id} discipline={discipline} month={month} timezone={shownPool.timezone} connectionLabel={`${shownPool.connection_label} · ${shownPool.environment==='test'?'Test':'Production'}`} writable={canWrite} verify={async()=>{await verifyMutationContext({principal,connectionId:shownPool.connection_id,discipline,poolId:shownPool.id,month});}} onLock={setBulkUploadLocked} onClose={()=>setBulkUploadOpen(false)} onConfirmed={result=>{if(result.items?.length)return applyConfirmedMutation(result.items,[],result.affected_days,result.planning_summary,result.assignment_revision,result.allocation_updates,result.previous_assignment_revision,result.work_order);}} onReconcile={entry=>{if('redacted'in entry)return;const authoritative=entry.receipt?.items?.filter(item=>item.plan_id===entry.plan_id)??[];const chosen=authoritative.find(item=>item.date.startsWith(month))??shownTimeline?.items.find(item=>item.plan_id===entry.plan_id&&item.date.startsWith(month));if(authoritative.length)setPlanRecovery({key:planRecoveryKey,items:authoritative});setBulkUploadOpen(false);if(chosen)edit(chosen);else setError('Không tìm thấy phân đoạn trong tháng để mở đối soát. Hãy làm mới timeline.');}} />}
     {pending && unknown && <div className={styles.unknown} role="alert"><p>{pending.kind==='delete'?'Xóa phân công':pending.kind==='update'?'Sửa phân công':'Lưu phân công'} · Yêu cầu {pending.requestId} chưa có kết quả xác nhận.</p><button disabled={busy} onClick={() => void execute(pending)}>Đối soát / gửi lại cùng mã yêu cầu</button></div>}
     {busy && <p role="status">Đang lưu. Không rời thao tác cho đến khi có kết quả…</p>}

@@ -95,3 +95,11 @@
   --shadow-card: 0 1px 2px #0006;
   --shadow-overlay: 0 8px 32px #0008;
 }
+
+/* Scrollbars: wide, high-contrast thumbs that are easy to grab, themed per colour scheme. */
+*::-webkit-scrollbar { width: 14px; height: 14px; }
+*::-webkit-scrollbar-track { background: var(--ground); }
+*::-webkit-scrollbar-thumb { min-width: 40px; min-height: 40px; background: var(--border-strong); border: 3px solid var(--ground); border-radius: 8px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+*::-webkit-scrollbar-corner { background: var(--ground); }
+@supports not selector(::-webkit-scrollbar) { * { scrollbar-color: var(--border-strong) var(--ground); } }

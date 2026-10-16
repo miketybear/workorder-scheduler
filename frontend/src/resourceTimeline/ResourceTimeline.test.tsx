@@ -707,6 +707,17 @@ it('requires saving changed hours before uploading the persisted task',async()=>
 });
 
 describe('live Resource timeline interactions', () => {
+  it('lets the saved-to-plan notice be dismissed or expire', async () => {
+    await loaded();
+    dragTo(screen.getByRole('button',{name:/WO-1 · Pump repair/}),screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-05'}));
+    await waitLegacyDialog();
+    fireEvent.change(screen.getByLabelText('Giờ phân công'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận lưu' }));
+    await screen.findByText(/Phân công đã lưu vào kế hoạch nội bộ/);
+    fireEvent.click(screen.getByRole('button', { name: 'Đóng thông báo' }));
+    expect(screen.queryByText(/Phân công đã lưu vào kế hoạch nội bộ/)).not.toBeInTheDocument();
+  });
+
   it('creates a scoped reservation by dragging a WO to a person/day cell', async () => {
     await loaded();
     dragTo(screen.getByRole('button',{name:/WO-1 · Pump repair/}),screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-05'}));

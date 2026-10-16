@@ -8,6 +8,17 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## UI/UX: scroll và thông báo timeline — 2026-10-16
+
+- [x] Scroll: thanh cuộn có thumb tương phản, tối thiểu 40px, theo theme (`tokens.css`); lưới
+      timeline cao vừa viewport (`100dvh - 372px`) để thanh cuộn ngang nằm trong màn hình khi
+      mở trang; backlog sticky, danh sách WO co theo viewport; cuộn dọc chuyển tiếp lên trang
+      (không còn bị chặn), chỉ chặn vuốt ngang. Đo trên dữ liệu thật: đáy lưới 833px/862px.
+- [x] Thông báo "đã lưu vào kế hoạch nội bộ…" thành toast góc dưới trái, có nút đóng và tự tắt
+      sau 10 giây; không còn ghim trên timeline.
+- [x] 407 frontend tests, lint, build đạt. Ảnh chụp khung trình duyệt vẫn đứng khung nên chưa xem
+      bằng mắt; cần xem lại độ dễ cầm của thanh cuộn.
+
 ## UI/UX ưu tiên 3 và 2: đọc nhanh và điều hướng timeline — 2026-10-16
 
 - [x] Resource timeline: donut thành thanh tải theo vai trò (% + thanh, đỏ khi vượt capacity);
