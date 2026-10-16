@@ -202,3 +202,14 @@
 .woCard[aria-pressed="true"] { background: var(--accent-tint); }
 @media (hover: hover) { .addCell { opacity: .45; } .grid td:hover .addCell, .addCell:focus-visible { opacity: 1; } }
 @media (max-width: 760px) { .heading { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "actions" "stats"; } .roleDonutPanel { grid-template-columns: minmax(0, 1fr); } .roleDonut svg { flex-basis: 36px; width: 36px; height: 36px; } }
+
+/* Assignment dialog is a right-hand drawer so the timeline stays visible behind a light scrim. */
+.drawerOverlay { place-items: stretch end; padding: 0; background: color-mix(in srgb, var(--scrim) 45%, transparent); }
+.drawer { width: min(640px, 100%); max-height: 100dvh; height: 100dvh; align-content: start; border-width: 0 0 0 1px; border-radius: 0; padding: 20px 24px 0; box-shadow: var(--shadow-overlay); }
+.drawer:has(.taskWorkspace) { width: min(980px, 100%); }
+.drawer .actions { bottom: 0; margin: 0 -24px; padding: 12px 24px; border-top: 1px solid var(--line); }
+.drawer .actions button:last-child { border-color: var(--accent); background: var(--accent); }
+.drawer .taskWorkspace { max-height: none; min-height: 0; }
+@media (max-width: 760px) { .drawer { padding: 16px 16px 0; } .drawer .actions { margin: 0 -16px; padding: 12px 16px; } }
+.drawer { display: flex; flex-direction: column; gap: 12px; }
+.drawer .actions { margin-top: auto; }

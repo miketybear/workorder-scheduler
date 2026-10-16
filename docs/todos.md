@@ -18,7 +18,10 @@ Cập nhật: 2026-10-16.
       tháng 10/2026). Tiêu đề và điều khiển cùng hàng, thống kê vai trò thành dải ngang
       gọn, thẻ WO nền trắng, nút "+ WO" mờ cho đến khi hover, nút chính của hộp thoại dùng
       màu nhấn thay teal. Chỉ CSS, không đổi logic.
-- [ ] Chưa làm: chuyển hộp thoại phân công sang drawer để vẫn thấy timeline, popover chú giải, và tách tiếp ~1000 dòng JSX còn lại (backlog, lưới,
+- [x] 2026-10-16: hộp thoại phân công (`proposal`) thành drawer phải 640px (980px khi chọn task),
+      scrim nhẹ, nút hành động ghim đáy; xem trực quan với dữ liệu giả lập. Dialog chuyển
+      plan và đồng bộ hàng loạt vẫn là dialog giữa màn hình.
+- [ ] Chưa làm: popover chú giải, và tách tiếp ~1000 dòng JSX còn lại (backlog, lưới,
       dialog phân công) thành component. Cần xem trực quan và test từng bước vì luồng ghi
       phân công/đối soát là phần rủi ro cao.
 
