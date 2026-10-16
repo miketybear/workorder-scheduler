@@ -223,7 +223,7 @@ it('unlocks other routes and restores the lock only when returning to the retain
   fireEvent.click(await screen.findByRole('button', { name: 'WO-REAL' }));
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
   expect(document.documentElement).toHaveAttribute('data-wo-panel-open');
-  fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
+  fireEvent.click(screen.getByRole('link', { name: 'Cài đặt' }));
   await screen.findByRole('radio', { name: /Offshore test/ });
   expect(document.documentElement).not.toHaveAttribute('data-wo-panel-open');
   fireEvent.click(screen.getByRole('link', { name: '← Work Orders' }));
@@ -263,7 +263,7 @@ it('retains the WO table, selection, panel edits and scroll position across Sett
   const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   vi.spyOn(window, 'scrollY', 'get').mockReturnValue(240);
   fireEvent(window, new Event('scroll'));
-  fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
+  fireEvent.click(screen.getByRole('link', { name: 'Cài đặt' }));
   await screen.findByRole('radio', { name: /Offshore test/ });
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
   expect(confirm).not.toHaveBeenCalled();
@@ -285,7 +285,7 @@ it('requires discarding edits before switching the saved connection and clears t
   fireEvent.click(screen.getByText('Retrieve WO'));
   fireEvent.click(await screen.findByRole('button', { name: 'WO-REAL' }));
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
-  fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
+  fireEvent.click(screen.getByRole('link', { name: 'Cài đặt' }));
   fireEvent.click(await screen.findByRole('radio', { name: /Onshore test/ }));
   const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
   fireEvent.click(screen.getByText('Lưu hệ thống'));

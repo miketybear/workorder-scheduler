@@ -2,6 +2,16 @@
 
 Cập nhật: 2026-10-16.
 
+## UI/UX bước 2: shell và điều hướng — 2026-10-16
+
+- [x] Header chỉ còn 3 mục chính (Work orders, Resource timeline, Rota) có trạng thái active
+      (`aria-current`); `components/UserMenu.tsx` gom tài khoản/quyền, Cài đặt, Admin, chế độ
+      tối, đăng xuất và chip môi trường (Onshore/Offshore · TEST/PROD, luôn hiện). Link demo chỉ
+      hiện ở bản dev (`import.meta.env.DEV`); route demo vẫn tồn tại.
+- [x] Trang chủ thay hero/tiến độ dự án bằng 3 thẻ vào việc, thẻ phiên đăng nhập và trạng thái
+      dịch vụ. Chưa có số liệu dashboard (WO chưa lập lịch, upload lỗi) vì cần API tổng hợp mới.
+- [x] 401 frontend tests, lint, typecheck, build đạt. Chưa xem trực quan trên trình duyệt.
+
 ## UI/UX bước 1: hợp nhất design token — 2026-10-16
 
 - [x] Tách token Carbon g10/g100 sang `frontend/src/tokens.css`, thêm token ngữ nghĩa
@@ -10,7 +20,7 @@ Cập nhật: 2026-10-16.
       màu nhấn), nên dark mode áp dụng đồng nhất.
 - [x] 399 frontend tests, lint, typecheck và build đạt (chunk advisory cũ còn).
       Chưa kiểm tra trực quan bằng trình duyệt; cần xem hai trang rota ở dark mode.
-- [ ] Bước 2–5 (shell/nav, thanh công cụ WO, Drawer/Dialog + stepper upload, tách
+- [ ] Bước 3–5 (thanh công cụ WO, Drawer/Dialog + stepper upload, tách
       ResourceTimeline) chưa làm.
 
 ## Chuyển task local bằng kéo thả — hoàn tất 2026-10-15

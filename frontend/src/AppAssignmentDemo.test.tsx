@@ -20,11 +20,11 @@ vi.mock('./assignmentTimeline/fixtures', async importOriginal => {
 describe('assignment demo route', () => {
   it('retains the synthetic workspace when navigating to settings and back', () => {
     render(<MemoryRouter initialEntries={['/assignment-demo']}><App /></MemoryRouter>);
-    const navigation=within(screen.getByText('Settings', {selector:'a'}).closest('header')!);
+    const navigation=within(screen.getByText('Cài đặt', {selector:'a'}).closest('header')!);
     const timelineHeader=screen.getByText('Resource timeline', {selector:'h1'}).closest('header')!;
     const month = within(timelineHeader).getByLabelText('Tháng');
     fireEvent.change(month, { target: { value: '2026-12' } });
-    fireEvent.click(navigation.getByRole('link', { name: 'Settings' }));
+    fireEvent.click(navigation.getByRole('link', { name: 'Cài đặt' }));
     expect(screen.getByRole('heading', { name: 'Account settings' })).toBeInTheDocument();
     expect(screen.getByText('Resource timeline', {selector:'h1'})).not.toBeVisible();
     fireEvent.click(navigation.getByRole('link', { name: 'Timeline thử nghiệm' }));
@@ -36,7 +36,7 @@ describe('assignment demo route', () => {
   it('retains the staged preview selection when navigating to settings and back', () => {
     render(<MemoryRouter initialEntries={['/rota-staging-demo']}><App /></MemoryRouter>);
     fireEvent.change(screen.getByLabelText('Mẫu kiểm tra'), { target: { value: 'unmatched' } });
-    fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Cài đặt' }));
     expect(screen.getByRole('heading', { name: 'Account settings' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Preview import rota' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: 'Preview rota' }));

@@ -28,6 +28,6 @@ export function ThemeToggle() {
   }
 
   return <button type="button" role="switch" aria-label="Chế độ tối" aria-checked={theme === 'g100'} onClick={toggle}>
-    {theme === 'g100' ? 'Tối · Gray 100' : 'Sáng · Gray 10'}
+    Chế độ tối <span aria-hidden="true">{theme === 'g100' ? 'Bật' : 'Tắt'}</span>
   </button>;
 }
