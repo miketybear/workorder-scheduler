@@ -259,3 +259,11 @@
 .resultGroups [data-tone="success"] { border-left-color: var(--success-border); background: var(--success-bg); color: var(--success-ink); }
 .resultGroups [data-tone="danger"] { border-left-color: var(--danger-border); background: var(--danger-bg); color: var(--danger-ink); }
 .resultGroups [data-tone="warning"] { border-left-color: var(--warning-border); background: var(--warning-bg); color: var(--warning-ink); }
+@media (max-width: 640px) {
+  .header { flex-wrap: wrap; gap: 0 8px; padding: 0 16px; }
+  .brand { order: 1; }
+  .userArea { order: 2; margin-left: auto; }
+  .mainNav { order: 3; flex: 1 0 100%; margin: 0 -16px; padding: 0 8px; overflow-x: auto; border-top: 1px solid #393939; }
+  .mainNav a { flex: 1; justify-content: center; white-space: nowrap; min-height: 44px; }
+  .menuPanel { position: fixed; top: 48px; left: 8px; right: 8px; min-width: 0; }
+}

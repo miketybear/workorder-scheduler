@@ -8,6 +8,18 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## UI/UX: kiểm tra với backend thật — 2026-10-16
+
+- [x] Xem Resource timeline (Onshore test, E&I, 17 TECH) và drawer phân công ở dark mode và
+      mobile 375px với backend + Entra login local thật; không xác nhận/ghi phân công nào.
+- [x] Sửa lỗi phát hiện: header ở 375px rộng 530px (nav + chip + menu) làm cả trang tràn
+      ngang; nay nav xuống hàng riêng và menu tài khoản rộng đủ màn hình. Drawer mobile
+      full-screen, không tràn ngang, nút hành động nằm trong viewport.
+- Ghi chú chạy local trên Windows: dùng `.cache/backend-settings-server.py` (selector loop)
+  thay lệnh `uvicorn` trong README vì psycopg async không chạy với ProactorEventLoop; và
+  `npm run dev:https` vì redirect URI Entra là `https://localhost:5173`.
+- [ ] Chưa xem trang WO/`/rota-imports` ở mobile với dữ liệu thật.
+
 ## UI/UX bước 5: Resource timeline (một phần) — 2026-10-16
 
 - [x] Tách helper thuần (ngày, giờ, capacity, gợi ý plan) sang `timelineHelpers.ts` và
