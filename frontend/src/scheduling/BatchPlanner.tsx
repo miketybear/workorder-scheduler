@@ -197,7 +197,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
   return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy) onClose(); }} className={`${styles.sidePanel} ${styles.batchPanel}`} role="dialog" aria-label="Lập lịch hàng loạt" aria-modal="false">
-    <div className={styles.panelHeading}><h2>Lập lịch {rows.length || ('keys' in selection ? selection.keys.length : '')} WO</h2><button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng nhóm</button></div>
+    <div className={styles.panelHeading}><h2>Lập lịch {rows.length || ('keys' in selection ? selection.keys.length : '')} WO</h2>{connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng nhóm</button></div>
     <p>{scope.discipline} · {saved ? `Nháp v${saved.version}` : 'Chưa lưu nháp'}</p>
     <p>Scheduled Finish tự tính từ Scheduled Start + Est. Duration (giờ).</p>
     {error && <p role="alert" className={styles.error}>{error}</p>}

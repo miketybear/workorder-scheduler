@@ -161,7 +161,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   }
   return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy && !uploadLocked) onClose(); }} aria-label="Chỉnh sửa nháp" role="dialog" aria-modal="false" className={`${styles.draftEditor} ${styles.sidePanel} ${styles.singlePanel}`}>
     <div className={`${styles.panelHeading} ${styles.editorHeader}`}>
-      <div><h2>{detail ? detail.item.wonum : 'Đang mở WO…'}</h2>{saved && <span className={styles.badge}>Nháp phiên bản {saved.version}</span>}</div>
+      <div><h2>{detail ? detail.item.wonum : 'Đang mở WO…'}</h2>{saved && <span className={styles.badge}>Nháp phiên bản {saved.version}</span>}{connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>}</div>
       <button className={styles.ghost} disabled={busy || uploadLocked} onClick={onClose}>Đóng nháp</button>
     </div>
     <div className={styles.editorBody}>

@@ -8,6 +8,16 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## UI/UX bước 4: panel và luồng upload — 2026-10-16
+
+- [x] Dialog làm việc (editor 1 WO, nhóm) cùng kích thước, bo nhẹ, có scrim; drawer 520px. Header
+      editor/nhóm hiện chip môi trường. Panel đối chiếu có stepper Chỉnh sửa → Đối chiếu → Kết
+      quả, banner đích upload (Production đổi màu đỏ kèm cảnh báo ghi Maximo thật) và tóm tắt
+      Hoàn tất / Lỗi-xung đột / Cần đối chiếu; danh sách trạng thái từng WO giữ nguyên.
+- [x] 403 frontend tests, lint, typecheck, build đạt; xem trực quan editor WO (dữ liệu giả lập).
+      Chưa xem trực quan panel upload/batch với dữ liệu thật; logic upload không đổi.
+- [ ] Chưa chuyển editor 1 WO sang drawer (layout 2 cột cần rộng); đánh giá lại sau bước 5.
+
 ## UI/UX bước 3: thanh công cụ WO — 2026-10-16
 
 - [x] `/work-orders`: một thanh công cụ gồm segmented "WO đã tải | Nháp của tôi", ô tìm kiếm
@@ -38,8 +48,7 @@ Cập nhật: 2026-10-16.
       màu nhấn), nên dark mode áp dụng đồng nhất.
 - [x] 399 frontend tests, lint, typecheck và build đạt (chunk advisory cũ còn).
       Chưa kiểm tra trực quan bằng trình duyệt; cần xem hai trang rota ở dark mode.
-- [ ] Bước 4–5 (Drawer/Dialog + stepper upload, tách
-      ResourceTimeline) chưa làm.
+- [ ] Bước 5 (tách ResourceTimeline, cỡ chữ, drawer phân công) chưa làm.
 
 ## Chuyển task local bằng kéo thả — hoàn tất 2026-10-15
 

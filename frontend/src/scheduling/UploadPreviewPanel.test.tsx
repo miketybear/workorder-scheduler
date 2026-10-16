@@ -203,3 +203,21 @@ it('keeps the finalized receipt and offers a refresh when the table refresh fail
   expect(screen.getByText('Làm mới dữ liệu Maximo')).toBeInTheDocument();
   expect(onUploadFinalized).toHaveBeenCalledTimes(1);
 });
+
+it('shows the upload steps, a production warning and grouped result counts', async () => {
+  vi.mocked(previewUpload).mockResolvedValue(preview);
+  vi.mocked(submitUpload).mockResolvedValue({ ...receipt(9), counts: { confirmed: 9, pending: 190, failed: 1 },
+    items: receipt(9).items.map((item, index) => index === 9 ? { ...item, state: 'failed' } : item) });
+  render(<UploadPreviewControls {...baseProps} uploadAll={false} connection={{ label: 'Onshore prod', system: 'onshore', environment: 'production' }} />);
+  fireEvent.click(screen.getByText('Đối chiếu nhóm'));
+  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  const steps = screen.getByRole('list', { name: 'Các bước upload' });
+  expect(steps.querySelector('[aria-current="step"]')).toHaveTextContent('Đối chiếu');
+  expect(screen.getByText(/thay đổi sẽ ghi vào Maximo thật/)).toHaveAttribute('data-env', 'production');
+  fireEvent.click(screen.getByText(baseProps.buttonLabel));
+  const summary = await screen.findByLabelText('Tóm tắt kết quả');
+  expect(steps.querySelector('[aria-current="step"]')).toHaveTextContent('Kết quả');
+  expect(summary).toHaveTextContent('Hoàn tất 9');
+  expect(summary).toHaveTextContent('Lỗi / xung đột 1');
+  expect(summary).toHaveTextContent('Cần đối chiếu 190');
+});

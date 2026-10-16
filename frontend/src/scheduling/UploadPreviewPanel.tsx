@@ -237,7 +237,16 @@ export function UploadPreviewControls({ draft, selection, connection, connection
     }}>{canRecoverRequest && !status ? 'Lấy kết quả yêu cầu trước' : viewState.open ? 'Ẩn đối chiếu' : previewLabel}</button>}
     {panelVisible && <section className={styles.editorSection} aria-label="Preview upload Maximo">
       <h3>Đối chiếu trước khi upload</h3>
-      {connection && <p>{connection.label} · {connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'Test' : 'Production'}</p>}
+      <ol className={styles.stepper} aria-label="Các bước upload">
+        {['Chỉnh sửa', 'Đối chiếu', 'Kết quả'].map((label, index) => {
+          const current = status || requestId ? 2 : 1;
+          return <li key={label} data-state={index < current ? 'done' : index === current ? 'current' : 'todo'}
+            aria-current={index === current ? 'step' : undefined}>{label}</li>;
+        })}
+      </ol>
+      {connection && <p className={styles.uploadTarget} data-env={connection.environment}>
+        {connection.label} · {connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'Test' : 'Production'}
+        {connection.environment === 'production' && ' — thay đổi sẽ ghi vào Maximo thật'}</p>}
       {busy && <p role="status">{requestId ? 'Đang xử lý yêu cầu upload và kiểm tra kết quả…' : status ? 'Đang cập nhật trạng thái…' : 'Đang đối chiếu với Maximo…'}</p>}
       {uploadAll && busy && autoContinueRef.current && <button className={styles.tertiary} onClick={() => { autoContinueRef.current = false; }}>
         Dừng sau đợt đang gửi
@@ -269,6 +278,11 @@ export function UploadPreviewControls({ draft, selection, connection, connection
       {status && <>
         {uploadAll && <p role="status">Tiến độ: {counts.confirmed ?? 0}/{status.items.length} WO đã xác nhận.</p>}
         <h4>Kết quả từng WO</h4>
+        <div className={styles.resultGroups} aria-label="Tóm tắt kết quả">
+          <span data-tone="success">Hoàn tất <b>{counts.confirmed ?? 0}</b></span>
+          <span data-tone="danger">Lỗi / xung đột <b>{(counts.failed ?? 0) + (counts.conflict ?? 0)}</b></span>
+          <span data-tone="warning">Cần đối chiếu <b>{pending + sending + unknown}</b></span>
+        </div>
         <ul>{Object.entries(counts).filter(([, count]) => (count ?? 0) > 0).map(([state, count]) =>
           <li key={state}>{stateLabels[state as keyof typeof stateLabels]}: {count}</li>)}</ul>
         <div className={styles.tableWrap}><table><thead><tr><th>WO</th><th>Trạng thái</th><th>Kết quả Duration</th><th>Cập nhật</th></tr></thead>

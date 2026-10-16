@@ -149,7 +149,7 @@
 .draftEditor fieldset > label { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
 .draftEditor fieldset > p, .draftEditor .filters small { color: var(--muted); font-size: 12px; line-height: 16px; }
 .draftEditor h3 { margin-top: 24px; }
-.sidePanel { position: fixed; z-index: 20; top: 48px; bottom: 0; right: 0; width: min(440px, 100%); margin: 0; padding: 24px; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: var(--layer); overflow-y: auto; overscroll-behavior: contain; }
+.sidePanel { position: fixed; z-index: 20; top: 48px; bottom: 0; right: 0; width: min(520px, 100%); box-shadow: var(--shadow-overlay); margin: 0; padding: 24px; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: var(--layer); overflow-y: auto; overscroll-behavior: contain; }
 .sidePanel .tableWrap { overscroll-behavior-x: contain; }
 .sidePanel .filters { display: grid; grid-template-columns: 1fr; margin: 16px 0; gap: 16px; }
 .sidePanel .filters label { display: grid; gap: 8px; }
@@ -162,7 +162,8 @@
 .detailFacts > div { display: grid; grid-template-columns: minmax(100px, auto) 1fr; gap: 16px; }
 .detailFacts dt { color: var(--muted); }
 .detailFacts dd { margin: 0; overflow-wrap: anywhere; }
-.sidePanel.batchPanel { top: 50%; left: 50%; bottom: auto; right: auto; transform: translate(-50%, -50%); width: 95%; height: 95dvh; border: 1px solid var(--line); box-shadow: 0 8px 32px #0003; }
+/* Workspace dialogs (single and batch editors) share one size and a scrim. */
+.sidePanel.batchPanel { top: 50%; left: 50%; bottom: auto; right: auto; transform: translate(-50%, -50%); width: min(1500px, calc(100% - 48px)); height: calc(100dvh - 96px); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 0 0 100vmax var(--scrim), var(--shadow-overlay); }
 .groupFields { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; margin: 24px 0; border: 1px solid var(--line); padding: 16px; }
 .groupFields label { grid-template-columns: auto 1fr; align-items: center; }
 .groupFields input:not([type=checkbox]):not([type=radio]), .groupFields select { grid-column: 1 / -1; }
@@ -198,7 +199,7 @@
 .cards span { color: var(--muted); font-size: 12px; }
 .cards h2 { margin: 16px 0; }
 .cards p { color: var(--muted); }
-.sidePanel.singlePanel { top: 50%; left: 50%; bottom: auto; right: auto; transform: translate(-50%, -50%); width: min(1320px, calc(100% - 48px)); height: min(900px, calc(100dvh - 112px)); display: flex; flex-direction: column; padding: 0; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 8px 32px #0003; }
+.sidePanel.singlePanel { top: 50%; left: 50%; bottom: auto; right: auto; transform: translate(-50%, -50%); width: min(1320px, calc(100% - 48px)); height: calc(100dvh - 96px); display: flex; flex-direction: column; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 0 0 100vmax var(--scrim), var(--shadow-overlay); }
 .singlePanel .editorHeader { flex-shrink: 0; margin: 0; padding: 12px 24px; border-bottom: 1px solid var(--line); }
 .editorHeader > div { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .editorBody { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; background: var(--ground); }
@@ -243,3 +244,18 @@
 .denseTable td, .denseTable th { padding-top: 4px; padding-bottom: 4px; }
 .denseTable td small { margin-top: 2px; }
 .staleNotice { padding: 2px 8px; background: var(--warning-bg); color: var(--warning-ink); border-left: 3px solid var(--warning-border); font-size: 12px; }
+.stepper { display: flex; gap: 0; margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+.stepper li { flex: 1; counter-increment: step; display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 3px solid var(--line); color: var(--muted); font-size: 12px; line-height: 16px; }
+.stepper li::before { content: counter(step); display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); color: var(--ink); font-weight: 600; }
+.stepper li[data-state="done"] { border-top-color: var(--success-border); color: var(--ink); }
+.stepper li[data-state="done"]::before { content: "✓"; background: var(--success-border); color: #ffffff; }
+.stepper li[data-state="current"] { border-top-color: var(--link); color: var(--ink); font-weight: 600; }
+.stepper li[data-state="current"]::before { background: var(--accent); color: #ffffff; }
+.uploadTarget { padding: 8px 12px; border-left: 3px solid var(--info-border); background: var(--info-bg); color: var(--info-ink); }
+.uploadTarget[data-env="production"] { border-left-color: var(--danger-border); background: var(--danger-bg); color: var(--danger-ink); font-weight: 600; }
+.resultGroups { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+.resultGroups span { padding: 4px 12px; border-left: 3px solid var(--line); background: var(--ground); }
+.resultGroups b { margin-left: 8px; font-size: 16px; }
+.resultGroups [data-tone="success"] { border-left-color: var(--success-border); background: var(--success-bg); color: var(--success-ink); }
+.resultGroups [data-tone="danger"] { border-left-color: var(--danger-border); background: var(--danger-bg); color: var(--danger-ink); }
+.resultGroups [data-tone="warning"] { border-left-color: var(--warning-border); background: var(--warning-bg); color: var(--warning-ink); }
