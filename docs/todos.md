@@ -8,6 +8,19 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## Gộp request auth/settings trùng — 2026-10-16
+
+- [x] `api/shared.ts`: các lời gọi giống nhau đang chạy cùng lúc dùng chung một request, không cache sau
+      khi xong; mỗi caller giữ AbortSignal riêng (hủy không ảnh hưởng người khác); `fresh` bỏ qua chia
+      sẻ; `forgetShared()` gọi sau đăng xuất và sau khi lưu kết nối. `getAuthSummary` và
+      `getConnectionSettings` dùng lớp này (cùng chữ ký, các component không đổi); kiểm tra trước khi
+      ghi trong Resource timeline (`verifyMutationContext`) dùng `fresh`.
+- Quyết định: không tạo store/hook phiên mới. Chia sẻ request ở lớp API đạt cùng mục tiêu mà không
+  chạm logic xóa dữ liệu khi đổi danh tính/quyền trong WO và timeline.
+- [x] 414 frontend tests, lint, typecheck, build đạt. Khi phiên đã hết hạn (401) mở timeline còn 1
+      cặp auth và 2 lời gọi settings (trước đó 4 cặp và 4–6). Chưa đo lại với phiên đăng nhập hợp lệ vì
+      phiên local đã hết hạn; cần đăng nhập lại.
+
 ## Đo thời gian tải Resource timeline (dữ liệu thật) — 2026-10-16
 
 - Mở trang khi server đã có cache (Onshore test, E&I, 21 người, tháng 10): lưới dùng được sau

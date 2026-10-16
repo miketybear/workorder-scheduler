@@ -565,7 +565,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   const displayedProposalDay=!proposal?.item&&taskPlanMode?taskPlanCapacityDays.find(day=>day.date===taskPlanStart):proposalDay;
 
   async function verifyMutationContext(context: MutationContext) {
-    const settings = await getConnectionSettings(new AbortController().signal);
+    const settings = await getConnectionSettings(new AbortController().signal, { fresh: true });
     const grant = activeGrant(settings.session);
     if (settings.session.user.id !== context.principal || !grant || grant.connection_id !== context.connectionId ||
         grant.discipline !== context.discipline || grant.capability !== 'write' || context.poolId !== pool?.id || context.month !== month || pool.capability !== 'write') {

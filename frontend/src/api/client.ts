@@ -1,4 +1,5 @@
 import { config } from '../config';
+import { forgetShared, shared } from './shared';
 
 export async function getLiveness(signal?: AbortSignal): Promise<boolean> {
   const response = await fetch(`${config.apiBase}/health/live`, { signal, credentials: 'same-origin' });
@@ -17,7 +18,11 @@ function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-export async function getAuthSummary(signal?: AbortSignal): Promise<{ available: boolean; session: Session | null }> {
+export function getAuthSummary(signal?: AbortSignal, options: { fresh?: boolean } = {}): Promise<{ available: boolean; session: Session | null }> {
+  return shared('auth', () => loadAuthSummary(), signal, options.fresh);
+}
+
+async function loadAuthSummary(signal?: AbortSignal): Promise<{ available: boolean; session: Session | null }> {
   const [configuration, response] = await Promise.all([
     fetch(`${config.apiBase}/auth/configuration`, { signal, credentials: 'same-origin', cache: 'no-store' }),
     fetch(`${config.apiBase}/auth/session`, { signal, credentials: 'same-origin', cache: 'no-store' }),
@@ -54,4 +59,5 @@ export async function signOut(): Promise<void> {
     method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': csrf },
   });
   if (!response.ok && response.status !== 401) throw new Error('Chưa đăng xuất được. Hãy thử lại.');
+  forgetShared();
 }

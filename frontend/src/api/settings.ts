@@ -1,10 +1,15 @@
 import { config } from '../config';
 import { parseSession, type Session } from './client';
+import { forgetShared, shared } from './shared';
 import { isRecord, RetrievalError } from './workOrders';
 
 export type ConnectionSettings = { session: Session; connections: { connection_id: string; url: string }[] };
 
-export async function getConnectionSettings(signal: AbortSignal): Promise<ConnectionSettings> {
+export function getConnectionSettings(signal: AbortSignal, options: { fresh?: boolean } = {}): Promise<ConnectionSettings> {
+  return shared('connection-settings', () => loadConnectionSettings(), signal, options.fresh);
+}
+
+async function loadConnectionSettings(signal?: AbortSignal): Promise<ConnectionSettings> {
   const response = await fetch(`${config.apiBase}/settings/connection`, { signal, credentials: 'same-origin', cache: 'no-store' });
   if (!response.ok) throw new RetrievalError(response.status, response.status === 401 ? 'Cần đăng nhập để mở Settings.' : 'Không tải được cấu hình kết nối.');
   const raw: unknown = await response.json();
@@ -29,4 +34,6 @@ export async function saveConnectionSetting(connectionId: string, signal: AbortS
   if (!response.ok) throw new RetrievalError(response.status,
     response.status === 409 ? 'Tài khoản có nhiều discipline trên kết nối này. Vui lòng liên hệ quản trị viên.' :
     [401, 403, 404].includes(response.status) ? 'Phiên hoặc quyền kết nối đã thay đổi. Hãy mở lại Settings.' : 'Chưa lưu được hệ thống. Có thể thử lại.');
+  // The saved preference changes what auth and settings reads return.
+  forgetShared();
 }
