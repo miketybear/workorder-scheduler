@@ -39,7 +39,7 @@ function Overview() {
   </>;
 }
 
-export function App() {
+export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?: boolean } = {}) {
   const pathname = useLocation().pathname;
   const workOrdersActive = pathname === '/work-orders';
   const assignmentDemoActive = pathname === '/assignment-demo';
@@ -76,7 +76,7 @@ export function App() {
       <Route path="/settings" element={<Settings />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="*" element={<p>Không tìm thấy trang. <Link to="/">Về tổng quan</Link></p>} /></Routes>
-      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} /></div>
+      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} autoRetrieve={autoRetrieveWorkOrders} /></div>
       {assignmentDemoVisited && <div hidden={!assignmentDemoActive}><AssignmentTimelineDemo /></div>}
       {rotaStagingVisited && <div hidden={!rotaStagingActive}><RotaStagingPreview /></div>}
       {rotaImportsVisited && <div hidden={!rotaImportsActive}><RotaImports active={rotaImportsActive} /></div>}

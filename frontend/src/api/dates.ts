@@ -62,3 +62,13 @@ export function zonedDateTime(wall: string, timeZone: string): string {
   if (matches.length !== 1) throw new Error('Ngày giờ không tồn tại hoặc không duy nhất trong múi giờ này.');
   return `${wall}:00${matches[0]}`;
 }
+
+/** First day of the current month and of the next month (exclusive end) in the business timezone. */
+export function currentMonthRange(timeZone: string, now = new Date()): { start: string; end: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, calendar: 'iso8601', numberingSystem: 'latn', year: 'numeric', month: '2-digit' })
+    .formatToParts(now);
+  const year = Number(parts.find((part) => part.type === 'year')?.value);
+  const month = Number(parts.find((part) => part.type === 'month')?.value);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return { start: `${year}-${pad(month)}-01`, end: `${month === 12 ? year + 1 : year}-${pad(month === 12 ? 1 : month + 1)}-01` };
+}

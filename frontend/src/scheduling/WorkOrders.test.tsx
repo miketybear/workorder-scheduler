@@ -314,7 +314,7 @@ it('shows detail without crew configuration and blocks editing even for a writer
 async function setup(withApp = false, connectionId = 'one') {
   vi.mocked(getLiveness).mockResolvedValue(true);
   vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: { ...session, preferred_connection_id: connectionId } });
-  render(<MemoryRouter initialEntries={['/work-orders']}>{withApp ? <App /> : <WorkOrders />}</MemoryRouter>);
+  render(<MemoryRouter initialEntries={['/work-orders']}>{withApp ? <App autoRetrieveWorkOrders={false} /> : <WorkOrders />}</MemoryRouter>);
   await waitFor(() => expect(screen.getByRole('button', { name: 'Retrieve WO' })).toBeEnabled());
   fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-09-01' } });
   fireEvent.change(screen.getByLabelText('Target Finish trước'), { target: { value: '2026-10-01' } });
@@ -1315,4 +1315,31 @@ it('shows the bulk bar only for selected rows and remembers the table density', 
   expect(screen.getByRole('button', { name: 'Bảng thoáng' })).toHaveAttribute('aria-pressed', 'true');
   expect(localStorage.getItem('workorder-scheduler-density')).toBe('dense');
   localStorage.removeItem('workorder-scheduler-density');
+});
+
+it('prefills the current month and retrieves it once without a click', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date('2026-10-16T05:00:00Z'));
+  vi.mocked(getLiveness).mockResolvedValue(true);
+  vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: { ...session, preferred_connection_id: 'two' } });
+  vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
+  render(<MemoryRouter initialEntries={['/work-orders']}><WorkOrders autoRetrieve /></MemoryRouter>);
+  expect(await screen.findByRole('button', { name: 'WO-REAL' })).toBeInTheDocument();
+  expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(retrieveWorkOrders).mock.calls[0][0]).toMatchObject({ connection_id: 'two', discipline: 'MECH',
+    target_from: '2026-10-01T00:00:00+07:00', target_before: '2026-11-01T00:00:00+07:00' });
+  fireEvent.click(screen.getByText('Đổi khoảng ngày'));
+  expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-10-01');
+  expect(screen.getByLabelText('Target Finish trước')).toHaveValue('2026-11-01');
+});
+
+it('does not retry automatically after a failed first load', async () => {
+  vi.mocked(getLiveness).mockResolvedValue(true);
+  vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: { ...session, preferred_connection_id: 'two' } });
+  vi.mocked(retrieveWorkOrders).mockRejectedValue(new Error('Maximo chưa phản hồi'));
+  render(<MemoryRouter initialEntries={['/work-orders']}><WorkOrders autoRetrieve /></MemoryRouter>);
+  expect(await screen.findByText('Maximo chưa phản hồi')).toBeInTheDocument();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('button', { name: 'Retrieve WO' })).toBeEnabled();
 });

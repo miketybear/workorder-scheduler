@@ -7,7 +7,7 @@ import { DraftEditor, type EditorSelection } from './DraftEditor';
 import { continueUpload, editableFields, getDetail, listPlannedWorkOrders, lookupUploadRequest, openDraft, reconcileUpload, type Baseline, type Detail, type DraftNotice,
   type Scope, type UploadRecoveryEntry, type UploadStatus, type UploadStatusItem, UploadRequestNotFoundError } from '../api/drafts';
 import type { FinalizedUpload } from './UploadPreviewPanel';
-import { startOfDay } from '../api/dates';
+import { currentMonthRange, startOfDay } from '../api/dates';
 import { BatchPlanner, type BatchSelection } from './BatchPlanner';
 import { displayDate, rowKey } from './presentation';
 import { chosenPlan, effectiveOrder, updatePlans } from './planning';
@@ -48,7 +48,7 @@ export function mergePmOrigin(current: Map<string, Baseline>, principal: string,
   return next;
 }
 
-export function WorkOrders({ active = true }: { active?: boolean }) {
+export function WorkOrders({ active = true, autoRetrieve = false }: { active?: boolean; autoRetrieve?: boolean }) {
   const sources = useRef<Partial<Record<Source, SourceSnapshot>>>({});
   const [session, setSession] = useState<Session | null>(null);
   const [available, setAvailable] = useState(false);
@@ -103,6 +103,13 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
   const authIdentity = useRef('');
   const principalRef = useRef('');
   const grant = useMemo(() => activeGrant(session), [session]);
+  // Planners almost always start from the current month, so prefill it once per page visit.
+  const [datesDefaulted, setDatesDefaulted] = useState(false);
+  if (grant && !datesDefaulted && !start && !end) {
+    const range = currentMonthRange(grant.timezone);
+    setDatesDefaulted(true); setStart(range.start); setEnd(range.end);
+  }
+  const autoRetrievedScope = useRef('');
   const editorScope = useMemo(() => ({ connection_id: grant?.connection_id ?? '', discipline: grant?.discipline ?? '' }), [grant]);
   const panelGuardToken = JSON.stringify([selection, batch]);
   useEffect(() => { finalizationGuard.current = { panel: panelGuardToken,
@@ -571,6 +578,18 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
     }
   }
 
+  // Load the default month once per account/connection/discipline so the page opens with data.
+  // The key is set before the call: later date edits or failures need an explicit Retrieve.
+  const retrieveRef = useRef(retrieve);
+  useEffect(() => { retrieveRef.current = retrieve; });
+  useEffect(() => {
+    if (!autoRetrieve || !active || checking || verifying || busy || !grant || !session || rows !== null || view !== 'maximo' || !start || !end) return;
+    const key = JSON.stringify([session.user.id, grant.connection_id, grant.discipline]);
+    if (autoRetrievedScope.current === key) return;
+    autoRetrievedScope.current = key;
+    void retrieveRef.current();
+  }, [autoRetrieve, active, checking, verifying, busy, grant, session, rows, view, start, end]);
+
   const activeFilterCount = [!!search.trim(), !!statusFilter, !!planningFilter, view === 'maximo' && !!draftFilter].filter(Boolean).length;
   const pickedRows = visibleRows.filter((row) => selectedKeys.includes(rowKey(row)));
   const firstPickedPlan = pickedRows.length ? chosenPlan(pickedRows[0], choices[rowKey(pickedRows[0])]) : undefined;
@@ -648,6 +667,7 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
         connection={{ label: grant.label, system: grant.system, environment: grant.environment }}
         writable={grant.capability === 'write'} suspended={checking} refreshVersion={batchRefresh} onDirty={onDirty} onDenied={onDenied} onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onClose={closePanel} />}
       {busy && <p role="status">Đang lấy và kiểm tra đầy đủ các trang dữ liệu…</p>}
+      {busy && rows === null && view === 'maximo' && <div className={styles.skeleton} aria-hidden="true">{[0, 1, 2, 3, 4, 5].map((index) => <div key={index} />)}</div>}
       {grant && <div className={styles.woToolbar}>
         <div role="group" aria-label="Nguồn WO" className={styles.segmented}>
           <button aria-pressed={view === 'maximo'} disabled={busy} onClick={() => switchSource('maximo')}>WO đã tải</button>

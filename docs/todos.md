@@ -8,6 +8,17 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## UI/UX ưu tiên 1: `/work-orders` mở là có dữ liệu — 2026-10-16
+
+- [x] Khoảng ngày mặc định là tháng hiện tại theo múi giờ nghiệp vụ (`currentMonthRange`);
+      lần đầu cho mỗi tài khoản/kết nối/discipline, trang tự Retrieve một lần (App bật
+      `autoRetrieve`; `<App autoRetrieveWorkOrders={false}>` dùng cho test). Đổi ngày hoặc lỗi
+      không tự gọi lại, cần bấm Retrieve. Skeleton hiện trong lúc tải lần đầu.
+- [x] 405 frontend tests, lint, typecheck, build đạt; xem trực quan với dữ liệu thật: mở trang là
+      117 WO tháng 10 hiện sau khoảng 2 giây (server đã có cache), skeleton hiện trước đó.
+- [ ] Chưa làm: tiến độ có số giây cho lần tải lạnh (~15 giây), endpoint gộp tóm tắt task cho
+      backlog Resource timeline (cần backend).
+
 ## UI/UX: kiểm tra với backend thật — 2026-10-16
 
 - [x] Xem Resource timeline (Onshore test, E&I, 17 TECH) và drawer phân công ở dark mode và

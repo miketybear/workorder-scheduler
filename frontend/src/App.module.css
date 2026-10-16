@@ -285,3 +285,7 @@
   .compactTable thead th:first-child { display: flex; align-items: center; gap: 8px; width: 100%; padding-left: 16px; }
   .compactTable thead th:first-child::after { content: "Chọn tất cả"; font-weight: 400; color: var(--muted); }
 }
+.skeleton { display: grid; gap: 1px; margin: 16px 0; background: var(--line); border: 1px solid var(--line); }
+.skeleton > div { height: 56px; background: linear-gradient(90deg, var(--layer) 25%, var(--hover) 50%, var(--layer) 75%); background-size: 200% 100%; animation: skeletonShimmer 1.4s linear infinite; }
+@keyframes skeletonShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton > div { animation: none; } }
