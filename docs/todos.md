@@ -13,9 +13,12 @@ Cập nhật: 2026-10-16.
 - [x] Tách helper thuần (ngày, giờ, capacity, gợi ý plan) sang `timelineHelpers.ts` và
       `RoleDonut.tsx`; `ResourceTimeline.tsx` giảm 1092 → 1050 dòng, không đổi hành vi.
 - [x] Chữ tối thiểu 11–12px (trước 9–11px), ô lịch 84×72px. 403 tests, lint, typecheck,
-      build đạt. Chưa xem trực quan timeline (cần dữ liệu rota/pool giả lập phức tạp).
-- [ ] Chưa làm: chuyển hộp thoại phân công sang drawer để vẫn thấy timeline, dải thống kê
-      thay donut, popover chú giải, và tách tiếp ~1000 dòng JSX còn lại (backlog, lưới,
+      build đạt.
+- [x] 2026-10-16 (tiếp): xem trực quan timeline light/dark với dữ liệu giả lập (7 nhân sự,
+      tháng 10/2026). Tiêu đề và điều khiển cùng hàng, thống kê vai trò thành dải ngang
+      gọn, thẻ WO nền trắng, nút "+ WO" mờ cho đến khi hover, nút chính của hộp thoại dùng
+      màu nhấn thay teal. Chỉ CSS, không đổi logic.
+- [ ] Chưa làm: chuyển hộp thoại phân công sang drawer để vẫn thấy timeline, popover chú giải, và tách tiếp ~1000 dòng JSX còn lại (backlog, lưới,
       dialog phân công) thành component. Cần xem trực quan và test từng bước vì luồng ghi
       phân công/đối soát là phần rủi ro cao.
 

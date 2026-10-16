@@ -74,7 +74,7 @@
 .dialog p { color: var(--muted); }
 .actions { position:sticky; bottom:-22px; z-index:3; display: flex; justify-content: flex-end; gap: 10px; padding:8px 0; background:var(--layer); }
 .dialog button { min-height: 38px; border: 1px solid var(--line); border-radius: 7px; padding: 7px 12px; background: var(--hover); color: var(--ink); cursor: pointer; }
-.actions button:last-child { border-color: var(--teal); background: var(--teal); color: #ffffff; }
+.actions button:last-child { border-color: var(--accent); background: var(--accent); color: #ffffff; }
 .dialog .delete { justify-self: start; border-color: var(--danger-border); color: var(--danger-ink); }
 .personDateRow { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(220px,1fr); gap:10px; }
 .personDateRow label { min-width:0; }
@@ -186,3 +186,19 @@
 .planTotals th,.planTotals td { background:var(--accent-tint); }
 @media(max-width:760px) { .headingActions { align-items:end; gap:4px; } .refreshButton { padding:6px; font-size:12px; } .personDateRow { grid-template-columns:minmax(0,1fr) minmax(150px,0.8fr); gap:6px; } .taskWorkspace { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(120px,22vh) minmax(170px,32vh); max-height:58vh; min-height:0; overflow:hidden; } .taskPicker,.dayPlanPanel { overflow:auto; } .taskCards { grid-template-columns:minmax(0,1fr); } .taskControls { grid-template-columns:1fr; } .planGridWrap { max-height:30vh; min-height:110px; } }
 @media(max-width:520px) { .headingActions { grid-column:1/-1; justify-content:space-between; } .personDateRow { grid-template-columns:minmax(0,1fr); } }
+
+/* Layout refinements: title and controls share a row, role load becomes a compact strip. */
+.heading { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title actions" "stats stats"; row-gap: 16px; margin-bottom: 16px; }
+.headingTitle { grid-area: title; }
+.headingActions { grid-area: actions; }
+.roleDonutPanel { grid-area: stats; grid-column: auto; grid-row: auto; width: 100%; justify-self: stretch; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.roleDonut { flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; padding: 8px 12px; border-radius: var(--radius); text-align: left; }
+.roleDonut svg { flex: 0 0 44px; width: 44px; height: 44px; }
+.roleDonut strong { font-size: 13px; }
+.refreshButton, .heading input, .dialog input, .dialog select, .dialog button { border-radius: var(--radius); }
+.backlog, .timelineSection { border-radius: var(--radius); }
+.woCard { background: var(--layer); border-radius: var(--radius); }
+.woCard:hover { border-color: var(--link); }
+.woCard[aria-pressed="true"] { background: var(--accent-tint); }
+@media (hover: hover) { .addCell { opacity: .45; } .grid td:hover .addCell, .addCell:focus-visible { opacity: 1; } }
+@media (max-width: 760px) { .heading { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "actions" "stats"; } .roleDonutPanel { grid-template-columns: minmax(0, 1fr); } .roleDonut svg { flex-basis: 36px; width: 36px; height: 36px; } }
