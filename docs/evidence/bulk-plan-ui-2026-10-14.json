@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-14",
+  "environment": "local Onshore Test",
+  "revision": "0016_plan_upload_batches",
+  "preview": {
+    "wonum": "P13469691",
+    "person": "Dao Quang Hai (1B)",
+    "plans": 2,
+    "total_minutes": 1320,
+    "task10_segments": [
+      {
+        "date": "2026-10-01",
+        "minutes": 60
+      }
+    ],
+    "task20_segments": [
+      {
+        "date": "2026-10-01",
+        "minutes": 570
+      },
+      {
+        "date": "2026-10-02",
+        "minutes": 630
+      },
+      {
+        "date": "2026-10-03",
+        "minutes": 60
+      }
+    ],
+    "day_minutes": [
+      630,
+      630,
+      60
+    ],
+    "server_units": 2,
+    "reload_recovered": true,
+    "confirmation_clicked": false
+  },
+  "cleanup": {
+    "reserved_before": 0,
+    "reserved_after": 0,
+    "plan_upload_attempts_before": 0,
+    "plan_upload_attempts_after": 0,
+    "all_trial_segments_released": true,
+    "maximo_writes": 0
+  },
+  "verification": {
+    "bulk_daily_postgres_tests": 48,
+    "offline_tests": 110,
+    "runtime_role_tests": 1,
+    "typecheck": "passed",
+    "lint": "passed",
+    "build": "passed; existing chunk advisory",
+    "independent_review": "no remaining P1/P2 findings; independent Vitest run blocked by sandbox spawn EPERM",
+    "health_live": 200,
+    "health_ready": 200,
+    "frontend_tests": 386,
+    "frontend_runner": "Full suite with maxWorkers=4 passed; default31worker run had385/386, existing pagination test timed out5s. No test/timeout changed."
+  }
+}

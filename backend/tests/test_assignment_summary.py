@@ -57,6 +57,22 @@ def test_all_tasks_needed_for_completed():
     assert summary([task(), second], [row()])["remaining_tasks"] == 1
 
 
+def test_daily_synced_children_group_by_remote_identity_with_unknown_fail_closed():
+    value = task()
+    first = value["assignments"][0]
+    first.update(
+        labor_hours=5, laborcode="LAB", scheduledate="2026-10-03T06:30:00+07:00", status="ASSIGNED"
+    )
+    value["assignments"].append(
+        {**first, "assignment_id": "999", "scheduledate": "2026-10-04T06:30:00+07:00"}
+    )
+    rows = [row(minutes=300, sync_state="synced"), row(minutes=300, sync_state="synced")]
+    rows[0].remote_assignment_id, rows[1].remote_assignment_id = "100", "999"
+    assert summary([value], rows)["state"] == "completed"
+    rows[1].sync_state = "unknown"
+    assert summary([value], rows)["state"] == "unverified"
+
+
 @pytest.mark.parametrize("mutation", ["qty", "missing", "null", "craft", "unknown", "half_bound"])
 def test_ambiguous_sources_stay_unverified(mutation):
     value = task()

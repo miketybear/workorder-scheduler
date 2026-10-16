@@ -1,0 +1,284 @@
+{
+  "batch_id": "8c0e8f9b-bd4e-4e75-8f40-c5965843f1be",
+  "environment": "Onshore Test",
+  "wo_detail": {
+    "siteid": "BD1",
+    "workorderid": "536549",
+    "wonum": "P13469691",
+    "bdpocdiscipline": "E&I",
+    "worktype": "PM",
+    "status": "APPR",
+    "description": "12 Month maintenance for HT-PM-4525B & 4525C of the Glycol system.",
+    "wolo10": null,
+    "location": "HT-GR",
+    "systemid": null,
+    "schedstart": "2026-10-30T06:30:00+07:00",
+    "schedfinish": "2026-10-31T17:30:00+07:00",
+    "actstart": null,
+    "actfinish": null,
+    "wopriority": 2,
+    "wopriority_description": "Medium",
+    "lead": null,
+    "assignedtechname": null,
+    "estdur": "25.0",
+    "targstartdate": "2026-10-01T07:46:00+07:00",
+    "targcompdate": "2026-10-31T07:46:00+07:00",
+    "istask": false,
+    "parent": null
+  },
+  "tasks": [
+    {
+      "task_workorder_id": "536557",
+      "task_id": 20,
+      "description": "Do the job task as PM schedule",
+      "planned_labor": [
+        {
+          "craft": "E&I",
+          "labor_hours": "21.0",
+          "quantity": "1"
+        }
+      ],
+      "assignments": [
+        {
+          "assignment_id": "552349",
+          "task_id": 20,
+          "laborcode": null,
+          "craft": "E&I",
+          "scheduledate": null,
+          "labor_hours": "21.0",
+          "status": "WAITASGN",
+          "revision": "3131620183"
+        }
+      ],
+      "has_out_of_scope_demand": false
+    },
+    {
+      "task_workorder_id": "536559",
+      "task_id": 30,
+      "description": "Clear work site, completed paper works, checksheets and close work order",
+      "planned_labor": [
+        {
+          "craft": "E&I",
+          "labor_hours": "3.0",
+          "quantity": "1"
+        }
+      ],
+      "assignments": [
+        {
+          "assignment_id": "552355",
+          "task_id": 30,
+          "laborcode": null,
+          "craft": "E&I",
+          "scheduledate": null,
+          "labor_hours": "3.0",
+          "status": "WAITASGN",
+          "revision": "3131620185"
+        }
+      ],
+      "has_out_of_scope_demand": false
+    },
+    {
+      "task_workorder_id": "536555",
+      "task_id": 10,
+      "description": "Obtain all paperworks during job task",
+      "planned_labor": [
+        {
+          "craft": "E&I",
+          "labor_hours": "1.0",
+          "quantity": "1"
+        }
+      ],
+      "assignments": [
+        {
+          "assignment_id": "552343",
+          "task_id": 10,
+          "laborcode": "HAIDQ",
+          "craft": "E&I",
+          "scheduledate": "2026-10-01T06:30:00+07:00",
+          "labor_hours": "1.0",
+          "status": "ASSIGNED",
+          "revision": "3627988602"
+        }
+      ],
+      "has_out_of_scope_demand": false
+    }
+  ],
+  "ledger": [
+    {
+      "item_id": "9d7d829e-7cfa-4d2e-812e-aaf0e30d3c3b",
+      "plan_id": "f5a2d0a9-060f-4c74-bf4e-1094b81431bf",
+      "request_id": "1c736307-a99e-4284-aafa-4b419a1d380a",
+      "state": "confirmed",
+      "attempt_id": "e9db5f83-8787-417a-8e2f-3eb2771576c0",
+      "claimed_until": "2026-10-14 14:56:17.938140+00:00",
+      "approved": {
+        "wonum": null,
+        "plan_id": "f5a2d0a9-060f-4c74-bf4e-1094b81431bf",
+        "site_id": "BD1",
+        "task_id": 10,
+        "segments": [
+          {
+            "date": "2026-10-01",
+            "minutes": 60,
+            "version": 1,
+            "allocation_id": "9a5120f5-d142-4856-a6cc-ee1518387ed5",
+            "scheduled_start": "2026-10-01T06:30:00+07:00",
+            "scheduled_finish": "2026-10-01T07:30:00+07:00"
+          }
+        ],
+        "laborcode": "HAIDQ",
+        "person_id": "6ce96af1-8a73-40ec-bd5e-1f9b786e9dcf",
+        "person_name": "Dao Quang Hai (1B)",
+        "plan_version": 1,
+        "workorder_id": "536549",
+        "allocation_id": null,
+        "connection_id": "aab45085-e84f-4273-82d2-960b1f26c3da",
+        "total_minutes": 60,
+        "task_description": "Obtain all paperworks during job task",
+        "task_workorder_id": "536555",
+        "source_assignment_id": "552343",
+        "workorder_description": null
+      }
+    },
+    {
+      "item_id": "5e876dd6-0f2e-49ba-9272-00c92cfd17c6",
+      "plan_id": "eab59d94-f90a-4791-be7c-d51085297d8b",
+      "request_id": "fc58f1ba-5869-4571-bd5f-40720c7904f7",
+      "state": "sending",
+      "attempt_id": null,
+      "claimed_until": "2026-10-14 14:56:21.474306+00:00",
+      "approved": {
+        "wonum": null,
+        "plan_id": "eab59d94-f90a-4791-be7c-d51085297d8b",
+        "site_id": "BD1",
+        "task_id": 20,
+        "segments": [
+          {
+            "date": "2026-10-01",
+            "minutes": 570,
+            "version": 1,
+            "allocation_id": "fef37fca-7f24-4606-9ed4-804b4cc7c713",
+            "scheduled_start": "2026-10-01T06:30:00+07:00",
+            "scheduled_finish": "2026-10-01T16:00:00+07:00"
+          },
+          {
+            "date": "2026-10-02",
+            "minutes": 630,
+            "version": 1,
+            "allocation_id": "f97f2748-87e9-44d5-ba72-062dd4d4ebef",
+            "scheduled_start": "2026-10-02T06:30:00+07:00",
+            "scheduled_finish": "2026-10-02T17:00:00+07:00"
+          },
+          {
+            "date": "2026-10-03",
+            "minutes": 60,
+            "version": 1,
+            "allocation_id": "67ecfae4-da40-4e3c-bed6-11d07b113267",
+            "scheduled_start": "2026-10-03T06:30:00+07:00",
+            "scheduled_finish": "2026-10-03T07:30:00+07:00"
+          }
+        ],
+        "laborcode": "HAIDQ",
+        "person_id": "6ce96af1-8a73-40ec-bd5e-1f9b786e9dcf",
+        "person_name": "Dao Quang Hai (1B)",
+        "plan_version": 1,
+        "workorder_id": "536549",
+        "allocation_id": null,
+        "connection_id": "aab45085-e84f-4273-82d2-960b1f26c3da",
+        "total_minutes": 1260,
+        "task_description": "Do the job task as PM schedule",
+        "task_workorder_id": "536557",
+        "source_assignment_id": "552349",
+        "workorder_description": null
+      }
+    }
+  ],
+  "task20_daily_attempt_exists": false,
+  "task20_approved_protected_target": null,
+  "task20_current_protected_target": {
+    "resource_id": "_QkQxL1AxMzQ2OTY5NQ--",
+    "root_revision": "3134339831",
+    "assignment": {
+      "assignmentid": 552349,
+      "craft": "E&I",
+      "skilllevel": "OPSTECH",
+      "wplaborid": "P13278033",
+      "orgid": "BDPOC",
+      "parentassignid": 0,
+      "status": "WAITASGN",
+      "laborcode": null,
+      "laborhrs": 21.0,
+      "scheduledate": null,
+      "finishdate": null,
+      "startdate": null,
+      "workdate": null,
+      "_rowstamp": "3131620183"
+    },
+    "assignments": [
+      {
+        "assignmentid": 552349,
+        "craft": "E&I",
+        "skilllevel": "OPSTECH",
+        "wplaborid": "P13278033",
+        "orgid": "BDPOC",
+        "parentassignid": 0,
+        "status": "WAITASGN",
+        "laborcode": null,
+        "laborhrs": 21.0,
+        "scheduledate": null,
+        "finishdate": null,
+        "startdate": null,
+        "workdate": null,
+        "_rowstamp": "3131620183"
+      }
+    ]
+  },
+  "task20_remote_unchanged": null,
+  "lock_error": {
+    "utc": "2026-10-14 14:53:01.979",
+    "error": "canceling statement due to lock timeout",
+    "statement": "SELECT pg_advisory_xact_lock($1)"
+  },
+  "remote_writes": 0,
+  "task20_approved_full_remote_target_available": false,
+  "task20_frozen_source_baselines": [
+    {
+      "craft": "E&I",
+      "status": "WAITASGN",
+      "task_id": 20,
+      "revision": "3131620183",
+      "laborcode": null,
+      "labor_hours": "21.0",
+      "scheduledate": null,
+      "assignment_id": "552349"
+    },
+    {
+      "craft": "E&I",
+      "status": "WAITASGN",
+      "task_id": 20,
+      "revision": "3131620183",
+      "laborcode": null,
+      "labor_hours": "21.0",
+      "scheduledate": null,
+      "assignment_id": "552349"
+    },
+    {
+      "craft": "E&I",
+      "status": "WAITASGN",
+      "task_id": 20,
+      "revision": "3131620183",
+      "laborcode": null,
+      "labor_hours": "21.0",
+      "scheduledate": null,
+      "assignment_id": "552349"
+    }
+  ],
+  "task20_source_revision_matches_approved": true,
+  "pg_activity_after_failure": {
+    "checked_utc": "2026-10-14T14:59Z",
+    "failed_pid": 97315,
+    "failed_pid_state": "idle",
+    "active_transactions": 0,
+    "waiting_advisory_locks": 0
+  }
+}

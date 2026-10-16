@@ -47,6 +47,13 @@ class Allocation(Base):
             unique=True,
             postgresql_where=text("state='reserved' AND plan_id IS NOT NULL"),
         ),
+        Index(
+            "uq_assignment_daily_remote",
+            "connection_id",
+            "remote_assignment_id",
+            unique=True,
+            postgresql_where=text("state='reserved' AND remote_assignment_id IS NOT NULL"),
+        ),
     )
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     pool_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("resource_pool.id"))
@@ -65,6 +72,7 @@ class Allocation(Base):
     task_workorder_id: Mapped[str | None] = mapped_column(String(30))
     task_id: Mapped[int | None] = mapped_column(Integer)
     assignment_id: Mapped[str | None] = mapped_column(String(30))
+    remote_assignment_id: Mapped[str | None] = mapped_column(String(30))
     task_description: Mapped[str | None] = mapped_column(String(1000))
     upstream_baseline: Mapped[dict | None] = mapped_column(JSONB)
     sync_state: Mapped[str] = mapped_column(String(20), default="local", server_default="local")
@@ -94,6 +102,67 @@ class AssignmentPlan(Base):
     laborcode: Mapped[str] = mapped_column(String(100))
     demand_minutes: Mapped[int] = mapped_column(Integer)
     state: Mapped[str] = mapped_column(String(20), default="reserved")
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    sync_state: Mapped[str] = mapped_column(String(20), default="local", server_default="local")
+
+
+class AssignmentPlanPreview(Base):
+    __tablename__ = "assignment_plan_upload_preview"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    actor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id"))
+    plan_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("assignment_plan.id"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    intent: Mapped[dict] = mapped_column(JSONB)
+
+
+class AssignmentPlanUpload(Base):
+    __tablename__ = "assignment_plan_upload"
+    __table_args__ = (CheckConstraint("state IN ('unknown','confirmed','conflict','failed')"),)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    actor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id"))
+    request_id: Mapped[uuid.UUID] = mapped_column(unique=True)
+    plan_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("assignment_plan.id"))
+    version: Mapped[int] = mapped_column(Integer)
+    request_hash: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(20), default="unknown")
+    intent: Mapped[dict] = mapped_column(JSONB)
+    mapping: Mapped[list | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AssignmentPlanUploadBatch(Base):
+    __tablename__ = "assignment_plan_upload_batch"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    actor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id"))
+    request_id: Mapped[uuid.UUID] = mapped_column(unique=True)
+    request_hash: Mapped[str] = mapped_column(String(64))
+    confirmation_request_id: Mapped[uuid.UUID | None] = mapped_column(unique=True)
+    pool_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("resource_pool.id"))
+    connection_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("maximo_connection.id"))
+    discipline: Mapped[str] = mapped_column(String(50))
+    month: Mapped[str] = mapped_column(String(7))
+    start_time: Mapped[str] = mapped_column(String(5))
+    state: Mapped[str] = mapped_column(String(20), default="previewing")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AssignmentPlanUploadBatchItem(Base):
+    __tablename__ = "assignment_plan_upload_batch_item"
+    __table_args__ = (Index("uq_plan_upload_batch_position", "batch_id", "position", unique=True),)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    batch_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("assignment_plan_upload_batch.id"))
+    allocation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("assignment_allocation.id"))
+    plan_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("assignment_plan.id"))
+    position: Mapped[int] = mapped_column(Integer)
+    request_id: Mapped[uuid.UUID] = mapped_column(unique=True, default=uuid.uuid4)
+    frozen: Mapped[dict] = mapped_column(JSONB)
+    proposal: Mapped[dict | None] = mapped_column(JSONB)
+    labels: Mapped[dict | None] = mapped_column(JSONB)
+    state: Mapped[str] = mapped_column(String(20), default="pending")
+    reason: Mapped[str | None] = mapped_column(String(100))
+    attempt_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("assignment_plan_upload.id"))
+    claimed_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AssignmentEvent(Base):

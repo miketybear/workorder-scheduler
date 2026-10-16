@@ -171,13 +171,27 @@ def test_provisioned_runtime_has_dml_but_no_ddl_admin_or_audit_mutation():
                 ("assignment_event", ("SELECT", "INSERT")),
                 ("assignment_submission", ("SELECT", "INSERT")),
                 ("assignment_planning_snapshot", ("SELECT", "INSERT", "UPDATE")),
+                ("assignment_plan_upload_preview", ("SELECT", "INSERT")),
+                ("assignment_plan_upload", ("SELECT", "INSERT")),
+                ("assignment_plan_upload_batch", ("SELECT", "INSERT")),
+                ("assignment_plan_upload_batch_item", ("SELECT", "INSERT")),
             ):
                 for privilege in privileges:
                     assert db.execute(
                         "SELECT has_table_privilege(current_user, %s, %s)",
                         (table, privilege),
                     ).fetchone() == (True,)
+            for column in ("state", "version", "sync_state", "person_id", "laborcode"):
+                assert db.execute(
+                    "SELECT has_column_privilege(current_user, 'assignment_plan', %s, 'UPDATE')",
+                    (column,),
+                ).fetchone() == (True,)
             denied = [
+                "UPDATE assignment_plan SET demand_minutes=1",
+                "UPDATE assignment_plan SET assignment_id='changed'",
+                "UPDATE assignment_plan SET actor_id=gen_random_uuid()",
+                "UPDATE assignment_plan SET pool_id=gen_random_uuid()",
+                "UPDATE assignment_plan SET connection_id=gen_random_uuid()",
                 "CREATE TABLE forbidden(id integer)",
                 "CREATE SCHEMA forbidden",
                 "CREATE TEMP TABLE forbidden(id integer)",
@@ -209,6 +223,20 @@ def test_provisioned_runtime_has_dml_but_no_ddl_admin_or_audit_mutation():
                 "DELETE FROM assignment_submission",
                 "DELETE FROM assignment_planning_snapshot",
                 "TRUNCATE assignment_planning_snapshot",
+                "UPDATE assignment_plan_upload_preview SET intent='{}'",
+                "DELETE FROM assignment_plan_upload_preview",
+                "UPDATE assignment_plan_upload SET intent='{}'",
+                "UPDATE assignment_plan_upload SET actor_id=gen_random_uuid()",
+                "UPDATE assignment_plan_upload SET request_hash='changed'",
+                "DELETE FROM assignment_plan_upload",
+                "UPDATE assignment_plan_upload_batch SET request_id=gen_random_uuid()",
+                "UPDATE assignment_plan_upload_batch SET actor_id=gen_random_uuid()",
+                "UPDATE assignment_plan_upload_batch SET start_time='07:00'",
+                "UPDATE assignment_plan_upload_batch_item SET request_id=gen_random_uuid()",
+                "UPDATE assignment_plan_upload_batch_item SET frozen='{}'",
+                "UPDATE assignment_plan_upload_batch_item SET proposal='{}'",
+                "DELETE FROM assignment_plan_upload_batch",
+                "DELETE FROM assignment_plan_upload_batch_item",
                 "SELECT * FROM future_table",
                 "SELECT public.future_function()",
                 "INSERT INTO admin_authority_event(id,user_id,operator,reason,details) "

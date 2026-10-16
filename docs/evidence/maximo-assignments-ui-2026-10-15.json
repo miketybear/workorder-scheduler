@@ -1,0 +1,166 @@
+{
+  "date": "2026-10-15",
+  "environment": "Onshore Test",
+  "method": "Direct authenticated Maximo Assignments UI observation; read-only navigation/details",
+  "work_orders": [
+    {
+      "work_order": "P13470381",
+      "site": "BD1",
+      "rows": [
+        "\t\nÂ \n\tTask \tDescription\tCrew Type\tCraft\tSkill Level\tLabor\tCrew\t\nÂ \n\t\nÂ \n\tScheduled Start\tHours\tStatus\t\nÂ ",
+        "\t\n\t10\tPrepare PTW, tool, material\t\tE&I\tOPSTECH\tHAIDQ\t\t\n\t\n\t04/Oct/2026 6:30 AM\t1:00\tASSIGNED\t",
+        "\t\n\t20\tcarry out job\t\tE&I\tOPSTECH\tHAIDQ\t\t\n\t\n\t04/Oct/2026 6:30 AM\t5:00\tASSIGNED\t",
+        "\t\n\t30\tClose PTW and WO\t\tE&I\tOPSTECH\t\t\t\n\t\n\t\t1:00\tWAITASGN\t"
+      ],
+      "header": [
+        {
+          "label": "Work Order:",
+          "value": "P13470381"
+        },
+        {
+          "label": "Site:",
+          "value": "BD1"
+        },
+        {
+          "label": "Scheduled Start:",
+          "value": "01/Oct/2026 8:05 AM"
+        },
+        {
+          "label": "Scheduled Finish:",
+          "value": "31/Oct/2026 8:05 AM"
+        },
+        {
+          "label": "Target Start:",
+          "value": "01/Oct/2026 8:05 AM"
+        },
+        {
+          "label": "Target Finish:",
+          "value": "31/Oct/2026 8:05 AM"
+        }
+      ],
+      "verified_rows": [
+        {
+          "task_id": "10",
+          "laborcode": "HAIDQ",
+          "scheduled_start": "2026-10-04T06:30:00+07:00",
+          "minutes": 60,
+          "status": "ASSIGNED"
+        },
+        {
+          "task_id": "20",
+          "laborcode": "HAIDQ",
+          "scheduled_start": "2026-10-04T06:30:00+07:00",
+          "minutes": 300,
+          "status": "ASSIGNED"
+        },
+        {
+          "task_id": "30",
+          "laborcode": null,
+          "scheduled_start": null,
+          "minutes": 60,
+          "status": "WAITASGN"
+        }
+      ],
+      "all_visible_fields_match_previous_api_readback": true,
+      "parent_schedule_and_targets_match": true,
+      "assigned_total_minutes": 360
+    },
+    {
+      "work_order": "P13469691",
+      "site": "BD1",
+      "rows": [
+        "\t\nÂ \n\tTask \tDescription\tCrew Type\tCraft\tSkill Level\tLabor\tCrew\t\nÂ \n\t\nÂ \n\tScheduled Start\tHours\tStatus\t\nÂ ",
+        "\t\n\t10\tObtain all paperworks during job task\t\tE&I\tOPSTECH\tHAIDQ\t\t\n\t\n\t01/Oct/2026 6:30 AM\t1:00\tASSIGNED\t",
+        "\t\n\t20\tDo the job task as PM schedule\t\tE&I\tOPSTECH\tHAIDQ\t\t\n\t\n\t01/Oct/2026 6:30 AM\t9:30\tASSIGNED\t",
+        "\t\n\t20\tDo the job task as PM schedule\t\tE&I\tOPSTECH\tHAIDQ\t\t\n\t\n\t03/Oct/2026 6:30 AM\t1:00\tASSIGNED\t",
+        "\t\n\t20\tDo the job task as PM schedule\t\tE&I\tOPSTECH\tHAIDQ\t\t\n\t\n\t02/Oct/2026 6:30 AM\t10:30\tASSIGNED\t",
+        "\t\n\t30\tClear work site, completed paper works, checksheets and close work order\t\tE&I\tOPSTECH\t\t\t\n\t\n\t\t3:00\tWAITASGN\t"
+      ],
+      "header": [
+        {
+          "label": "Work Order:",
+          "value": "P13469691"
+        },
+        {
+          "label": "Site:",
+          "value": "BD1"
+        },
+        {
+          "label": "Scheduled Start:",
+          "value": "30/Oct/2026 6:30 AM"
+        },
+        {
+          "label": "Scheduled Finish:",
+          "value": "31/Oct/2026 5:30 PM"
+        },
+        {
+          "label": "Target Start:",
+          "value": "01/Oct/2026 7:46 AM"
+        },
+        {
+          "label": "Target Finish:",
+          "value": "31/Oct/2026 7:46 AM"
+        }
+      ],
+      "verified_rows": [
+        {
+          "task_id": "10",
+          "laborcode": "HAIDQ",
+          "scheduled_start": "2026-10-01T06:30:00+07:00",
+          "minutes": 60,
+          "status": "ASSIGNED"
+        },
+        {
+          "task_id": "20",
+          "laborcode": "HAIDQ",
+          "scheduled_start": "2026-10-01T06:30:00+07:00",
+          "minutes": 570,
+          "status": "ASSIGNED"
+        },
+        {
+          "task_id": "20",
+          "laborcode": "HAIDQ",
+          "scheduled_start": "2026-10-03T06:30:00+07:00",
+          "minutes": 60,
+          "status": "ASSIGNED"
+        },
+        {
+          "task_id": "20",
+          "laborcode": "HAIDQ",
+          "scheduled_start": "2026-10-02T06:30:00+07:00",
+          "minutes": 630,
+          "status": "ASSIGNED"
+        },
+        {
+          "task_id": "30",
+          "laborcode": null,
+          "scheduled_start": null,
+          "minutes": 180,
+          "status": "WAITASGN"
+        }
+      ],
+      "all_visible_fields_match_previous_api_readback": true,
+      "parent_schedule_and_targets_match": true,
+      "assigned_total_minutes": 1320
+    }
+  ],
+  "ui_visible_fields": [
+    "Task",
+    "Craft",
+    "Skill Level",
+    "Labor",
+    "Scheduled Start",
+    "Hours",
+    "Status"
+  ],
+  "not_visible_in_this_ui": [
+    "Assignment ID",
+    "Assignment Finishdate"
+  ],
+  "api_evidence_for_not_visible_fields": [
+    "bulk-sequence-live-2026-10-14.json",
+    "bulk-plan-live-2026-10-14.json"
+  ],
+  "maximo_mutations": 0,
+  "acceptance": "passed for both work orders; UI visible fields directly verified, hidden IDs/finish dates remain covered by prior API evidence"
+}

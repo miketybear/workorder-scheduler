@@ -1,11 +1,15 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { AssignmentError, deleteAssignment, getAssignmentRevision, getResourceTimeline, getWorkOrderTasks, lookupAssignmentRequest, lookupTaskAllocationRequest, lookupTaskPlanBatchRequest, lookupAssignmentUploadSubmission, reconcileAssignmentUpload, saveAssignment, saveTaskAllocations, saveTaskPlanBatch, updateAssignment, uploadAssignment, type Assignment, type AssignmentInput, type AssignmentWorkOrder, type AffectedCapacityDay, type CapacityDay, type PlanningSummary, type ResourcePerson, type ResourceTimeline as TimelineData, type TaskAllocationInput, type TaskPlanBatchInput, type TaskPlanBatchResult, type WorkOrderTasks, type AssignmentUploadResult } from '../api/assignments';
+import { AssignmentError, deleteAssignment, getAssignmentRevision, getResourceTimeline, getWorkOrderTasks, lookupAssignmentRequest, lookupTaskAllocationRequest, lookupTaskPlanBatchRequest, lookupAssignmentPlanMoveRequest, previewAssignmentPlanMove, moveAssignmentPlan, lookupAssignmentUploadSubmission, reconcileAssignmentUpload, saveAssignment, saveTaskAllocations, saveTaskPlanBatch, updateAssignment, uploadAssignment, type Assignment, type AssignmentInput, type AssignmentWorkOrder, type AffectedCapacityDay, type CapacityDay, type PlanningSummary, type ResourcePerson, type ResourceTimeline as TimelineData, type TaskAllocationInput, type TaskPlanBatchInput, type TaskPlanBatchResult, type WorkOrderTasks, type AssignmentUploadResult, type AssignmentPlanMovePreview, type AssignmentPlanMoveRequest, type AssignmentPlanMoveInput, type AssignmentPlanMoveResult } from '../api/assignments';
 import { startOfDay, zonedDateTime } from '../api/dates';
 import { getConnectionSettings } from '../api/settings';
 import { listResourcePools, type ResourcePool } from '../api/rotaImports';
 import { effectiveAllocationSummary, RetrievalError, retrieveWorkOrderPage, type WorkOrder, type WorkOrderPage } from '../api/workOrders';
 import { activeGrant } from '../auth/activeGrant';
 import { wouldExceedCapacity } from '../assignments/capacity';
+import { PlanUpload } from './PlanUpload';
+import { PlanUploadBatch } from './PlanUploadBatch';
+import { AssignmentCard } from './AssignmentCard';
+import { PlanMoveDialog } from './PlanMoveDialog';
 import styles from './ResourceTimeline.module.css';
 
 type PointerDrag = { payload: string; label: string; startX: number; startY: number; moved: boolean; context: string };
@@ -15,6 +19,7 @@ type Proposal = { item?: Assignment; workOrder?: AssignmentWorkOrder; cell: Cell
 type MutationContext = { principal: string; connectionId: string; discipline: string; poolId: string; month: string };
 class MutationContextError extends Error {}
 type Pending = { requestId: string; kind: 'create' | 'update' | 'delete' | 'task-batch' | 'task-plan-batch'; assignmentId?: string; input?: AssignmentInput; taskInput?: TaskAllocationInput; planBatchInput?:TaskPlanBatchInput; version?: number; item?: Assignment; context: MutationContext };
+type PlanMoveState={planId:string;item:Assignment;knownItems:Assignment[];targetPersonId:string;targetDate:string;mode:'shift'|'reallocate';preview:AssignmentPlanMovePreview|null;loading:boolean;error:string;canReallocate:boolean;request?:AssignmentPlanMoveInput;unknown:boolean;reconciling:boolean};
 type LoadedWorkOrderPage=WorkOrderPage&{requestContext:string};
 const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const monthOf = (date: Date, timeZone: string) => {
@@ -31,6 +36,8 @@ function addCalendarDays(value:string,amount:number){
 function calendarRange(start:string,end:string,max=366){const dates:string[]=[];let current=start;while(current<=end&&dates.length<max){dates.push(current);current=addCalendarDays(current,1);}return current<=end?[]:dates;}
 const displayHours = (minutes: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(minutes / 60);
 const displayDate = (date:string) => { const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(date); return match?`${match[3]}/${match[2]}/${match[1]}`:date; };
+function formatMaximoDateTime(value:string|null,timezone:string){if(!value)return '—';if(/^\d{4}-\d{2}-\d{2}$/.test(value))return displayDate(value);if(!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value))return '—';const parsed=new Date(value);if(!Number.isFinite(parsed.getTime()))return '—';return new Intl.DateTimeFormat('vi-VN',{timeZone:timezone,dateStyle:'short',timeStyle:'short'}).format(parsed);}
+function expectedFinish(value:string|null,hours:number|null,timezone:string){if(!value||hours===null||!Number.isFinite(hours)||/^\d{4}-\d{2}-\d{2}$/.test(value)||!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value))return '—';const start=new Date(value);if(!Number.isFinite(start.getTime()))return '—';return new Intl.DateTimeFormat('vi-VN',{timeZone:timezone,dateStyle:'short',timeStyle:'short'}).format(new Date(start.getTime()+hours*60*60_000));}
 const parseHours = (hours: string) => { const value = Number(hours) * 60; const rounded = Math.round(value); return Number.isFinite(value) && value>=0 && Math.abs(value - rounded) < 0.000001 ? rounded : 0; };
 const displayRole = (role: string) => ({ TECH: 'Technician', SUP: 'Supervisor', ASST_SUP: 'Assistant Supervisor', CONTROL_RM_ENGINEER: 'Control RM Engineer', MATERIAL_CONTROLLER: 'Material Controller' }[role] ?? role);
 const capacityFor = (person: ResourcePerson, date: string) => person.days.find(day => day.date === date);
@@ -94,6 +101,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   const [pool, setPool] = useState<ResourcePool | null>(null);
   const [poolRevision, setPoolRevision] = useState(-1);
   const [timeline, setTimeline] = useState<TimelineData | null>(null);
+  const [planRecovery,setPlanRecovery]=useState<{key:string;items:Assignment[]}|null>(null);
   const [snapshotContext, setSnapshotContext] = useState('');
   const [workOrderPage,setWorkOrderPage]=useState<LoadedWorkOrderPage|null>(null);
   const [workOrderPageLoading,setWorkOrderPageLoading]=useState(false);
@@ -115,8 +123,13 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   const [uploadResult,setUploadResult]=useState<AssignmentUploadResult|null>(null);
   const [uploadUnknownRequest,setUploadUnknownRequest]=useState('');
   const [uploading,setUploading]=useState(false);
+  const [planUploadLocked,setPlanUploadLocked]=useState(false);
+  const [planUploadCloseLocked,setPlanUploadCloseLocked]=useState(false);
+  const [bulkUploadOpen,setBulkUploadOpen]=useState(false);
+  const [bulkUploadLocked,setBulkUploadLocked]=useState(false);
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
+  const [planMove,setPlanMove]=useState<PlanMoveState|null>(null);
   const [unknown, setUnknown] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -141,6 +154,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   function refreshTimeline(){forceMetadataRefresh.current=true;setReload(value=>value+1);}
   const [discipline, setDiscipline] = useState('');
   const [principal, setPrincipal] = useState('');
+  const planRecoveryKey=[principal,discipline,month,pool?.id,pool?.connection_id].join('|');
   const [grantCanWrite, setGrantCanWrite] = useState(false);
   const [checkingSession, setCheckingSession] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -148,6 +162,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   const [pagedSearch,setPagedSearch]=useState('');
   const pointerDrag = useRef<PointerDrag | null>(null);
   const taskPlanCapacityController=useRef<AbortController|null>(null);
+  const planMoveController=useRef<AbortController|null>(null);
   const taskPlanCapacityGeneration=useRef(0);
   const [suppressClick,setSuppressClick]=useState(false);
   const [dragPreview, setDragPreview] = useState<{label:string;x:number;y:number} | null>(null);
@@ -182,11 +197,11 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   }, [active]);
 
   useEffect(() => {
-    if (!pending && !uploadUnknownRequest) return;
+    if (!pending && !uploadUnknownRequest && !planMove?.request && !planMove?.unknown) return;
     const protectPending = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', protectPending);
     return () => window.removeEventListener('beforeunload', protectPending);
-  }, [pending,uploadUnknownRequest]);
+  }, [pending,uploadUnknownRequest,planMove?.request,planMove?.unknown]);
 
   useEffect(() => {
     if (!active) return;
@@ -254,7 +269,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     let current=true;let revisionController:AbortController|null=null;
     const timer=window.setInterval(()=>{
       setSummaryNow(Date.now());
-      if(document.visibilityState!=='visible'||proposal||busy||pending||uploading||uploadUnknownRequest)return;
+      if(document.visibilityState!=='visible'||proposal||planMove||busy||pending||uploading||uploadUnknownRequest)return;
       if(revisionController)return;
       const controller=new AbortController();revisionController=controller;
       void getAssignmentRevision(pool.id,pool.connection_id,discipline,controller.signal).then(result=>{
@@ -267,10 +282,10 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
       }).finally(()=>{if(revisionController===controller)revisionController=null;});
     },30_000);
     return()=>{current=false;window.clearInterval(timer);revisionController?.abort();};
-  },[active,pool,principal,discipline,proposal,busy,pending,uploading,uploadUnknownRequest]);
+  },[active,pool,principal,discipline,proposal,planMove,busy,pending,uploading,uploadUnknownRequest]);
 
   useEffect(() => {
-    if (!active || busy || pending || !pool || !principal) return;
+    if (!active || busy || pending || planMove || !pool || !principal) return;
     const controller = new AbortController();
     let current = true;
     let wasHidden = document.visibilityState === 'hidden';
@@ -294,9 +309,9 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     };
     document.addEventListener('visibilitychange', verifyOnReturn);
     return () => { current = false; controller.abort(); document.removeEventListener('visibilitychange', verifyOnReturn); };
-  }, [active, busy, pending, pool, principal, discipline]);
+  }, [active, busy, pending, planMove, pool, principal, discipline]);
 
-  useEffect(() => { onPendingChange?.(busy || !!pending || uploading || !!uploadUnknownRequest); }, [busy, pending, uploading, uploadUnknownRequest, onPendingChange]);
+  useEffect(() => { onPendingChange?.(busy || !!pending || !!planMove || uploading || !!uploadUnknownRequest || planUploadCloseLocked || bulkUploadLocked); }, [busy, pending, planMove, uploading, uploadUnknownRequest, planUploadCloseLocked, bulkUploadLocked, onPendingChange]);
 
   useEffect(() => {
     if (!proposal || !active || !timeline) return;
@@ -304,7 +319,6 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     const dialog = dialogRef.current;
     dialog?.querySelector<HTMLElement>('select:not(:disabled), input:not(:disabled), button:not(:disabled)')?.focus();
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !busy && !pending && !uploading && !uploadUnknownRequest) { event.preventDefault(); setProposal(null); }
       if (event.key !== 'Tab' || !dialog) return;
       const elements = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled)')];
       const first = elements[0], last = elements.at(-1);
@@ -315,7 +329,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     return () => { document.removeEventListener('keydown', handleKey); if (previous?.isConnected) previous.focus(); };
     // Rebind only when dialog opens/closes or mutation locks change, not on hour input.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!proposal, active, busy, pending,uploading,uploadUnknownRequest]);
+  }, [!!proposal, active, busy, pending,uploading,uploadUnknownRequest,planUploadCloseLocked]);
 
   useEffect(() => { pointerDrag.current = null; queueMicrotask(() => setDragPreview(null)); }, [active, month, principal, discipline, pool?.id, reload]);
 
@@ -323,6 +337,46 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   const currentContext = JSON.stringify([activationEpoch.current, reload, pool?.id, pool?.connection_id, discipline, principal, month]);
   const shownPool = active && !checkingSession && poolRevision === reload ? pool : null;
   const shownTimeline = active && !checkingSession && snapshotContext === currentContext ? timeline : null;
+  useEffect(()=>{
+    if(!planMove||planMove.unknown||!pool||!timeline)return;
+    const request:AssignmentPlanMoveRequest={connection_id:pool.connection_id,discipline,expected_plan_version:planMove.item.plan_version??0,anchor_allocation_id:planMove.item.id,target_person_id:planMove.targetPersonId,target_date:planMove.targetDate,mode:planMove.mode};
+    const context:MutationContext={principal,connectionId:pool.connection_id,discipline,poolId:pool.id,month};
+    const controller=new AbortController();planMoveController.current?.abort();planMoveController.current=controller;
+    const contextKey=[planMove.planId,planMove.item.id,planMove.targetPersonId,planMove.targetDate,planMove.mode,pool.id,pool.connection_id,discipline,principal,month,reload].join('|');
+    setPlanMove(current=>current&&current.planId===planMove.planId?{...current,loading:true,error:'',preview:null,canReallocate:false}:current);
+    void (async()=>{
+      try{
+        if(request.expected_plan_version<1)throw new Error('Không có plan_version hiện tại để xác minh; hãy làm mới timeline trước khi chuyển task.');
+        await verifyMutationContext(context);
+        const preview=await previewAssignmentPlanMove(pool.id,planMove.planId,request,planMove.knownItems,controller.signal);
+        if(controller.signal.aborted)return;
+        await verifyMutationContext(context);
+        setPlanMove(current=>current&&[current.planId,current.item.id,current.targetPersonId,current.targetDate,current.mode,pool.id,pool.connection_id,discipline,principal,month,reload].join('|')===contextKey?{...current,loading:false,preview,error:'',canReallocate:false}:current);
+      }catch(reason){
+        if(controller.signal.aborted)return;
+        if(clearWorkspaceAfterAuthorizationFailure(reason))return;
+        const canReallocate=reason instanceof AssignmentError&&reason.status===409&&reason.code==='plan_move_conflict'&&planMove.mode==='shift';
+        setPlanMove(current=>current&&[current.planId,current.item.id,current.targetPersonId,current.targetDate,current.mode,pool.id,pool.connection_id,discipline,principal,month,reload].join('|')===contextKey?{...current,loading:false,preview:null,error:reason instanceof Error?reason.message:'Không thể tạo preview chuyển task.',canReallocate}:current);
+      }
+    })();
+    return()=>controller.abort();
+  // Keep this request keyed to the move's identity and target fields; depending on the whole state object would abort and restart when loading/error/preview changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[planMove?.planId,planMove?.item.id,planMove?.targetPersonId,planMove?.targetDate,planMove?.mode,planMove?.unknown,pool?.id,pool?.connection_id,discipline,principal,month,reload,timeline]);
+  const confirmedReadOnly=!!proposal?.item?.plan_id&&(proposal.item.plan_sync_state??proposal.item.sync_state)==='synced';
+  const confirmedPlanItem=confirmedReadOnly?proposal?.item:null;
+  const confirmedPlanItems=useMemo(()=>{
+    if(!confirmedPlanItem?.plan_id)return [];
+    const samePlan=(item:Assignment)=>item.plan_id===confirmedPlanItem.plan_id&&item.pool_id===confirmedPlanItem.pool_id&&item.connection_id===confirmedPlanItem.connection_id&&item.site_id===confirmedPlanItem.site_id&&item.workorder_id===confirmedPlanItem.workorder_id&&item.person_id===confirmedPlanItem.person_id&&item.task_workorder_id===confirmedPlanItem.task_workorder_id&&item.task_id===confirmedPlanItem.task_id&&item.assignment_id===confirmedPlanItem.assignment_id&&item.state==='reserved';
+    const items=new Map<string,Assignment>();
+    for(const item of shownTimeline?.items??[])if(samePlan(item))items.set(item.id,item);
+    if(planRecovery?.key===planRecoveryKey)for(const item of planRecovery.items)if(samePlan(item))items.set(item.id,item);
+    return [...items.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+  },[confirmedPlanItem,shownTimeline,planRecovery,planRecoveryKey]);
+  const confirmedTask=confirmedPlanItem&&taskData?.connection_id===confirmedPlanItem.connection_id&&taskData.site_id===confirmedPlanItem.site_id&&taskData.workorder_id===confirmedPlanItem.workorder_id?taskData.tasks.find(task=>task.task_workorder_id===confirmedPlanItem.task_workorder_id&&task.task_id===confirmedPlanItem.task_id):undefined;
+  const confirmedRemoteAssignments=confirmedTask?.assignments.filter(remote=>confirmedPlanItems.some(segment=>segment.remote_assignment_id===remote.assignment_id))??[];
+  const confirmedCoverageMinutes=confirmedPlanItems.reduce((sum,segment)=>sum+segment.minutes,0);
+  const confirmedCoverageComplete=confirmedCoverageMinutes===(confirmedPlanItem?.plan_total_minutes??-1);
   const [pageRefresh,setPageRefresh]=useState(0);
   const backlogPageContext=JSON.stringify([currentContext,backlogView,pagedSearch]);
   const visibleBacklogPage=backlogCursorState.context===backlogPageContext?backlogCursorState.index:0;
@@ -485,6 +539,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     }
     return [...grouped.values()];
   }, [shownTimeline]);
+  const confirmedLaborcode=confirmedRemoteAssignments.find(remote=>remote.laborcode)?.laborcode??roster.find(person=>person.person_id===confirmedPlanItem?.person_id)?.laborcode??'—';
   const backlog = workOrders;
   const backlogPageOrders=workOrders;
   useEffect(()=>{if(backlogListRef.current)backlogListRef.current.scrollTop=0;},[backlogPageContext,visibleBacklogPage]);
@@ -558,16 +613,16 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   function clearWorkspaceAfterAuthorizationFailure(reason: unknown): boolean {
     const denied = reason instanceof MutationContextError || reason instanceof RetrievalError && [401,403,404].includes(reason.status);
     if(!denied)return false;
-    taskPlanCapacityController.current?.abort();taskPlanCapacityGeneration.current+=1;
-    assignmentRevision.current='';setRevisionNotice(false);setCheckingSession(false);setGrantCanWrite(false);setTimeline(null);setSnapshotContext('');setWorkOrderPage(null);setSelectedWorkOrder(null);setSelectedWoKey('');setPool(null);setPoolRevision(-1);setProposal(null);
+    taskPlanCapacityController.current?.abort();planMoveController.current?.abort();taskPlanCapacityGeneration.current+=1;
+    assignmentRevision.current='';setRevisionNotice(false);setCheckingSession(false);setGrantCanWrite(false);setTimeline(null);setSnapshotContext('');setWorkOrderPage(null);setSelectedWorkOrder(null);setSelectedWoKey('');setPool(null);setPoolRevision(-1);setProposal(null);setPlanMove(null);
     setTaskData(null);setTaskLoading(false);setSelectedTasks({});setTaskMinutes({});setTaskAssignments({});setTaskPlanCapacity(undefined);
     setError(reason instanceof Error?reason.message:'Phiên hoặc quyền đã thay đổi. Kiểm tra lại quyền trước khi tiếp tục.');
     return true;
   }
   function hideWorkspaceAfterFailedProof(reason:unknown){
     if(clearWorkspaceAfterAuthorizationFailure(reason))return;
-    taskPlanCapacityController.current?.abort();taskPlanCapacityGeneration.current+=1;assignmentRevision.current='';setRevisionNotice(false);
-    setCheckingSession(false);setGrantCanWrite(false);setTimeline(null);setSnapshotContext('');setWorkOrderPage(null);setSelectedWorkOrder(null);setSelectedWoKey('');setPool(null);setPoolRevision(-1);setProposal(null);
+    taskPlanCapacityController.current?.abort();planMoveController.current?.abort();taskPlanCapacityGeneration.current+=1;assignmentRevision.current='';setRevisionNotice(false);
+    setCheckingSession(false);setGrantCanWrite(false);setTimeline(null);setSnapshotContext('');setWorkOrderPage(null);setSelectedWorkOrder(null);setSelectedWoKey('');setPool(null);setPoolRevision(-1);setProposal(null);setPlanMove(null);
     setTaskData(null);setTaskLoading(false);setSelectedTasks({});setTaskMinutes({});setTaskAssignments({});setTaskPlanCapacity(undefined);
     setError(reason instanceof Error?reason.message:'Không xác minh được phạm vi sau khi lưu; dữ liệu đã được ẩn cho đến khi tải lại.');
   }
@@ -609,12 +664,28 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     if (!(capacityFor(person,date)?.capacity_minutes ?? 0)) { setError('Ngày này không có giờ làm việc theo rota.'); return; }
     dropPayload(drag.payload,person,date);
   }
+  function beginPlanMove(item:Assignment,person:ResourcePerson,date:string,wholeTask=false){
+    if(!canWrite||!pool||!timeline||!item.plan_id||item.state!=='reserved'||(item.plan_sync_state??item.sync_state??'local')!=='local'||item.remote_assignment_id){setError('Chỉ có thể chuyển kế hoạch nội bộ chưa gửi lên Maximo.');return;}
+    const samePlan=(candidate:Assignment)=>candidate.plan_id===item.plan_id&&candidate.pool_id===item.pool_id&&candidate.connection_id===item.connection_id&&candidate.site_id===item.site_id&&candidate.workorder_id===item.workorder_id&&candidate.person_id===item.person_id&&candidate.task_workorder_id===item.task_workorder_id&&candidate.task_id===item.task_id&&candidate.assignment_id===item.assignment_id&&candidate.state==='reserved';
+    const all=[...timeline.items,...(planRecovery?.key===planRecoveryKey?planRecovery.items:[])];
+    const knownById=new Map<string,Assignment>();
+    for(const candidate of all.filter(candidate=>samePlan(candidate)&&(candidate.plan_sync_state??candidate.sync_state??'local')==='local'&&!candidate.remote_assignment_id)){const previous=knownById.get(candidate.id);if(!previous||candidate.version>previous.version||candidate.version===previous.version&&(candidate.plan_version??0)>(previous.plan_version??0))knownById.set(candidate.id,candidate);}
+    const knownItems=[...knownById.values()];
+    if(!knownItems.some(candidate=>candidate.id===item.id)){setError('Không thể xác minh phân đoạn neo trong kế hoạch hiện tại. Làm mới timeline trước khi chuyển.');return;}
+    const multiDay=(item.plan_total_minutes??item.minutes)>item.minutes;
+    if(multiDay&&person.person_id===item.person_id&&!wholeTask){
+      resetProposalDetails(true);setTaskPlanStart(date);setProposal({item,cell:{person,date},minutes:item.minutes,hours:String(item.minutes/60)});return;
+    }
+    if(person.person_id===item.person_id&&date===item.date&&!wholeTask)return;
+    if(!item.plan_version){setError('Kế hoạch chưa có phiên bản để chuyển an toàn. Làm mới timeline trước khi thử lại.');return;}
+    resetProposalDetails(false);setProposal(null);setError('');setPlanMove({planId:item.plan_id,item,knownItems,targetPersonId:person.person_id,targetDate:date,mode:'shift',preview:null,loading:true,error:'',canReallocate:false,unknown:false,reconciling:false});
+  }
   function dropPayload(payload: string, person: ResourcePerson, date: string) {
     if (!canWrite || !timeline) return;
     const cell = { person, date };
     const item = timeline.items.find(candidate => candidate.id === payload && candidate.state === 'reserved');
-    if (item && item.plan_id && item.person_id !== person.person_id) { setError('Không thể chuyển phân đoạn kế hoạch nhiều ngày sang người khác. Xóa các phân đoạn của kế hoạch rồi tạo lại cho người mới.'); return; }
-    if (item && canEditItem(item)) setProposal({ item, cell, minutes: item.minutes, hours: String(item.minutes / 60) });
+    if(item?.plan_id&&canEditItem(item)){beginPlanMove(item,person,date);return;}
+    if (item && canEditItem(item)) {resetProposalDetails(item.task_id!==null&&item.task_id!==undefined);setProposal({ item, cell, minutes: item.minutes, hours: String(item.minutes / 60) });}
     else {
     const [siteid, workorderid] = payload.split('|');
     const order = dialogWorkOrders.find(candidate => candidate.siteid === siteid && candidate.workorderid === workorderid);
@@ -627,13 +698,56 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     }
   }
   function edit(item: Assignment) {
-    if (!canWrite) return;
+    if (!canWrite&&item.sync_state!=='synced'&&item.plan_sync_state!=='synced') return;
     const person = roster.find(row => row.person_id === item.person_id);
     if (person) { resetProposalDetails(item.task_id!==null&&item.task_id!==undefined);setTaskPlanStart(item.date); setProposal({ item, cell: { person, date: item.date }, minutes: item.minutes, hours: String(item.minutes / 60) }); }
   }
   function clickWorkOrder(event:React.MouseEvent<HTMLButtonElement>,order:WorkOrder){if(event.detail&&suppressClick){setSuppressClick(false);return;}const key=`${order.siteid}|${order.workorderid}`;setSelectedWoKey(key);setSelectedWorkOrder(order);resetProposalDetails(false);setMessage(`${order.wonum}: chọn ô roster đang làm việc để phân công.`);}
   function clickAssignment(event:React.MouseEvent<HTMLButtonElement>,item:Assignment){if(event.detail&&suppressClick){setSuppressClick(false);return;}edit(item);}
   function resetProposalDetails(loading:boolean){setTaskData(null);setTaskError('');setTaskLoading(loading);setSelectedTasks({});setTaskMinutes({});setTaskAssignments({});setTaskPlanMode(false);setTaskPlanStart('');setTaskPlanSegments({});setTaskPlanCapacity(undefined);setUploadWall('');setUploadResult(null);setUploadUnknownRequest('');}
+  async function finishPlanMove(result:AssignmentPlanMoveResult,move:PlanMoveState){
+    setPlanRecovery({key:planRecoveryKey,items:result.items.filter(item=>item.state==='reserved')});
+    await applyConfirmedMutation(result.items,move.preview?.old_items??move.knownItems,result.affected_days,result.planning_summary,result.assignment_revision,result.allocation_updates,result.previous_assignment_revision,result.work_order);
+    setPlanMove(null);setMessage('Task đã được chuyển trong kế hoạch nội bộ; Maximo chưa được thay đổi.');
+  }
+  async function submitPlanMove(){
+    if(!planMove?.preview||!pool||busy||planMove.request)return;
+    const move=planMove;const preview=move.preview as AssignmentPlanMovePreview;const input:AssignmentPlanMoveInput={connection_id:pool.connection_id,discipline,expected_plan_version:preview.plan_version,anchor_allocation_id:move.item.id,target_person_id:move.targetPersonId,target_date:move.targetDate,mode:move.mode,request_id:newId(),segments:preview.segments};
+    const context:MutationContext={principal,connectionId:pool.connection_id,discipline,poolId:pool.id,month};
+    setBusy(true);setError('');setPlanMove(current=>current?{...current,request:input}:current);
+    try{
+      await verifyMutationContext(context);
+      const result=await moveAssignmentPlan(pool.id,move.planId,input,preview,new AbortController().signal);
+      await finishPlanMove(result,move);
+    }catch(reason){
+      if(reason instanceof AssignmentError&&reason.status===409){
+        if(reason.code==='plan_move_conflict'&&move.mode==='shift')setPlanMove(current=>current?{...current,loading:false,preview:null,error:reason.message,canReallocate:true,request:undefined}:current);
+        else setPlanMove(current=>current?{...current,loading:false,preview:null,error:reason.message,canReallocate:false,request:undefined}:current);
+      }else if(reason instanceof AssignmentError&&([401,403,404,422].includes(reason.status)||reason.outcome==='not_sent')){
+        if(!clearWorkspaceAfterAuthorizationFailure(reason))setPlanMove(current=>current?{...current,error:reason.message,request:undefined}:current);
+      }else{
+        const inputForLookup=input;
+        try{
+          const receipt=await lookupAssignmentPlanMoveRequest(input.request_id,pool.id,move.planId,input,preview,new AbortController().signal);
+          if(receipt){await finishPlanMove(receipt,move);return;}
+          setPlanMove(current=>current?{...current,unknown:true,reconciling:false,error:'Chưa tìm thấy biên nhận. Giữ nguyên mã yêu cầu và đối soát lại; không gửi POST lần nữa.',request:inputForLookup}:current);
+        }catch(lookupError){
+          if(!clearWorkspaceAfterAuthorizationFailure(lookupError))setPlanMove(current=>current?{...current,unknown:true,reconciling:false,error:`Không đọc được biên nhận chuyển. Đối soát lại bằng cùng mã yêu cầu. ${lookupError instanceof Error?lookupError.message:''}`,request:inputForLookup}:current);
+        }
+      }
+    }finally{setBusy(false);}
+  }
+  async function reconcilePlanMove(){
+    if(!planMove?.request||!planMove.preview||!pool||planMove.reconciling)return;
+    const move=planMove;const request=move.request as AssignmentPlanMoveInput;const preview=move.preview as AssignmentPlanMovePreview;setPlanMove(current=>current?{...current,reconciling:true,error:''}:current);
+    try{
+      const receipt=await lookupAssignmentPlanMoveRequest(request.request_id,pool.id,move.planId,request,preview,new AbortController().signal);
+      if(receipt){await finishPlanMove(receipt,move);return;}
+      setPlanMove(current=>current?{...current,reconciling:false,error:'Biên nhận chưa khả dụng. Giữ nguyên yêu cầu; không gửi lại thao tác chuyển.'}:current);
+    }catch(reason){
+      if(!clearWorkspaceAfterAuthorizationFailure(reason))setPlanMove(current=>current?{...current,reconciling:false,error:reason instanceof Error?reason.message:'Không thể đọc biên nhận.'}:current);
+    }
+  }
   async function loadTaskPlanCapacity(){
     if(!taskPlanMode||!proposal||!pool||!taskPlanCapacityReady||taskPlanCapacityLoading)return;
     const priorDays=taskPlanCapacityDays.filter(day=>day.date>=taskPlanStart).sort((a,b)=>a.date.localeCompare(b.date));
@@ -669,6 +783,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[taskPlanContextKey,taskPlanMode,taskPlanCapacityReady,taskPlanCapacityLoading,taskPlanDates.length,automaticPlans.unplaced,automaticPlans.blocked]);
   function canEditItem(item: Assignment) {
+    if(item.plan_id&&(item.plan_sync_state??item.sync_state??'local')!=='local') return false;
     if(item.task_id!==null&&item.task_id!==undefined && (item.sync_state??'local')!=='local') return false;
     return timeline?.work_orders.some(order => order.site_id === item.site_id && order.workorder_id === item.workorder_id && order.eligible) ?? false;
   }
@@ -732,6 +847,10 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
       let nextItems=current.items.filter(item=>!newIds.has(item.id)&&!previous.some(old=>old.id===item.id));
       nextItems=[...nextItems,...currentItems.filter(item=>item.state==='reserved'&&dates.includes(item.date))];
       for(const snapshot of refreshedRanges){const rangeDates=new Set(snapshot.rows.flatMap(row=>row.days.map(day=>day.date)));nextItems=[...nextItems.filter(item=>!rangeDates.has(item.date)),...snapshot.items.filter(item=>item.state==='reserved')];}
+      // Header versions are shared by every segment, even when PATCH returns one row.
+      const planVersions=new Map<string,number>();
+      for(const item of [...nextItems,...currentItems])if(item.plan_id&&item.plan_version)planVersions.set(item.plan_id,Math.max(planVersions.get(item.plan_id)??0,item.plan_version));
+      nextItems=nextItems.map(item=>item.plan_id&&(planVersions.get(item.plan_id)??0)>(item.plan_version??0)?{...item,plan_version:planVersions.get(item.plan_id)}:item);
       if(!dayUpdates?.length&&datesChanged.length&&!refreshedRanges.length){
         const affectedPairs=new Set(changed.map(item=>`${item.person_id}:${item.date}`));
         rows=rows.map(row=>({...row,days:row.days.map(day=>affectedPairs.has(`${row.person_id}:${day.date}`)?{...day,load_complete:false}:day)}));
@@ -883,9 +1002,10 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
       <div className={styles.roleDonutPanel} aria-label="Tổng giờ phân công theo chức danh trong tháng">{donutSummary.map(group=><RoleDonut key={group.role} role={group.role} people={group.members.length} load={group.load} capacity={group.capacity} verified={group.verified}/>)}
         {!!otherRoleGroups.length&&<p className={styles.otherRoleSummary}>Chức danh khác trong timeline: {otherRoleGroups.map(group=>`${roleTitle(group.role)} · ${group.members.length} người · ${group.verified?`Tải ${displayHours(group.load)} / ${displayHours(group.capacity)} giờ`:'tải chưa xác minh'}`).join(' · ')}</p>}
       </div>
-      <div className={styles.headingActions}><label>Tháng <input aria-label="Tháng timeline" type="month" value={month} onChange={event => setMonth(event.target.value)} disabled={busy || !!pending || uploading || !!uploadUnknownRequest} /></label><button type="button" className={styles.refreshButton} disabled={busy || !!pending || uploading || !!uploadUnknownRequest} onClick={refreshTimeline}>Làm mới timeline</button></div>
+      <div className={styles.headingActions}><label>Tháng <input aria-label="Tháng timeline" type="month" value={month} onChange={event => setMonth(event.target.value)} disabled={busy || !!pending || uploading || !!uploadUnknownRequest || bulkUploadLocked || !!planMove} /></label><button type="button" className={styles.refreshButton} disabled={busy || !!pending || uploading || !!uploadUnknownRequest || bulkUploadLocked || !!planMove} onClick={refreshTimeline}>Làm mới timeline</button>{canWrite&&<button type="button" disabled={!shownPool||!month||busy||!!pending||uploading||!!uploadUnknownRequest||bulkUploadLocked||!!planMove} onClick={()=>setBulkUploadOpen(true)}>Đồng bộ Maximo theo tháng</button>}</div>
     </div>
     {message && <p role="status" className={styles.success}>{message}</p>}{error && <p role="alert" className={styles.error}>{error}</p>}
+    {bulkUploadOpen&&shownPool&&<PlanUploadBatch key={`${shownPool.id}:${shownPool.connection_id}:${discipline}:${month}`} poolId={shownPool.id} connectionId={shownPool.connection_id} discipline={discipline} month={month} timezone={shownPool.timezone} connectionLabel={`${shownPool.connection_label} · ${shownPool.environment==='test'?'Test':'Production'}`} writable={canWrite} verify={async()=>{await verifyMutationContext({principal,connectionId:shownPool.connection_id,discipline,poolId:shownPool.id,month});}} onLock={setBulkUploadLocked} onClose={()=>setBulkUploadOpen(false)} onConfirmed={result=>{if(result.items?.length)return applyConfirmedMutation(result.items,[],result.affected_days,result.planning_summary,result.assignment_revision,result.allocation_updates,result.previous_assignment_revision,result.work_order);}} onReconcile={entry=>{if('redacted'in entry)return;const authoritative=entry.receipt?.items?.filter(item=>item.plan_id===entry.plan_id)??[];const chosen=authoritative.find(item=>item.date.startsWith(month))??shownTimeline?.items.find(item=>item.plan_id===entry.plan_id&&item.date.startsWith(month));if(authoritative.length)setPlanRecovery({key:planRecoveryKey,items:authoritative});setBulkUploadOpen(false);if(chosen)edit(chosen);else setError('Không tìm thấy phân đoạn trong tháng để mở đối soát. Hãy làm mới timeline.');}} />}
     {pending && unknown && <div className={styles.unknown} role="alert"><p>{pending.kind==='delete'?'Xóa phân công':pending.kind==='update'?'Sửa phân công':'Lưu phân công'} · Yêu cầu {pending.requestId} chưa có kết quả xác nhận.</p><button disabled={busy} onClick={() => void execute(pending)}>Đối soát / gửi lại cùng mã yêu cầu</button></div>}
     {busy && <p role="status">Đang lưu. Không rời thao tác cho đến khi có kết quả…</p>}
     {!shownTimeline ? <p>Đang tải roster, capacity và WO trong tháng…</p> : <>
@@ -909,18 +1029,19 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
           const day = capacityFor(person, date); const items = shownTimeline.items.filter(item => item.state === 'reserved' && item.person_id === person.person_id && item.date === date);
           return <td key={date} className={!day ? styles.off : day.capacity_minutes > 0 ? styles.working : day.code === '' ? styles.blank : styles.off} data-person-id={person.person_id} data-date={date}>
             <div className={styles.capacity} title={person.dayMetadata[date]?.join(' / ')}><b>{day ? `${displayHours(day.allocated_minutes)} / ${displayHours(day.capacity_minutes)}h` : '—'}</b><small>{day?.load_complete===false?'Tải chưa xác minh':`${day?.code || (day ? 'Trống' : 'Không có rota')} · ${day&&day.remaining_minutes<0?'vượt '+displayHours(-day.remaining_minutes):'còn '+displayHours(day?.remaining_minutes??0)}h`}</small></div>
-            {items.map(item => {const label=workOrderLabel(item,shownTimeline); const taskLabel=item.task_id!==null && item.task_id!==undefined ? `${item.task_description||`Task ${item.task_id}`} · ${label}` : label; return <button key={item.id} className={styles.assignment} title={taskLabel} draggable={false} onPointerDown={event => { if (canEditItem(item)) beginDrag(event,item.id,taskLabel); }} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={cancelDrag} onClick={event=>clickAssignment(event,item)} aria-label={`Phân công ${taskLabel}, ${displayHours(item.minutes)} giờ, ${person.name} ngày ${date}`}>{item.task_id!==null && item.task_id!==undefined ? `T${item.task_id} · ` : ''}{shownTimeline.work_orders.find(order => order.site_id === item.site_id && order.workorder_id === item.workorder_id)?.wonum} · {displayHours(item.minutes)}h{item.plan_id?' · Nhiều ngày':item.sync_state==='synced'?' · Maximo':item.sync_state==='unknown'?' · Chờ đối soát':!canEditItem(item)?' · Chỉ xóa':''}</button>;})}
+            {items.map(item => {const label=workOrderLabel(item,shownTimeline); const taskLabel=item.task_id!==null && item.task_id!==undefined ? `${item.task_description||`Task ${item.task_id}`} · ${label}` : label; return <AssignmentCard key={item.id} item={item} taskLabel={taskLabel} wonum={shownTimeline.work_orders.find(order => order.site_id === item.site_id && order.workorder_id === item.workorder_id)?.wonum} personName={person.name} date={date} hours={displayHours(item.minutes)} onPointerDown={event=>{if(canEditItem(item))beginDrag(event,item.id,taskLabel);}} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={cancelDrag} onClick={event=>clickAssignment(event,item)} />;})}
             <button className={styles.addCell} aria-label={`Thêm phân công cho ${person.name} ngày ${date}`} disabled={!canWrite || !day || day.capacity_minutes < 1} onClick={() => beginCreate(person, date)}>+ WO</button>
           </td>;
-        })}</tr>)}</Fragment>; })}</tbody></table></div><div className={styles.legend}><span>Có capacity theo rota</span><span>Ngày nghỉ / trống: 0 giờ</span><span>Tải / capacity từng người</span></div></section></div>
+        })}</tr>)}</Fragment>; })}</tbody></table></div><div className={styles.legend}><span>Có capacity theo rota</span><span>Ngày nghỉ / trống: 0 giờ</span><span>Tải / capacity từng người</span><span><b>✓</b> Đã đồng bộ Maximo</span><span><b>!</b> Chờ đối soát</span><span><b>◇</b> Kế hoạch nội bộ</span><span><svg className={styles.multiDayLegendMark} viewBox="0 0 16 14" aria-hidden="true"><path d="M5 1h9v9H5zM2 4H1v9h9v-1" /></svg> Nhiều ngày</span></div></section></div>
     </>}
     {dragPreview && shownTimeline && <div className={styles.dragGhost} style={{left:dragPreview.x+12,top:dragPreview.y+12}}>{dragPreview.label}</div>}
-    {proposal && shownTimeline && <div className={styles.overlay}><section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="proposal-title">
-      <h2 id="proposal-title">{proposal.item ? proposal.item.sync_state==='synced'?'Phân công trên Maximo':canEditItem(proposal.item) ? proposal.item.person_id === proposal.cell.person.person_id && proposal.item.date === proposal.cell.date ? 'Sửa phân công' : 'Chuyển phân công' : 'WO không còn đủ điều kiện chỉnh sửa' : 'Phân công WO'}</h2>
-      <p><strong>{proposal.item?.task_id ? `${proposal.item.task_description||`Task ${proposal.item.task_id}`} · ` : ''}{proposal.item ? workOrderLabel(proposal.item, shownTimeline) : proposal.workOrder ? workOrderLabel(proposal.workOrder, shownTimeline) : 'WO cần phân công'}</strong>{proposal.item && (proposal.item.person_id !== proposal.cell.person.person_id || proposal.item.date !== proposal.cell.date) && <> · từ {roster.find(person => person.person_id === proposal.item?.person_id)?.name} / {displayDate(proposal.item.date)}</>} → {proposal.cell.person.name} / {displayDate(displayedProposalDate??'')} · {displayHours(!proposal.item&&taskData?.tasks.length?selectedTaskTotal:proposal.minutes)} giờ</p>
+    {planMove&&shownTimeline&&shownPool&&<PlanMoveDialog item={planMove.item} knownItems={planMove.knownItems} people={shownTimeline.rows} visibleMonth={month} workOrderLabel={shownTimeline.work_orders.find(order=>order.connection_id===planMove.item.connection_id&&order.site_id===planMove.item.site_id&&order.workorder_id===planMove.item.workorder_id)?.wonum} connectionLabel={`${shownPool.connection_label} · ${shownPool.environment==='test'?'Test':shownPool.environment}`} targetPersonId={planMove.targetPersonId} targetDate={planMove.targetDate} requestId={planMove.request?.request_id} loading={planMove.loading} busy={busy} error={planMove.error} preview={planMove.preview} canReallocate={planMove.canReallocate} unknown={planMove.unknown} reconciling={planMove.reconciling} onPersonChange={value=>setPlanMove(current=>current?{...current,targetPersonId:value,preview:null,loading:true,error:'',canReallocate:false}:current)} onDateChange={value=>setPlanMove(current=>current?{...current,targetDate:value,preview:null,loading:true,error:'',canReallocate:false}:current)} onReallocate={()=>setPlanMove(current=>current?{...current,mode:'reallocate',preview:null,loading:true,error:'',canReallocate:false}:current)} onConfirm={()=>void submitPlanMove()} onReconcile={()=>void reconcilePlanMove()} onClose={()=>setPlanMove(null)} />}
+    {proposal && shownTimeline && <div className={styles.overlay}><section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="proposal-title" onKeyDown={event=>{if(event.key==='Escape'&&!busy&&!pending&&!uploading&&!uploadUnknownRequest&&!planUploadCloseLocked){event.preventDefault();event.stopPropagation();setProposal(null);}}}>
+      <h2 id="proposal-title">{confirmedReadOnly?'Kế hoạch đã đồng bộ Maximo':proposal.item ? proposal.item.sync_state==='synced'?'Phân công trên Maximo':canEditItem(proposal.item) ? proposal.item.person_id === proposal.cell.person.person_id && proposal.item.date === proposal.cell.date ? 'Sửa phân công' : 'Chuyển phân công' : 'WO không còn đủ điều kiện chỉnh sửa' : 'Phân công WO'}</h2>
+      {confirmedReadOnly&&confirmedPlanItem?<section className={styles.syncedDetails} aria-label="Chi tiết kế hoạch đã đồng bộ"><p><strong>{workOrderLabel(confirmedPlanItem,shownTimeline)}</strong> · Task {confirmedPlanItem.task_id}: {confirmedTask?.description||confirmedPlanItem.task_description||'—'}</p><dl><div><dt>Nhân lực</dt><dd>{roster.find(person=>person.person_id===confirmedPlanItem.person_id)?.name||'—'} · {confirmedLaborcode}</dd></div><div><dt>Site / WO status</dt><dd>{confirmedPlanItem.site_id} · {shownTimeline?.work_orders.find(order=>order.site_id===confirmedPlanItem.site_id&&order.workorder_id===confirmedPlanItem.workorder_id)?.status||'—'}</dd></div><div><dt>Kết nối</dt><dd>{shownPool?`${shownPool.connection_label} · ${shownPool.environment==='test'?'Test':shownPool.environment}`:'—'}</dd></div><div><dt>Trạng thái</dt><dd>Đã đồng bộ Maximo</dd></div></dl>{taskLoading&&<p role="status">Đang tải assignments Maximo mới nhất…</p>}{taskError&&<p role="status">Không tải được assignments Maximo mới nhất; giờ bắt đầu hiển thị —.</p>}<p>{confirmedCoverageComplete?`Đủ ${confirmedPlanItems.length} phân đoạn cho tổng ${displayHours(confirmedPlanItem.plan_total_minutes??0)} giờ.`:`Đang hiển thị ${confirmedPlanItems.length} phân đoạn có ${displayHours(confirmedCoverageMinutes)} / ${displayHours(confirmedPlanItem.plan_total_minutes??0)} giờ; biên nhận đầy đủ chưa khả dụng nên danh sách có thể thiếu ngày.`}</p><div className={styles.syncedTableWrap}><table className={styles.syncedTable} aria-label="Các ngày Maximo đã đồng bộ"><thead><tr><th>Ngày kế hoạch</th><th>Giờ</th><th>Bắt đầu Maximo</th><th>Kết thúc dự kiến (tính theo giờ)</th><th>Assignment Maximo</th><th>Trạng thái</th></tr></thead><tbody>{confirmedPlanItems.map(segment=>{const remote=segment.remote_assignment_id?confirmedTask?.assignments.find(candidate=>candidate.assignment_id===segment.remote_assignment_id):undefined;const scheduledStart=remote?.scheduledate??null;const segmentHours=remote?.labor_hours??segment.minutes/60;return <tr key={segment.id}><td>{displayDate(segment.date)}</td><td>{displayHours(Math.round(segmentHours*60))} giờ</td><td>{formatMaximoDateTime(scheduledStart,shownPool?.timezone??'UTC')}</td><td>{expectedFinish(scheduledStart,segmentHours,shownPool?.timezone??'UTC')}</td><td>{segment.remote_assignment_id||'—'}</td><td>{remote?.status||'—'}</td></tr>;})}</tbody></table></div></section>:<p><strong>{proposal.item?.task_id ? `${proposal.item.task_description||`Task ${proposal.item.task_id}`} · ` : ''}{proposal.item ? workOrderLabel(proposal.item, shownTimeline) : proposal.workOrder ? workOrderLabel(proposal.workOrder, shownTimeline) : 'WO cần phân công'}</strong>{proposal.item && (proposal.item.person_id !== proposal.cell.person.person_id || proposal.item.date !== proposal.cell.date) && <> · từ {roster.find(person => person.person_id === proposal.item?.person_id)?.name} / {displayDate(proposal.item.date)}</>} → {proposal.cell.person.name} / {displayDate(displayedProposalDate??'')} · {displayHours(!proposal.item&&taskData?.tasks.length?selectedTaskTotal:proposal.minutes)} giờ</p>}
       {!proposal.item && <label>Work Order<select aria-label="Work Order" disabled={busy || !!pending || uploading || !!uploadUnknownRequest} value={proposal.workOrder ? `${proposal.workOrder.site_id}|${proposal.workOrder.workorder_id}` : ''} onChange={event => { const order = dialogWorkOrders.find(item => `${item.siteid}|${item.workorderid}` === event.target.value); if (order) {resetProposalDetails(true);setTaskPlanStart(proposal.cell.date);setProposal({ ...proposal, workOrder: { connection_id: shownPool!.connection_id, site_id: order.siteid, workorder_id: order.workorderid, wonum: order.wonum, description: order.description ?? '', status: order.status, eligible: true } });} }}><option value="">Chọn WO…</option>{dialogWorkOrders.map(item => <option key={`${item.siteid}:${item.workorderid}`} value={`${item.siteid}|${item.workorderid}`}>{item.wonum} · {item.description || item.status}</option>)}</select></label>}
-      <div className={styles.personDateRow}><label>Nhân lực<select aria-label="Nhân lực phân công" value={proposal.cell.person.person_id} disabled={busy || !!pending || !!proposal.item?.plan_id || !!proposal.item && !canEditItem(proposal.item)} onChange={event => { const person = roster.find(row => row.person_id === event.target.value); if (person) {setProposal({...proposal, cell:{person, date:proposal.cell.date}});if(!taskPlanMode)setTaskPlanStart(proposal.cell.date);setTaskPlanSegments({});} }}>{roster.map(person => <option key={person.person_id} value={person.person_id}>{person.name}</option>)}</select></label>
-      {!proposal.item&&taskPlanMode?<label>Ngày bắt đầu<input aria-label="Ngày bắt đầu" type="date" value={taskPlanStart} min={proposal.cell.date} max={addCalendarDays(proposal.cell.date,365)} disabled={busy||!!pending||taskPlanCapacityLoading} onChange={event=>{setTaskPlanStart(event.target.value);setTaskPlanSegments({});}}/></label>:<label>Ngày rota<select aria-label="Ngày phân công" value={proposal.cell.date} disabled={busy || !!pending || !!proposal.item && !canEditItem(proposal.item)} onChange={event => {setProposal({...proposal, cell:{...proposal.cell, date:event.target.value}});setTaskPlanStart(event.target.value);setTaskPlanSegments({});}}>{dates.filter(date => date === proposal.cell.date || (capacityFor(proposal.cell.person,date)?.capacity_minutes ?? 0) > 0).map(date => <option key={date} value={date}>{date} · còn {displayHours(capacityFor(proposal.cell.person,date)?.remaining_minutes ?? 0)} giờ</option>)}</select></label>}</div>
+      {!confirmedReadOnly&&<div className={styles.personDateRow}><label>Nhân lực<select aria-label="Nhân lực phân công" value={proposal.cell.person.person_id} disabled={busy || !!pending || planUploadLocked || !!proposal.item?.plan_id || !!proposal.item && !canEditItem(proposal.item)} onChange={event => { const person = roster.find(row => row.person_id === event.target.value); if (person) {setProposal({...proposal, cell:{person, date:proposal.cell.date}});if(!taskPlanMode)setTaskPlanStart(proposal.cell.date);setTaskPlanSegments({});} }}>{roster.map(person => <option key={person.person_id} value={person.person_id}>{person.name}</option>)}</select></label>
+      {!proposal.item&&taskPlanMode?<label>Ngày bắt đầu<input aria-label="Ngày bắt đầu" type="date" value={taskPlanStart} min={proposal.cell.date} max={addCalendarDays(proposal.cell.date,365)} disabled={busy||!!pending||taskPlanCapacityLoading} onChange={event=>{setTaskPlanStart(event.target.value);setTaskPlanSegments({});}}/></label>:<label>Ngày rota<select aria-label="Ngày phân công" value={proposal.cell.date} disabled={busy || !!pending || !!proposal.item && !canEditItem(proposal.item)} onChange={event => {setProposal({...proposal, cell:{...proposal.cell, date:event.target.value}});setTaskPlanStart(event.target.value);setTaskPlanSegments({});}}>{dates.filter(date => date === proposal.cell.date || (capacityFor(proposal.cell.person,date)?.capacity_minutes ?? 0) > 0).map(date => <option key={date} value={date}>{date} · còn {displayHours(capacityFor(proposal.cell.person,date)?.remaining_minutes ?? 0)} giờ</option>)}</select></label>}</div>}
       {taskOrder && taskLoading && <p role="status">Đang tải task và assignment Maximo…</p>}
       {taskOrder && taskError && <p role="alert">{taskError}</p>}
       {!proposal.item && taskData?.tasks.length ? <div className={styles.taskWorkspace} aria-label="Phân bổ task theo ngày">
@@ -959,13 +1080,13 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
         {!planValid&&planUnplaced===0&&selectedTaskTotal>0&&<p role="alert">Kiểm tra tổng giờ từng task, assignment WAITASGN và capacity từng ngày trước khi lưu.</p>}
         </section>
       </div> : !proposal.item && taskData && taskData.tasks.length===0 && <><p>WO chưa có task. Chọn phân công WO tổng quát theo giờ; không suy giờ từ estdur.</p><label>Giờ phân công <input aria-label="Giờ phân công" type="number" min="0.01" max="10.5" step="any" value={proposal.hours} disabled={busy || !!pending || uploading || !!uploadUnknownRequest} onChange={event => setProposal({ ...proposal, hours: event.target.value, minutes: parseHours(event.target.value) })} /></label></>}
-      {proposal.item&&<label>Giờ phân công <input aria-label="Giờ phân công" type="number" min="0.01" max={Math.min(630,planEditLimit)/60} step="any" value={proposal.hours} disabled={busy || !!pending || !canEditItem(proposal.item)} onChange={event => setProposal({ ...proposal, hours: event.target.value, minutes: parseHours(event.target.value) })} /></label>}
-      <p>Rota: {displayHours(displayedProposalDay?.capacity_minutes ?? 0)} giờ · đã dùng {displayHours(displayedProposalDay?.allocated_minutes ?? 0)} giờ · tải Maximo {displayHours(displayedProposalDay?.external_minutes??0)}h · tối đa 10,5 giờ.{displayedProposalDay?.load_complete!==true?' Tải Maximo chưa đầy đủ; lưu bị khóa.':''}</p>
+      {proposal.item&&!confirmedReadOnly&&<label>Giờ phân công <input aria-label="Giờ phân công" type="number" min="0.01" max={Math.min(630,planEditLimit)/60} step="any" value={proposal.hours} disabled={busy || !!pending || planUploadLocked || !canEditItem(proposal.item)} onChange={event => setProposal({ ...proposal, hours: event.target.value, minutes: parseHours(event.target.value) })} /></label>}
+      {!confirmedReadOnly&&<p>Rota: {displayHours(displayedProposalDay?.capacity_minutes ?? 0)} giờ · đã dùng {displayHours(displayedProposalDay?.allocated_minutes ?? 0)} giờ · tải Maximo {displayHours(displayedProposalDay?.external_minutes??0)}h · tối đa 10,5 giờ.{displayedProposalDay?.load_complete!==true?' Tải Maximo chưa đầy đủ; lưu bị khóa.':''}</p>}
       {!proposal.item&&taskData?.tasks.length===0&&<p>Upload Maximo bị khóa đến khi xác minh object, quyền, cập nhật có điều kiện và đối chiếu kết quả.</p>}
-      {proposal.item?.task_id!==null&&proposal.item?.task_id!==undefined&&<><p>Trạng thái Maximo: {({local:'Chưa gửi',synced:'Đã xác nhận',unknown:'Chờ đối soát'} as Record<string,string>)[proposal.item.sync_state??'local']??'Chờ kiểm tra'}.</p>{proposalDirty&&!proposal.item.plan_id&&<p>Lưu thay đổi phân công trước khi gửi lên Maximo.</p>}{taskData?.upload_enabled&&!proposal.item.plan_id&&<><p>Maximo sẽ cập nhật lịch task theo phân công. Phân công đã gửi cần xử lý sửa/xóa trên Maximo.</p><label>Ngày giờ bắt đầu ({shownPool?.timezone})<input aria-label="Ngày giờ bắt đầu Maximo" type="datetime-local" value={uploadWall} disabled={uploading||busy||!!pending||!!uploadUnknownRequest||uploadResult?.state==='unknown'} onChange={event=>setUploadWall(event.target.value)}/></label><button type="button" disabled={proposalDirty||(proposal.item.sync_state??'local')!=='local'||!uploadWall||uploading||!canWrite||!!uploadUnknownRequest||uploadResult?.state==='confirmed'||uploadResult?.state==='unknown'} onClick={()=>void submitUpload(proposal.item!)}>{uploading?'Đang đối soát…':'Upload assignment lên Maximo'}</button>{uploadResult&&<p role="status">Maximo: {uploadResult.state} · {uploadResult.detail??uploadResult.attempt_id}</p>}{(uploadResult?.state==='unknown'||uploadUnknownRequest)&&<><p>Giữ mã yêu cầu {uploadUnknownRequest} để đối soát. Không gửi lại khi chưa rõ kết quả.</p><button type="button" disabled={uploading} onClick={()=>void reconcileUpload()}>Đối soát upload (không gửi lại)</button></>}</>}{taskData?.upload_enabled===false&&<p>Upload Maximo đang khóa: backend chưa xác nhận write contract cho object này.</p>}</>}
-      {proposal.item?.plan_id&&<p>Kế hoạch nhiều ngày lưu nội bộ. Tổng ban đầu: {displayHours(proposal.item.plan_total_minutes??0)} giờ. Mỗi đoạn dùng cùng nhân lực; upload nhiều ngày chưa mở.</p>}
-      {proposal.item && <button className={styles.delete} disabled={!canWrite||(proposal.item.task_id!==null&&proposal.item.task_id!==undefined&&(proposal.item.sync_state??'local')!=='local')} onClick={() => void submit('delete')}>Xóa phân công</button>}
-      <div className={styles.actions}>{pending&&unknown&&<button disabled={busy} onClick={()=>setProposal(null)}>Đóng hộp thoại để đối soát</button>}<button onClick={() => setProposal(null)} disabled={busy || uploading || !!pending || !!uploadUnknownRequest}>Hủy</button><button disabled={!canWrite || (!!proposal.item && !canEditItem(proposal.item)) || (!proposal.item && (!proposal.workOrder||taskLoading||!!taskError||!taskData)) || (!proposal.item&&!taskPlanMode&&proposalDay?.load_complete!==true) || (proposal.item ? !Number.isInteger(proposal.minutes)||proposal.minutes<1||proposal.minutes>630||proposal.minutes>planEditLimit : taskPlanMode ? !planValid : taskData?.tasks.length ? !chosenTaskKeys.length||chosenTaskKeys.length>50||chosenTaskKeys.some(key=>Number(taskMinutes[key]??0)<1||!taskAssignments[key])||selectedTaskTotal>(proposalDay?.remaining_minutes??0) : !Number.isInteger(proposal.minutes)||proposal.minutes<1||proposal.minutes>630)} onClick={() => void submit(proposal.item ? 'update' : taskPlanMode ? 'task-plan-batch' : taskData?.tasks.length ? 'task-batch':'create')}>Xác nhận lưu</button></div>
+      {!confirmedReadOnly&&proposal.item?.task_id!==null&&proposal.item?.task_id!==undefined&&<><p>Trạng thái Maximo: {({local:'Chưa gửi',synced:'Đã xác nhận',unknown:'Chờ đối soát'} as Record<string,string>)[proposal.item.sync_state??'local']??'Chờ kiểm tra'}.</p>{proposalDirty&&!proposal.item.plan_id&&<p>Lưu thay đổi phân công trước khi gửi lên Maximo.</p>}{taskData?.upload_enabled&&!proposal.item.plan_id&&<><p>Maximo sẽ cập nhật lịch task theo phân công. Phân công đã gửi cần xử lý sửa/xóa trên Maximo.</p><label>Ngày giờ bắt đầu ({shownPool?.timezone})<input aria-label="Ngày giờ bắt đầu Maximo" type="datetime-local" value={uploadWall} disabled={uploading||busy||!!pending||!!uploadUnknownRequest||uploadResult?.state==='unknown'} onChange={event=>setUploadWall(event.target.value)}/></label><button type="button" disabled={proposalDirty||(proposal.item.sync_state??'local')!=='local'||!uploadWall||uploading||!canWrite||!!uploadUnknownRequest||uploadResult?.state==='confirmed'||uploadResult?.state==='unknown'} onClick={()=>void submitUpload(proposal.item!)}>{uploading?'Đang đối soát…':'Upload assignment lên Maximo'}</button>{uploadResult&&<p role="status">Maximo: {uploadResult.state} · {uploadResult.detail??uploadResult.attempt_id}</p>}{(uploadResult?.state==='unknown'||uploadUnknownRequest)&&<><p>Giữ mã yêu cầu {uploadUnknownRequest} để đối soát. Không gửi lại khi chưa rõ kết quả.</p><button type="button" disabled={uploading} onClick={()=>void reconcileUpload()}>Đối soát upload (không gửi lại)</button></>}</>}{taskData?.upload_enabled===false&&<p>Upload Maximo đang khóa: backend chưa xác nhận write contract cho object này.</p>}</>}
+      {proposal.item?.plan_id&&<>{!confirmedReadOnly&&<p>Kế hoạch theo ngày đang lưu nội bộ. Tổng ban đầu: {displayHours(proposal.item.plan_total_minutes??0)} giờ.</p>}{!confirmedReadOnly&&(proposal.item.plan_sync_state??proposal.item.sync_state??'local')==='local'&&<button type="button" disabled={busy||!!pending||planUploadLocked} onClick={()=>beginPlanMove(proposal.item!,proposal.cell.person,proposal.cell.date,true)}>Chuyển task</button>}{!confirmedReadOnly&&(proposal.item.plan_sync_state??proposal.item.sync_state??'local')==='local'&&(proposal.item.plan_total_minutes??proposal.item.minutes)>proposal.item.minutes&&proposalDirty&&<button type="button" disabled={busy||!!pending||planUploadLocked} onClick={()=>beginPlanMove(proposal.item!,proposal.cell.person,proposal.cell.date,true)}>Dời toàn task</button>}<PlanUpload connectionLabel={pool ? `${pool.connection_label} · ${pool.environment === 'test' ? 'Test' : pool.environment}` : undefined} items={confirmedReadOnly?confirmedPlanItems:[...new Map([...shownTimeline.items.filter(item=>item.plan_id===proposal.item!.plan_id&&item.state==='reserved'),...(planRecovery?.key===planRecoveryKey?planRecovery.items:[]).filter(item=>item.plan_id===proposal.item!.plan_id&&item.state==='reserved')].map(item=>[item.id,item])).values()]} supported={taskData?.daily_plan_upload_supported===true} writable={canWrite} timezone={shownPool?.timezone??'UTC'} taskLabel={taskData?.tasks.find(task=>task.task_workorder_id===proposal.item!.task_workorder_id&&task.task_id===proposal.item!.task_id)?.description??proposal.item.task_description??'Task'} personLabel={shownTimeline.rows.find(row=>row.person_id===proposal.item!.person_id)?.name??'Nhân lực đã phân công'} confirmedReadOnly={confirmedReadOnly} verify={async()=>{if(!pool)throw new Error('Không còn resource pool đang xác minh.');await verifyMutationContext({principal,connectionId:pool.connection_id,discipline,poolId:pool.id,month});}} onLock={setPlanUploadLocked} onCloseLock={setPlanUploadCloseLocked} onConfirmed={result=>{if(result.items?.length)setPlanRecovery({key:planRecoveryKey,items:result.items});setProposal(current=>{if(!current?.item||current.item.plan_id!==result.plan_id)return current;const mapped=result.mapping?.find(row=>row.allocation_id===current.item!.id);const latest=result.items?.find(item=>item.id===current.item!.id);const syncState=result.state==='confirmed'?'synced':result.state==='unknown'?'unknown':current.item.sync_state??'local';return {...current,item:latest??{...current.item,...(mapped?{remote_assignment_id:mapped.assignment_id}:{}),sync_state:syncState,plan_sync_state:syncState==='local'?'local':syncState as 'unknown'|'synced'} };});if(result.items?.length)return applyConfirmedMutation(result.items,[],result.affected_days,result.planning_summary,result.assignment_revision,result.allocation_updates,result.previous_assignment_revision,result.work_order);else{const planSegments=shownTimeline.items.filter(item=>item.plan_id===proposal.item!.plan_id&&item.state==='reserved');void applyConfirmedMutation([],planSegments);setError(`Trạng thái ${result.state} đã được xác nhận; mapping Maximo đã lưu. Đang làm mới capacity của các ngày hiển thị.`);}setMessage(result.state==='confirmed'?'Kế hoạch theo ngày đã được xác nhận trên Maximo.':`Maximo trả trạng thái ${result.state}; các segment được làm mới.`);}} /></>}
+      {proposal.item&&!confirmedReadOnly&&<button className={styles.delete} disabled={!canWrite||!canEditItem(proposal.item)||planUploadLocked} onClick={() => void submit('delete')}>Xóa phân công</button>}
+      <div className={styles.actions}>{pending&&unknown&&<button disabled={busy} onClick={()=>setProposal(null)}>Đóng hộp thoại để đối soát</button>}<button onClick={() => setProposal(null)} disabled={busy || uploading || !!pending || !!uploadUnknownRequest || !confirmedReadOnly&&planUploadCloseLocked}>{confirmedReadOnly?'Đóng':'Hủy'}</button>{!confirmedReadOnly&&<button disabled={!canWrite || planUploadLocked || (!!proposal.item && !canEditItem(proposal.item)) || (!proposal.item && (!proposal.workOrder||taskLoading||!!taskError||!taskData)) || (!proposal.item&&!taskPlanMode&&proposalDay?.load_complete!==true) || (proposal.item ? !Number.isInteger(proposal.minutes)||proposal.minutes<1||proposal.minutes>630||proposal.minutes>planEditLimit : taskPlanMode ? !planValid : taskData?.tasks.length ? !chosenTaskKeys.length||chosenTaskKeys.length>50||chosenTaskKeys.some(key=>Number(taskMinutes[key]??0)<1||!taskAssignments[key])||selectedTaskTotal>(proposalDay?.remaining_minutes??0) : !Number.isInteger(proposal.minutes)||proposal.minutes<1||proposal.minutes>630)} onClick={() => void submit(proposal.item ? 'update' : taskPlanMode ? 'task-plan-batch' : taskData?.tasks.length ? 'task-batch':'create')}>Xác nhận lưu</button>}</div>
     </section></div>}
   </section>;
 }

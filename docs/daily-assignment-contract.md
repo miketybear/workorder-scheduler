@@ -85,7 +85,8 @@ Không dùng replacement; không có trial còn giữ tải. Có4outbound ở st
 ## Mã và kiểm tra
 
 [daily_plan_sender.py](../backend/app/maximo/daily_plan_sender.py) là module
-operator/Test, chưa nối public route. Builder1–366ngày giữ sourceID ngày đầu,
+operator/Test, nay được gọi từ [API đồng bộ kế hoạch](daily-plan-uploads.md).
+Builder1–366ngày giữ sourceID ngày đầu,
 Add các ngày tiếp; kiểm tra630phút, một labor, ngày duy nhất/timezone/span,
 giờ kết thúc không tràn ngày và tổng khớp source. Full-select reader xử lý
 nullable omission tại boundary, từ chối dữ liệu thiếu/identity hoặc stamp đổi.
@@ -99,7 +100,7 @@ hiện có vào guarded127.0.0.1:55432/scheduler_test rồi122pass. Không migra
 database ứng dụng, không thêm dependency/migration/schema feature. Independent
 protocol review và một focusedP1 recheck đạt cho guard claims/noREPLACE.
 
-Create/GET recovery đã đạt Test, còn conditionalDELETE chưa đạt. Public plan
-upload tiếp tục khóa vì chưa có ledger/mapping/lifecycle tích hợp API Planner
-và tính tải theo child mới. Bước tiếp là nối durable mapping và preview gửi vào
-API/UI, giữ unknown chỉ đối soát và không dùng automaticDelete compensation.
+Create/GET recovery đã đạt Test, còn conditionalDELETE chưa đạt. API kế hoạch
+có preview, durable intent, mapping theo ngày và đối soát chỉ đọc; contract mặc
+định tắt và chỉ có thể bật trên Test. Không mở sửa/xóa remote hoặc automatic
+Delete compensation. Bằng chứng triển khai hiện tại được ghi tại [TODO](todos.md).

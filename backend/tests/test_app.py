@@ -42,7 +42,7 @@ def test_live_and_session_have_no_identity_bypass():
         assert client.get("/api/work-orders").status_code == 422
 
 
-@pytest.mark.parametrize("revision,expected", [("0014_assignment_snapshots", 200), ("old", 503)])
+@pytest.mark.parametrize("revision,expected", [("0016_plan_upload_batches", 200), ("old", 503)])
 def test_readiness_checks_schema(revision, expected):
     app = create_app(settings())
     with TestClient(app) as client:

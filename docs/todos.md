@@ -1,6 +1,254 @@
 # TODO — Work Order Scheduler
 
-Cập nhật: 2026-10-14.
+Cập nhật: 2026-10-15.
+
+## Chuyển task local bằng kéo thả — hoàn tất 2026-10-15
+
+- [x] Kéo task local sang ngày khác cùng người mặc định chuyển riêng đoạn;
+      có Dời toàn task. Kéo sang người khác chuyển toàn kế hoạch, kể cả ngày
+      ngoài tháng. Chuyển task trong editor cung cấp cùng luồng cho bàn phím/
+      cảm ứng, gồm cả plan một ngày. Preview trước/sau/capacity và Hủy/Esc;
+      chỉ Xác nhận chuyển mới lưu local, không ghi Maximo.
+- [x] Shift giữ độ lệch ngày/giờ; thiếu rota/capacity chặn lưu và cho lựa chọn
+      phân bổ lại từ ngày thả. Tổng giờ còn giữ chỗ, nhu cầu gốc, nguồn task/
+      assignment và ID đoạn được bảo toàn khi shift. Reallocate cập nhật cả
+      đoạn thêm/released; không âm thầm bù phần giờ đã xóa trước đó.
+- [x] Backend kiểm tra quyền/source/baseline sau I/O, dùng cùng khóa với upload,
+      version và UUID/receipt; commit toàn plan hoặc rollback. Preview/batch
+      cũ mất hiệu lực. Runtime local chỉ thêm quyền UPDATE(person_id,laborcode)
+      trên header; không migration/dependency mới. [Runtime](evidence/plan-move-runtime-2026-10-15.json).
+- [x] 106 PostgreSQL tests (35move + plan/daily/bulk + runtime role), 399
+      frontend tests, typecheck/lint/build/diffcheck đạt. Review Sol/high có
+      2P2 focus/scroll modal; main hoàn tất sửa và test Tab busy/unknown,
+      khóa toolbar/scroll, cleanup, UUID hiển thị và beforeunload. Integration
+      test kéo thả→reallocate→commit merge đủ source/target/released; mất
+      response→GET receipt không POST lần hai. Build còn advisory chunk>500KB.
+- [x] Live P13468351 Task20/source547209, plan63888199: CHANLD→MINHNC→CHANLD,
+      đúng2đoạn0,5h01/10 +9,5h02/10. Nghiệm thu từ trạng thái mới nhất sau
+      pause: planversion3→5,4audit events/2lần chuyển; lịch/người/giờ cuối
+      khôi phục đúng, mọi plan/allocation khác giữ nguyên,0upload attempts.
+      Maximo parent/tasks snapshots trước/sau bằng nhau. Preview HAIDQ kín
+      tải01–02 bị chặn; reallocate03/10=9,5h+04/10=0,5h đúng rồi Hủy.
+      Bản preview stale bị từ chối; refresh trước khi thử, không ghi đè thay đổi.
+      [Bằng chứng](evidence/plan-move-live-2026-10-15.json),
+      [preview](evidence/plan-move-transfer-preview-2026-10-15.jpg),
+      [đã chuyển](evidence/plan-move-transferred-2026-10-15.jpg),
+      [đã hoàn trả](evidence/plan-move-restored-2026-10-15.jpg).
+- Không còn việc bắt buộc của feature. Tiếp theo user nghiệm thu kéo chuột
+      thực tế trên máy tính; browser live dùng panel Chuyển task, đường pointer
+      drag đã kiểm thử tự động. Không mở chuyển task synced/unknown hoặc tách
+      một plan cho nhiều người. Ubuntu staging vẫn phụ thuộc IT/server/TLS/routes.
+
+## Phân tích chuyển task local bằng kéo thả — 2026-10-15
+
+- [x] Đọc luồng FE dropPayload/canEditItem và BE validate_plan_edit/routes:
+      hiện hỗ trợ chuyển đoạn local sang ngày khác cùng người, chặn ngày đã
+      có đoạn cùng plan; đổi người bị chặn cả FE/BE dù plan chỉ có1ngày.
+      Header plan giữ person/laborcode chung, synced/unknown không được sửa.
+- Đề xuất tại thời điểm phân tích (đã triển khai ở mục hoàn tất phía trên):
+      cùng người mặc định chuyển riêng ngày đang kéo;
+      khác người chuyển toàn task/plan nguyên tử, preview tất cả ngày kể cả
+      ngoài tháng, giữ tổng giờ/nguồn assignment và audit. Dịch ngày giữ độ
+      lệch các đoạn; thiếu capacity/rota thì chặn và đề xuất phân bổ lại từ
+      ngày thả, không tự âm thầm đổi lịch. Tách task cho nhiều người ngoài
+      phạm vi vì thay invariant plan/upload hiện tại.
+- Backend cần API chuyển plan có UUID/version, khóa chung với upload, recheck
+      scope/WO/source/rota/tải Maximo; cập nhật header + mọi đoạn trong một
+      transaction, trả tải cả ô nguồn/đích. Vô hiệu preview/batch cũ bằng version.
+- Lượt phân tích ban đầu chỉ đọc code. Sau khi user duyệt, contract, triển khai,
+      kiểm thử và nghiệm thu được ghi tại mục hoàn tất phía trên.
+
+## Thoát panel sau xem trước đồng bộ — 2026-10-15
+
+- [x] Tách khóa sửa/lưu khi có preview khỏi khóa đóng panel khi đang xử lý
+      hoặc chưa rõ kết quả upload. Preview xong cho Hủy/Esc đóng, giữ nguyên
+      kế hoạch đã lưu; muốn sửa/lưu thì chọn Chỉnh giờ / Tạo preview mới.
+      Esc xử lý tại dialog với trạng thái khóa hiện tại.
+- [x] 74 focused tests đạt (Hủy, Esc, quay lại sửa, không phát upload/update/
+      delete khi thoát); recheck riêng unknown vẫn khóa Hủy/Esc đạt.
+      Lint/typecheck/build đạt, còn advisory chunk >500KB đã có.
+- [x] Live preview P13468351/Task20, Le Duc Chan, 2ngày/10h: Hủy bật,
+      lưu vẫn khóa trong preview, bấm Hủy đóng và mở lại còn nguyên kế hoạch;
+      preview lần sau Esc đóng được. Không bấm gửi/lưu/xóa, không ghi Maximo.
+      [Hủy đã bật](evidence/plan-preview-cancel-enabled-2026-10-15.jpg),
+      [panel đã đóng](evidence/plan-preview-dismissed-2026-10-15.jpg).
+- Tiếp theo user mở lại kế hoạch và thử Xem trước → Hủy/Esc; không cần gửi
+      batch mới để nghiệm thu lỗi đóng panel.
+
+## Rút gọn thẻ timeline và tooltip task — 2026-10-15
+
+- [x] Thẻ giữ task/WONUM/giờ trên một dòng; dùng ✓ đồng bộ, ! chờ đối soát,
+      ◇ kế hoạch nội bộ và biểu tượng hai lớp cho nhiều ngày. Chú giải dùng
+      chung, trạng thái đầy đủ giữ trong tên truy cập và tooltip; không dựa
+      riêng vào màu, không lặp câu dài hoặc nhãn 1 ngày trong từng ô.
+- [x] Tooltip mô tả task/WO/người/ngày/giờ/status sau 2 giây hover, mở ngay
+      khi focus bằng bàn phím; Esc đóng. Bấm thẻ vẫn mở chi tiết để dùng
+      được trên điện thoại. Không thêm request, dependency hoặc remote write.
+- [x] Live UI xác nhận thẻ gọn, biểu tượng và chú giải, tooltip bàn phím
+      đọc đủ mô tả Task20 P13469691 ngày02/10, Esc đóng, bấm mở đủ3ngày/21h.
+      67 timeline tests, typecheck/lint/build đạt; build còn advisory chunk
+      >500KB đã có. Kiểm thử hủy timer khi rời thẻ/cuộn/Esc và focus bàn phím.
+      [Ảnh](evidence/timeline-compact-tooltip-2026-10-15.jpg).
+- Tiếp theo nghiệm thu cảm giác hover 2 giây trên máy tính; không cần gửi
+      batch mới để kiểm chứng thay đổi trình bày này.
+
+## Xem chi tiết phân công sau đồng bộ — 2026-10-15
+
+- [x] Thẻ đã đồng bộ mở bảng chỉ đọc: WO/task, người/laborcode, site,
+      kết nối, trạng thái và từng ngày/giờ/Assignment ID. Giờ bắt đầu đọc
+      mới từ đúng task và ID đã map; kết thúc dự kiến tính theo số giờ,
+      không trình bày như finishdate lưu trên Maximo.
+- [x] Nhận đủ phân đoạn từ biên nhận khi có quyền; thiếu biên nhận vẫn giữ
+      trạng thái synced và báo độ phủ có thể thiếu ngày. Nhãn 1 ngày/nhiều
+      ngày dựa tổng giờ plan. Bỏ form/nút sửa, lưu, xóa và preview đã khóa;
+      giữ nguyên luồng local và đối soát unknown.
+- [x] Live P13469691 Task10 đủ1ngày/1h; Task20 đủ3ngày/21h, đúng ID,
+      giờ bắt đầu và trạng thái. Snapshot đọc trước/sau của cả P13469691
+      và P13470381 bằng nhau ở mọi trường, không ghi Maximo.
+      70 focused tests (timeline + plan upload), typecheck/lint và build đạt; build còn
+      advisory chunk >500KB đã có. [Bằng chứng](evidence/synced-details-ui-2026-10-15.json),
+      [ảnh nhiều ngày](evidence/synced-details-multi-day-2026-10-15.jpg).
+- Không còn bước bắt buộc cho sửa hiển thị này. Nên nghiệm thu bằng cách
+      mở thẻ synced trong timeline; Ubuntu staging vẫn cần IT cung cấp
+      server/quyền truy cập/TLS/routes và test roster.
+
+## Nghiệm thu trực tiếp tab Assignments Maximo Test — 2026-10-15
+
+- [x] Dùng tab Maximo Test user đã đăng nhập, Work Order Tracking (Oil) /
+      Assignments, BD1. P13470381 có đúng3dòng: Task10 HAIDQ04/10/2026 06:30
+      1:00 ASSIGNED; Task20 cùng người/ngày/giờ 5:00 ASSIGNED; Task30 1:00
+      WAITASGN/null labor/ngày. Tổng đã phân công6h khớp batchde22845d.
+- [x] Tra P13469691 trong cùng UI: đúng5dòng,4ASSIGNED cho HAIDQ: Task10
+      01/10 06:30 1:00; Task20 ngày01/02/03 lần lượt9:30/10:30/1:00, đều06:30.
+      Task30 vẫn WAITASGN3:00/null labor/ngày, tổng assigned22h, không dòng thừa.
+- [x] CraftE&I/SkillOPSTECH và toàn trường parent ScheduledStart/Finish,
+      TargetStart/Finish của2WO khớp snapshot API. Mở ViewDetailsTask10 để
+      kiểm chứng field người/giờ/status; bảng và detail này không hiển thị
+      AssignmentID/Finishdate nên hai trường đó giữ bằng chứng API trước.
+- [x] Assertions so từng UIrow/header với APIevidence đạt; ảnh2WO và JSON
+      không lưu URLsession/token. Chỉ search/navigation/viewdetails,0mutation,
+      không app/schema/dependencychange; không cần chạy lại app test suite.
+      Đã trả tab về P13470381/Assignments như lúc user bàn giao.
+      [UI evidence](evidence/maximo-assignments-ui-2026-10-15.json),
+      [P13470381](evidence/maximo-assignments-P13470381-2026-10-15.jpg),
+      [P13469691](evidence/maximo-assignments-P13469691-2026-10-15.jpg).
+- Đã khép nghiệm thu tabAssignments cho2batch Test đã gửi; không mở rộng
+      production/edit/delete/rollback/capacitystress. Tiếp theo ưu tiên Ubuntu
+      staging cùng luồng; bị chặn IT cấp server/quyền truy cập/TLS/routes và
+      test roster. Không còn bước bắt buộc của lượt kiểm tra UI này.
+
+## Nghiệm thu sequencing thật: hai mục ready — 2026-10-14
+
+- [x] UI batchde22845d OnshoreTest/E&I: P13470381/HAIDQ Task10=1h,
+      Task20=5h ngày04/10,2ready mới/2skipped P13469691 đãsynced. Một confirm,
+      tự động2continue200→2confirmed, khôngtimeout/blocked/unknown/retry/repair.
+- [x] Timing local ASGI chỉroute/status/time: continue1end16:10:05.144727UTC,
+      GETtimelineend16:10:06.913883, continue2start16:10:07.680385; monotonic
+      gap0,766s, nooverlap. Intent timestamps trong đúngrequest tương ứng;
+      GET sau mục2 cũng200. Observer đãdừng, normal runner khôi phục/ready200.
+- [x] API GET/ledger:555221/555225 giữID, ASSIGNED/HAIDQ/scheduledate06:30,
+      finishdate07:30/11:30, total6h;2receipts/mapping unique, khôngAdd/duplicate.
+      Task30/555229 WAITASGN1h/null labor/ngày/full protected+rowstamp giữ;
+      planned cả3task/parentbusiness giữ. P13469691 cũ giữ dữ liệu/tải630/630/60.
+- [x] Reload Scheduler latestcompleted2confirmed/2skipped; tảiHAIDQ04/10
+      6/10,5h, còn4,5h; effectiveallocated360 không doublecountlocal/remote.
+      [Bằng chứng/timing](evidence/bulk-sequence-live-2026-10-14.json),
+      [preview](evidence/bulk-sequence-preview-2026-10-14.jpg),
+      [ảnh kết quả](evidence/bulk-sequence-confirmed-2026-10-14.jpg),
+      [báo cáo](bulk-plan-uploads.md#sequencing-thật-với-hai-mục-sẵn-sàng--2026-10-14).
+- Giới hạn: localWindows/Vite/HTTPS/MaximoTest, không faultinjection/stress/
+      Ubuntu/production. API đọc theo user chọn, chưa tabAssignments UI. Không
+      app/schema/dependencychange hoặc migrations; không chạy lại suite app.
+      Dữ liệu Test giữ lại, không cleanup/rollback remote.
+- TabAssignments đã nghiệm thu trực tiếp ngày15/10 ở mục đầu; Ubuntu staging
+      chờ IT cấp server/TLS/routes/test roster để thử cùng luồng trên hạ tầng triển khai.
+
+## Nghiệm thu bulk Test qua UI gửi và API đối chiếu — 2026-10-14
+
+- [x] User chọn API đọc+bảng đối chiếu khi remote bằng điện thoại, chưa có
+      Maximo browser session. Scheduler gửi P13469691/BD1/E&I/HAIDQ:
+      Task10 1h,Task20 21h;552343/552349 giữ ngày đầu,2001472/2001474 mới
+      ngày02/03. Cả4dòng ASSIGNED, scheduledate/finishdate/laborhrs khớp;
+      total22h,2confirmed receipts và mapping duy nhất.
+- [x] Lượt đầu batch8c0e8f9b:Task10confirmed,Task20pool locktimeout10s trước
+      intent. Source revision giữ, không daily/legacy intent; main dừng đúng
+      backend đã hết request, scoped guard và3append-only batch_no_send events
+      đóng Task20blocked, giữ UUID/proposal. Không gửi lại unknown.
+- [x] Sửa UI chờ receipt/capacity refresh trước mục kế tiếp; SQLAlchemyError
+      dùng receipt lookup, không intent→blocked, DB không đọc được→unknown.
+      Completed/no unknown có preview mới. Batch4bbe4519:Task10skipped đã
+      synced,Task20confirmed; tổng2outbound, không duplicate/rollback.
+- [x] API GET đối chiếu sourceID/mapping/finishdate, Task30/552355 WAITASGN3h
+      null labor/ngày/rowstamp và cả3planned labor giữ. Parent schedule/estdur/
+      targets giữ so snapshot sauTask10/trướcTask20. Effective load630/630/60
+      phút, reload Scheduler vẫn đúng/no doublecount, latest batch completed.
+- [x]50PG (23bulk+27daily),65frontend liên quan,Ruff/typecheck/lint/build đạt;
+      build lần đầu sandbox spawnEPERM, escalation chạy đạt/chunk advisory cũ.
+      Main review sửa localized, không gọi reviewer mới/reset milestonebudget.
+      [Bảng đối chiếu/giới hạn](bulk-plan-uploads.md#nghiệm-thu-dữ-liệu-test--2026-10-14),
+      [initial](evidence/bulk-plan-live-initial-2026-10-14.json),
+      [final/audit](evidence/bulk-plan-live-2026-10-14.json),
+      [ảnh](evidence/bulk-plan-live-confirmed-2026-10-14.jpg).
+- Giới hạn: không trực tiếp tab Assignments; dữ liệu gửi Test giữ lại.
+      Chưa live batch nhiều mục ready sau sửa sequencing (deferred frontend
+      regression đã đạt); không production/edit/delete/automaticrollback.
+- Live batch nhỏ2ready sau sửa đã đạt14/10; tabAssignments trực tiếp đạt15/10
+      ở mục đầu. Ubuntu staging chờ IT cấp server/TLS/routes/test roster.
+
+## Đồng bộ hàng loạt trên timeline — 2026-10-14
+
+- [x] Backend gom toàn bộ plan trong pool/discipline có ngày thuộc tháng chọn,
+      giữ đủ cross-month segments; batch/confirmation/proposal/UUID bền vững,
+      bounded prepare/continue và kết quả riêng từng mục, không gửi lại unknown.
+- [x] UI nút chung, preview/kết quả20mục/trang, một xác nhận tự xử lý lần lượt,
+      khôi phục batch sau reload và cập nhật đúng ngày, không reload backlog.
+- [x] 48PostgreSQL (21bulk+27daily),110offline, runtime-role1 và Ruff đạt:
+      scope/CSRF/revocation/duplicates/concurrency/partial/unknown, hai nguồn
+      cùng task, kế hoạch qua tháng,21mục/page20/globalselector, deadline504
+      và1001mục bị từ chối rõ. Runtime không sửa frozen/proposal/UUID/scope.
+      Review và kiểm tra lại finding đã sửa: không còn P1/P2; reviewer không
+      chạy được Vitest do sandbox spawn EPERM, main chạy suite riêng.
+- [x] Fullfrontend386 đạt với4worker, typecheck/lint/build đạt (chunk advisory
+      hiện có). Lượt31worker trước385/386, một test phân trang cũ timeout5s;
+      không đổi test/timeout, chạy lại giảm concurrency để tránh tranh CPU.
+- [x] Backup/migration0016 local giữ hash tất cả cột cũ; runtime grants và
+      Alembiccheck đạt. API mới HTTPSlive/ready200. BrowserP13469691/HAIDQ:
+      Task10=1h,Task20=21h, tổng22h/4đoạn; tải ngày630/630/60phút.
+      Preview2mục và reload recovery đạt, chưa bấm xác nhận gửi. Dọn4trial
+      segments, reserved0/planuploadattempt0, tải UI về0.
+      [Luồng/API](bulk-plan-uploads.md),
+      [migration](evidence/bulk-plan-development-0016-2026-10-14.json),
+      [bằng chứng UI](evidence/bulk-plan-ui-2026-10-14.json),
+      [ảnh preview](evidence/bulk-plan-preview-2026-10-14.png).
+- Lượt preview này chỉ gửi/recovery bằng mockPG; nghiệm thu gửi Test sau đó
+      qua UI/API đọc đã ghi ở mục đầu, tab Assignments trực tiếp còn chờ session.
+
+## API và UI đồng bộ kế hoạch theo ngày — 2026-10-14
+
+- [x] Mapping ID từng ngày tách khỏi assignment nguồn; preview toàn plan,
+      durable intent/receipt theo actor/request UUID, gửi một lần và đối soát
+      chỉ đọc. Khử trùng tải theo remote ID, khóa toàn plan synced/unknown.
+      UI có preview, giờ bắt đầu, gửi, recovery sau tải lại và cập nhật ngày
+      liên quan; hỗ trợ kế hoạch qua tháng. [Luồng/API](daily-plan-uploads.md).
+- [x] Local migration0015: backup trước nâng cấp, hash toàn cột dữ liệu cũ
+      không đổi, không suy mapping cũ, runtime không sửa intent; Alembiccheck đạt.
+      [Bằng chứng](evidence/daily-plan-development-0015-2026-10-14.json).
+- [x] Sửa hai P1: hai transaction cùng thứ tự User→UUID→pool→connection;
+      unknown reservation giữ tải giữa hai phase, recheck PERSON/WO/capacity
+      và fingerprint kết nối mới trước một send. P2 editor cập nhật receipt.
+      110offline/61PostgreSQL/1runtime-role đạt, Ruffclean; 376frontend,
+      typecheck/lint/build đạt (chunk warning hiện có). Independent review
+      và một focusedP1 recheck gồm6PG đạt; không mở rộng review tiếp.
+- [x] API mới chạy local, health HTTPSproxy live/ready200; bật contract đúng
+      Onshore Test. Browser P13469691/Task20/HAIDQ:21h→630+630phút01–02/10,
+      preview06:30–17:00; Task10 đổi giờ06:31→07:31. Chưa bấm gửi; cả3đoạn
+      trial đã release, reserved0/uploadattempt0 và tải UI về0.
+      [Bằng chứng](evidence/daily-plan-sync-ui-2026-10-14.json),
+      [ảnh preview](evidence/daily-plan-sync-preview-2026-10-14.png).
+- Luồng public daily đã được gửi Test qua bulk ở mục đầu; chưa bấm riêng nút
+      editor hoặc đối chiếu tab Assignments trực tiếp. Mock/API đã kiểm tra lost
+      response. Nút gửi hàng loạt toàn tháng
+      đã bổ sung ở mục trên; remote sửa/xóa/conditionalDELETE là contract riêng.
 
 ## Khởi động lại local backend/API — 2026-10-14
 
@@ -25,8 +273,8 @@ Cập nhật: 2026-10-14.
       122relatedtests gồm30PG/Ruff đạt, reviewprotocol/focusedP1recheck đạt.
       TestRAMschema mất khiDockerrestart: nạp migration hiện có vào DBtest riêng
       rồi chạy lại; appDB không migrate, không thêm migration/dependency/UI.
-- [ ] Tiếp theo ưu tiên: nối durable childmapping, ledger tải khử trùng và preview
-      Đồng bộ Maximo vào API/UI. Create+readonlyrecovery đã có Testproof; không
+- [x] Nối durable childmapping, ledger tải khử trùng và preview Đồng bộ Maximo
+      vào API/UI theo mục trên. Create+readonlyrecovery đã có Testproof; không
       dùng automaticrollback/delete cho unknown. ConditionalremoteDelete/edit
       cần xác minh riêng trước mở lifecycle thay đổi đã gửi.
 
@@ -36,9 +284,9 @@ Cập nhật: 2026-10-14.
       giờ phân bổ, không phải đã đồng bộ. Upload assignment chỉ xuất hiện trong
       dialog của legacy task allocation không có plan_id khi contract được bật.
       Luồng tự động hiện tạo plan_id kể cả một đoạn nên không hiện nút upload.
-- [ ] Chưa có đồng bộ hàng loạt kế hoạch tự động. Contract create/readonlyrecovery
-      đã đạt ở mục14/10; còn tích hợp preview WO/task/người/ngày và biên nhận
-      mapping từng nguồn. Không dùng collectionREPLACE/automaticDelete rollback
+- [x] Đồng bộ hàng loạt kế hoạch tự động đã tích hợp ở mục14/10 với preview
+      WO/task/người/ngày, một xác nhận, biên nhận và mapping từng nguồn.
+      Không dùng collectionREPLACE/automaticDelete rollback
       hoặc suy đã gửi từ Completed.
 
 ## Đo tải metadata với hai phiên Planner API — 2026-10-13

@@ -6,10 +6,13 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 
+from app.assignments.bulk_uploads import register as register_bulk_uploads
 from app.assignments.capacity import validate_capacity
 from app.assignments.incremental import metadata, receipt_metadata, revision
 from app.assignments.load import enrich_rows, load_lock, validate_remote_capacity
 from app.assignments.models import Allocation, AssignmentEvent, AssignmentSubmission
+from app.assignments.plan_moves import register as register_plan_moves
+from app.assignments.plan_uploads import register as register_plan_uploads
 from app.assignments.plans import register as register_plans
 from app.assignments.plans import release_empty_plan, validate_plan_edit
 from app.assignments.summary import remember_tasks
@@ -85,10 +88,13 @@ def view(item):
         "task_workorder_id": item.task_workorder_id,
         "task_id": item.task_id,
         "assignment_id": item.assignment_id,
+        "remote_assignment_id": item.remote_assignment_id,
         "task_description": item.task_description,
         "sync_state": item.sync_state,
         "plan_id": str(item.plan_id) if item.plan_id is not None else None,
         "plan_total_minutes": item.plan.demand_minutes if item.plan_id is not None else None,
+        "plan_version": item.plan.version if item.plan_id is not None else None,
+        "plan_sync_state": item.plan.sync_state if item.plan_id is not None else None,
     }
 
 
@@ -236,6 +242,9 @@ async def persist(request, pool_id, body, allocation_id=None, release=False):
             raise HTTPException(409, "Assignment upload is unresolved; reload before editing")
         if item and item.plan_id:
             await load_lock(db, item.connection_id)
+            if item.plan.sync_state != "local":
+                raise HTTPException(409, "Plan upload is unresolved or already synced")
+            item.plan.version += 1
             if not release:
                 await validate_plan_edit(db, item, body)
         await load_lock(db, target.connection_id)
@@ -627,3 +636,6 @@ async def assignment_revision(
 register(router)
 register_uploads(router)
 register_plans(router)
+register_plan_uploads(router)
+register_bulk_uploads(router)
+register_plan_moves(router)

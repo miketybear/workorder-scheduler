@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-15",
+  "environment": "local-development",
+  "schema_revision": "0016_plan_upload_batches",
+  "migration_required": false,
+  "runtime_update_columns_added": [
+    "assignment_plan.person_id",
+    "assignment_plan.laborcode"
+  ],
+  "plan_rows_unchanged": true,
+  "maximo_writes": 0
+}

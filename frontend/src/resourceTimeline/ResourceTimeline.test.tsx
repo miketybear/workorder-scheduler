@@ -1,10 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResourceTimeline } from './ResourceTimeline';
 import { AssignmentError, type Assignment, type ResourceTimeline as Snapshot } from '../api/assignments';
 import { RetrievalError } from '../api/workOrders';
 
-const api = vi.hoisted(() => ({ settings: vi.fn(), auth: vi.fn(), pools: vi.fn(), timeline: vi.fn(), revision:vi.fn(), orders: vi.fn(), tasks:vi.fn(), save: vi.fn(), batch:vi.fn(), plan: vi.fn(), planReceipt: vi.fn(), planBatch: vi.fn(),planBatchReceipt:vi.fn(), update: vi.fn(), remove: vi.fn(), lookup: vi.fn(), upload:vi.fn(), uploadReceipt:vi.fn(), reconcile:vi.fn() }));
+const api = vi.hoisted(() => ({ settings: vi.fn(), auth: vi.fn(), pools: vi.fn(), timeline: vi.fn(), revision:vi.fn(), orders: vi.fn(), tasks:vi.fn(), save: vi.fn(), batch:vi.fn(), plan: vi.fn(), planReceipt: vi.fn(), planBatch: vi.fn(),planBatchReceipt:vi.fn(), planUploadPreview: vi.fn(), planUpload: vi.fn(), planUploadReceipt: vi.fn(), planUploadStatus: vi.fn(), planUploadReconcile: vi.fn(), planMovePreview:vi.fn(), planMove:vi.fn(), planMoveReceipt:vi.fn(), batchCreate: vi.fn(), batchLatest: vi.fn(), batchGet: vi.fn(), batchPrepare: vi.fn(), batchConfirm: vi.fn(), batchContinue: vi.fn(), batchSubmission: vi.fn(), update: vi.fn(), remove: vi.fn(), lookup: vi.fn(), upload:vi.fn(), uploadReceipt:vi.fn(), reconcile:vi.fn() }));
 type TestTaskPlanPayload={request_id:string;tasks:Array<{task_workorder_id:string;task_id:number;assignment_id:string;total_minutes:number;segments:Array<{date:string;minutes:number}>}>};
 function planBatchResponse(input:TestTaskPlanPayload){return {request_id:input.request_id,plans:input.tasks.map((task,index)=>({plan_id:`plan-${index}`,...task,items:task.segments.map((segment,segmentIndex)=>({...item,id:`plan-${index}-${segmentIndex}`,...segment,task_workorder_id:task.task_workorder_id,task_id:task.task_id,assignment_id:task.assignment_id,plan_id:`plan-${index}`,plan_total_minutes:task.total_minutes,sync_state:'local'}))}))};}
 vi.mock('../api/settings', () => ({ getConnectionSettings: api.settings }));
@@ -12,7 +12,7 @@ vi.mock('../api/client', () => ({ getAuthSummary: api.auth }));
 vi.mock('../api/rotaImports', () => ({ listResourcePools: api.pools }));
 vi.mock('../api/assignments', async importOriginal => {
   const actual = await importOriginal<typeof import('../api/assignments')>();
-  return { ...actual, getResourceTimeline: api.timeline,getAssignmentRevision:api.revision, getWorkOrderTasks:api.tasks, saveAssignment: api.save, saveTaskAllocations:api.batch, saveTaskPlan:api.plan,lookupTaskPlanRequest:api.planReceipt,saveTaskPlanBatch:api.planBatch,lookupTaskPlanBatchRequest:api.planBatchReceipt,updateAssignment: api.update, deleteAssignment: api.remove, lookupAssignmentRequest: api.lookup, lookupTaskAllocationRequest:api.lookup, uploadAssignment:api.upload,lookupAssignmentUploadSubmission:api.uploadReceipt,reconcileAssignmentUpload:api.reconcile };
+  return { ...actual, getResourceTimeline: api.timeline,getAssignmentRevision:api.revision, getWorkOrderTasks:api.tasks, saveAssignment: api.save, saveTaskAllocations:api.batch, saveTaskPlan:api.plan,lookupTaskPlanRequest:api.planReceipt,saveTaskPlanBatch:api.planBatch,lookupTaskPlanBatchRequest:api.planBatchReceipt,previewAssignmentPlan:api.planUploadPreview,uploadAssignmentPlan:api.planUpload,lookupAssignmentPlanUpload:api.planUploadReceipt,getAssignmentPlanUploadStatus:api.planUploadStatus,reconcileAssignmentPlanUpload:api.planUploadReconcile,previewAssignmentPlanMove:api.planMovePreview,moveAssignmentPlan:api.planMove,lookupAssignmentPlanMoveRequest:api.planMoveReceipt,createPlanUploadBatch:api.batchCreate,getLatestPlanUploadBatch:api.batchLatest,getPlanUploadBatch:api.batchGet,prepareNextPlanUploadBatch:api.batchPrepare,confirmPlanUploadBatch:api.batchConfirm,continuePlanUploadBatch:api.batchContinue,lookupPlanUploadBatchSubmission:api.batchSubmission,updateAssignment: api.update, deleteAssignment: api.remove, lookupAssignmentRequest: api.lookup, lookupTaskAllocationRequest:api.lookup, uploadAssignment:api.upload,lookupAssignmentUploadSubmission:api.uploadReceipt,reconcileAssignmentUpload:api.reconcile };
 });
 vi.mock('../api/workOrders', async importOriginal => {
   const actual=await importOriginal<typeof import('../api/workOrders')>();
@@ -69,6 +69,12 @@ async function loaded(initial: Snapshot = snapshot, orders: Array<import('../api
 async function waitLegacyDialog(){ await screen.findByText(/WO chưa có task/); }
 const rowItem = (value: Assignment): Snapshot => ({ ...snapshot, items: [value], work_orders: [order] });
 function calendarTestDates(start:string,end:string){const from=Date.parse(`${start}T00:00:00Z`);const through=Date.parse(`${end}T00:00:00Z`);const result:string[]=[];for(let time=from;time<=through;time+=86_400_000)result.push(new Date(time).toISOString().slice(0,10));return result;}
+type BulkTestItem=Record<string,unknown>&{item_id:string;state:string;plan_id:string;task_id:number;task_workorder_id:string;source_assignment_id:string;total_minutes:number;segments:Array<{allocation_id:string;version:number;date:string;minutes:number;scheduled_start:string;scheduled_finish:string}>;receipt:unknown};
+function bulkPlanItems(count:number):BulkTestItem[]{return Array.from({length:count},(_,index)=>({item_id:`00000000-0000-4000-8000-${String(index+100).padStart(12,'0')}`,kind:'plan',state:'pending',reason:null,plan_id:`00000000-0000-4000-8000-${String(index+200).padStart(12,'0')}`,allocation_id:null,connection_id:'conn',site_id:'SITE',workorder_id:`wo-${index+1}`,wonum:`WO-${String(index+1).padStart(3,'0')}`,workorder_description:`Work ${index+1}`,task_workorder_id:`task-${index+1}`,task_id:index+1,task_description:`Task ${index+1}`,person_id:person.person_id,person_name:person.name,laborcode:person.laborcode,source_assignment_id:`source-${index+1}`,plan_version:1,total_minutes:60,segments:[{allocation_id:`00000000-0000-4000-8000-${String(index+300).padStart(12,'0')}`,version:1,date:'2026-10-05',minutes:60,scheduled_start:'2026-10-05T06:30:00+07:00',scheduled_finish:'2026-10-05T07:30:00+07:00'}],attempt_id:null,receipt:null} as BulkTestItem));}
+function bulkCounts(items:Array<Record<string,unknown>>){const counts={total:items.length,pending:0,ready:0,blocked:0,skipped:0,queued:0,sending:0,confirmed:0,failed:0,conflict:0,unknown:0};for(const item of items)counts[item.state as keyof typeof counts]++;return counts;}
+function bulkEnvelope(items:Array<Record<string,unknown>>,state:string,next:string|null,changed:Record<string,unknown>|null,requestId='00000000-0000-4000-8000-000000000001',confirmationId:string|null=null){return {batch_id:'00000000-0000-4000-8000-000000000099',request_id:requestId,confirmation_request_id:confirmationId,pool_id:pool.id,connection_id:'conn',discipline:'E&I',month:'2026-10',start_time:'06:30',state,expires_at:state==='ready'?'2026-10-03T12:00:00+07:00':null,counts:bulkCounts(items),next_item_id:next,items:items.slice(0,20),has_more:items.length>20,next_cursor:items.length>20?'20':null,changed_item:changed};}
+function bulkMutation(items:Array<Record<string,unknown>>,state:string,next:string|null,changed:Record<string,unknown>|null,requestId='00000000-0000-4000-8000-000000000001',confirmationId:string|null=null){return {...bulkEnvelope(items,state,next,changed,requestId,confirmationId),items:[],has_more:false,next_cursor:null};}
+function mockBulkPages(items:Array<Record<string,unknown>>,state:string,next:string|null,requestId='00000000-0000-4000-8000-000000000001',confirmationId:string|null=null){api.batchGet.mockImplementation(async(_pool:string,batchId:string,_scope:unknown,cursor:string|null)=>{const start=Number(cursor??0);return {...bulkEnvelope(items,state,next,null,requestId,confirmationId),items:items.slice(start,start+20),has_more:items.length>start+20,next_cursor:items.length>start+20?String(start+20):null};});}
 
 beforeEach(() => { vi.stubGlobal('PointerEvent',MouseEvent); vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTime(new Date('2026-10-01T02:00:00Z'));
   for(const mock of Object.values(api))mock.mockReset();
@@ -81,6 +87,47 @@ beforeEach(() => { vi.stubGlobal('PointerEvent',MouseEvent); vi.useFakeTimers({ 
   api.save.mockImplementation(async (_pool:string,input:Record<string,unknown>)=>({...item,...input,id:'new-a',version:1,state:'reserved',affected_days:[{pool_id:pool.id,person_id:person.person_id,craft:'E&I',laborcode:'LAB-1',date:String(input.date),code:'D',capacity_minutes:630,allocated_minutes:Number(input.minutes),remaining_minutes:630-Number(input.minutes),local_minutes:Number(input.minutes),external_minutes:0,synced_minutes:0,load_complete:true}],planning_summary:{state:'partial',remaining_minutes:60,remaining_tasks:1,total_tasks:2,verified_at:'2026-10-01T09:00:00+07:00'},previous_assignment_revision:'r1',assignment_revision:'r2',work_order:order}));
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); Reflect.deleteProperty(document,'elementFromPoint'); });
+
+it('shows compact status icons and a delayed, cancellable, keyboard-accessible assignment tooltip',async()=>{
+  const compact={...item,task_id:20,task_workorder_id:'task-20',task_description:'Long description for inspection',plan_id:'plan-card',plan_total_minutes:240,plan_sync_state:'unknown',sync_state:'unknown'} as Assignment;
+  await loaded({...snapshot,items:[compact],work_orders:[order]});
+  const card=screen.getByRole('button',{name:/Long description for inspection.*Chờ đối soát Maximo, nhiều ngày/});
+  expect(card).toHaveTextContent('T20 · WO-1 · 2h');
+  expect(card).not.toHaveTextContent('Chờ đối soát');
+  vi.useFakeTimers();
+  fireEvent.pointerEnter(card);
+  act(()=>{vi.advanceTimersByTime(1000);});
+  fireEvent.pointerLeave(card);
+  act(()=>{vi.advanceTimersByTime(2000);});
+  expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  fireEvent.pointerEnter(card);
+  act(()=>{vi.advanceTimersByTime(2000);});
+  expect(screen.getByRole('tooltip')).toHaveTextContent('Long description for inspection · WO-1 · Pump repair');
+  fireEvent.keyDown(card,{key:'Escape'});
+  expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  fireEvent.pointerLeave(card);
+  fireEvent.pointerEnter(card);
+  act(()=>{vi.advanceTimersByTime(1000);});
+  fireEvent.keyDown(card,{key:'Escape'});
+  act(()=>{vi.advanceTimersByTime(2000);});
+  expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  fireEvent.pointerLeave(card);
+  fireEvent.pointerEnter(card);
+  act(()=>{vi.advanceTimersByTime(1000);});
+  fireEvent.scroll(window);
+  act(()=>{vi.advanceTimersByTime(2000);});
+  expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  fireEvent.pointerLeave(card);
+  fireEvent.pointerEnter(card);
+  act(()=>{vi.advanceTimersByTime(2000);});
+  expect(screen.getByRole('tooltip')).toBeInTheDocument();
+  fireEvent.pointerLeave(card);
+  expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  fireEvent.focus(card);
+  expect(screen.getByRole('tooltip')).toBeInTheDocument();
+  fireEvent.blur(card);
+  expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+});
 
 it('paginates the sorted WO list in groups of 20 and keeps the selected WO across pages',async()=>{
   const orders=Array.from({length:45},(_,index)=>({...workOrder,wonum:`WO-${String(index+1).padStart(3,'0')}`,workorderid:`wo-${index+1}`}));
@@ -372,8 +419,84 @@ it('locks upload and person changes for a reloaded plan even with only one segme
   await loaded(rowItem(segment));
   api.tasks.mockResolvedValue({connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',upload_enabled:true,tasks:[]});
   fireEvent.click(screen.getByRole('button',{name:/Phân công Long repair/}));
-  await screen.findByText(/Kế hoạch nhiều ngày lưu nội bộ/);
+  await screen.findByText(/Kế hoạch theo ngày đang lưu nội bộ/);
   expect(screen.getByLabelText('Nhân lực phân công')).toBeDisabled();
+  expect(screen.queryByRole('button',{name:'Upload assignment lên Maximo'})).not.toBeInTheDocument();
+});
+
+it.each(['cancel','escape','edit'])('allows %s after upload preview while preserving the saved plan',async action=>{
+  const segment:Assignment={...item,task_id:20,task_workorder_id:'task-20',assignment_id:'source-20',task_description:'Long repair',plan_id:'plan-preview',plan_total_minutes:120,plan_sync_state:'local',sync_state:'local'};
+  await loaded(rowItem(segment));
+  api.tasks.mockResolvedValue({connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',discipline:'E&I',upload_enabled:true,daily_plan_upload_supported:true,tasks:[]});
+  api.planUploadPreview.mockResolvedValue({plan_id:'plan-preview',plan_version:1,preview_token:'token',expires_at:'2099-10-05T05:00:00Z',timezone:grant.timezone,connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',person_id:person.person_id,segments:[{allocation_id:segment.id,date:segment.date,minutes:120,scheduled_start:'2026-10-05T06:30:00+07:00',scheduled_finish:'2026-10-05T08:30:00+07:00'}],total_minutes:120});
+  fireEvent.click(screen.getByRole('button',{name:/Phân công Long repair/}));
+  fireEvent.click(await screen.findByRole('button',{name:'Xem trước đồng bộ'}));
+  await screen.findByRole('button',{name:'Gửi kế hoạch lên Maximo'});
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Hủy'})).toBeEnabled());
+  expect(screen.getByRole('button',{name:'Xác nhận lưu'})).toBeDisabled();
+  expect(screen.getByLabelText('Giờ phân công')).toBeDisabled();
+  if(action==='edit'){
+    fireEvent.click(screen.getByRole('button',{name:'Chỉnh giờ / Tạo preview mới'}));
+    await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận lưu'})).toBeEnabled());
+    expect(screen.getByLabelText('Giờ phân công')).toBeEnabled();
+    fireEvent.click(screen.getByRole('button',{name:'Hủy'}));
+  }else if(action==='cancel')fireEvent.click(screen.getByRole('button',{name:'Hủy'}));
+  else fireEvent.keyDown(screen.getByRole('button',{name:'Hủy'}),{key:'Escape'});
+  await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(screen.getByRole('button',{name:/Phân công Long repair/})).toBeInTheDocument();
+  expect(api.planUpload).not.toHaveBeenCalled();
+  expect(api.update).not.toHaveBeenCalled();
+  expect(api.remove).not.toHaveBeenCalled();
+});
+
+it('keeps plan editor read-only after an unknown upload is reconciled as confirmed',async()=>{
+  const segment:Assignment={...item,minutes:120,task_id:20,task_workorder_id:'task-20',assignment_id:'source-20',task_description:'Long repair',plan_id:'plan-confirm',plan_total_minutes:120,plan_version:1,plan_sync_state:'local',sync_state:'local'};
+  const synced:Assignment={...segment,remote_assignment_id:'2001',plan_version:2,plan_sync_state:'synced',sync_state:'synced'};
+  const makeReceipt=(state:'unknown'|'confirmed',current:Assignment,requestId='plan-request')=>({attempt_id:'plan-attempt',request_id:requestId,plan_id:'plan-confirm',state,mapping:state==='confirmed'?[{allocation_id:segment.id,date:segment.date,assignment_id:'2001'}]:null,items:[current]});
+  await loaded(rowItem(segment));
+  api.tasks.mockResolvedValue({connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',discipline:'E&I',upload_enabled:true,daily_plan_upload_supported:true,tasks:[]});
+  api.planUploadPreview.mockResolvedValue({plan_id:'plan-confirm',plan_version:1,preview_token:'preview-token',expires_at:'2026-10-05T05:00:00Z',timezone:grant.timezone,source_assignment_id:'source-20',connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',task_workorder_id:'task-20',task_id:20,person_id:person.person_id,laborcode:'LAB-1',segments:[{allocation_id:segment.id,version:segment.version,date:segment.date,minutes:segment.minutes,scheduled_start:'2026-10-05T06:30:00+07:00',scheduled_finish:'2026-10-05T08:30:00+07:00',remote_assignment_id:null}],total_minutes:120,can_upload:true,reason:null});
+  api.planUpload.mockImplementation(async(_planId:string,requestId:string)=>makeReceipt('unknown',{...segment,plan_sync_state:'unknown',sync_state:'unknown'},requestId));
+  api.planUploadStatus.mockImplementation(async()=>makeReceipt('unknown',{...segment,plan_sync_state:'unknown',sync_state:'unknown'}));
+  api.planUploadReceipt.mockImplementation(async(requestId:string)=>makeReceipt('unknown',{...segment,plan_sync_state:'unknown',sync_state:'unknown'},requestId));
+  api.planUploadReconcile.mockImplementation(async(_attemptId:string,requestId:string)=>makeReceipt('confirmed',synced,requestId));
+  fireEvent.click(screen.getByRole('button',{name:/Phân công Long repair/}));
+  await screen.findByRole('button',{name:'Xem trước đồng bộ'});
+  fireEvent.click(screen.getByRole('button',{name:'Xem trước đồng bộ'}));
+  await screen.findByRole('button',{name:'Gửi kế hoạch lên Maximo'});
+  fireEvent.click(screen.getByRole('button',{name:'Gửi kế hoạch lên Maximo'}));
+  await screen.findByRole('button',{name:'Đối soát (không gửi lại)'});
+  expect(screen.getByLabelText('Giờ phân công')).toBeDisabled();
+  expect(screen.getByRole('button',{name:'Hủy'})).toBeDisabled();
+  fireEvent.keyDown(screen.getByRole('button',{name:'Hủy'}),{key:'Escape'});
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Đối soát (không gửi lại)'}));
+  await waitFor(()=>expect(api.planUploadReconcile).toHaveBeenCalledWith('plan-attempt',expect.any(String),'plan-confirm',expect.anything(),expect.any(AbortSignal)));
+  await waitFor(()=>expect(screen.getByText(/Đã đồng bộ với Maximo/)).toBeInTheDocument());
+  expect(screen.getByRole('heading',{name:'Kế hoạch đã đồng bộ Maximo'})).toBeInTheDocument();
+  expect(screen.getAllByText('Đã đồng bộ Maximo').length).toBeGreaterThan(0);
+  expect(screen.queryByLabelText('Giờ phân công')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Xóa phân công'})).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Xác nhận lưu'})).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Xem trước đồng bộ'})).not.toBeInTheDocument();
+});
+
+it('shows a synced multi-day plan with fresh mapped Maximo assignments in the connection timezone',async()=>{
+  const first:Assignment={...item,id:'plan-day-1',date:'2026-10-05',minutes:90,task_id:20,task_workorder_id:'task-20',assignment_id:'source-20',task_description:'Long repair',plan_id:'plan-mapped',plan_total_minutes:180,remote_assignment_id:'552349',sync_state:'synced',plan_sync_state:'synced'};
+  const second:Assignment={...first,id:'plan-day-2',date:'2026-10-06',minutes:90,remote_assignment_id:'2001472'};
+  const receipt={attempt_id:'attempt',request_id:'request',plan_id:'plan-mapped',state:'confirmed' as const,mapping:[{allocation_id:first.id,date:first.date,assignment_id:'552349'},{allocation_id:second.id,date:second.date,assignment_id:'2001472'}],items:[first,second]};
+  await loaded({...snapshot,items:[first,second],work_orders:[order]});
+  api.tasks.mockResolvedValue({connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',discipline:'E&I',upload_enabled:true,daily_plan_upload_supported:true,tasks:[{task_workorder_id:'task-20',task_id:20,description:'Long repair task',planned_labor:[],assignments:[{assignment_id:'552349',task_id:20,laborcode:'LAB-20',craft:'E&I',scheduledate:'2026-10-05T06:30:00+07:00',labor_hours:1.5,status:'ASSIGNED',revision:'r1'},{assignment_id:'2001472',task_id:20,laborcode:'LAB-20',craft:'E&I',scheduledate:'2026-10-06T07:00:00',labor_hours:1.5,status:'ASSIGNED',revision:'r2'}]}]});
+  api.planUploadStatus.mockResolvedValue(receipt);
+  fireEvent.click(screen.getAllByRole('button',{name:/Phân công Long repair/})[0]);
+  const table=await screen.findByRole('table',{name:'Các ngày Maximo đã đồng bộ'});
+  await screen.findByText(/Đủ 2 phân đoạn cho tổng 3 giờ/);
+  expect(table).toHaveTextContent('05/10/2026');expect(table).toHaveTextContent('06/10/2026');
+  expect(table).toHaveTextContent('552349');expect(table).toHaveTextContent('2001472');
+  expect(table).toHaveTextContent('06:30');expect(table).toHaveTextContent('08:00');
+  expect(table).not.toHaveTextContent('07:00');expect(table).not.toHaveTextContent('08:30');
+  expect(screen.getByText(/Long repair task/)).toBeInTheDocument();expect(screen.getByText(/LAB-20/)).toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Xác nhận lưu'})).not.toBeInTheDocument();
   expect(screen.queryByRole('button',{name:'Upload assignment lên Maximo'})).not.toBeInTheDocument();
 });
 
@@ -881,4 +1004,181 @@ it('does not open an allocation when a pointer drag ends on an off day or is can
   fireEvent.pointerUp(source,{clientX:150,clientY:150,pointerId:1});
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(api.save).not.toHaveBeenCalled();
+});
+
+it('prepares the entire month across 20-row pages and confirms once for every ready plan',async()=>{
+  await loaded();
+  api.batchLatest.mockRejectedValue(new AssignmentError(404,'No batch'));
+  const all=bulkPlanItems(21);let state='previewing';let next:string|null=all[0].item_id;let prepared=0;let creationId='00000000-0000-4000-8000-000000000001';
+  api.batchCreate.mockImplementation(async(_pool:string,input:{request_id:string})=>{creationId=input.request_id;return bulkMutation(all,state,next,null,creationId);});
+  api.batchGet.mockImplementation(async(_pool:string,_batch:string,_scope:unknown,cursor:string|null)=>({...bulkEnvelope(all,state,next,null,creationId),items:Number(cursor??0)===0?all.slice(0,20):all.slice(20),has_more:Number(cursor??0)===0&&all.length>20,next_cursor:Number(cursor??0)===0&&all.length>20?'20':null}));
+  api.batchPrepare.mockImplementation(async()=>{const changed=all[prepared];changed.state='ready';prepared++;next=all[prepared]?.item_id??null;if(prepared===all.length)state='ready';return bulkMutation(all,state,next,changed,creationId);});
+  fireEvent.click(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'}));
+  await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');
+  fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));
+  await screen.findByText('Preview đã sẵn sàng để xác nhận.');
+  expect(api.batchPrepare).toHaveBeenCalledTimes(21);
+  expect(screen.queryByText(/WO-021/)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Trang sau'}));
+  expect(await screen.findByText(/WO-021/)).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Xác nhận 21 mục sẵn sàng'})).toBeEnabled();
+  expect(screen.queryByRole('button',{name:/Upload kế hoạch/})).not.toBeInTheDocument();
+  expect(api.batchConfirm).not.toHaveBeenCalled();
+});
+
+it('continues a confirmed batch through mixed outcomes and offers only no-resend reconciliation for unknown',async()=>{
+  const all=bulkPlanItems(3);let state='previewing';let next:string|null=all[0].item_id;let prepared=0;let creationId='00000000-0000-4000-8000-000000000001';const confirmationId='00000000-0000-4000-8000-000000000002';
+  const stalePlan={...item,plan_id:all[2].plan_id,plan_total_minutes:all[2].total_minutes,task_workorder_id:all[2].task_workorder_id,task_id:all[2].task_id,assignment_id:all[2].source_assignment_id,sync_state:'local',plan_sync_state:'local'} as Assignment;
+  await loaded({...snapshot,items:[stalePlan],work_orders:[order]});
+  api.batchLatest.mockRejectedValue(new AssignmentError(404,'No batch'));
+  api.batchCreate.mockImplementation(async(_pool:string,input:{request_id:string})=>{creationId=input.request_id;return bulkMutation(all,state,next,null,creationId);});
+  mockBulkPages(all,state,next,creationId,confirmationId);
+  api.batchPrepare.mockImplementation(async()=>{const changed=all[prepared];changed.state='ready';prepared++;next=all[prepared]?.item_id??null;if(prepared===all.length)state='ready';return bulkMutation(all,state,next,changed,creationId);});
+  const outcomes=['confirmed','failed','unknown'];let sent=0;
+  api.batchConfirm.mockImplementation(async(_batch:string,requestId:string)=>{state='running';all.forEach(entry=>entry.state='queued');next=all[0].item_id;return bulkMutation(all,state,next,null,creationId,requestId);});
+  api.batchContinue.mockImplementation(async(_batch:string,itemId:string)=>{const current=all.find(entry=>entry.item_id===itemId)!;current.state=outcomes[sent++];next=all[sent]?.item_id??null;if(sent===all.length)state='completed';if(current.state==='confirmed'){const syncedConfirmed={...item,id:current.segments[0].allocation_id,minutes:current.total_minutes,date:'2026-10-05',plan_id:current.plan_id,plan_total_minutes:current.total_minutes,task_id:current.task_id,task_workorder_id:current.task_workorder_id,assignment_id:current.source_assignment_id,sync_state:'synced',plan_sync_state:'synced'};current.receipt={attempt_id:'00000000-0000-4000-8000-000000000331',request_id:'00000000-0000-4000-8000-000000000332',plan_id:current.plan_id,state:'confirmed',mapping:null,items:[syncedConfirmed]};}if(current.state==='unknown'){const syncedUnknown={...item,id:current.segments[0].allocation_id,minutes:current.total_minutes,date:'2026-10-05',plan_id:current.plan_id,plan_total_minutes:current.total_minutes,task_id:current.task_id,task_workorder_id:current.task_workorder_id,assignment_id:current.source_assignment_id,sync_state:'unknown',plan_sync_state:'unknown'};current.receipt={attempt_id:'00000000-0000-4000-8000-000000000333',request_id:'00000000-0000-4000-8000-000000000334',plan_id:current.plan_id,state:'unknown',mapping:null,items:[syncedUnknown]};api.planUploadStatus.mockResolvedValue(current.receipt);}return bulkMutation(all,state,next,current,creationId,confirmationId);});
+  fireEvent.click(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'}));
+  await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');
+  fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));
+  await screen.findByText('Preview đã sẵn sàng để xác nhận.');
+  let finishCapacity!:(value:Snapshot)=>void;api.timeline.mockImplementationOnce(()=>new Promise(resolve=>{finishCapacity=resolve;}));
+  fireEvent.click(screen.getByRole('button',{name:'Xác nhận 3 mục sẵn sàng'}));
+  await waitFor(()=>expect(api.batchContinue).toHaveBeenCalledTimes(1));
+  await waitFor(()=>expect(api.timeline).toHaveBeenCalledTimes(2));
+  expect(api.batchContinue).toHaveBeenCalledTimes(1);
+  finishCapacity(snapshot);
+  await screen.findByText('Batch đã hoàn tất.');
+  expect(api.batchConfirm).toHaveBeenCalledTimes(1);
+  expect(api.batchContinue).toHaveBeenCalledTimes(3);
+  expect(api.batchContinue.mock.calls.map(call=>call[1])).toEqual(all.map(entry=>entry.item_id));
+  expect(screen.getByText(/1 \/ 3 kế hoạch đã xác nhận · 0 sẵn sàng · 0 bị chặn · 1 chưa rõ/)).toBeInTheDocument();
+  expect(await screen.findByText('Chưa rõ kết quả')).toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Tạo preview mới'})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Mở đối soát (không gửi lại)'}));
+  await screen.findByRole('button',{name:'Đối soát (không gửi lại)'});
+  expect(api.planUploadStatus).toHaveBeenCalled();expect(api.planUploadPreview).not.toHaveBeenCalled();
+  expect(api.batchContinue).toHaveBeenCalledTimes(3);
+  expect(api.planUpload).not.toHaveBeenCalled();
+});
+
+it('allows a replacement preview after a completed batch with no unknown outcomes',async()=>{
+  await loaded();api.batchLatest.mockRejectedValue(new AssignmentError(404,'No batch'));
+  const all=bulkPlanItems(1);let state='previewing';let next:string|null=all[0].item_id;let creationId='00000000-0000-4000-8000-000000000001';
+  api.batchCreate.mockImplementation(async(_pool:string,input:{request_id:string})=>{creationId=input.request_id;state='previewing';next=all[0].item_id;all[0].state='pending';return bulkMutation(all,state,next,null,creationId);});
+  mockBulkPages(all,state,next,creationId);
+  api.batchPrepare.mockImplementation(async()=>{all[0].state='ready';state='ready';next=null;return bulkMutation(all,state,next,all[0],creationId);});
+  api.batchConfirm.mockImplementation(async(_batch:string,requestId:string)=>{all[0].state='queued';state='running';next=all[0].item_id;return bulkMutation(all,state,next,null,creationId,requestId);});
+  api.batchContinue.mockImplementation(async()=>{all[0].state='confirmed';state='completed';next=null;return bulkMutation(all,state,next,all[0],creationId);});
+  fireEvent.click(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'}));await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');
+  fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));await screen.findByText('Preview đã sẵn sàng để xác nhận.');
+  fireEvent.click(screen.getByRole('button',{name:'Xác nhận 1 mục sẵn sàng'}));await screen.findByText('Batch đã hoàn tất.');
+  fireEvent.click(screen.getByRole('button',{name:'Tạo preview mới'}));
+  await waitFor(()=>expect(api.batchCreate).toHaveBeenCalledTimes(2));
+});
+
+it('does not repeat a lost continue request and keeps sending status read-only',async()=>{
+  await loaded();
+  api.batchLatest.mockRejectedValue(new AssignmentError(404,'No batch'));
+  const all=bulkPlanItems(1);let state='previewing';let next:string|null=all[0].item_id;let creationId='00000000-0000-4000-8000-000000000001';
+  api.batchCreate.mockImplementation(async(_pool:string,input:{request_id:string})=>{creationId=input.request_id;return bulkMutation(all,state,next,null,creationId);});
+  let reads=0;api.batchGet.mockImplementation(async()=>{reads++;const row={...all[0],state:reads>=3?'sending':all[0].state};return {...bulkEnvelope(all,state,next,null,creationId,'00000000-0000-4000-8000-000000000002'),items:[row],has_more:false,next_cursor:null};});
+  api.batchPrepare.mockImplementation(async()=>{all[0].state='ready';state='ready';next=null;return bulkMutation(all,state,next,all[0],creationId);});
+  api.batchConfirm.mockImplementation(async(_batch:string,requestId:string)=>{state='running';all[0].state='queued';next=all[0].item_id;return bulkMutation(all,state,next,null,creationId,requestId);});
+  api.batchContinue.mockRejectedValue(new Error('connection lost'));
+  fireEvent.click(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'}));
+  await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');
+  fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));
+  await screen.findByText('Preview đã sẵn sàng để xác nhận.');
+  fireEvent.click(screen.getByRole('button',{name:'Xác nhận 1 mục sẵn sàng'}));
+  await waitFor(()=>expect(api.batchContinue).toHaveBeenCalledTimes(1));
+  expect(await screen.findByRole('alert')).toHaveTextContent(/Không rõ kết quả gửi một mục/);
+  fireEvent.click(screen.getByRole('button',{name:'Kiểm tra trạng thái và tiếp tục mục đã xếp hàng'}));
+  await waitFor(()=>expect(api.batchGet).toHaveBeenCalled());
+  expect(api.batchContinue).toHaveBeenCalledTimes(1);
+});
+
+it('does not issue later batch writes after the dialog closes while applying a confirmed receipt',async()=>{
+  await loaded();api.batchLatest.mockRejectedValue(new AssignmentError(404,'No batch'));
+  const all=bulkPlanItems(2);let state='previewing';let next:string|null=all[0].item_id;let prepared=0;let creationId='00000000-0000-4000-8000-000000000001';const confirmationId='00000000-0000-4000-8000-000000000002';
+  api.batchCreate.mockImplementation(async(_pool:string,input:{request_id:string})=>{creationId=input.request_id;return bulkMutation(all,state,next,null,creationId);});
+  api.batchGet.mockImplementation(async()=>bulkEnvelope(all,state,next,null,creationId,confirmationId));
+  api.batchPrepare.mockImplementation(async()=>{const changed=all[prepared];changed.state='ready';prepared++;next=all[prepared]?.item_id??null;if(prepared===all.length)state='ready';return bulkMutation(all,state,next,changed,creationId);});
+  api.batchConfirm.mockImplementation(async(_batch:string,requestId:string)=>{state='running';all.forEach(entry=>entry.state='queued');next=all[0].item_id;return bulkMutation(all,state,next,null,creationId,requestId);});
+  let resolveContinue!:(value:unknown)=>void;api.batchContinue.mockImplementation(()=>new Promise(resolve=>{resolveContinue=resolve;}));
+  fireEvent.click(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'}));await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));await screen.findByText('Preview đã sẵn sàng để xác nhận.');fireEvent.click(screen.getByRole('button',{name:'Xác nhận 2 mục sẵn sàng'}));await waitFor(()=>expect(api.batchContinue).toHaveBeenCalledTimes(1));
+  let finishCapacity!:(value:Snapshot)=>void;api.timeline.mockImplementationOnce(()=>new Promise(resolve=>{finishCapacity=resolve;}));
+  const synced={...item,id:all[0].segments[0].allocation_id,minutes:all[0].total_minutes,date:'2026-10-05',plan_id:all[0].plan_id,plan_total_minutes:all[0].total_minutes,task_id:all[0].task_id,task_workorder_id:all[0].task_workorder_id,assignment_id:all[0].source_assignment_id,sync_state:'synced',plan_sync_state:'synced'};
+  all[0].state='confirmed';all[0].receipt={attempt_id:'00000000-0000-4000-8000-000000000331',request_id:'00000000-0000-4000-8000-000000000332',plan_id:all[0].plan_id,state:'confirmed',mapping:null,items:[synced]};next=all[1].item_id;
+  resolveContinue(bulkMutation(all,'running',next,all[0],creationId,confirmationId));await waitFor(()=>expect(api.timeline).toHaveBeenCalledTimes(2));
+  const readsBeforeClose=api.batchGet.mock.calls.length;fireEvent.click(screen.getByRole('button',{name:'Đóng'}));expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  finishCapacity(snapshot);await new Promise(resolve=>window.setTimeout(resolve,0));
+  expect(api.batchContinue).toHaveBeenCalledTimes(1);expect(api.batchGet).toHaveBeenCalledTimes(readsBeforeClose);
+});
+
+
+function moveIntegrationFixture(){
+  const first:Assignment={...item,minutes:60,task_id:20,task_workorder_id:'task-20',assignment_id:'source-20',task_description:'Relocate inspection',plan_id:'move-plan',plan_total_minutes:120,plan_version:1,plan_sync_state:'local',sync_state:'local'};
+  const second:Assignment={...first,id:'a-2',date:'2026-10-06'};
+  const target={...person,person_id:'person-2',name:'Nguyen B',laborcode:'LAB-2',days:person.days.map(day=>({...day}))};
+  const rows=[{...person,days:person.days.map(day=>({...day,allocated_minutes:60,remaining_minutes:570,local_minutes:60}))},target];
+  const preview={connection_id:'conn',discipline:'E&I',expected_plan_version:1,anchor_allocation_id:first.id,target_person_id:target.person_id,target_date:first.date,mode:'shift' as const,plan_id:'move-plan',plan_version:1,pool_id:pool.id,task_workorder_id:'task-20',task_id:20,assignment_id:'source-20',source_person_id:person.person_id,source_laborcode:'LAB-1',target_laborcode:'LAB-2',original_demand_minutes:120,total_minutes:120,old_items:[first,second],segments:[{date:first.date,minutes:60},{date:second.date,minutes:60}],capacity:target.days.map(day=>({person_id:target.person_id,date:day.date,laborcode:target.laborcode,capacity_minutes:630,allocated_minutes:0,remaining_minutes:630,proposed_minutes:60,remaining_after_minutes:570}))};
+  const reply=(requestId:string,reallocate=false)=>{
+    const moved={...first,person_id:target.person_id,laborcode:target.laborcode,minutes:reallocate?120:60,version:2,plan_version:2};
+    const next={...second,...(!reallocate?{person_id:target.person_id,laborcode:target.laborcode}:{}),version:2,plan_version:2,state:reallocate?'released' as const:'reserved' as const};
+    const affected_days=rows.flatMap(row=>row.days.map(day=>{const minutes=row.person_id===person.person_id?0:reallocate?(day.date===first.date?120:0):60;return {pool_id:pool.id,person_id:row.person_id,craft:row.craft,laborcode:row.laborcode,date:day.date,code:day.code,capacity_minutes:630,allocated_minutes:minutes,remaining_minutes:630-minutes,local_minutes:minutes,external_minutes:0,synced_minutes:0,load_complete:true};}));
+    return {request_id:requestId,plan_id:'move-plan',plan_version:2,items:[moved,next],allocation_updates:[moved,next],affected_days,assignment_revision:'r2',previous_assignment_revision:'r1',work_order:order,planning_summary:{state:'completed',remaining_minutes:0,remaining_tasks:0,total_tasks:1,verified_at:'2026-10-01T02:00:00Z'}};
+  };
+  return {first,second,target,rows,preview,reply};
+}
+
+it('moves a whole local plan from a cross-person drag and merges released segments and both capacities',async()=>{
+  const f=moveIntegrationFixture();
+  await loaded({...snapshot,rows:f.rows,items:[f.first,f.second],work_orders:[order]});
+  api.planMovePreview.mockRejectedValueOnce(new AssignmentError(409,'Ngày đích thiếu capacity',undefined,'plan_move_conflict'));
+  api.planMovePreview.mockResolvedValueOnce({...f.preview,mode:'reallocate',segments:[{date:f.first.date,minutes:120}],capacity:[{...f.preview.capacity[0],proposed_minutes:120,remaining_after_minutes:510}]});
+  api.planMove.mockImplementation(async(_pool:string,_plan:string,input:{request_id:string})=>f.reply(input.request_id,true));
+  const source=screen.getAllByRole('button',{name:/Phân công Relocate inspection/})[0];
+  dragTo(source,screen.getByRole('button',{name:'Thêm phân công cho Nguyen B ngày 2026-10-05'}));
+  await screen.findByRole('heading',{name:'Xem trước chuyển toàn task'});
+  expect(screen.getByLabelText('Tháng timeline')).toBeDisabled();
+  expect(screen.getByRole('button',{name:'Làm mới timeline'})).toBeDisabled();
+  fireEvent.click(await screen.findByRole('button',{name:'Phân bổ lại từ ngày thả'}));
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận chuyển'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button',{name:'Xác nhận chuyển'}));
+  await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(api.planMove).toHaveBeenCalledOnce();
+  expect(screen.queryAllByRole('button',{name:/Phân công Relocate inspection.*Nguyen A/})).toHaveLength(0);
+  const card=screen.getByRole('button',{name:/Phân công Relocate inspection.*2 giờ, Nguyen B/});
+  expect(card.closest('td')).toHaveTextContent('2 / 10,5h');
+  expect(screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-05'}).closest('td')).toHaveTextContent('0 / 10,5h');
+  expect(screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-06'}).closest('td')).toHaveTextContent('0 / 10,5h');
+  expect(api.update).not.toHaveBeenCalled();expect(api.planUpload).not.toHaveBeenCalled();
+});
+
+it('recovers a lost move response through the receipt without a second POST',async()=>{
+  const f=moveIntegrationFixture();
+  await loaded({...snapshot,rows:f.rows,items:[f.first,f.second],work_orders:[order]});
+  api.planMovePreview.mockResolvedValue(f.preview);
+  api.planMove.mockRejectedValue(new TypeError('response lost'));
+  api.planMoveReceipt.mockResolvedValueOnce(null);
+  fireEvent.click(screen.getAllByRole('button',{name:/Phân công Relocate inspection/})[0]);
+  fireEvent.click(await screen.findByRole('button',{name:'Chuyển task'}));
+  fireEvent.change(screen.getByLabelText('Nhân lực đích'),{target:{value:f.target.person_id}});
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận chuyển'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button',{name:'Xác nhận chuyển'}));
+  await screen.findByText(/Không gửi lại thao tác chuyển/);
+  const input=api.planMove.mock.calls[0][2] as {request_id:string};
+  expect(screen.getByText(input.request_id)).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Hủy'})).toBeDisabled();
+  expect(screen.getByLabelText('Tháng timeline')).toBeDisabled();
+  expect(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'})).toBeDisabled();
+  fireEvent.keyDown(screen.getByRole('dialog'),{key:'Escape'});
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  const unload=new Event('beforeunload',{cancelable:true});window.dispatchEvent(unload);expect(unload.defaultPrevented).toBe(true);
+  api.planMoveReceipt.mockResolvedValueOnce(f.reply(input.request_id));
+  fireEvent.click(screen.getByRole('button',{name:'Đối soát trạng thái chuyển'}));
+  await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(api.planMove).toHaveBeenCalledOnce();expect(api.planMoveReceipt).toHaveBeenCalledTimes(2);
+  expect(screen.getAllByRole('button',{name:/Phân công Relocate inspection.*Nguyen B/})).toHaveLength(2);
+  expect(screen.queryAllByRole('button',{name:/Phân công Relocate inspection.*Nguyen A/})).toHaveLength(0);
 });

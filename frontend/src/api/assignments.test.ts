@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { getAssignmentRevision, getAssignments, getResourceTimeline, getWorkOrderTasks, saveAssignment, saveTaskAllocations, saveTaskPlan, lookupTaskPlanRequest, saveTaskPlanBatch, lookupTaskPlanBatchRequest, uploadAssignment } from './assignments';
+import { getAssignmentRevision, getAssignments, getResourceTimeline, getWorkOrderTasks, saveAssignment, saveTaskAllocations, saveTaskPlan, lookupTaskPlanRequest, saveTaskPlanBatch, lookupTaskPlanBatchRequest, uploadAssignment, previewAssignmentPlan, uploadAssignmentPlan, lookupAssignmentPlanUpload, getAssignmentPlanUploadStatus, createPlanUploadBatch, getPlanUploadBatch, getLatestPlanUploadBatch, confirmPlanUploadBatch, continuePlanUploadBatch, previewAssignmentPlanMove, moveAssignmentPlan, lookupAssignmentPlanMoveRequest, type Assignment } from './assignments';
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const scope = { connection_id: 'conn', site_id: 'SITE', workorder_id: '123', discipline: 'E&I', date_from: '2026-10-01', date_before: '2026-11-01' };
@@ -108,6 +108,12 @@ it('exposes only explicit server pre-intent rejections as not sent',async()=>{
   await expect(uploadAssignment(item as import('./assignments').Assignment,'req','2026-10-03T06:30:00+07:00',new AbortController().signal)).rejects.toMatchObject({status:403,outcome:undefined});
 });
 
+it('marks missing CSRF as known not-sent before fetch',async()=>{
+  vi.spyOn(document,'cookie','get').mockReturnValue('');const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+  await expect(uploadAssignment(item as import('./assignments').Assignment,'req','2026-10-03T06:30:00+07:00',new AbortController().signal)).rejects.toMatchObject({status:401,outcome:'not_sent'});
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
 it('saves a multi-day task plan atomically and validates exact receipt segments',async()=>{
   vi.spyOn(document,'cookie','get').mockReturnValue('__Host-wos-csrf=token');
   const input={connection_id:'conn',site_id:'SITE',workorder_id:'123',discipline:'E&I',person_id:'person',task_workorder_id:'task-wo',task_id:10,assignment_id:'max-10',total_minutes:1200,request_id:'plan-req',segments:[{date:'2026-10-05',minutes:630},{date:'2026-10-06',minutes:570}]};
@@ -158,4 +164,142 @@ it('rejects duplicate task identities and daily segments over rota before batch 
   const duplicate={...base,tasks:[...base.tasks,...base.tasks]};
   await expect(saveTaskPlanBatch('pool',duplicate,new AbortController().signal)).rejects.toThrow(/Batch kế hoạch/);
   expect(fetcher).not.toHaveBeenCalled();
+});
+
+it('previews a two-day plan, posts one token-bound upload, and validates complete date mapping',async()=>{
+  vi.spyOn(document,'cookie','get').mockReturnValue('__Host-wos-csrf=token');
+  const planItems=[{...item,id:'a1',plan_id:'plan',plan_total_minutes:120,task_workorder_id:'task-wo',task_id:10,assignment_id:'source',date:'2026-10-05',minutes:60,version:3},{...item,id:'a2',plan_id:'plan',plan_total_minutes:120,task_workorder_id:'task-wo',task_id:10,assignment_id:'source',date:'2026-10-06',minutes:60,version:4}];
+  const expected={plan_id:'plan',connection_id:'conn',site_id:'SITE',workorder_id:'123',person_id:'person',task_workorder_id:'task-wo',task_id:10,assignment_id:'source',plan_total_minutes:120,segments:planItems.map(({id,date,minutes,version})=>({id,date,minutes,version}))};
+  const preview={plan_id:'plan',plan_version:5,preview_token:'00000000-0000-4000-8000-000000000001',expires_at:'2026-10-05T12:02:00+07:00',timezone:'Asia/Bangkok',source_assignment_id:'source',connection_id:'conn',site_id:'SITE',workorder_id:'123',task_workorder_id:'task-wo',task_id:10,person_id:'person',laborcode:'L1',segments:planItems.map((segment,index)=>({allocation_id:segment.id,version:segment.version,date:segment.date,minutes:segment.minutes,scheduled_start:`2026-10-0${5+index}T06:30:00+07:00`,scheduled_finish:`2026-10-0${5+index}T07:30:00+07:00`,remote_assignment_id:index?'2001470':'1968934'})),total_minutes:120,can_upload:true,reason:null};
+  const fetcher=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(preview)));
+  vi.stubGlobal('fetch',fetcher);
+  const checked=await previewAssignmentPlan('pool',expected,'06:30',new AbortController().signal);
+  expect(checked.segments).toHaveLength(2);expect(String(fetcher.mock.calls[0][0])).toBe('/api/assignment-plans/plan/upload-preview?start_time=06%3A30');
+  const receipt={attempt_id:'attempt',request_id:'request',plan_id:'plan',state:'confirmed',mapping:planItems.map((segment,index)=>({allocation_id:segment.id,date:segment.date,assignment_id:index?'2001470':'1968934'}))};
+  fetcher.mockResolvedValueOnce(new Response(JSON.stringify(receipt)));
+  await expect(uploadAssignmentPlan('plan','request',checked,new AbortController().signal)).resolves.toMatchObject({state:'confirmed',mapping:receipt.mapping});
+  expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({request_id:'request',plan_version:5,preview_token:preview.preview_token});
+  fetcher.mockResolvedValueOnce(new Response(JSON.stringify({...receipt,mapping:receipt.mapping.slice(0,1)})));
+  await expect(uploadAssignmentPlan('plan','request',checked,new AbortController().signal)).rejects.toThrow(/bao phủ đúng toàn bộ/);
+});
+
+it('refuses a plan preview from another WO and keeps missing receipts unresolved',async()=>{
+  const segment={id:'a1',date:'2026-10-05',minutes:60,version:1};const expected={plan_id:'plan',connection_id:'conn',site_id:'SITE',workorder_id:'123',person_id:'person',task_workorder_id:'task-wo',task_id:10,assignment_id:'source',plan_total_minutes:60,segments:[segment]};
+  const foreign={plan_id:'plan',plan_version:1,preview_token:'token',expires_at:'2026-10-05T12:02:00Z',timezone:'UTC',source_assignment_id:'source',connection_id:'conn',site_id:'SITE',workorder_id:'999',task_workorder_id:'task-wo',task_id:10,person_id:'person',laborcode:null,segments:[{allocation_id:'a1',version:1,date:'2026-10-05',minutes:60,scheduled_start:'2026-10-05T06:30:00Z',scheduled_finish:'2026-10-05T07:30:00Z',remote_assignment_id:null}],total_minutes:60,can_upload:true,reason:null};
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify(foreign))));
+  await expect(previewAssignmentPlan('pool',expected,'06:30',new AbortController().signal)).rejects.toThrow(/không thuộc phân công hiện tại/);
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({detail:'not found'}),{status:404})));
+  await expect(lookupAssignmentPlanUpload('request','plan',undefined,new AbortController().signal)).resolves.toBeNull();
+});
+
+it('accepts a full cross-month server preview when the visible-month slice is a strict subset',async()=>{
+  const expected={plan_id:'plan',connection_id:'conn',site_id:'SITE',workorder_id:'123',person_id:'person',task_workorder_id:'task-wo',task_id:10,assignment_id:'source',plan_total_minutes:120,segments:[{id:'a31',date:'2026-10-31',minutes:60,version:2}]};
+  const response={plan_id:'plan',plan_version:3,preview_token:'00000000-0000-4000-8000-000000000002',expires_at:'2026-10-30T12:02:00+07:00',timezone:'Asia/Bangkok',source_assignment_id:'source',connection_id:'conn',site_id:'SITE',workorder_id:'123',task_workorder_id:'task-wo',task_id:10,person_id:'person',laborcode:null,segments:[{allocation_id:'a31',version:2,date:'2026-10-31',minutes:60,scheduled_start:'2026-10-31T06:30:00+07:00',scheduled_finish:'2026-10-31T07:30:00+07:00',remote_assignment_id:'source'},{allocation_id:'a01',version:1,date:'2026-11-01',minutes:60,scheduled_start:'2026-11-01T06:30:00+07:00',scheduled_finish:'2026-11-01T07:30:00+07:00',remote_assignment_id:null}],total_minutes:120,can_upload:true,reason:null};
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify(response))));
+  await expect(previewAssignmentPlan('pool',expected,'06:30',new AbortController().signal)).resolves.toMatchObject({segments:[{date:'2026-10-31'},{date:'2026-11-01'}],total_minutes:120});
+});
+
+it('validates rediscovered plan status against the complete plan scope and mapping',async()=>{
+  const source:import('./assignments').Assignment={...item,id:'a1',plan_id:'plan',plan_total_minutes:60,task_workorder_id:'task-wo',task_id:10,assignment_id:'source',date:'2026-10-05',minutes:60,remote_assignment_id:'2001',plan_version:2,plan_sync_state:'synced',state:'reserved'};
+  const scope={pool_id:'pool',connection_id:'conn',site_id:'SITE',workorder_id:'123',discipline:'E&I',person_id:'person',task_workorder_id:'task-wo',task_id:10,assignment_id:'source',plan_total_minutes:60,items:[source]};
+  const response={attempt_id:'attempt',request_id:'00000000-0000-4000-8000-000000000003',plan_id:'plan',state:'confirmed',mapping:[{allocation_id:'a1',date:'2026-10-05',assignment_id:'2001'}],items:[source]};
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify(response))));
+  await expect(getAssignmentPlanUploadStatus('plan',scope,new AbortController().signal)).resolves.toMatchObject({state:'confirmed',items:[{remote_assignment_id:'2001'}]});
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({...response,items:[{...source,workorder_id:'foreign'}]}))));
+  await expect(getAssignmentPlanUploadStatus('plan',scope,new AbortController().signal)).rejects.toThrow(/không khớp đầy đủ kế hoạch/);
+});
+
+const bulkScope={pool_id:'pool',connection_id:'conn',discipline:'E&I',month:'2026-10'};
+const bulkItem={item_id:'00000000-0000-4000-8000-000000000010',kind:'plan',state:'ready',reason:null,plan_id:'00000000-0000-4000-8000-000000000011',allocation_id:null,connection_id:'conn',site_id:'SITE',workorder_id:'123',wonum:'WO-123',workorder_description:'Pump repair',task_workorder_id:'task-wo',task_id:10,task_description:'Inspect',person_id:'person',person_name:'Planner A',laborcode:'L1',source_assignment_id:'source',plan_version:2,total_minutes:120,segments:[{allocation_id:'00000000-0000-4000-8000-000000000012',version:1,date:'2026-10-31',minutes:60,scheduled_start:'2026-10-31T06:30:00+07:00',scheduled_finish:'2026-10-31T07:30:00+07:00'},{allocation_id:'00000000-0000-4000-8000-000000000013',version:1,date:'2026-11-01',minutes:60,scheduled_start:'2026-11-01T06:30:00+07:00',scheduled_finish:'2026-11-01T07:30:00+07:00'}],attempt_id:null,receipt:null};
+function bulkResponse(overrides:Record<string,unknown>={}){return {batch_id:'00000000-0000-4000-8000-000000000020',request_id:'00000000-0000-4000-8000-000000000021',confirmation_request_id:null,pool_id:'pool',connection_id:'conn',discipline:'E&I',month:'2026-10',start_time:'06:30',state:'ready',expires_at:'2026-10-31T08:00:00+07:00',counts:{total:1,pending:0,ready:1,blocked:0,skipped:0,queued:0,sending:0,confirmed:0,failed:0,conflict:0,unknown:0},next_item_id:null,items:[bulkItem],has_more:false,next_cursor:null,changed_item:null,...overrides};}
+
+it('creates a scoped monthly batch and parses cross-month segments without client paging filters',async()=>{
+  vi.spyOn(document,'cookie','get').mockReturnValue('__Host-wos-csrf=token');
+  const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify(bulkResponse({state:'previewing',expires_at:null,counts:{total:1,pending:1,ready:0,blocked:0,skipped:0,queued:0,sending:0,confirmed:0,failed:0,conflict:0,unknown:0},next_item_id:bulkItem.item_id}))));
+  vi.stubGlobal('fetch',fetcher);
+  const result=await createPlanUploadBatch('pool',{connection_id:'conn',discipline:'E&I',month:'2026-10'},'00000000-0000-4000-8000-000000000021','06:30',new AbortController().signal);
+  expect(result.next_item_id).toBe(bulkItem.item_id);
+  expect(result.items[0]).toMatchObject({segments:[{date:'2026-10-31'},{date:'2026-11-01'}]});
+  expect(fetcher.mock.calls[0][0]).toBe('/api/resource-pools/pool/plan-upload-batches');
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({request_id:'00000000-0000-4000-8000-000000000021',month:'2026-10',start_time:'06:30'});
+});
+
+it('pages batch preview rows by twenty while the server next item remains global',async()=>{
+  const firstItems=Array.from({length:20},(_,index)=>({...bulkItem,item_id:`00000000-0000-4000-8000-${String(index+30).padStart(12,'0')}`,plan_id:`00000000-0000-4000-8000-${String(index+60).padStart(12,'0')}`}));
+  const first=bulkResponse({counts:{total:21,pending:0,ready:21,blocked:0,skipped:0,queued:0,sending:0,confirmed:0,failed:0,conflict:0,unknown:0},items:firstItems,has_more:true,next_cursor:'20',next_item_id:'00000000-0000-4000-8000-000000000099'});
+  const lastItem={...bulkItem,item_id:'00000000-0000-4000-8000-000000000098'};
+  const fetcher=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(first))).mockResolvedValueOnce(new Response(JSON.stringify(bulkResponse({items:[lastItem],has_more:false,next_cursor:null,next_item_id:'00000000-0000-4000-8000-000000000099',counts:first.counts}))));
+  vi.stubGlobal('fetch',fetcher);
+  const initial=await getPlanUploadBatch('pool',String(first.batch_id),bulkScope,null,new AbortController().signal);
+  const page=await getPlanUploadBatch('pool',String(first.batch_id),bulkScope,initial.next_cursor,new AbortController().signal);
+  expect(page.next_item_id).toBe('00000000-0000-4000-8000-000000000099');
+  expect(String(fetcher.mock.calls[0][0])).toBe('/api/plan-upload-batches/00000000-0000-4000-8000-000000000020?cursor=0');
+  expect(String(fetcher.mock.calls[1][0])).toBe('/api/plan-upload-batches/00000000-0000-4000-8000-000000000020?cursor=20');
+});
+
+it('recovers latest batch by month and sends one confirmation or exact queued item request',async()=>{
+  vi.spyOn(document,'cookie','get').mockReturnValue('__Host-wos-csrf=token');
+  const confirmed=bulkResponse({state:'running',confirmation_request_id:'00000000-0000-4000-8000-000000000022',counts:{total:1,pending:0,ready:0,blocked:0,skipped:0,queued:1,sending:0,confirmed:0,failed:0,conflict:0,unknown:0},next_item_id:bulkItem.item_id,items:[{...bulkItem,state:'queued'}]});
+  const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify(confirmed)));
+  vi.stubGlobal('fetch',fetcher);
+  await getLatestPlanUploadBatch('pool',bulkScope,new AbortController().signal);
+  expect(String(fetcher.mock.calls[0][0])).toBe('/api/resource-pools/pool/plan-upload-batches?month=2026-10');
+  fetcher.mockClear();fetcher.mockResolvedValue(new Response(JSON.stringify(confirmed)));
+  await confirmPlanUploadBatch(String(confirmed.batch_id),'00000000-0000-4000-8000-000000000022',bulkScope,new AbortController().signal);
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({request_id:'00000000-0000-4000-8000-000000000022'});
+  fetcher.mockClear();fetcher.mockResolvedValue(new Response(JSON.stringify(confirmed)));
+  await continuePlanUploadBatch(String(confirmed.batch_id),bulkItem.item_id,bulkScope,new AbortController().signal);
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({item_id:bulkItem.item_id});
+});
+
+it('rejects inconsistent batch status counts and foreign plan scope',async()=>{
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify(bulkResponse({pool_id:'foreign'})))));
+  await expect(getPlanUploadBatch('pool',bulkResponse().batch_id,bulkScope,null,new AbortController().signal)).rejects.toThrow(/không khớp phạm vi/);
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify(bulkResponse({counts:{...bulkResponse().counts,confirmed:1}})))));
+  await expect(getPlanUploadBatch('pool',bulkResponse().batch_id,bulkScope,null,new AbortController().signal)).rejects.toThrow(/Tổng trạng thái batch/);
+});
+
+it('accepts a blocked scoped item without a WO number and fetches the initial page explicitly',async()=>{
+  const blocked={...bulkItem,state:'blocked',wonum:null,reason:'missing_task'};
+  const body=bulkResponse({items:[blocked],counts:{...bulkResponse().counts,ready:0,blocked:1}});
+  const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify(body)));
+  vi.stubGlobal('fetch',fetcher);
+  const parsed=await getPlanUploadBatch('pool',String(body.batch_id),bulkScope,null,new AbortController().signal);
+  expect(parsed.items[0]).toMatchObject({wonum:null,state:'blocked'});
+  expect(String(fetcher.mock.calls[0][0])).toContain('?cursor=0');
+});
+
+it('accepts a partial reserved timeline for pending demand but requires full minutes once ready',async()=>{
+  const partial={...bulkItem,state:'pending',segments:[bulkItem.segments[0]],total_minutes:120};
+  const pendingCounts={...bulkResponse().counts,ready:0,pending:1};
+  const pending=bulkResponse({state:'previewing',expires_at:null,counts:pendingCounts,next_item_id:partial.item_id,items:[partial]});
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify(pending))));
+  await expect(getPlanUploadBatch('pool',String(pending.batch_id),bulkScope,null,new AbortController().signal)).resolves.toMatchObject({items:[{state:'pending',total_minutes:120,segments:[{minutes:60}]}]});
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({...pending,state:'ready',counts:{...pendingCounts,pending:0,ready:1},next_item_id:null,items:[{...partial,state:'ready'}]}))));
+  await expect(getPlanUploadBatch('pool',String(pending.batch_id),bulkScope,null,new AbortController().signal)).rejects.toThrow(/sai tổng giờ/);
+});
+
+it('previews and commits an exact, full-plan move and recovers its durable receipt',async()=>{
+  vi.spyOn(document,'cookie','get').mockReturnValue('__Host-wos-csrf=token');
+  const source:Assignment={...item,id:'seg-1',date:'2026-10-03',minutes:60,person_id:'person',task_workorder_id:'task-10',task_id:10,assignment_id:'source-10',plan_id:'plan-1',plan_total_minutes:120,plan_version:4,state:'reserved'};
+  const source2={...source,id:'seg-2',date:'2026-10-04',minutes:60};
+  const input={connection_id:'conn',discipline:'E&I',expected_plan_version:4,anchor_allocation_id:source.id,target_person_id:'person-2',target_date:'2026-10-05',mode:'shift' as const};
+  const previewBody={plan_id:'plan-1',plan_version:4,pool_id:'pool',connection_id:'conn',discipline:'E&I',task_workorder_id:'task-10',task_id:10,assignment_id:'source-10',source_person_id:'person',target_person_id:'person-2',source_laborcode:'L1',target_laborcode:'L2',original_demand_minutes:120,total_minutes:120,mode:'shift',old_items:[source,source2],segments:[{date:'2026-10-05',minutes:60},{date:'2026-10-06',minutes:60}],capacity:[{person_id:'person-2',date:'2026-10-05',laborcode:'L2',capacity_minutes:630,allocated_minutes:0,remaining_minutes:630,proposed_minutes:60,remaining_after_minutes:570},{person_id:'person-2',date:'2026-10-06',laborcode:'L2',capacity_minutes:630,allocated_minutes:0,remaining_minutes:630,proposed_minutes:60,remaining_after_minutes:570}],anchor_allocation_id:source.id,target_date:'2026-10-05'};
+  const fetcher=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(previewBody)));
+  vi.stubGlobal('fetch',fetcher);
+  const preview=await previewAssignmentPlanMove('pool','plan-1',input,[source],new AbortController().signal);
+  expect(String(fetcher.mock.calls[0][0])).toBe('/api/resource-pools/pool/assignment-plans/plan-1/move-preview');
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual(input);
+  expect(preview.old_items).toHaveLength(2);
+  const request={...input,request_id:'00000000-0000-4000-8000-000000000011',segments:preview.segments};
+  const moved=[{...source,person_id:'person-2',date:'2026-10-05',plan_version:5},{...source2,person_id:'person-2',date:'2026-10-06',plan_version:5}];
+  const mutation={request_id:request.request_id,plan_id:'plan-1',plan_version:5,items:moved};
+  fetcher.mockResolvedValueOnce(new Response(JSON.stringify(mutation)));
+  await expect(moveAssignmentPlan('pool','plan-1',request,preview,new AbortController().signal)).resolves.toMatchObject({plan_version:5,items:[{person_id:'person-2'},{person_id:'person-2'}]});
+  expect(String(fetcher.mock.calls[1][0])).toBe('/api/resource-pools/pool/assignment-plans/plan-1/move');
+  expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual(request);
+  fetcher.mockResolvedValueOnce(new Response(JSON.stringify({result:mutation})));
+  await expect(lookupAssignmentPlanMoveRequest(request.request_id,'pool','plan-1',request,preview,new AbortController().signal)).resolves.toMatchObject({request_id:request.request_id,items:[{id:'seg-1',person_id:'person-2',date:'2026-10-05'},{id:'seg-2',person_id:'person-2',date:'2026-10-06'}]});
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({...previewBody,plan_id:'other'}))));
+  await expect(previewAssignmentPlanMove('pool','plan-1',input,[source],new AbortController().signal)).rejects.toThrow(/không khớp phạm vi/);
 });

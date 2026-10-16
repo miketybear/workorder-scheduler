@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-15",
+  "environment": "Onshore Test",
+  "scope": "BD1/E&I",
+  "remote_writes": 0,
+  "checks": {
+    "single_day": "Kế hoạch đã đồng bộ Maximo\n\nP13469691 · 12 Month maintenance for HT-PM-4525B & 4525C of the Glycol system. · Task 10: Obtain all paperworks during job task\n\nNhân lực\nDao Quang Hai (1B) · HAIDQ\nSite / WO status\nBD1 · APPR\nKết nối\nOnshore test · Test\nTrạng thái\nĐã đồng bộ Maximo\n\nĐủ 1 phân đoạn cho tổng 1 giờ.\n\nNgày kế hoạch\tGiờ\tBắt đầu Maximo\tKết thúc dự kiến (tính theo giờ)\tAssignment Maximo\tTrạng thái\n01/10/2026\t1 giờ\t06:30 1/10/26\t07:30 1/10/26\t552343\tASSIGNED\nĐồng bộ Maximo\n\nOnshore test · Test\n\nĐã đồng bộ Maximo. Chi tiết phân đoạn được hiển thị theo dữ liệu trong phạm vi hiện tại.\n\nĐã đồng bộ với Maximo · đã map 1 ngày.\n\nĐóng",
+    "multi_day": "Kế hoạch đã đồng bộ Maximo\n\nP13469691 · 12 Month maintenance for HT-PM-4525B & 4525C of the Glycol system. · Task 20: Do the job task as PM schedule\n\nNhân lực\nDao Quang Hai (1B) · HAIDQ\nSite / WO status\nBD1 · APPR\nKết nối\nOnshore test · Test\nTrạng thái\nĐã đồng bộ Maximo\n\nĐủ 3 phân đoạn cho tổng 21 giờ.\n\nNgày kế hoạch\tGiờ\tBắt đầu Maximo\tKết thúc dự kiến (tính theo giờ)\tAssignment Maximo\tTrạng thái\n01/10/2026\t9,5 giờ\t06:30 1/10/26\t16:00 1/10/26\t552349\tASSIGNED\n02/10/2026\t10,5 giờ\t06:30 2/10/26\t17:00 2/10/26\t2001472\tASSIGNED\n03/10/2026\t1 giờ\t06:30 3/10/26\t07:30 3/10/26\t2001474\tASSIGNED\nĐồng bộ Maximo\n\nOnshore test · Test\n\nĐã đồng bộ Maximo. Chi tiết phân đoạn được hiển thị theo dữ liệu trong phạm vi hiện tại.\n\nĐã đồng bộ với Maximo · đã map 3 ngày.\n\nĐóng",
+    "before_after_remote_and_ledger_snapshots_equal": true,
+    "disabled_edit_controls_removed": true
+  },
+  "limitations": [
+    "Giờ kết thúc dự kiến được tính từ scheduledate và labor_hours, không phải finishdate đọc từ API task.",
+    "Biên nhận đầy đủ chỉ khả dụng theo quyền của người gửi; thiếu biên nhận hiển thị độ phủ hiện có."
+  ],
+  "screenshots": [
+    "synced-details-single-day-2026-10-15.jpg",
+    "synced-details-multi-day-2026-10-15.jpg"
+  ],
+  "verification": {
+    "focused_tests": 70,
+    "typecheck": "passed",
+    "lint": "passed",
+    "build": "passed; existing chunk-size advisory"
+  }
+}

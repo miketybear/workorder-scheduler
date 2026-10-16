@@ -57,9 +57,14 @@ def calculate_verified(tasks, allocations, discipline, verified_at):
     remaining, covered, total_tasks, remaining_tasks = 0, 0, 0, 0
     local = defaultdict(list)
     for row in allocations:
-        local[row.assignment_id].append(row)
+        aid = (
+            (getattr(row, "remote_assignment_id", None) or row.assignment_id)
+            if row.sync_state == "synced"
+            else row.assignment_id
+        )
+        local[aid].append(row)
     source_ids = {s["assignment_id"] for task in tasks for s in task["assignments"]}
-    if any(row.assignment_id not in source_ids for row in allocations):
+    if any(aid not in source_ids for aid in local):
         return unverified()
     for task in tasks:
         if task.get("has_out_of_scope_demand", True):
@@ -178,4 +183,3 @@ async def list_summaries(db, connection_id, discipline, orders, ttl):
         key = (snapshot.site_id, snapshot.workorder_id)
         results[key] = calculate(snapshot.tasks, grouped[key], discipline, snapshot.verified_at)
     return results
-

@@ -25,7 +25,7 @@ from app.scheduling.batches import router as batches_router
 from app.scheduling.routes import router as scheduling_router
 from app.scheduling.upload_routes import router as uploads_router
 
-SCHEMA_REVISION = "0014_assignment_snapshots"
+SCHEMA_REVISION = "0016_plan_upload_batches"
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -86,6 +86,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "/api/resource-pools",
                 "/api/assignments",
                 "/api/assignment-submissions",
+                "/api/assignment-plans",
+                "/api/assignment-plan-upload",
+                "/api/plan-upload-batch",
             )
         ):
             response.headers["Cache-Control"] = "no-store"

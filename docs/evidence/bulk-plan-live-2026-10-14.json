@@ -1,0 +1,519 @@
+{
+  "environment": "Onshore Test",
+  "remote_writes": 0,
+  "parent": {
+    "siteid": "BD1",
+    "workorderid": "536549",
+    "wonum": "P13469691",
+    "bdpocdiscipline": "E&I",
+    "worktype": "PM",
+    "status": "APPR",
+    "description": "12 Month maintenance for HT-PM-4525B & 4525C of the Glycol system.",
+    "wolo10": null,
+    "location": "HT-GR",
+    "systemid": null,
+    "schedstart": "2026-10-30T06:30:00+07:00",
+    "schedfinish": "2026-10-31T17:30:00+07:00",
+    "actstart": null,
+    "actfinish": null,
+    "wopriority": 2,
+    "wopriority_description": "Medium",
+    "lead": null,
+    "assignedtechname": null,
+    "estdur": "25.0",
+    "targstartdate": "2026-10-01T07:46:00+07:00",
+    "targcompdate": "2026-10-31T07:46:00+07:00",
+    "istask": false,
+    "parent": null
+  },
+  "tasks": [
+    {
+      "task_workorder_id": "536557",
+      "task_id": 20,
+      "description": "Do the job task as PM schedule",
+      "planned_labor": [
+        {
+          "craft": "E&I",
+          "labor_hours": "21.0",
+          "quantity": "1"
+        }
+      ],
+      "assignments": [
+        {
+          "assignment_id": "552349",
+          "task_id": 20,
+          "laborcode": "HAIDQ",
+          "craft": "E&I",
+          "scheduledate": "2026-10-01T06:30:00+07:00",
+          "labor_hours": "9.5",
+          "status": "ASSIGNED",
+          "revision": "3627991348"
+        },
+        {
+          "assignment_id": "2001474",
+          "task_id": 20,
+          "laborcode": "HAIDQ",
+          "craft": "E&I",
+          "scheduledate": "2026-10-03T06:30:00+07:00",
+          "labor_hours": "1.0",
+          "status": "ASSIGNED",
+          "revision": "3627991344"
+        },
+        {
+          "assignment_id": "2001472",
+          "task_id": 20,
+          "laborcode": "HAIDQ",
+          "craft": "E&I",
+          "scheduledate": "2026-10-02T06:30:00+07:00",
+          "labor_hours": "10.5",
+          "status": "ASSIGNED",
+          "revision": "3627991346"
+        }
+      ],
+      "has_out_of_scope_demand": false
+    },
+    {
+      "task_workorder_id": "536559",
+      "task_id": 30,
+      "description": "Clear work site, completed paper works, checksheets and close work order",
+      "planned_labor": [
+        {
+          "craft": "E&I",
+          "labor_hours": "3.0",
+          "quantity": "1"
+        }
+      ],
+      "assignments": [
+        {
+          "assignment_id": "552355",
+          "task_id": 30,
+          "laborcode": null,
+          "craft": "E&I",
+          "scheduledate": null,
+          "labor_hours": "3.0",
+          "status": "WAITASGN",
+          "revision": "3131620185"
+        }
+      ],
+      "has_out_of_scope_demand": false
+    },
+    {
+      "task_workorder_id": "536555",
+      "task_id": 10,
+      "description": "Obtain all paperworks during job task",
+      "planned_labor": [
+        {
+          "craft": "E&I",
+          "labor_hours": "1.0",
+          "quantity": "1"
+        }
+      ],
+      "assignments": [
+        {
+          "assignment_id": "552343",
+          "task_id": 10,
+          "laborcode": "HAIDQ",
+          "craft": "E&I",
+          "scheduledate": "2026-10-01T06:30:00+07:00",
+          "labor_hours": "1.0",
+          "status": "ASSIGNED",
+          "revision": "3627988602"
+        }
+      ],
+      "has_out_of_scope_demand": false
+    }
+  ],
+  "protected_targets": {
+    "20": {
+      "resource_id": "_QkQxL1AxMzQ2OTY5NQ--",
+      "root_revision": "3627991342",
+      "assignment": {
+        "assignmentid": 552349,
+        "craft": "E&I",
+        "skilllevel": "OPSTECH",
+        "wplaborid": "P13278033",
+        "orgid": "BDPOC",
+        "parentassignid": 0,
+        "status": "ASSIGNED",
+        "laborcode": "HAIDQ",
+        "laborhrs": 9.5,
+        "scheduledate": "2026-10-01T06:30:00+07:00",
+        "finishdate": "2026-10-01T16:00:00+07:00",
+        "startdate": null,
+        "workdate": null,
+        "_rowstamp": "3627991348"
+      },
+      "assignments": [
+        {
+          "assignmentid": 552349,
+          "craft": "E&I",
+          "skilllevel": "OPSTECH",
+          "wplaborid": "P13278033",
+          "orgid": "BDPOC",
+          "parentassignid": 0,
+          "status": "ASSIGNED",
+          "laborcode": "HAIDQ",
+          "laborhrs": 9.5,
+          "scheduledate": "2026-10-01T06:30:00+07:00",
+          "finishdate": "2026-10-01T16:00:00+07:00",
+          "startdate": null,
+          "workdate": null,
+          "_rowstamp": "3627991348"
+        },
+        {
+          "assignmentid": 2001474,
+          "craft": "E&I",
+          "skilllevel": "OPSTECH",
+          "wplaborid": "P13278033",
+          "orgid": "BDPOC",
+          "parentassignid": 0,
+          "status": "ASSIGNED",
+          "laborcode": "HAIDQ",
+          "laborhrs": 1.0,
+          "scheduledate": "2026-10-03T06:30:00+07:00",
+          "finishdate": "2026-10-03T07:30:00+07:00",
+          "startdate": null,
+          "workdate": null,
+          "_rowstamp": "3627991344"
+        },
+        {
+          "assignmentid": 2001472,
+          "craft": "E&I",
+          "skilllevel": "OPSTECH",
+          "wplaborid": "P13278033",
+          "orgid": "BDPOC",
+          "parentassignid": 0,
+          "status": "ASSIGNED",
+          "laborcode": "HAIDQ",
+          "laborhrs": 10.5,
+          "scheduledate": "2026-10-02T06:30:00+07:00",
+          "finishdate": "2026-10-02T17:00:00+07:00",
+          "startdate": null,
+          "workdate": null,
+          "_rowstamp": "3627991346"
+        }
+      ]
+    },
+    "30": {
+      "resource_id": "_QkQxL1AxMzQ2OTY5Ng--",
+      "root_revision": "3134339839",
+      "assignment": {
+        "assignmentid": 552355,
+        "craft": "E&I",
+        "skilllevel": "OPSTECH",
+        "wplaborid": "P13278035",
+        "orgid": "BDPOC",
+        "parentassignid": 0,
+        "status": "WAITASGN",
+        "laborcode": null,
+        "laborhrs": 3.0,
+        "scheduledate": null,
+        "finishdate": null,
+        "startdate": null,
+        "workdate": null,
+        "_rowstamp": "3131620185"
+      },
+      "assignments": [
+        {
+          "assignmentid": 552355,
+          "craft": "E&I",
+          "skilllevel": "OPSTECH",
+          "wplaborid": "P13278035",
+          "orgid": "BDPOC",
+          "parentassignid": 0,
+          "status": "WAITASGN",
+          "laborcode": null,
+          "laborhrs": 3.0,
+          "scheduledate": null,
+          "finishdate": null,
+          "startdate": null,
+          "workdate": null,
+          "_rowstamp": "3131620185"
+        }
+      ]
+    },
+    "10": {
+      "resource_id": "_QkQxL1AxMzQ2OTY5NA--",
+      "root_revision": "3627988600",
+      "assignment": {
+        "assignmentid": 552343,
+        "craft": "E&I",
+        "skilllevel": "OPSTECH",
+        "wplaborid": "P13278031",
+        "orgid": "BDPOC",
+        "parentassignid": 0,
+        "status": "ASSIGNED",
+        "laborcode": "HAIDQ",
+        "laborhrs": 1.0,
+        "scheduledate": "2026-10-01T06:30:00+07:00",
+        "finishdate": "2026-10-01T07:30:00+07:00",
+        "startdate": null,
+        "workdate": null,
+        "_rowstamp": "3627988602"
+      },
+      "assignments": [
+        {
+          "assignmentid": 552343,
+          "craft": "E&I",
+          "skilllevel": "OPSTECH",
+          "wplaborid": "P13278031",
+          "orgid": "BDPOC",
+          "parentassignid": 0,
+          "status": "ASSIGNED",
+          "laborcode": "HAIDQ",
+          "laborhrs": 1.0,
+          "scheduledate": "2026-10-01T06:30:00+07:00",
+          "finishdate": "2026-10-01T07:30:00+07:00",
+          "startdate": null,
+          "workdate": null,
+          "_rowstamp": "3627988602"
+        }
+      ]
+    }
+  },
+  "receipts": [
+    {
+      "id": "e9db5f83-8787-417a-8e2f-3eb2771576c0",
+      "plan_id": "f5a2d0a9-060f-4c74-bf4e-1094b81431bf",
+      "request_id": "1c736307-a99e-4284-aafa-4b419a1d380a",
+      "state": "confirmed",
+      "mapping": [
+        {
+          "date": "2026-10-01",
+          "allocation_id": "9a5120f5-d142-4856-a6cc-ee1518387ed5",
+          "assignment_id": "552343"
+        }
+      ]
+    },
+    {
+      "id": "277c01da-9810-494a-b0b7-5f19562e631e",
+      "plan_id": "eab59d94-f90a-4791-be7c-d51085297d8b",
+      "request_id": "777fd671-5d4e-4535-9301-fa3209f30741",
+      "state": "confirmed",
+      "mapping": [
+        {
+          "date": "2026-10-01",
+          "allocation_id": "fef37fca-7f24-4606-9ed4-804b4cc7c713",
+          "assignment_id": "552349"
+        },
+        {
+          "date": "2026-10-02",
+          "allocation_id": "f97f2748-87e9-44d5-ba72-062dd4d4ebef",
+          "assignment_id": "2001472"
+        },
+        {
+          "date": "2026-10-03",
+          "allocation_id": "67ecfae4-da40-4e3c-bed6-11d07b113267",
+          "assignment_id": "2001474"
+        }
+      ]
+    }
+  ],
+  "finish_fields": [
+    {
+      "task_id": "20",
+      "assignment_id": 552349,
+      "stored_scheduledate": "2026-10-01T06:30:00+07:00",
+      "stored_finishdate": "2026-10-01T16:00:00+07:00",
+      "inferred_finish_from_scheduledate_plus_laborhrs": "2026-10-01T16:00:00+07:00"
+    },
+    {
+      "task_id": "20",
+      "assignment_id": 2001474,
+      "stored_scheduledate": "2026-10-03T06:30:00+07:00",
+      "stored_finishdate": "2026-10-03T07:30:00+07:00",
+      "inferred_finish_from_scheduledate_plus_laborhrs": "2026-10-03T07:30:00+07:00"
+    },
+    {
+      "task_id": "20",
+      "assignment_id": 2001472,
+      "stored_scheduledate": "2026-10-02T06:30:00+07:00",
+      "stored_finishdate": "2026-10-02T17:00:00+07:00",
+      "inferred_finish_from_scheduledate_plus_laborhrs": "2026-10-02T17:00:00+07:00"
+    },
+    {
+      "task_id": "30",
+      "assignment_id": 552355,
+      "stored_scheduledate": null,
+      "stored_finishdate": null,
+      "inferred_finish_from_scheduledate_plus_laborhrs": null
+    },
+    {
+      "task_id": "10",
+      "assignment_id": 552343,
+      "stored_scheduledate": "2026-10-01T06:30:00+07:00",
+      "stored_finishdate": "2026-10-01T07:30:00+07:00",
+      "inferred_finish_from_scheduledate_plus_laborhrs": "2026-10-01T07:30:00+07:00"
+    }
+  ],
+  "batch_ledger": [
+    {
+      "batch_id": "8c0e8f9b-bd4e-4e75-8f40-c5965843f1be",
+      "state": "completed",
+      "items": [
+        {
+          "item_id": "9d7d829e-7cfa-4d2e-812e-aaf0e30d3c3b",
+          "plan_id": "f5a2d0a9-060f-4c74-bf4e-1094b81431bf",
+          "state": "confirmed",
+          "reason": null,
+          "attempt_id": "e9db5f83-8787-417a-8e2f-3eb2771576c0",
+          "task_id": 10
+        },
+        {
+          "item_id": "5e876dd6-0f2e-49ba-9272-00c92cfd17c6",
+          "plan_id": "eab59d94-f90a-4791-be7c-d51085297d8b",
+          "state": "blocked",
+          "reason": "final_preflight_lock_timeout_no_send",
+          "attempt_id": null,
+          "task_id": 20
+        }
+      ]
+    },
+    {
+      "batch_id": "4bbe4519-c323-4e0b-a944-b9149aa6c69d",
+      "state": "completed",
+      "items": [
+        {
+          "item_id": "8e696549-43ef-44c9-b67d-807edc006147",
+          "plan_id": "f5a2d0a9-060f-4c74-bf4e-1094b81431bf",
+          "state": "skipped",
+          "reason": "already_synced",
+          "attempt_id": null,
+          "task_id": 10
+        },
+        {
+          "item_id": "ed350599-c55f-45c8-8757-d3492777a677",
+          "plan_id": "eab59d94-f90a-4791-be7c-d51085297d8b",
+          "state": "confirmed",
+          "reason": null,
+          "attempt_id": "277c01da-9810-494a-b0b7-5f19562e631e",
+          "task_id": 20
+        }
+      ]
+    }
+  ],
+  "recovery_audit_events": [
+    {
+      "id": "8b753aa1-35b7-42aa-93ec-efcf7482ea72",
+      "actor_id": "ff3b2719-a976-4279-9ff8-f7ce625b0530",
+      "allocation_id": "fef37fca-7f24-4606-9ed4-804b4cc7c713",
+      "event": "batch_no_send",
+      "details": {
+        "state": "blocked",
+        "reason": "final_preflight_lock_timeout_no_send",
+        "item_id": "5e876dd6-0f2e-49ba-9272-00c92cfd17c6",
+        "batch_id": "8c0e8f9b-bd4e-4e75-8f40-c5965843f1be",
+        "evidence": "bulk-plan-failure-evidence.json",
+        "request_id": "fc58f1ba-5869-4571-bd5f-40720c7904f7",
+        "previous_state": "unknown",
+        "original_request_stopped": true,
+        "no_daily_or_assignment_intent": true,
+        "approved_full_remote_target_available": false,
+        "remote_matches_diagnostic_and_source_revision": true
+      },
+      "created_at": "2026-10-14 15:02:41.284540+00:00"
+    },
+    {
+      "id": "f42e2cea-fbed-4ae2-b52b-b7565b296bc9",
+      "actor_id": "ff3b2719-a976-4279-9ff8-f7ce625b0530",
+      "allocation_id": "f97f2748-87e9-44d5-ba72-062dd4d4ebef",
+      "event": "batch_no_send",
+      "details": {
+        "state": "blocked",
+        "reason": "final_preflight_lock_timeout_no_send",
+        "item_id": "5e876dd6-0f2e-49ba-9272-00c92cfd17c6",
+        "batch_id": "8c0e8f9b-bd4e-4e75-8f40-c5965843f1be",
+        "evidence": "bulk-plan-failure-evidence.json",
+        "request_id": "fc58f1ba-5869-4571-bd5f-40720c7904f7",
+        "previous_state": "unknown",
+        "original_request_stopped": true,
+        "no_daily_or_assignment_intent": true,
+        "approved_full_remote_target_available": false,
+        "remote_matches_diagnostic_and_source_revision": true
+      },
+      "created_at": "2026-10-14 15:02:41.284540+00:00"
+    },
+    {
+      "id": "124fae4c-35ff-487a-9945-4f2d774ed4e9",
+      "actor_id": "ff3b2719-a976-4279-9ff8-f7ce625b0530",
+      "allocation_id": "67ecfae4-da40-4e3c-bed6-11d07b113267",
+      "event": "batch_no_send",
+      "details": {
+        "state": "blocked",
+        "reason": "final_preflight_lock_timeout_no_send",
+        "item_id": "5e876dd6-0f2e-49ba-9272-00c92cfd17c6",
+        "batch_id": "8c0e8f9b-bd4e-4e75-8f40-c5965843f1be",
+        "evidence": "bulk-plan-failure-evidence.json",
+        "request_id": "fc58f1ba-5869-4571-bd5f-40720c7904f7",
+        "previous_state": "unknown",
+        "original_request_stopped": true,
+        "no_daily_or_assignment_intent": true,
+        "approved_full_remote_target_available": false,
+        "remote_matches_diagnostic_and_source_revision": true
+      },
+      "created_at": "2026-10-14 15:02:41.284540+00:00"
+    }
+  ],
+  "verified": {
+    "source_id_day1_retained": true,
+    "unique_daily_mapping": true,
+    "exact_approved_dates_minutes_labor": true,
+    "task30_unchanged": true,
+    "task10_exact_and_confirmed": true,
+    "task20_source_immutable_fields_unchanged": true,
+    "all_task_planned_labor_unchanged": true,
+    "parent_business_fields_unchanged": [
+      "schedstart",
+      "schedfinish",
+      "estdur",
+      "targstartdate",
+      "targcompdate"
+    ],
+    "capacity_no_double_count": true,
+    "stored_finishdate_matches_approved_finish": true
+  },
+  "capacity": {
+    "2026-10-01": {
+      "local_minutes": 0,
+      "external_minutes": 630,
+      "synced_minutes": 630,
+      "allocated_minutes": 630
+    },
+    "2026-10-02": {
+      "local_minutes": 0,
+      "external_minutes": 630,
+      "synced_minutes": 630,
+      "allocated_minutes": 630
+    },
+    "2026-10-03": {
+      "local_minutes": 0,
+      "external_minutes": 60,
+      "synced_minutes": 60,
+      "allocated_minutes": 60
+    }
+  },
+  "acceptance": {
+    "recorded_at_utc": "2026-10-14T15:07:57.519806+00:00",
+    "date": "2026-10-14",
+    "user_selected_method": "Read-only Maximo API and comparison table; no authenticated Maximo Assignments UI session available on phone",
+    "scope": "BD1/P13469691/E&I/HAIDQ/October2026, local application with Onshore Test",
+    "first_batch": "Partial: Task10 confirmed, Task20 lock timeout before durable intent; original process stopped; audited operator no-send resolution to blocked",
+    "second_batch": "Completed: Task10 already_synced skipped; Task20 confirmed with three daily mappings; no retry of an unresolved write",
+    "remote_write_calls": 2,
+    "maximo_ui_tab_verified": false,
+    "scheduler_reload_receipt_and_load_verified": true,
+    "limitations": [
+      "Fresh multi-ready-item live batch after sequencing fix not exercised; deferred frontend regression covers sequencing.",
+      "No production or remote edit/delete/rollback acceptance."
+    ],
+    "checks": {
+      "bulk_postgresql": 23,
+      "daily_postgresql": 27,
+      "frontend_targeted": 65,
+      "ruff": "passed",
+      "typecheck": "passed",
+      "lint": "passed",
+      "build": "passed; existing chunk advisory"
+    }
+  }
+}

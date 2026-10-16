@@ -1,13 +1,70 @@
 # Trạng thái triển khai — foundation
 
-Cập nhật: 2026-10-14. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
+Cập nhật: 2026-10-15. Chưa phải ứng dụng nghiệp vụ hoàn chỉnh.
+
+Đã hỗ trợ chuyển toàn task local giữa technician/ngày với preview, giữ khoảng
+cách ngày hoặc chủ động phân bổ lại theo capacity. Giao dịch nguyên tử, version,
+UUID/receipt, cùng khóa upload và scoped rechecks; synced/unknown giữ khóa.
+106 PostgreSQL/399 frontend tests, lint/typecheck/build đạt; hai findingP2 modal
+đã sửa và main kiểm chứng. Live P13468351 Task20 CHANLD→MINHNC→CHANLD giữ10h/
+2ngày, các plan khác và parent/tasks Maximo giữ nguyên, không upload. Không cần
+migration; runtime cần thêm hai cột UPDATE header theo provision_roles.sql.
+[Bằng chứng](evidence/plan-move-live-2026-10-15.json).
+
+Thẻ timeline đã rút gọn thành task/WONUM/giờ và biểu tượng trạng thái,
+nhiều ngày với chú giải chung. Tooltip mô tả chờ hover2giây hoặc focus
+bàn phím, hủy khi rời/cuộn/Esc; bấm vẫn mở chi tiết. 67 timeline tests,
+typecheck/lint/build đạt. [Ảnh](evidence/timeline-compact-tooltip-2026-10-15.jpg).
+
+Timeline đã có bảng chỉ đọc cho kế hoạch synced: xem đủ ngày từ biên nhận,
+giờ/ID/status và giờ bắt đầu Maximo theo đúng mapping. Kết thúc dự kiến được
+ghi rõ là tính theo giờ. Thiếu biên nhận không làm mất trạng thái synced;
+ẩn các nút sửa/xóa/gửi đã khóa. Live kiểm chứng Task10/20 P13469691, snapshot
+hai WO trước/sau giữ nguyên; 70 focused tests, typecheck/lint/build đạt.
+[Bằng chứng chi tiết](evidence/synced-details-ui-2026-10-15.json).
+
+Ngày15/10 đã nghiệm thu trực tiếp MaximoTest/Assignments trên phiên user mở:
+P13470381 đúng3dòng (2assignedHAIDQ6h,Task30WAITASGN1h), P13469691 đúng5dòng
+(4assignedHAIDQ22h qua01–03/10,Task30WAITASGN3h). Craft/skill/người/ngày/giờ/
+status và parentSchedule/Targets khớp APIevidence, khôngdòngthừa. UI không
+hiển thịAssignmentID/Finishdate; hai trường đó đãverifiedAPI14/10. Chỉ đọc,
+không remote mutation hoặc appchange. [Bằng chứng UI](evidence/maximo-assignments-ui-2026-10-15.json).
+
+Đồng bộ hàng loạt theo tháng đã có nút chung, preview/kết quả20mục/trang,
+batch/confirmation/UUID bền vững, một xác nhận xử lý lần lượt và recovery sau
+reload. Backend gom đủ kế hoạch cùng scope và các đoạn ngoài tháng; frontend
+merge kết quả từng mục, không tải lại toàn backlog hoặc toàn batch mỗi lần gửi.
+48PG/110offline/runtime-role/386frontend và build đạt, review không cònP1/P2.
+Migration0016 local có backup/dữ liệu cũ giữ nguyên; UIpreview2task22h và reload
+đạt, dọntrial vềreserved0/attempt0 ở lượt preview trước. Nghiệm thu gửi thật
+P13469691/HAIDQ đã xác nhận Task10/20 tổng22h/4assignment bằng API đọc theo
+user chọn; chưa kiểm tra trực tiếp tab Maximo. Lượt đầu1confirmed/1locktimeout
+trước intent, operator ghi audit no-send rồi batch mới1skipped/1confirmed.
+Sửa UI chờ refresh tải và backend SQLAlchemyError receipt lookup;50PG/65FE
+liên quan/Ruff/typecheck/lint/build đạt. IDs ngày đầu/Task30/planned/parent
+schedule/targets giữ, reload load630/630/60phút không trùng. Live batch mới
+de22845d có2ready P13470381 Task10/20 tổng6h: mộtconfirm,2continueconfirmed,
+GETtimeline hoàn tất trước continue2 với monotonic gap0,766s; sourceIDs/
+Task30/planned/parent giữ, reload load360phút không trùng. Observertiming tạm
+đã dừng/normal backendready200. Không production/remote edit/delete/rollback.
+[Luồng và giới hạn](bulk-plan-uploads.md); phương pháp kiểm chứng ở [TODO](todos.md).
+
+Đồng bộ từng kế hoạch timeline đã nối API/UI: preview toàn plan, durable intent,
+mapping assignment ID từng ngày, khử trùng tải và read-only recovery sau mất
+phản hồi/tải lại. Migration0015 local có backup/dữ liệu cũ giữ nguyên; API mới
+chạy và contract chỉ bật Onshore Test. 110offline/61PG/1role/376frontend và
+build đạt; review +focusedP1recheck đạt. Browser nghiệm thu preview21h hai ngày,
+đổi giờ một ngày, dọn trial vềreserved0/attempt0 ở lượt trước. Luồng daily API
+đã live-send qua điều phối bulk bên trên; chưa bấm riêng nút gửi trong editor.
+Xem [luồng và giới hạn](daily-plan-uploads.md) và [bằng chứng UI](evidence/daily-plan-sync-ui-2026-10-14.json).
 
 Contract Test tạo assignment theo ngày đã có proof với sibling: giữ1968934,
 Add2001470 cho ngày sau, sibling2001462 giữ field/revision; GET recovery khi
 handler giả lập mất phản hồi không gửi lại; stale root chặn duplicate. Trials
 đã dọn bằng targetedchildDELETE/operatorsourceMERGE, originalIDs giữ/load0.
 35new/122relatedtests/Ruff đạt. ConditionalDELETE vẫn chưaverified, module
-operator chưa nối public plan upload/ledger. [Contract và giới hạn](daily-assignment-contract.md).
+operator là bước proof trước tích hợp public API/ledger bên trên.
+[Contract và giới hạn](daily-assignment-contract.md).
 
 Backlog timeline dùng snapshot metadata đầy đủ tại backend, TTL120giây;
 search/filter toàn snapshot, trả20WO/trang và tổng chính xác của snapshot.

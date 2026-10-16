@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-14",
+  "environment": "local Onshore Test",
+  "revision": "0015_daily_plan_uploads",
+  "upload_attempts": 0,
+  "reserved_allocations": 0,
+  "preview_count": 3,
+  "ui_trial": {
+    "wonum": "P13469691",
+    "person": "Dao Quang Hai (1B)",
+    "task_20_minutes": [
+      630,
+      630
+    ],
+    "dates": [
+      "2026-10-01",
+      "2026-10-02"
+    ],
+    "preview_time": "06:30-17:00",
+    "changed_start_preview": "06:31-07:31 (Task 10,60 minutes)",
+    "cleanup": "all trial allocations released; UI load returned to zero",
+    "maximo_send_clicked": false
+  },
+  "verification": {
+    "frontend_tests": 376,
+    "backend_offline_tests": 110,
+    "backend_postgres_tests": 61,
+    "focused_review_postgres_tests": 6,
+    "runtime_role_test": 1,
+    "build": "passed; existing chunk warning",
+    "health_live": 200,
+    "health_ready": 200
+  }
+}

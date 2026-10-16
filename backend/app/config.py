@@ -71,6 +71,7 @@ class MaximoSettings(BaseModel):
     person_login_domain: str | None = None
     conditional_write_contract: Literal["native_rowstamp_test"] | None = None
     assignment_write_contract: Literal["native_assignment_rowstamp_test"] | None = None
+    assignment_daily_write_contract: Literal["native_daily_assignment_rowstamp_test"] | None = None
     task_load_contract: Literal["bdsched_assignment_test"] | None = None
     paging_origin_aliases: list[str] = Field(default_factory=list, max_length=3)
 
@@ -193,6 +194,7 @@ class Settings(BaseSettings):
         if self.environment not in {"development", "test"} and any(
             connection.conditional_write_contract is not None
             or connection.assignment_write_contract is not None
+            or connection.assignment_daily_write_contract is not None
             for connection in self.maximo.values()
         ):
             raise ValueError("Verified conditional write contract is TEST-only")

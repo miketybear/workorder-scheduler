@@ -18,6 +18,28 @@ def run(coroutine):
     return asyncio.run(coroutine, loop_factory=asyncio.SelectorEventLoop)
 
 
+def test_daily_mapping_deduplicates_each_remote_child_but_unknown_is_conservative():
+    from datetime import date
+
+    day = date(2026, 10, 4)
+    item = SimpleNamespace(
+        id=uuid4(),
+        assignment_id="1",
+        remote_assignment_id="2",
+        laborcode="LAB",
+        date=day,
+        minutes=150,
+        sync_state="synced",
+    )
+    remote = {"2": {"laborcode": "LAB", "date": day, "minutes": 150}}
+    assert effective_load([item], remote, "LAB", day)["allocated_minutes"] == 150
+    item.sync_state = "unknown"
+    assert effective_load([item], remote, "LAB", day)["allocated_minutes"] == 300
+    item.sync_state = "synced"
+    remote["2"]["minutes"] = 151
+    assert effective_load([item], remote, "LAB", day)["allocated_minutes"] == 301
+
+
 def test_receipt_database_failure_cannot_prove_not_sent():
     class UnavailableSession:
         async def __aenter__(self):

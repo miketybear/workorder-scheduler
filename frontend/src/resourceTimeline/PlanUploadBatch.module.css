@@ -1,0 +1,19 @@
+.overlay { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 20px; background: #142b4288; }
+.dialog { box-sizing: border-box; width: min(1180px,100%); max-height: calc(100dvh - 40px); overflow: auto; display: grid; gap: 12px; border: 1px solid #d0dce7; border-radius: 12px; padding: 18px; background: var(--layer); box-shadow: 0 18px 50px #142b4240; }
+.header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.header h2,.header p,.dialog p { margin: 0; }
+.dialog p { color: #546c82; }
+.dialog label { display: grid; gap: 6px; color: #475c73; font-size: 13px; }
+.dialog input { min-height: 38px; max-width: 220px; border: 1px solid #b9c8d8; border-radius: 7px; padding: 7px 10px; color: var(--ink); background: var(--layer); }
+.dialog button { min-height: 38px; justify-self: start; border: 1px solid #aebdca; border-radius: 7px; padding: 7px 12px; background: #f6f9fc; color: var(--ink); cursor: pointer; }
+.dialog button:disabled { opacity: .55; cursor: not-allowed; }
+.counts { display: flex; flex-wrap: wrap; gap: 8px 16px; color: #475c73; font-size: 13px; }
+.tableWrap { max-height: min(52vh,560px); overflow: auto; border: 1px solid #d0dce7; border-radius: 8px; }
+.tableWrap table { width: 100%; border-collapse: collapse; min-width: 760px; }
+.tableWrap th,.tableWrap td { border-bottom: 1px solid #e2e9ef; padding: 8px 10px; text-align: left; vertical-align: top; }
+.tableWrap th { position: sticky; top: 0; background: #f2f6fa; z-index: 1; }
+.tableWrap small { display: block; margin-top: 3px; color: #62768b; }
+.tableWrap tr:last-child td { border-bottom: 0; }
+.pagination { display: flex; align-items: center; gap: 10px; }
+.pagination span { color: #546c82; }
+@media(max-width:700px) { .overlay { padding: 8px; } .dialog { max-height: calc(100dvh - 16px); padding: 12px; } .counts { gap: 6px 10px; } }

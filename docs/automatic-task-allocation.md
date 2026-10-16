@@ -97,5 +97,5 @@ không để lại reservation từng phần. Không thêm migration hay depende
   [ảnh bảng](evidence/automatic-task-preview-2026-10-13.png).
 
 Tiếp theo: nghiệm thu lưu preview nhiều task qua UI theo lịch thực tế của
-Planner. Upload nhiều ngày vẫn khóa đến khi xác minh contract delete/rollback
-bảo toàn assignment identity ở Maximo.
+Planner. Bổ sung14/10: [đồng bộ từng kế hoạch trên Test](daily-plan-uploads.md)
+có preview và mapping theo ngày; sửa/xóa đã gửi và rollback chưa mở.

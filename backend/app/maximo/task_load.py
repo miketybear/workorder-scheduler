@@ -100,6 +100,7 @@ async def read_load(client, settings, laborcodes, date_from, date_before, timezo
                     "laborcode": labor,
                     "date": scheduled.astimezone(zone).date(),
                     "minutes": int((hours * 60).to_integral_value(rounding=ROUND_CEILING)),
+                    "minutes_exact": hours * 60 == (hours * 60).to_integral_value(),
                     "scheduledate": scheduled.isoformat(),
                     "finishdate": finish.isoformat() if finish is not None else None,
                     "status": row.get("status"),
@@ -123,8 +124,14 @@ def effective_load(local, remote, laborcode, day, exclude_id=None):
     for item in local:
         if item.id == exclude_id or item.laborcode != laborcode or item.date != day:
             continue
-        upstream = relevant.get(item.assignment_id)
-        if upstream and item.sync_state == "synced" and upstream["minutes"] == item.minutes:
+        remote_id = getattr(item, "remote_assignment_id", None) or item.assignment_id
+        upstream = relevant.get(remote_id)
+        if (
+            upstream
+            and item.sync_state == "synced"
+            and upstream["minutes"] == item.minutes
+            and upstream.get("minutes_exact", True)
+        ):
             synced += item.minutes
         else:
             pending += item.minutes

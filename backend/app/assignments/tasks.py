@@ -206,12 +206,16 @@ def register(router):
             upload_enabled = write_enabled(
                 settings, connection
             ) and request.app.state.settings.environment in {"test", "development"}
+            from app.assignments.plan_uploads import enabled as daily_enabled
+
+            daily_plan_upload_supported = daily_enabled(request, settings, connection)
         return {
             "connection_id": str(connection_id),
             "site_id": site_id,
             "workorder_id": workorder_id,
             "tasks": [t.model_dump(mode="json") for t in tasks],
             "upload_enabled": upload_enabled,
+            "daily_plan_upload_supported": daily_plan_upload_supported,
             "planning_summary": summary,
         }
 

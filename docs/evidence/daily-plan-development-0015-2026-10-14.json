@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-14",
+  "environment": "local-development",
+  "revision": "0015_daily_plan_uploads",
+  "backup_created": true,
+  "existing_columns_preserved": true,
+  "no_inferred_remote_ids": true,
+  "runtime_intent_immutable": true,
+  "alembic_check": "passed",
+  "maximo_writes": 0
+}

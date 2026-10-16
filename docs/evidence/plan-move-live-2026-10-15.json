@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-15",
+  "environment": "Onshore Test / local development",
+  "wo": "P13468351",
+  "task_id": 20,
+  "plan_id": "63888199-f451-431b-9134-3126338a1cae",
+  "source_assignment_id": "547209",
+  "operation": "whole local plan CHANLD -> MINHNC -> CHANLD",
+  "segments": [
+    {
+      "date": "2026-10-01",
+      "minutes": 30,
+      "allocation_id": "dd0aacfe-44af-4688-a9b7-76c61a81c4ce"
+    },
+    {
+      "date": "2026-10-02",
+      "minutes": 570,
+      "allocation_id": "eaef9f5f-182f-4d13-b60c-efc18871504f"
+    }
+  ],
+  "total_minutes": 600,
+  "plan_version_before": 3,
+  "plan_version_after": 5,
+  "successful_local_moves": 2,
+  "new_audit_events": 4,
+  "upload_attempts": 0,
+  "maximo_writes": 0,
+  "assertions": {
+    "local_business_fields_restored": true,
+    "other_plans_and_allocations_exactly_unchanged": true,
+    "allocation_ids_preserved": true,
+    "demand_and_source_preserved": true,
+    "maximo_parent_and_tasks_exactly_unchanged": true,
+    "stale_preview_rejected_without_write": true,
+    "capacity_conflict_requires_explicit_reallocation": true,
+    "reallocation_preview_HAIDQ": [
+      {
+        "date": "2026-10-03",
+        "minutes": 570
+      },
+      {
+        "date": "2026-10-04",
+        "minutes": 30
+      }
+    ],
+    "reallocation_preview_cancelled_without_write": true
+  },
+  "verification": {
+    "backend_postgres_tests": 106,
+    "frontend_tests": 399,
+    "lint": "passed",
+    "typecheck": "passed",
+    "build": "passed; existing chunk-size advisory",
+    "independent_review": "2 P2 modal findings fixed and verified by main"
+  },
+  "limitations": [
+    "Browser live acceptance used Chuyển task controls; pointer drag integration was verified by automated UI tests.",
+    "No remote upload/edit/delete or production verification in this task."
+  ],
+  "screenshots": [
+    "plan-move-transfer-preview-2026-10-15.jpg",
+    "plan-move-transferred-2026-10-15.jpg",
+    "plan-move-restored-2026-10-15.jpg"
+  ]
+}

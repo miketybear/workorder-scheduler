@@ -1,6 +1,8 @@
 # Phân bổ nhiều ngày trên Resource timeline
 
-Cập nhật: 2026-10-13. Chức năng kế hoạch nội bộ; không ghi Maximo.
+Cập nhật: 2026-10-15. Lưu phân bổ tạo kế hoạch nội bộ. Gửi Maximo là thao tác
+riêng qua [preview và đồng bộ kế hoạch](daily-plan-uploads.md), chỉ trên Test
+khi contract được bật.
 
 ## Sử dụng
 
@@ -23,12 +25,49 @@ khoảng ngày hoặc rời rồi mở lại màn hình sẽ vô hiệu hóa cac
 Khóa tổng giờ/task/assignment trong lúc tải. Lỗi mạng giữ workspace nhưng chặn
 lưu; lỗi 401/403/404 của scope hoặc thay identity/quyền sẽ ẩn dữ liệu cũ.
 
-Mỗi ngày có thanh task riêng đánh dấu **Nhiều ngày**. Kéo thanh sang ngày khác
-để mở dialog chuyển riêng đoạn đó, sửa giờ hoặc xóa từng đoạn. Nhân lực cố định
-trong kế hoạch; muốn đổi người thì giải phóng các đoạn và lập kế hoạch mới.
+Mỗi ngày có thẻ task riêng; biểu tượng hai lớp nhận diện task nhiều ngày.
+Kéo thẻ sang ngày khác cùng người để mở dialog chuyển riêng đoạn đó, sửa giờ
+hoặc xóa từng đoạn. Có thể chọn dời toàn task thay vì chỉ chuyển một đoạn.
+Kéo sang người khác chuyển toàn bộ kế hoạch, kể cả ngày ngoài tháng đang xem;
+một kế hoạch vẫn chỉ có một người nhận. Nút Chuyển task cung cấp cùng luồng
+cho bàn phím hoặc thiết bị cảm ứng.
 Không cho hai đoạn cùng kế hoạch trùng ngày. Tổng các đoạn đang giữ chỗ không
 vượt tổng ban đầu; giảm/xóa đoạn có thể để kế hoạch thiếu giờ, chưa tự bù lại.
 Xóa hết đoạn giải phóng nguồn assignment cho kế hoạch mới; giữ audit lịch sử.
+
+## Chuyển toàn task local
+
+Chỉ kế hoạch local được chuyển. Preview hiển thị đầy đủ phân bổ trước/sau và
+capacity người đích. Mặc định ngày của đoạn đang kéo chuyển đến ngày thả;
+các đoạn còn lại dịch cùng số ngày, giữ giờ từng đoạn. Nếu gặp ngày nghỉ,
+thiếu rota hoặc thiếu capacity, không đổi dữ liệu. Người dùng có thể chọn
+Phân bổ lại từ ngày thả để xếp lại tổng giờ còn giữ chỗ theo capacity đã
+xác minh, tối đa366ngày; đọc tải Maximo từng lô31ngày và dừng khi đã đủ giờ.
+Không tự khôi phục phần giờ đã xóa trước đó hoặc thay đổi nhu cầu gốc.
+
+Xác nhận chuyển lưu header người/laborcode và tất cả đoạn trong cùng một
+transaction, có version, UUID và audit; lỗi bất kỳ thì rollback toàn bộ.
+Tải ô nguồn/đích được cập nhật cùng kết quả. Hủy/Esc trước khi gửi không thay
+đổi kế hoạch. Mất phản hồi giữ mã yêu cầu để đọc biên nhận, không tự gửi lại.
+Upload preview/batch cũ phải kiểm tra lại vì phiên bản plan đã đổi.
+Không gọi API ghi Maximo; synced/unknown vẫn khóa chuyển.
+
+API POST `/api/resource-pools/{pool_id}/assignment-plans/{plan_id}/move-preview`
+nhận connection/discipline, expected_plan_version, anchor_allocation_id,
+target_person_id, target_date và mode shift/reallocate. Response chứa toàn bộ
+old_items, segments mới và capacity. POST cùng base `/move` thêm request_id
+và đúng segments đã xem; server tính lại và từ chối nếu preview đã thay đổi.
+GET `/api/assignment-submissions/{request_id}` phục hồi kết quả theo actor và
+scope hiện tại. Không cần migration; runtime cần UPDATE(person_id,laborcode)
+trên assignment_plan theo [provision_roles.sql](../backend/sql/provision_roles.sql).
+
+Kiểm chứng 15/10/2026:106 PostgreSQL và399 frontend tests đạt; lint/typecheck/
+build đạt (advisory chunk>500KB giữ nguyên). Hai findingP2 focus/scroll modal
+được sửa và kiểm thử busy/unknown/cleanup. Live Task20 P13468351 chuyển local
+CHANLD→MINHNC→CHANLD giữ0,5h01/10+9,5h02/10, nguồn và nhu cầu giữ nguyên,
+các kế hoạch khác giữ nguyên; parent/tasks Maximo trước/sau bằng nhau.
+Browser live dùng nút Chuyển task, pointer drag đã có integration test tự động.
+[Bằng chứng](evidence/plan-move-live-2026-10-15.json).
 
 ## API và lưu trữ
 
@@ -43,8 +82,9 @@ Xóa hết đoạn giải phóng nguồn assignment cho kế hoạch mới; gi�
 - Migration0013 thêm assignment_plan/header demand cố định và nullableplan_id;
   unique active source và unique ngày trong group. Legacy single-day giữ unique
   reserved source riêng; connection/pool locks ngăn mixed/group duplicate.
-- plan_id giữ cả khi chỉ một đoạn còn lại. Upload backend từ chối mọi đoạn
-  cóplan_id trước ghi; UI không hiện upload. Không tự thêm/xóa assignment remote.
+- plan_id giữ cả khi chỉ một đoạn còn lại. Legacy upload từ chối đoạn cóplan_id;
+  API plan upload gửi toàn kế hoạch còn đủ nhu cầu gốc, lưu ID từng ngày.
+  Kế hoạch synced/unknown khóa chỉnh/xóa nội bộ. Không tự xóa assignment remote.
 
 Scope Planner/connection/discipline/PERSON/pool recheck sau I/O; task/assignment
 WAITASGN và current WO eligibility đọc lại sau tải capacity trước lưu. Groupedit
@@ -111,5 +151,5 @@ bảo đảm snapshot nguyên tử của hệ thống ngoài.
   finding trong phạm vi recheck. Không thêm dependency/commit/push/deploy.
 
 Đợt phân bổ tự động đã xử lý timeout test PoC, full325tests qua. Tiếp theo:
-nghiệm thu lưu preview nhiều task; upload nhiều ngày còn khóa đến khi contract
-xóa/rollback Maximo bảo toàn identity được xác minh.
+nghiệm thu lưu preview nhiều task. Bổ sung14/10: đồng bộ từng kế hoạch Test
+có preview/mapping và recovery; sửa/xóa đã gửi vẫn cần contract riêng.

@@ -73,7 +73,15 @@ GRANT INSERT ON resource_person, rota_activation TO :"runtime_role";
 GRANT INSERT, DELETE ON person_day_capacity TO :"runtime_role";
 GRANT INSERT, UPDATE ON assignment_allocation TO :"runtime_role";
 GRANT INSERT ON assignment_plan TO :"runtime_role";
-GRANT UPDATE (state) ON assignment_plan TO :"runtime_role";
+GRANT UPDATE (state, version, sync_state, person_id, laborcode)
+  ON assignment_plan TO :"runtime_role";
+GRANT INSERT ON assignment_plan_upload_preview, assignment_plan_upload TO :"runtime_role";
+GRANT UPDATE (state, mapping) ON assignment_plan_upload TO :"runtime_role";
+GRANT INSERT ON assignment_plan_upload_batch, assignment_plan_upload_batch_item TO :"runtime_role";
+GRANT UPDATE (confirmation_request_id, state, expires_at)
+    ON assignment_plan_upload_batch TO :"runtime_role";
+GRANT UPDATE (labels, state, reason, attempt_id, claimed_until)
+    ON assignment_plan_upload_batch_item TO :"runtime_role";
 GRANT INSERT ON assignment_event, assignment_submission TO :"runtime_role";
 GRANT INSERT ON assignment_upload TO :"runtime_role";
 GRANT UPDATE (state) ON assignment_upload TO :"runtime_role";
