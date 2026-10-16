@@ -33,3 +33,8 @@ export function suggestTaskPlans(tasks:Array<{key:string;taskId:number;minutes:n
   }
   return {plans,blocked,unplaced:tasks.reduce((sum,task)=>sum+task.minutes,0)-Object.values(plans).flatMap(Object.values).reduce((sum,minutes)=>sum+minutes,0),end:[...remainingByDay.keys()].at(-1)??start};
 }
+export function todayIn(timeZone: string, now = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, calendar: 'iso8601', numberingSystem: 'latn', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+  const value = (type: string) => parts.find(part => part.type === type)?.value ?? '';
+  return `${value('year')}-${value('month')}-${value('day')}`;
+}

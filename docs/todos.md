@@ -8,6 +8,20 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## UI/UX ưu tiên 3 và 2: đọc nhanh và điều hướng timeline — 2026-10-16
+
+- [x] Resource timeline: donut thành thanh tải theo vai trò (% + thanh, đỏ khi vượt capacity);
+      chú giải thành popover "?"; dòng phụ của ô capacity chỉ hiện khi hover/focus (cảnh báo
+      "vượt"/"chưa xác minh" luôn hiện, vẫn đọc được bằng screen reader); nút "Hôm nay", tự cuộn
+      tới hôm nay (múi giờ nghiệp vụ) khi mở tháng hiện tại và tô cột hôm nay; ô "Tìm nhân sự"
+      lọc theo tên/laborcode, giữ tổng theo vai trò và tự mở nhóm đang thu gọn.
+- [x] 406 frontend tests, lint, typecheck, build đạt; kiểm tra trên dữ liệu thật bằng DOM
+      (17 TECH, nút Hôm nay đưa cột 16/10 về sát cột nhân sự, thanh tải 2%). Ảnh chụp của khung
+      trình duyệt bị đứng khung nên chưa xem bằng mắt; cần xem lại.
+- Định dạng ngày giờ: bảng/editor đã dùng 24 giờ vi-VN; `am/pm` chỉ do ô `datetime-local`
+  theo locale trình duyệt, nên không đổi trong mã.
+- [ ] Chưa làm: tiến độ có số giây cho lần tải lạnh, endpoint gộp tóm tắt task (backend).
+
 ## UI/UX ưu tiên 1: `/work-orders` mở là có dữ liệu — 2026-10-16
 
 - [x] Khoảng ngày mặc định là tháng hiện tại theo múi giờ nghiệp vụ (`currentMonthRange`);

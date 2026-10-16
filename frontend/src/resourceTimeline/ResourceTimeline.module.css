@@ -213,3 +213,27 @@
 @media (max-width: 760px) { .drawer { padding: 16px 16px 0; } .drawer .actions { margin: 0 -16px; padding: 12px 16px; } }
 .drawer { display: flex; flex-direction: column; gap: 12px; }
 .drawer .actions { margin-top: auto; }
+
+/* Role load bars replace the donuts: same data, less space. */
+.roleDonut { flex-direction: column; align-items: stretch; gap: 6px; }
+.roleHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.rolePercent { font-size: 20px; line-height: 24px; font-weight: 600; }
+.rolePercent[data-over] { color: var(--error); }
+.roleBar { height: 6px; background: var(--hover); border-radius: 3px; overflow: hidden; }
+.roleBar i { display: block; height: 100%; background: var(--teal); border-radius: 3px; }
+.roleDonut small { display: block; }
+/* Timeline toolbar: search, today, legend popover. */
+.timelineSection > .panelTitle { flex-wrap: wrap; }
+.panelTitle .peopleSearch { margin-left: auto; width: 180px; min-height: 32px; padding: 4px 8px; }
+.todayButton { min-height: 32px; padding: 4px 12px; border: 1px solid var(--link); border-radius: var(--radius); background: var(--layer); color: var(--link); cursor: pointer; }
+.todayButton:disabled { opacity: .5; cursor: default; }
+.legendPopover { position: relative; }
+.legendPopover summary { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--border-strong); border-radius: 50%; cursor: pointer; list-style: none; font-weight: 600; }
+.legendPopover summary::-webkit-details-marker { display: none; }
+.legendPopover .legend { position: absolute; z-index: 10; top: 36px; right: 0; width: 280px; flex-direction: column; gap: 6px; padding: 12px; background: var(--layer); border: 1px solid var(--line); box-shadow: var(--shadow-overlay); font-size: 12px; }
+.grid thead th[data-today] { background: var(--accent-tint); box-shadow: inset 0 -3px var(--link); }
+/* Secondary capacity line is visually quiet until hover/focus, except warnings. */
+@media (hover: hover) {
+  .capacity small:not([data-alert]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .grid td:hover .capacity small:not([data-alert]) { position: static; width: auto; height: auto; clip-path: none; }
+}

@@ -218,15 +218,28 @@ it('marks incomplete and zero-capacity role loads unavailable instead of showing
   expect(screen.getByRole('article',{name:/Technician · 1 người · Tải chưa xác minh/})).toBeInTheDocument();
   expect(screen.getByRole('article',{name:/Supervisor · 1 người · Không có capacity trong tháng/})).toBeInTheDocument();
   expect(screen.getByRole('article',{name:/Assistant Supervisor · 0 người · Không có người trong nhóm/})).toBeInTheDocument();
-  expect(view.container.querySelector('circle[stroke-dasharray]')).not.toBeInTheDocument();
+  expect(view.container.querySelector('i[data-fill]')).not.toBeInTheDocument();
 });
 
 it('caps an over-capacity donut ring while preserving actual percentage and monthly hours',async()=>{
   const over={...person,role:'TECH',days:person.days.map(day=>({...day,allocated_minutes:700,remaining_minutes:-70,load_complete:true}))};
   const view=await loaded({...snapshot,rows:[over]});
   expect(screen.getByRole('article',{name:/Technician · 1 người · Tải 111% · 23,33 \/ 21 giờ · vượt 2,33 giờ/})).toBeInTheDocument();
-  const ring=view.container.querySelector('circle[stroke-dasharray]');
-  expect(Number(ring?.getAttribute('stroke-dasharray')?.split(' ')[0])).toBeCloseTo(2*Math.PI*24);
+  expect(view.container.querySelector<HTMLElement>('i[data-fill]')?.style.width).toBe('100%');
+  expect(screen.getByText('111%')).toHaveAttribute('data-over','true');
+});
+
+it('filters people by name, keeps role totals, and offers today and legend controls',async()=>{
+  const second={...person,person_id:'person-2',name:'Tran B',laborcode:'LAB-2'};
+  await loaded({...snapshot,rows:[person,second]});
+  expect(screen.getByRole('button',{name:'Hôm nay'})).toBeEnabled();
+  expect(screen.getByText('Có capacity theo rota')).toBeInTheDocument();
+  expect(screen.getByText(/Nguyen A/)).toBeInTheDocument();
+  expect(screen.getByText(/Tran B/)).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Tìm nhân sự'),{target:{value:'lab-2'}});
+  expect(screen.queryByText(/Nguyen A/)).not.toBeInTheDocument();
+  expect(screen.getByText(/Tran B/)).toBeInTheDocument();
+  expect(screen.getByText(/Technician · 2 người/)).toBeInTheDocument();
 });
 
 it('loads remaining task summaries only for visible page cards with at most two requests at once',async()=>{
