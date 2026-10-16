@@ -224,3 +224,22 @@
 @media (max-width: 700px) { .sidePanel, .batchPanel { width: 100%; padding: 16px; }.groupFields { display: grid; grid-template-columns: 1fr; }.detailFacts > div { grid-template-columns: 100px 1fr; } }
 @media (max-width: 560px) { :global(main) { padding: 16px; }.header { padding: 0 16px; gap: 8px; }.brand b { display: none; }.pageTitle { margin-bottom: 16px; }.filters label { flex-basis: 100%; }.tableFilters label { flex-basis: 100%; } }
 @media (pointer: coarse) { :global(button), .primary, .tertiary, .ghost, .danger, .dangerGhost { min-height: 44px; }:global(input:not([type=checkbox]):not([type=radio])), :global(select), :global(textarea) { font-size: 16px; } }
+
+.woToolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0 8px; }
+.segmented { display: inline-flex; border: 1px solid var(--border-strong); }
+.segmented button { min-height: 40px; border: 0; border-radius: 0; color: var(--ink); justify-content: center; }
+.segmented button + button { border-left: 1px solid var(--border-strong); }
+.segmented button[aria-pressed="true"] { background: var(--ink); color: var(--layer); }
+.segmented button[aria-pressed="true"]:hover:not(:disabled) { background: var(--ink); }
+.toolbarSearch { flex: 1 1 260px; max-width: 480px; min-width: 0; }
+.toolbarSearch input { width: 100%; }
+.toolbarActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.toolbarActions .ghost[aria-pressed="true"] { background: var(--accent-tint); }
+.updatedAt { margin-left: auto; color: var(--muted); font-size: 12px; line-height: 16px; }
+.bulkBar { position: sticky; bottom: 16px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 8px 0; padding: 8px 16px; background: var(--ink); color: var(--layer); box-shadow: var(--shadow-overlay); }
+.bulkBar .ghost { color: var(--layer); }
+.bulkBar .ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--layer) 18%, transparent); }
+.bulkBar .muted { color: color-mix(in srgb, var(--layer) 70%, transparent); }
+.denseTable td, .denseTable th { padding-top: 4px; padding-bottom: 4px; }
+.denseTable td small { margin-top: 2px; }
+.staleNotice { padding: 2px 8px; background: var(--warning-bg); color: var(--warning-ink); border-left: 3px solid var(--warning-border); font-size: 12px; }

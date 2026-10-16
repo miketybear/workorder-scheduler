@@ -66,6 +66,11 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
   const [rows, setRows] = useState<WorkOrder[] | null>(null);
   const [search, setSearch] = useState('');
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const [dense, setDense] = useState(() => { try { return localStorage.getItem('workorder-scheduler-density') === 'dense'; } catch { return false; } });
+  const toggleDensity = () => {
+    const next = !dense; setDense(next);
+    try { localStorage.setItem('workorder-scheduler-density', next ? 'dense' : 'comfortable'); } catch { /* preference is optional */ }
+  };
   const tableFiltersId = useId();
   const [statusFilter, setStatusFilter] = useState('');
   const [planningFilter, setPlanningFilter] = useState('');
@@ -643,20 +648,29 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
         connection={{ label: grant.label, system: grant.system, environment: grant.environment }}
         writable={grant.capability === 'write'} suspended={checking} refreshVersion={batchRefresh} onDirty={onDirty} onDenied={onDenied} onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onClose={closePanel} />}
       {busy && <p role="status">Đang lấy và kiểm tra đầy đủ các trang dữ liệu…</p>}
-      {grant && rows !== null && updatedAt !== null && <div className={styles.batchToolbar}>
-          <span>Cập nhật lần cuối: {new Intl.DateTimeFormat('vi-VN', { timeZone: grant.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(updatedAt)}</span>
-          {stale && <span role="status">Dữ liệu có thể đã thay đổi.</span>}
+      {grant && <div className={styles.woToolbar}>
+        <div role="group" aria-label="Nguồn WO" className={styles.segmented}>
+          <button aria-pressed={view === 'maximo'} disabled={busy} onClick={() => switchSource('maximo')}>WO đã tải</button>
+          <button aria-pressed={view === 'drafts'} disabled={busy} onClick={() => switchSource('drafts')}>Nháp của tôi</button>
+        </div>
+        {rows !== null && rows.length > 0 && !checking && <label className={styles.toolbarSearch}>
+          <input type="search" placeholder="Tìm WO, mô tả hoặc Tag Name" aria-label="Tìm WO, mô tả hoặc Tag Name" value={search}
+            onChange={(event) => { filterChanged(); setSearch(event.target.value); }} /></label>}
+        {updatedAt !== null && rows !== null && <div className={styles.toolbarActions}>
           <button className={styles.tertiary} disabled={busy || verifying || checking} onClick={() => refreshSession.current?.(true)}>Cập nhật</button>
           {!checking && rows.length > 0 && <button className={styles.tertiary}
             aria-expanded={filtersVisible} aria-controls={tableFiltersId} onClick={() => setFiltersVisible((previous) => !previous)}>
             {filtersVisible ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'}
             {activeFilterCount > 0 && ` (${activeFilterCount})`}
           </button>}
+          {rows.length > 0 && <button className={styles.ghost} aria-pressed={dense} onClick={toggleDensity}>{dense ? 'Bảng thoáng' : 'Bảng gọn'}</button>}
+        </div>}
+        {grant && updatedAt !== null && rows !== null && <span className={styles.updatedAt}>Cập nhật lần cuối: {new Intl.DateTimeFormat('vi-VN', { timeZone: grant.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(updatedAt)}
+          </span>}
+        {stale && updatedAt !== null && rows !== null && <span role="status" className={styles.staleNotice}>Dữ liệu có thể đã thay đổi.</span>}
       </div>}
       {rows !== null && rows.length === 0 && <p role="status">{view === 'drafts' ? 'Không có WO có nháp khả dụng trong trang này.' : 'Không có WO trong phạm vi và khoảng ngày đã chọn.'}</p>}
       {rows !== null && rows.length > 0 && <div id={tableFiltersId} hidden={!filtersVisible} className={`${styles.filters} ${styles.tableFilters}`} role="search" aria-label="Lọc WO đã tải">
-            <label>Tìm WO, mô tả hoặc Tag Name<input type="search" value={search}
-              onChange={(event) => { filterChanged(); setSearch(event.target.value); }} /></label>
             <label>Status<select value={statusFilter} onChange={(event) => { filterChanged(); setStatusFilter(event.target.value); }}>
               <option value="">Tất cả status đã tải</option>
               {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
@@ -686,11 +700,9 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
           </div>}
         </div>}
       </>}
-      {grant && <div className={styles.batchToolbar}>
-            {visibleRows.length > 0 && grant.capability === 'write' && <span>{selectedKeys.length} WO đã chọn · đổi bộ lọc sẽ bỏ chọn</span>}
-            <div className={styles.batchActions}>
-            {visibleRows.length > 0 && grant.capability === 'write' &&
-              <button className={styles.primary} disabled={!selectedKeys.length || busy || view === 'drafts' && !selectedBatchPlan} title={view === 'drafts' && selectedKeys.length > 0 && !selectedBatchPlan ? 'Chọn các WO thuộc cùng một nháp nhóm để mở nhóm; nháp đơn mở bằng cách bấm WO.' : undefined} onClick={() => {
+      {grant && visibleRows.length > 0 && grant.capability === 'write' && selectedKeys.length > 0 && <div className={styles.bulkBar} role="region" aria-label="Thao tác với WO đã chọn">
+            <span>{selectedKeys.length} WO đã chọn</span>
+            <button className={styles.primary} disabled={busy || view === 'drafts' && !selectedBatchPlan} title={view === 'drafts' && !selectedBatchPlan ? 'Chọn các WO thuộc cùng một nháp nhóm để mở nhóm; nháp đơn mở bằng cách bấm WO.' : undefined} onClick={() => {
                 if (selectedBatchPlan && pickedRows.length) { openPlan(pickedRows[0], selectedBatchPlan); return; }
                 if (view === 'drafts') return;
                 const planned = pickedRows.filter((row) => row.drafts?.length);
@@ -700,16 +712,13 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
                 const keys = pickedRows.map((row) => ({ site_id: row.siteid, workorder_id: row.workorderid }));
                 if (keys.length > 200) { setError('Chọn tối đa 200 WO cho một nháp nhóm.'); return; }
                 chooseBatch({ keys });
-              }}>{groupActionLabel}</button>}
-              <button className={styles.ghost} disabled={busy} onClick={() => switchSource(view === 'maximo' ? 'drafts' : 'maximo')}>
-                {view === 'maximo' ? 'Nháp của tôi' : 'Quay lại WO đã tải'}
-              </button>
-            </div>
-            {view === 'drafts' && selectedKeys.length > 0 && !selectedBatchPlan && <span className={styles.muted}>Chọn WO thuộc cùng một nháp nhóm hoặc mở nháp đơn bằng cách bấm WO.</span>}
+              }}>{groupActionLabel}</button>
+            <button className={styles.ghost} onClick={() => setSelectedKeys([])}>Bỏ chọn</button>
+            {view === 'drafts' && !selectedBatchPlan && <span className={styles.muted}>Chọn WO thuộc cùng một nháp nhóm hoặc mở nháp đơn bằng cách bấm WO.</span>}
       </div>}
       {rows !== null && <>
         {visibleRows.length > 0 && grant && <>
-          <div className={`${styles.tableWrap} ${styles.compactTable}`} tabIndex={0} role="region" aria-label="WO từ Maximo">
+          <div className={`${styles.tableWrap} ${styles.compactTable}${dense ? ` ${styles.denseTable}` : ''}`} tabIndex={0} role="region" aria-label="WO từ Maximo">
           <table><thead><tr>{grant.capability === 'write' && <th scope="col"><input type="checkbox" aria-label={`Chọn tất cả ${visibleRows.length} WO trong kết quả lọc đã tải`} checked={!!visibleRows.length && visibleRows.every((row) => selectedKeys.includes(rowKey(row)))} onChange={(e) => setSelectedKeys(e.target.checked ? visibleRows.map(rowKey) : [])} /></th>}
             <th scope="col">Work Order / Type</th><th scope="col">Công việc / Tag Name</th><th scope="col">Status / Priority</th><th scope="col">Lịch dự kiến</th><th scope="col">Target Start / Finish</th><th scope="col">Assigned PIC</th><th scope="col">Duration (giờ)</th></tr></thead>
             <tbody>{visibleRows.map((row, index) => {

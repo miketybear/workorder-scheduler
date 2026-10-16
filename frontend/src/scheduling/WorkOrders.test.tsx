@@ -67,7 +67,7 @@ it('defaults filters to hidden and toggles beside refresh without losing filters
   fireEvent.click(toggle);
   expect(screen.getByRole('button', { name: 'Hiện bộ lọc (1)' })).toHaveAttribute('aria-expanded', 'false');
   expect(screen.queryByRole('search')).not.toBeInTheDocument();
-  expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).not.toBeVisible();
+  expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toBeVisible();
   expect(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' })).toBeChecked();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Hiện bộ lọc (1)' }));
@@ -771,7 +771,7 @@ it('restores separate source tables, filters, selection and timestamps without r
   await screen.findByRole('button', { name: 'DRAFT-ONLY' });
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name'), { target: { value: 'DRAFT' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
+  fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('REAL');
   expect(screen.getByLabelText('Chọn WO-REAL · dòng 1')).toBeChecked();
@@ -796,7 +796,7 @@ it('restores the draft page and uses the restored source query for explicit refr
   await waitFor(() => expect(screen.getByText('Trang tiếp')).toBeEnabled());
   fireEvent.click(screen.getByText('Trang tiếp'));
   await screen.findByRole('button', { name: 'PAGE-TWO' });
-  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
+  fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
   await act(async () => fireEvent.click(screen.getByText('Cập nhật')));
   expect(retrieveWorkOrders).toHaveBeenLastCalledWith(query, expect.any(AbortSignal));
   fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
@@ -818,7 +818,7 @@ it('restores the age warning even when both sources have the same retrieval time
   await act(async () => vi.advanceTimersByTimeAsync(5 * 60 * 1000));
   expect(screen.getByText('Dữ liệu có thể đã thay đổi.')).toBeVisible();
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
+    fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
   });
   await act(async () => vi.advanceTimersByTimeAsync(0));
   expect(screen.getByText('Dữ liệu có thể đã thay đổi.')).toBeVisible();
@@ -837,7 +837,7 @@ it('updates the hidden Maximo snapshot after deleting a draft from the drafts so
   fireEvent.click(screen.getByText('Xóa nháp'));
   fireEvent.click(screen.getByText('Xác nhận xóa nháp'));
   await screen.findByText('Không có WO có nháp khả dụng trong trang này.');
-  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
+  fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(screen.getByRole('cell', { name: '8' })).toBeInTheDocument();
   expect(screen.queryByText('Nháp · v1')).not.toBeInTheDocument();
@@ -854,7 +854,7 @@ it('updates a hidden source snapshot after saving a newer draft version', async 
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '11' } });
   fireEvent.click(screen.getByText('Lưu nháp'));
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
-  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
+  fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
   expect(screen.getByText('Nháp · v2')).toBeInTheDocument();
   expect(screen.getByRole('cell', { name: '11Nháp' })).toBeInTheDocument();
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
@@ -875,7 +875,7 @@ it('clears both source snapshots after a connection change', async () => {
   await screen.findByText('Không có WO có nháp khả dụng trong trang này.');
   expect(screen.queryByRole('button', { name: 'OLD-DRAFT' })).not.toBeInTheDocument();
   expect(listPlannedWorkOrders).toHaveBeenLastCalledWith({ connection_id: 'two', discipline: 'MECH' }, 0, expect.any(AbortSignal));
-  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
+  fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
 });
 
@@ -889,7 +889,7 @@ it('preserves Maximo data after a failed draft load and retries the failed sourc
   fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   await screen.findByRole('alert');
   expect(screen.getByRole('alert')).toHaveTextContent('Upstream unavailable');
-  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
+  fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   await screen.findByText('Không có WO có nháp khả dụng trong trang này.');
@@ -916,7 +916,7 @@ it('changing the date range invalidates only Maximo results and retains the draf
   await screen.findByRole('button', { name: 'DRAFT-ONLY' });
   fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-08-01' } });
   expect(screen.getByRole('button', { name: 'DRAFT-ONLY' })).toBeVisible();
-  fireEvent.click(screen.getByRole('button', { name: 'Quay lại WO đã tải' }));
+  fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
   expect(screen.getByText(/Chưa Retrieve WO cho khoảng ngày này/)).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
@@ -1018,7 +1018,8 @@ it('selects only filtered retrieved WOs from a monthly list and resets selection
   expect(vi.mocked(prepareBatch).mock.calls[0][1][0]).toEqual({ site_id: 'SITE-A', workorder_id: '100' });
   fireEvent.click(screen.getByText('Đóng nhóm'));
   fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'APPR' } });
-  expect(screen.getByText('Lập lịch nhóm (0)')).toBeDisabled();
+  expect(screen.queryByText(/Lập lịch nhóm/)).not.toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'Thao tác với WO đã chọn' })).not.toBeInTheDocument();
 });
 
 it('does not refresh or disturb retrieval state while the user remains on the page', async () => {
@@ -1296,3 +1297,22 @@ async function prepareBatchUpload() {
   fireEvent.click(screen.getByText('Đối chiếu nhóm với Maximo trước upload'));
   await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
 }
+
+it('shows the bulk bar only for selected rows and remembers the table density', async () => {
+  localStorage.removeItem('workorder-scheduler-density');
+  await setup(true, 'two');
+  vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  await screen.findByRole('button', { name: 'WO-REAL' });
+  expect(screen.getByRole('button', { name: 'WO đã tải' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByRole('region', { name: 'Thao tác với WO đã chọn' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' }));
+  const bar = screen.getByRole('region', { name: 'Thao tác với WO đã chọn' });
+  expect(bar).toHaveTextContent('1 WO đã chọn');
+  fireEvent.click(screen.getByRole('button', { name: 'Bỏ chọn' }));
+  expect(screen.queryByRole('region', { name: 'Thao tác với WO đã chọn' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Bảng gọn' }));
+  expect(screen.getByRole('button', { name: 'Bảng thoáng' })).toHaveAttribute('aria-pressed', 'true');
+  expect(localStorage.getItem('workorder-scheduler-density')).toBe('dense');
+  localStorage.removeItem('workorder-scheduler-density');
+});

@@ -2,6 +2,22 @@
 
 Cập nhật: 2026-10-16.
 
+## Dừng môi trường local theo yêu cầu — 2026-10-16
+
+- [x] Dừng backend run_local_windows.py và frontend Vite HTTPS sau khi xác minh
+      PID/command line; kiểm tra cổng8000 và5173 không còn listener.
+- Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
+
+## UI/UX bước 3: thanh công cụ WO — 2026-10-16
+
+- [x] `/work-orders`: một thanh công cụ gồm segmented "WO đã tải | Nháp của tôi", ô tìm kiếm
+      luôn hiện, Cập nhật, Bộ lọc (status/lập lịch/nháp) và Bảng gọn/thoáng (lưu localStorage
+      như tùy chọn hiển thị). Thanh thao tác nổi chỉ hiện khi có WO được chọn (Lập lịch nhóm /
+      Mở nháp nhóm, Bỏ chọn). Cảnh báo dữ liệu cũ thành nhãn riêng.
+- [x] 402 frontend tests, lint, typecheck, build đạt; đã xem trực quan light/dark với dữ liệu
+      giả lập. Chưa làm: gộp "Nháp" lặp trong ô (giữ để không chỉ dựa vào màu), popover khoảng
+      ngày, trạng thái rỗng có nút hành động.
+
 ## UI/UX bước 2: shell và điều hướng — 2026-10-16
 
 - [x] Header chỉ còn 3 mục chính (Work orders, Resource timeline, Rota) có trạng thái active
@@ -22,7 +38,7 @@ Cập nhật: 2026-10-16.
       màu nhấn), nên dark mode áp dụng đồng nhất.
 - [x] 399 frontend tests, lint, typecheck và build đạt (chunk advisory cũ còn).
       Chưa kiểm tra trực quan bằng trình duyệt; cần xem hai trang rota ở dark mode.
-- [ ] Bước 3–5 (thanh công cụ WO, Drawer/Dialog + stepper upload, tách
+- [ ] Bước 4–5 (Drawer/Dialog + stepper upload, tách
       ResourceTimeline) chưa làm.
 
 ## Chuyển task local bằng kéo thả — hoàn tất 2026-10-15
