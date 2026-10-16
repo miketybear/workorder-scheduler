@@ -25,18 +25,18 @@
 .revisionNotice button { margin-left:8px; }
 .panelTitle { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
 .panelTitle h2 { margin:0; font-size:18px; }
-.panelTitle span,.backlog p { font-size:11px; color:var(--muted); }
+.panelTitle span,.backlog p { font-size:12px; color:var(--muted); }
 .search { display:grid; gap:6px; margin-bottom:10px; font-size:12px; color:var(--muted); }
 .search input { min-width:0; width:100%; box-sizing:border-box; }
 .woList { display:grid; gap:7px; max-height:570px; overflow:auto; }
 .woCardGroup { display:grid; gap:3px; min-width:0; }
-.backlogPagination { display:flex; align-items:center; justify-content:space-between; gap:5px; margin-top:8px; font-size:10px; color:var(--muted); }
+.backlogPagination { display:flex; align-items:center; justify-content:space-between; gap:5px; margin-top:8px; font-size:11px; color:var(--muted); }
 .backlogPagination button { border:1px solid var(--line); border-radius:4px; padding:4px 7px; background:var(--layer); color:var(--ink); cursor:pointer; }
 .backlogPagination button:disabled { opacity:.45; cursor:default; }
 .woCard { display:grid; grid-template-columns:minmax(0,1fr); justify-content:stretch; align-items:stretch; gap:4px; width:100%; min-width:0; padding:9px; text-align:left; border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:grab; }
-  .retrySummary { justify-self:start; padding:2px 5px; border:0; background:transparent; color:var(--link); text-decoration:underline; cursor:pointer; font-size:11px; }
+  .retrySummary { justify-self:start; padding:2px 5px; border:0; background:transparent; color:var(--link); text-decoration:underline; cursor:pointer; font-size:12px; }
 .woCard[aria-pressed="true"] { border-color:var(--link); box-shadow:inset 3px 0 var(--link); }
-.woCard span,.woCard small { color:var(--muted); font-size:11px; }
+.woCard span,.woCard small { color:var(--muted); font-size:12px; }
 .woHeading { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:6px; }
 .woHeading strong { min-width:0; overflow-wrap:anywhere; }
 .woCard .priorityBadge { justify-self:end; align-self:start; padding:2px 5px; border-radius:3px; font-weight:700; white-space:nowrap; color:var(--tag-neutral-ink); background:var(--tag-neutral-bg); }
@@ -52,18 +52,18 @@
 .gridWrap { overflow: auto; max-height:70vh; scrollbar-gutter:stable; overscroll-behavior:contain; border:1px solid var(--line); }
 .grid { border-collapse: separate; border-spacing: 0; min-width: max-content; width: 100%; font-size: 12px; }
 .grid th, .grid td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.grid thead th { position: sticky; z-index: 2; top: 0; min-width: 75px; padding: 9px 6px; background: var(--hover); text-align: center; }
+.grid thead th { position: sticky; z-index: 2; top: 0; min-width: 84px; padding: 9px 6px; background: var(--hover); text-align: center; }
 .grid thead th:first-child { left: 0; z-index: 3; min-width: 190px; text-align: left; }
 .grid thead small, .person small { display: block; margin-top: 5px; color: var(--muted); font-weight: 400; }
 .grid .person { position: sticky; z-index: 1; left: 0; min-width: 190px; max-width: 190px; padding: 10px; text-align: left; vertical-align: top; background: var(--layer); }
-.grid td { width: 75px; min-width: 75px; height: 68px; vertical-align: top; padding: 5px; background: var(--layer); }
+.grid td { width: 84px; min-width: 84px; height: 72px; vertical-align: top; padding: 5px; background: var(--layer); }
 .grid td.off { background: var(--hover); color: var(--muted); }
 .capacity { display: grid; gap: 2px; margin-bottom: 4px; }
 .capacity b { color: var(--ink); font-size: 13px; }
-.capacity small { color: var(--muted); font-size: 10px; line-height: 1.2; }
-.assignment { display: block; width: 100%; overflow: hidden; margin: 3px 0; border: 0; border-left: 3px solid var(--teal); border-radius: 4px; padding: 5px; background: var(--accent-tint); color: var(--ink); text-align: left; text-overflow: ellipsis; font-size: 10px; cursor: grab; }
+.capacity small { color: var(--muted); font-size: 11px; line-height: 1.2; }
+.assignment { display: block; width: 100%; overflow: hidden; margin: 3px 0; border: 0; border-left: 3px solid var(--teal); border-radius: 4px; padding: 5px; background: var(--accent-tint); color: var(--ink); text-align: left; text-overflow: ellipsis; font-size: 11px; cursor: grab; }
 .assignment:focus-visible, .addCell:focus-visible, .backlog button:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
-.addCell { border: 1px dashed var(--line); border-radius: 4px; padding: 3px 7px; color: var(--muted); background: transparent; cursor: pointer; font-size: 10px; }
+.addCell { border: 1px dashed var(--line); border-radius: 4px; padding: 3px 7px; color: var(--muted); background: transparent; cursor: pointer; font-size: 11px; }
 .addCell:disabled { visibility: hidden; }
 .error, .unknown { padding: 12px; border: 1px solid var(--danger-border); border-radius: 8px; color: var(--danger-ink); background: var(--warning-bg); }
 .success { padding: 10px 12px; border: 1px solid var(--success-border); border-radius: 8px; color: var(--success-ink); background: var(--success-bg); }
@@ -83,10 +83,10 @@
 .syncedDetails > p { font-size:12px; }
 .syncedDetails dl { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px 12px; margin:0; }
 .syncedDetails dl div { min-width:0; }
-.syncedDetails dt { color:var(--muted); font-size:11px; }
+.syncedDetails dt { color:var(--muted); font-size:12px; }
 .syncedDetails dd { margin:2px 0 0; color:var(--ink); font-size:12px; overflow-wrap:anywhere; }
 .syncedTableWrap { max-width:100%; max-height:28vh; overflow:auto; border:1px solid var(--line); border-radius:6px; }
-.syncedTable { width:100%; border-collapse:collapse; font-size:11px; }
+.syncedTable { width:100%; border-collapse:collapse; font-size:12px; }
 .syncedTable th,.syncedTable td { padding:6px 8px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
 .syncedTable thead th { position:sticky; top:0; z-index:1; background:var(--accent-tint); }
 .moveDialog { width:min(760px,100%); gap:8px; overscroll-behavior:contain; }
@@ -105,11 +105,11 @@
 @media (max-width: 980px) { .heading { grid-template-columns:minmax(0,1fr) auto; } .roleDonutPanel { grid-column:1/-1; grid-row:2; } }
 @media (max-width: 760px) { .heading { grid-template-columns:minmax(0,1fr) auto; align-items:start; } .heading h1 { font-size:28px; } .heading label { grid-column:2; grid-row:1; } .heading label input { width:132px; } .roleDonutPanel { grid-column:1/-1; grid-row:2; } .page { padding-inline:12px; } .gridWrap { max-height:68vh; } }
 
-.grid .craftRow td,.grid .roleRow td { height:auto; padding:7px 4px; font-size:11px; background:var(--hover); }
+.grid .craftRow td,.grid .roleRow td { height:auto; padding:7px 4px; font-size:12px; background:var(--hover); }
 .grid .craftRow .person,.grid .roleRow .person { background:var(--hover); }
 .grid .roleRow .person { padding:6px; }
 .roleRow button { border:0; background:transparent; color:var(--ink); padding:3px; font-size:12px; text-align:left; cursor:pointer; }
-.legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; font-size:11px; color:var(--muted); }
+.legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; font-size:12px; color:var(--muted); }
 .roleDonutPanel { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:stretch; gap:8px; width:min(438px,100%); min-width:0; justify-self:end; }
 .roleDonut { display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0; padding:7px 5px; border:1px solid var(--line); border-radius:7px; background:var(--layer); text-align:center; }
 .roleDonut svg { flex:0 0 64px; width:64px; height:64px; overflow:visible; }
@@ -118,11 +118,11 @@
 .donutTrack { stroke:var(--hover); }
 .donutValue { stroke:var(--teal); transform:rotate(-90deg); transform-origin:32px 32px; stroke-linecap:round; }
 .roleDonut div { display:grid; gap:2px; min-width:0; }
-.roleDonut strong { overflow-wrap:anywhere; font-size:11px; line-height:1.15; }
-.roleDonut small { color:var(--muted); font-size:10px; line-height:1.2; }
+.roleDonut strong { overflow-wrap:anywhere; font-size:12px; line-height:1.15; }
+.roleDonut small { color:var(--muted); font-size:11px; line-height:1.2; }
 .roleDonut .overCapacity { color:var(--error); font-weight:700; }
-.otherRoleSummary { grid-column:1/-1; margin:0; color:var(--muted); font-size:10px; line-height:1.25; }
-@media(max-width:760px) { .workspace { grid-template-columns:minmax(0,1fr) !important; } .splitter { display:none; } .woList { max-height:220px; } .roleDonutPanel { gap:4px; } .roleDonut { padding:5px 3px; } .roleDonut svg { width:48px; height:48px; flex-basis:48px; } .roleDonut svg text { font-size:11px; } }
+.otherRoleSummary { grid-column:1/-1; margin:0; color:var(--muted); font-size:11px; line-height:1.25; }
+@media(max-width:760px) { .workspace { grid-template-columns:minmax(0,1fr) !important; } .splitter { display:none; } .woList { max-height:220px; } .roleDonutPanel { gap:4px; } .roleDonut { padding:5px 3px; } .roleDonut svg { width:48px; height:48px; flex-basis:48px; } .roleDonut svg text { font-size:12px; } }
 
 .grid td.working { background:color-mix(in srgb,var(--tag-green-bg) 28%,var(--layer)); }
 .grid td.off { background:var(--ground); color:var(--muted); }
@@ -131,7 +131,7 @@
 .assignment { border-left:2px solid var(--link); background:var(--accent-tint); color:var(--ink); white-space:nowrap; }
 .assignment { display:flex; align-items:center; gap:4px; min-width:0; }
 .assignmentLine { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.assignmentMarks { display:inline-flex; flex:none; gap:2px; align-items:center; font-size:11px; font-weight:800; }
+.assignmentMarks { display:inline-flex; flex:none; gap:2px; align-items:center; font-size:12px; font-weight:800; }
 .multiDayMark,.multiDayLegendMark { width:14px; height:14px; flex:none; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
 .multiDayLegendMark { vertical-align:middle; margin-right:3px; }
 .assignmentSynced { border-left-color:var(--teal); }
@@ -143,7 +143,7 @@
 .legend span { white-space:nowrap; }
 .legend b { display:inline-grid; min-width:14px; place-items:center; font-weight:800; }
 .heading h1 { font-size:32px; line-height:38px; }
-.capacity b { font-size:11px; }
+.capacity b { font-size:12px; }
 
 .woCard,.assignment { touch-action:none; user-select:none; }
 .dragGhost { position:fixed; z-index:30; pointer-events:none; max-width:260px; padding:8px 12px; border:1px solid var(--link); background:var(--layer); color:var(--ink); box-shadow:var(--shadow-overlay); font-size:12px; }
@@ -157,12 +157,12 @@
 .taskCardSelected { border-color:color-mix(in srgb,var(--link) 45%,var(--line)); box-shadow:inset 2px 0 var(--link); }
 .foreignTaskCard { background:var(--hover); color:var(--muted); }
 .foreignTaskCard > div { display:grid; gap:4px; }
-.foreignTaskCard strong { justify-self:start; border-radius:4px; padding:3px 6px; background:var(--accent-tint); color:var(--muted); font-size:11px; }
+.foreignTaskCard strong { justify-self:start; border-radius:4px; padding:3px 6px; background:var(--accent-tint); color:var(--muted); font-size:12px; }
 .taskCard .taskCheck { display:grid; grid-template-columns:16px minmax(0,1fr); align-items:start; gap:7px; }
 .taskCheck input { min-height:0; margin:2px 0 0; }
 .taskCheckContent { display:grid; gap:3px; min-width:0; color:var(--ink); }
 .taskDescription { color:var(--ink); overflow-wrap:anywhere; }
-.taskCheck small,.taskCard small { color:var(--muted); font-size:11px; }
+.taskCheck small,.taskCard small { color:var(--muted); font-size:12px; }
 .taskControls { display:grid; grid-template-columns:minmax(0,1fr); gap:6px; }
 .taskControls label { display:grid; gap:4px; font-size:12px; }
 .taskControls .taskHoursLabel { display:flex; align-items:center; justify-content:space-between; gap:8px; }
@@ -170,11 +170,11 @@
 .hoursField input { box-sizing:border-box; width:80px; min-height:32px; }
 .hoursField span { color:var(--muted); }
 .taskControls input,.taskControls select { min-width:0; }
-.taskAssignmentStatic { display:grid; gap:2px; font-size:11px; }
+.taskAssignmentStatic { display:grid; gap:2px; font-size:12px; }
 .taskAssignmentStatic span { color:var(--muted); }
 .taskAssignmentStatic strong { font-weight:600; }
 .planGridWrap { max-width:100%; max-height:none; min-height:280px; overflow:auto; border:1px solid var(--line); border-radius:6px; background:var(--surface); }
-.planGrid { width:max-content; min-width:100%; border-collapse:collapse; font-size:11px; }
+.planGrid { width:max-content; min-width:100%; border-collapse:collapse; font-size:12px; }
 .planGrid th,.planGrid td { min-width:92px; padding:5px; border:1px solid var(--line); text-align:center; }
 .planGrid th:first-child { position:sticky; left:0; z-index:1; min-width:150px; max-width:180px; background:var(--surface); text-align:left; }
 .planGrid thead th { position:sticky; top:0; z-index:2; background:var(--accent-tint); white-space:nowrap; }
@@ -184,5 +184,5 @@
 .planGrid td input { width:76px; min-width:0; padding:4px; text-align:center; }
 .planGrid th small,.planGrid td small { display:block; margin-top:3px; color:var(--muted); font-weight:400; white-space:nowrap; }
 .planTotals th,.planTotals td { background:var(--accent-tint); }
-@media(max-width:760px) { .headingActions { align-items:end; gap:4px; } .refreshButton { padding:6px; font-size:11px; } .personDateRow { grid-template-columns:minmax(0,1fr) minmax(150px,0.8fr); gap:6px; } .taskWorkspace { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(120px,22vh) minmax(170px,32vh); max-height:58vh; min-height:0; overflow:hidden; } .taskPicker,.dayPlanPanel { overflow:auto; } .taskCards { grid-template-columns:minmax(0,1fr); } .taskControls { grid-template-columns:1fr; } .planGridWrap { max-height:30vh; min-height:110px; } }
+@media(max-width:760px) { .headingActions { align-items:end; gap:4px; } .refreshButton { padding:6px; font-size:12px; } .personDateRow { grid-template-columns:minmax(0,1fr) minmax(150px,0.8fr); gap:6px; } .taskWorkspace { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(120px,22vh) minmax(170px,32vh); max-height:58vh; min-height:0; overflow:hidden; } .taskPicker,.dayPlanPanel { overflow:auto; } .taskCards { grid-template-columns:minmax(0,1fr); } .taskControls { grid-template-columns:1fr; } .planGridWrap { max-height:30vh; min-height:110px; } }
 @media(max-width:520px) { .headingActions { grid-column:1/-1; justify-content:space-between; } .personDateRow { grid-template-columns:minmax(0,1fr); } }

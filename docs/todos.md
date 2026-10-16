@@ -8,6 +8,17 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## UI/UX bước 5: Resource timeline (một phần) — 2026-10-16
+
+- [x] Tách helper thuần (ngày, giờ, capacity, gợi ý plan) sang `timelineHelpers.ts` và
+      `RoleDonut.tsx`; `ResourceTimeline.tsx` giảm 1092 → 1050 dòng, không đổi hành vi.
+- [x] Chữ tối thiểu 11–12px (trước 9–11px), ô lịch 84×72px. 403 tests, lint, typecheck,
+      build đạt. Chưa xem trực quan timeline (cần dữ liệu rota/pool giả lập phức tạp).
+- [ ] Chưa làm: chuyển hộp thoại phân công sang drawer để vẫn thấy timeline, dải thống kê
+      thay donut, popover chú giải, và tách tiếp ~1000 dòng JSX còn lại (backlog, lưới,
+      dialog phân công) thành component. Cần xem trực quan và test từng bước vì luồng ghi
+      phân công/đối soát là phần rủi ro cao.
+
 ## UI/UX bước 4: panel và luồng upload — 2026-10-16
 
 - [x] Dialog làm việc (editor 1 WO, nhóm) cùng kích thước, bo nhẹ, có scrim; drawer 520px. Header
@@ -48,7 +59,7 @@ Cập nhật: 2026-10-16.
       màu nhấn), nên dark mode áp dụng đồng nhất.
 - [x] 399 frontend tests, lint, typecheck và build đạt (chunk advisory cũ còn).
       Chưa kiểm tra trực quan bằng trình duyệt; cần xem hai trang rota ở dark mode.
-- [ ] Bước 5 (tách ResourceTimeline, cỡ chữ, drawer phân công) chưa làm.
+- [ ] Bước 5 còn lại: drawer phân công và tách tiếp ResourceTimeline (xem mục bước 5).
 
 ## Chuyển task local bằng kéo thả — hoàn tất 2026-10-15
 

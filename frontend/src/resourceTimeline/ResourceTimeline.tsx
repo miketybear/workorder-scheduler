@@ -10,6 +10,8 @@ import { PlanUpload } from './PlanUpload';
 import { PlanUploadBatch } from './PlanUploadBatch';
 import { AssignmentCard } from './AssignmentCard';
 import { PlanMoveDialog } from './PlanMoveDialog';
+import { RoleDonut } from './RoleDonut';
+import { dayNames, monthOf, addMonth, monthDates, addCalendarDays, calendarRange, displayHours, displayDate, formatMaximoDateTime, expectedFinish, parseHours, displayRole, capacityFor, suggestTaskPlans } from './timelineHelpers';
 import styles from './ResourceTimeline.module.css';
 
 type PointerDrag = { payload: string; label: string; startX: number; startY: number; moved: boolean; context: string };
@@ -21,52 +23,8 @@ class MutationContextError extends Error {}
 type Pending = { requestId: string; kind: 'create' | 'update' | 'delete' | 'task-batch' | 'task-plan-batch'; assignmentId?: string; input?: AssignmentInput; taskInput?: TaskAllocationInput; planBatchInput?:TaskPlanBatchInput; version?: number; item?: Assignment; context: MutationContext };
 type PlanMoveState={planId:string;item:Assignment;knownItems:Assignment[];targetPersonId:string;targetDate:string;mode:'shift'|'reallocate';preview:AssignmentPlanMovePreview|null;loading:boolean;error:string;canReallocate:boolean;request?:AssignmentPlanMoveInput;unknown:boolean;reconciling:boolean};
 type LoadedWorkOrderPage=WorkOrderPage&{requestContext:string};
-const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-const monthOf = (date: Date, timeZone: string) => {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit' }).formatToParts(date);
-  return `${parts.find(x => x.type === 'year')?.value}-${parts.find(x => x.type === 'month')?.value}`;
-};
-const addMonth = (month: string) => { const [year, number] = month.split('-').map(Number); return `${number === 12 ? year + 1 : year}-${String(number === 12 ? 1 : number + 1).padStart(2, '0')}`; };
-const monthDates = (month: string) => { const [year, number] = month.split('-').map(Number); const count = new Date(Date.UTC(year, number, 0)).getUTCDate(); return Array.from({ length: count }, (_, i) => `${month}-${String(i + 1).padStart(2, '0')}`); };
-function addCalendarDays(value:string,amount:number){
-  let [year,monthNumber,day]=value.split('-').map(Number);const leap=(y:number)=>y%4===0&&(y%100!==0||y%400===0);const monthLength=(y:number,m:number)=>[31,leap(y)?29:28,31,30,31,30,31,31,30,31,30,31][m-1];
-  for(let step=0;step<amount;step++){day++;if(day>monthLength(year,monthNumber)){day=1;monthNumber++;if(monthNumber>12){monthNumber=1;year++;}}}
-  return `${String(year).padStart(4,'0')}-${String(monthNumber).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-}
-function calendarRange(start:string,end:string,max=366){const dates:string[]=[];let current=start;while(current<=end&&dates.length<max){dates.push(current);current=addCalendarDays(current,1);}return current<=end?[]:dates;}
-const displayHours = (minutes: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(minutes / 60);
-const displayDate = (date:string) => { const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(date); return match?`${match[3]}/${match[2]}/${match[1]}`:date; };
-function formatMaximoDateTime(value:string|null,timezone:string){if(!value)return '—';if(/^\d{4}-\d{2}-\d{2}$/.test(value))return displayDate(value);if(!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value))return '—';const parsed=new Date(value);if(!Number.isFinite(parsed.getTime()))return '—';return new Intl.DateTimeFormat('vi-VN',{timeZone:timezone,dateStyle:'short',timeStyle:'short'}).format(parsed);}
-function expectedFinish(value:string|null,hours:number|null,timezone:string){if(!value||hours===null||!Number.isFinite(hours)||/^\d{4}-\d{2}-\d{2}$/.test(value)||!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value))return '—';const start=new Date(value);if(!Number.isFinite(start.getTime()))return '—';return new Intl.DateTimeFormat('vi-VN',{timeZone:timezone,dateStyle:'short',timeStyle:'short'}).format(new Date(start.getTime()+hours*60*60_000));}
-const parseHours = (hours: string) => { const value = Number(hours) * 60; const rounded = Math.round(value); return Number.isFinite(value) && value>=0 && Math.abs(value - rounded) < 0.000001 ? rounded : 0; };
-const displayRole = (role: string) => ({ TECH: 'Technician', SUP: 'Supervisor', ASST_SUP: 'Assistant Supervisor', CONTROL_RM_ENGINEER: 'Control RM Engineer', MATERIAL_CONTROLLER: 'Material Controller' }[role] ?? role);
-const capacityFor = (person: ResourcePerson, date: string) => person.days.find(day => day.date === date);
-function suggestTaskPlans(tasks:Array<{key:string;taskId:number;minutes:number}>,days:CapacityDay[],start:string){
-  const orderedDays=days.filter(day=>day.date>=start).sort((a,b)=>a.date.localeCompare(b.date));
-  const remainingByDay=new Map(orderedDays.map(day=>[day.date,day.load_complete===true?Math.max(0,Math.min(630,day.capacity_minutes)-day.allocated_minutes):0]));
-  const plans:Record<string,Record<string,number>>={};
-  let blocked=false;
-  for(const task of [...tasks].sort((a,b)=>a.taskId-b.taskId||a.key.localeCompare(b.key))){
-    let remaining=task.minutes;const segments:Record<string,number>={};
-    for(const day of orderedDays){if(remaining<=0)break;if(day.load_complete!==true){blocked=true;break;}const available=remainingByDay.get(day.date)??0;const allocated=Math.min(remaining,available);if(allocated>0){segments[day.date]=allocated;remainingByDay.set(day.date,available-allocated);remaining-=allocated;}}
-    plans[task.key]=segments;
-    if(blocked)break;
-  }
-  return {plans,blocked,unplaced:tasks.reduce((sum,task)=>sum+task.minutes,0)-Object.values(plans).flatMap(Object.values).reduce((sum,minutes)=>sum+minutes,0),end:[...remainingByDay.keys()].at(-1)??start};
-}
 function timelineRoleOf(person: TimelinePerson, snapshot: TimelineData | null) { const roles = [...new Set(snapshot?.rows.filter(row => row.person_id === person.person_id).map(row => row.role))]; return roles.length > 1 ? 'ROLE_CHANGE' : person.role; }
 const primaryLaborRoles=['TECH','SUP','ASST_SUP'] as const;
-function RoleDonut({role,people,load,capacity,verified}:{role:string;people:number;load:number;capacity:number;verified:boolean}){
-  const percentage=people>0&&verified&&capacity>0?Math.max(0,load/capacity*100):null;
-  const ringPercentage=percentage===null?null:Math.min(100,percentage);
-  const accessibleSummary=people===0?'Không có người trong nhóm':!verified?'Tải chưa xác minh':capacity===0?'Không có capacity trong tháng':`Tải ${Math.round(percentage??0)}% · ${displayHours(load)} / ${displayHours(capacity)} giờ${load>capacity?` · vượt ${displayHours(load-capacity)} giờ`:''}`;
-  const title=`${displayRole(role)} · ${people} người · ${accessibleSummary}`;
-  const circumference=2*Math.PI*24;
-  return <article className={styles.roleDonut} aria-label={title}>
-    <svg viewBox="0 0 64 64" aria-hidden="true"><circle className={styles.donutTrack} cx="32" cy="32" r="24"/>{ringPercentage!==null&&ringPercentage>0&&<circle className={styles.donutValue} cx="32" cy="32" r="24" strokeDasharray={`${circumference*ringPercentage/100} ${circumference}`}/>}<text x="32" y="35" textAnchor="middle">{percentage===null?'—':`${Math.round(percentage)}%`}</text></svg>
-    <div><strong>{displayRole(role)}</strong><small>{people} người</small><small>{accessibleSummary}</small>{verified&&capacity>0&&load>capacity&&<small className={styles.overCapacity}>Vượt capacity {displayHours(load-capacity)} giờ</small>}</div>
-  </article>;
-}
 const newId = () => crypto.randomUUID();
 function workOrderLabel(item: AssignmentWorkOrder | Assignment, snapshot: TimelineData) {
   const wo = 'wonum' in item ? item : snapshot.work_orders.find(order => order.site_id === item.site_id && order.workorder_id === item.workorder_id);
