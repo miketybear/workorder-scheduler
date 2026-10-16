@@ -1,6 +1,17 @@
 # TODO — Work Order Scheduler
 
-Cập nhật: 2026-10-15.
+Cập nhật: 2026-10-16.
+
+## UI/UX bước 1: hợp nhất design token — 2026-10-16
+
+- [x] Tách token Carbon g10/g100 sang `frontend/src/tokens.css`, thêm token ngữ nghĩa
+      (info/warning/danger/success, teal, tooltip, scrim, shadow). RotaImports,
+      RotaStagingPreview và ResourceTimeline không còn hex cứng (trừ chữ trắng trên nút
+      màu nhấn), nên dark mode áp dụng đồng nhất.
+- [x] 399 frontend tests, lint, typecheck và build đạt (chunk advisory cũ còn).
+      Chưa kiểm tra trực quan bằng trình duyệt; cần xem hai trang rota ở dark mode.
+- [ ] Bước 2–5 (shell/nav, thanh công cụ WO, Drawer/Dialog + stepper upload, tách
+      ResourceTimeline) chưa làm.
 
 ## Chuyển task local bằng kéo thả — hoàn tất 2026-10-15
 

@@ -1,0 +1,97 @@
+/* Design tokens: Carbon Gray 10 (light) / Gray 100 (dark) plus semantic status colors.
+   Pages must use these variables instead of hex colors so both themes stay correct. */
+:root {
+  color-scheme: light;
+  --ground: #f4f4f4;
+  --layer: #ffffff;
+  --surface: #e0e0e0;
+  --field: #f4f4f4;
+  --ink: #161616;
+  --accent: #0f62fe;
+  --accent-tint: #edf5ff;
+  --accent-deep: #0043ce;
+  --link: #0f62fe;
+  --line: #e0e0e0;
+  --border-strong: #8d8d8d;
+  --muted: #525252;
+  --error: #da1e28;
+  --danger-button: #da1e28;
+  --danger-button-hover: #ba1b23;
+  --hover: #e8e8e8;
+  --button-hover: #0353e9;
+  --tag-neutral-bg: #e0e0e0;
+  --tag-neutral-ink: #161616;
+  --tag-blue-bg: #d0e2ff;
+  --tag-blue-ink: #0043ce;
+  --tag-purple-bg: #e8daff;
+  --tag-purple-ink: #6929c4;
+  --tag-warm-bg: #ffd9be;
+  --tag-warm-ink: #8a3800;
+  --tag-green-bg: #a7f0ba;
+  --tag-green-ink: #0e6027;
+
+  --info-bg: #edf5ff;
+  --info-border: #78a9ff;
+  --info-ink: #0043ce;
+  --warning-bg: #fcf4d6;
+  --warning-border: #f1c21b;
+  --warning-ink: #684e00;
+  --danger-bg: #fff1f1;
+  --danger-border: #ff8389;
+  --danger-ink: #a2191f;
+  --success-bg: #defbe6;
+  --success-border: #42be65;
+  --success-ink: #0e6027;
+  --teal: #007d79;
+  --tooltip-bg: #262626;
+  --tooltip-ink: #f4f4f4;
+  --scrim: #16161688;
+  --shadow-card: 0 1px 2px #0000001a;
+  --shadow-overlay: 0 8px 32px #0003;
+  --radius: 4px;
+}
+:root[data-theme="g100"] {
+  color-scheme: dark;
+  --ground: #161616;
+  --layer: #262626;
+  --surface: #393939;
+  --field: #393939;
+  --ink: #f4f4f4;
+  --accent-tint: #001d6c;
+  --accent-deep: #a6c8ff;
+  --link: #78a9ff;
+  --line: #525252;
+  --border-strong: #6f6f6f;
+  --muted: #c6c6c6;
+  --error: #fa4d56;
+  --hover: #393939;
+  --tag-neutral-bg: #525252;
+  --tag-neutral-ink: #f4f4f4;
+  --tag-blue-bg: #0043ce;
+  --tag-blue-ink: #d0e2ff;
+  --tag-purple-bg: #6929c4;
+  --tag-purple-ink: #e8daff;
+  --tag-warm-bg: #8a3800;
+  --tag-warm-ink: #ffd9be;
+  --tag-green-bg: #0e6027;
+  --tag-green-ink: #a7f0ba;
+
+  --info-bg: #001d6c;
+  --info-border: #4589ff;
+  --info-ink: #a6c8ff;
+  --warning-bg: #3e3200;
+  --warning-border: #f1c21b;
+  --warning-ink: #fddc69;
+  --danger-bg: #520408;
+  --danger-border: #fa4d56;
+  --danger-ink: #ffb3b8;
+  --success-bg: #022d0d;
+  --success-border: #42be65;
+  --success-ink: #a7f0ba;
+  --teal: #08bdba;
+  --tooltip-bg: #f4f4f4;
+  --tooltip-ink: #161616;
+  --scrim: #000000aa;
+  --shadow-card: 0 1px 2px #0006;
+  --shadow-overlay: 0 8px 32px #0008;
+}
