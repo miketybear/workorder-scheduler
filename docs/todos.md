@@ -8,6 +8,15 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## UI/UX: mở rộng khung làm việc timeline — 2026-10-16
+
+- [x] Sau khi viewport-fit làm khung thấp (lưới 490px/862px), thu gọn phần trên: tiêu đề nhỏ hơn,
+      thống kê vai trò thành một hàng chip mỏng (từ 104px còn 50px), bỏ padding trên của trang
+      timeline; lưới cao `100dvh - 268px`, backlog `100dvh - 200px`. Đo với dữ liệu thật ở viewport
+      1134×862: lưới 594px (trước 490px), đáy lưới và backlog cùng ở ~828px, thanh cuộn ngang
+      nằm trong màn hình. Từ 1500px trở lên tiêu đề, chip và điều khiển cùng một hàng.
+- [x] 407 frontend tests, lint, build đạt. Chưa xem bằng mắt (ảnh chụp khung trình duyệt đứng khung).
+
 ## UI/UX: scroll và thông báo timeline — 2026-10-16
 
 - [x] Scroll: thanh cuộn có thumb tương phản, tối thiểu 40px, theo theme (`tokens.css`); lưới
