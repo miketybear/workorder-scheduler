@@ -8,6 +8,19 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## Đo thời gian tải Resource timeline (dữ liệu thật) — 2026-10-16
+
+- Mở trang khi server đã có cache (Onshore test, E&I, 21 người, tháng 10): lưới dùng được sau
+  ~2,3 giây. Chuỗi: settings/auth (0,14–0,86s, 4 auth + 6 settings) → resource-pools (0,6–0,7s)
+  → assignment-timeline (0,8→2,3s, 1,5s ở backend) song song work-orders/page (0,87→1,15s);
+  plan-upload-batches 1 lần (0,26s) sau đó. Không có lời gọi `/tasks` nào trong 15 giây đầu.
+- "Làm mới timeline": timeline 2,0s, work-orders/page `refresh` 0,63s song song, tổng ~2,2s.
+- Kết luận: endpoint gộp tóm tắt task không có cơ sở ở trạng thái warm. Phần lớn thời gian là
+  `assignment-timeline` (backend) và chuỗi settings → pools phía trước. Lần tải ~25–30s quan sát
+  trước đó là lúc cache backend/tóm tắt WO còn nguội (nhiều `/tasks` ~340ms/WO, 2 song song).
+- Lỗi tự gây đã sửa: effect lấy batch mới nhất chạy 7 lần/lần mở trang, nay 1 lần (khóa theo id
+  pool thay vì object). Chưa đo được lần tải nguội vì cần xóa cache backend/Maximo.
+
 ## UI/UX: nút và hộp thoại gửi kế hoạch tháng lên Maximo — 2026-10-16
 
 - [x] Nút đổi tên "Gửi kế hoạch tháng lên Maximo", nút nhấn (xanh) tách khỏi "Làm mới"; hiện

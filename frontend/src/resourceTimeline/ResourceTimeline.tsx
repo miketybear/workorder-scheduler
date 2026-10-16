@@ -985,14 +985,16 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     .map(item => item.plan_id)).size, [shownTimeline]);
   const batchKey = `${shownPool?.id ?? ''}|${discipline}|${month}`;
   const bulkAllowed = grantCanWrite && shownPool?.capability === 'write' && !!shownTimeline;
+  // Key on ids, not the pool object: the object is replaced on every session recheck and would refetch each time.
+  const batchPoolId = shownPool?.id; const batchConnectionId = shownPool?.connection_id;
   useEffect(() => {
-    if (!bulkAllowed || !shownPool || !month) return;
+    if (!bulkAllowed || !batchPoolId || !batchConnectionId || !month) return;
     let live = true; const controller = new AbortController();
-    Promise.resolve(getLatestPlanUploadBatch(shownPool.id, { connection_id: shownPool.connection_id, discipline, month }, controller.signal))
+    Promise.resolve(getLatestPlanUploadBatch(batchPoolId, { connection_id: batchConnectionId, discipline, month }, controller.signal))
       .then(batch => { if (live) setLatestBatch(batch ? { key: batchKey, state: batch.state, done: batch.counts.confirmed, total: batch.counts.total } : null); })
       .catch(() => { if (live) setLatestBatch(null); });
     return () => { live = false; controller.abort(); };
-  }, [bulkAllowed, shownPool, discipline, month, batchKey, bulkUploadOpen]);
+  }, [bulkAllowed, batchPoolId, batchConnectionId, discipline, month, batchKey, bulkUploadOpen]);
   const batchInProgress = latestBatch?.key === batchKey && ['previewing', 'ready', 'running'].includes(latestBatch.state) ? latestBatch : null;
   const bulkBlockedReason = !shownPool || !month ? 'Đang tải dữ liệu tháng'
     : busy || pending ? 'Đang lưu phân công, chờ hoàn tất rồi gửi'
