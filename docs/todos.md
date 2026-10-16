@@ -18,7 +18,9 @@ Cập nhật: 2026-10-16.
 - Ghi chú chạy local trên Windows: dùng `.cache/backend-settings-server.py` (selector loop)
   thay lệnh `uvicorn` trong README vì psycopg async không chạy với ProactorEventLoop; và
   `npm run dev:https` vì redirect URI Entra là `https://localhost:5173`.
-- [ ] Chưa xem trang WO/`/rota-imports` ở mobile với dữ liệu thật.
+- [x] Trang `/work-orders` ở 375px với dữ liệu thật (1 WO Onshore test, chỉ đọc): bảng 980px đổi
+      thành thẻ có nhãn (`data-label`), thanh thao tác nổi và editor dialog vừa màn hình, không
+      tràn ngang. `/rota-imports` chỉ dùng trên màn hình lớn nên không kiểm tra mobile.
 
 ## UI/UX bước 5: Resource timeline (một phần) — 2026-10-16
 

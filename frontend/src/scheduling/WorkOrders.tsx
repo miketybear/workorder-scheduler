@@ -726,17 +726,17 @@ export function WorkOrders({ active = true }: { active?: boolean }) {
               const changed = (fields: string[]) => !!plan && !plan.baseline_changed && fields.some((field) => field in plan.changes);
               return <tr key={JSON.stringify([scope, row.siteid, row.workorderid])}>
               {grant.capability === 'write' && <td><input type="checkbox" aria-label={`Chọn ${row.wonum} · dòng ${index + 1}`} checked={selectedKeys.includes(rowKey(row))} onChange={(e) => setSelectedKeys((previous) => e.target.checked ? [...previous, rowKey(row)] : previous.filter((key) => key !== rowKey(row)))} /></td>}
-              <td><button className={styles.woLink} onClick={() => openRow(row)}>{row.wonum}</button><small>{row.worktype}</small>
+              <td data-label="Work Order"><button className={styles.woLink} onClick={() => openRow(row)}>{row.wonum}</button><small>{row.worktype}</small>
                 {!!row.drafts?.length && <small className={styles.draftMarker}>{row.drafts.length > 1 ? plan ? `${plan.is_batch ? 'Nháp nhóm' : 'Nháp'} · v${plan.version} · ${row.drafts.length} nháp` : `${row.drafts.length} nháp · chọn để mở` :
                   `${row.drafts[0].is_batch ? 'Nháp nhóm' : 'Nháp'} · v${row.drafts[0].version}`}
                   {plan?.baseline_changed && ' · Cần đối chiếu'}</small>}
               </td>
-              <td className={styles.descriptionCell}>{row.description ?? '—'}<small>{row.location ?? 'Chưa có Tag Name'}</small></td>
-              <td><span className={styles.statusBadge} data-status={row.status}>{row.status}</span><small>{row.wopriority_description ?? '—'} ({row.wopriority ?? '—'})</small></td>
-              <td data-draft={changed(['schedstart', 'schedfinish'])}>{displayDate(row.schedstart, grant.timezone)}<small>→ {displayDate(row.schedfinish, grant.timezone)}</small>{changed(['schedstart', 'schedfinish']) && <small>Nháp</small>}</td>
-              <td data-draft={changed(['targstartdate', 'targcompdate'])}>{displayDate(row.targstartdate, grant.timezone, false)}<small>→ {displayDate(row.targcompdate, grant.timezone, false)}</small>{changed(['targstartdate', 'targcompdate']) && <small>Nháp</small>}</td>
-              <td data-draft={changed(['assignedtechname'])}>{row.assignedtechname ?? 'Chưa phân công'}{changed(['assignedtechname']) && <small>Nháp</small>}</td>
-              <td data-draft={changed(['estdur'])}>{row.estdur ?? '—'}{changed(['estdur']) && <small>Nháp</small>}</td>
+              <td className={styles.descriptionCell} data-label="Công việc">{row.description ?? '—'}<small>{row.location ?? 'Chưa có Tag Name'}</small></td>
+              <td data-label="Status"><span className={styles.statusBadge} data-status={row.status}>{row.status}</span><small>{row.wopriority_description ?? '—'} ({row.wopriority ?? '—'})</small></td>
+              <td data-label="Lịch dự kiến" data-draft={changed(['schedstart', 'schedfinish'])}>{displayDate(row.schedstart, grant.timezone)}<small>→ {displayDate(row.schedfinish, grant.timezone)}</small>{changed(['schedstart', 'schedfinish']) && <small>Nháp</small>}</td>
+              <td data-label="Target" data-draft={changed(['targstartdate', 'targcompdate'])}>{displayDate(row.targstartdate, grant.timezone, false)}<small>→ {displayDate(row.targcompdate, grant.timezone, false)}</small>{changed(['targstartdate', 'targcompdate']) && <small>Nháp</small>}</td>
+              <td data-label="Assigned PIC" data-draft={changed(['assignedtechname'])}>{row.assignedtechname ?? 'Chưa phân công'}{changed(['assignedtechname']) && <small>Nháp</small>}</td>
+              <td data-label="Duration (giờ)" data-draft={changed(['estdur'])}>{row.estdur ?? '—'}{changed(['estdur']) && <small>Nháp</small>}</td>
             </tr>; })}</tbody></table></div>
         </>}
       </>}
