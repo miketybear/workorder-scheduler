@@ -1034,6 +1034,20 @@ it('does not open an allocation when a pointer drag ends on an off day or is can
   expect(api.save).not.toHaveBeenCalled();
 });
 
+it('shows how many plans are unsent on the bulk send button and resumes an unfinished batch',async()=>{
+  const plan={...item,plan_id:'plan-1',plan_total_minutes:120,task_workorder_id:'t-1',task_id:10,assignment_id:'a-1',sync_state:'local',plan_sync_state:'local'} as Assignment;
+  await loaded({...snapshot,items:[plan],work_orders:[order]});
+  const button=await screen.findByRole('button',{name:/^Gửi kế hoạch tháng lên Maximo/});
+  expect(button).toHaveTextContent('1 chưa gửi');
+  expect(button).toBeEnabled();
+});
+
+it('offers to resume an unfinished batch from the button label',async()=>{
+  api.batchLatest.mockResolvedValue({batch_id:'b',request_id:'r',confirmation_request_id:null,pool_id:pool.id,connection_id:'conn',discipline:'E&I',month:'2026-10',start_time:'06:30',state:'running',expires_at:null,counts:{total:12,pending:0,ready:0,blocked:0,skipped:0,queued:5,sending:0,confirmed:7,failed:0,conflict:0,unknown:0},next_item_id:null,items:[],has_more:false,next_cursor:null,changed_item:null});
+  await loaded();
+  expect(await screen.findByRole('button',{name:'Tiếp tục gửi kế hoạch (7/12)'})).toBeEnabled();
+});
+
 it('prepares the entire month across 20-row pages and confirms once for every ready plan',async()=>{
   await loaded();
   api.batchLatest.mockRejectedValue(new AssignmentError(404,'No batch'));
@@ -1041,7 +1055,7 @@ it('prepares the entire month across 20-row pages and confirms once for every re
   api.batchCreate.mockImplementation(async(_pool:string,input:{request_id:string})=>{creationId=input.request_id;return bulkMutation(all,state,next,null,creationId);});
   api.batchGet.mockImplementation(async(_pool:string,_batch:string,_scope:unknown,cursor:string|null)=>({...bulkEnvelope(all,state,next,null,creationId),items:Number(cursor??0)===0?all.slice(0,20):all.slice(20),has_more:Number(cursor??0)===0&&all.length>20,next_cursor:Number(cursor??0)===0&&all.length>20?'20':null}));
   api.batchPrepare.mockImplementation(async()=>{const changed=all[prepared];changed.state='ready';prepared++;next=all[prepared]?.item_id??null;if(prepared===all.length)state='ready';return bulkMutation(all,state,next,changed,creationId);});
-  fireEvent.click(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'}));
+  fireEvent.click(screen.getByRole('button',{name:/^Gửi kế hoạch tháng lên Maximo/}));
   await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');
   fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));
   await screen.findByText('Preview đã sẵn sàng để xác nhận.');
@@ -1049,7 +1063,14 @@ it('prepares the entire month across 20-row pages and confirms once for every re
   expect(screen.queryByText(/WO-021/)).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Trang sau'}));
   expect(await screen.findByText(/WO-021/)).toBeInTheDocument();
-  expect(screen.getByRole('button',{name:'Xác nhận 21 mục sẵn sàng'})).toBeEnabled();
+  expect(screen.getByRole('button',{name:'Gửi 21 kế hoạch'})).toBeEnabled();
+  expect(screen.getByRole('list',{name:'Các bước gửi kế hoạch'}).querySelector('[aria-current="step"]')).toHaveTextContent('Xác nhận');
+  expect(screen.getByText(/Sẽ gửi 21 kế hoạch \(/)).toBeInTheDocument();
+  expect(screen.getByText(/Preview hết hạn sau \d+:\d{2}/)).toBeInTheDocument();
+  const readyChip=screen.getByRole('button',{name:/Sẵn sàng 21/});
+  fireEvent.click(readyChip);
+  expect(readyChip).toHaveAttribute('aria-pressed','true');
+  fireEvent.click(screen.getByRole('button',{name:'Xem tất cả'}));
   expect(screen.queryByRole('button',{name:/Upload kế hoạch/})).not.toBeInTheDocument();
   expect(api.batchConfirm).not.toHaveBeenCalled();
 });
@@ -1065,12 +1086,12 @@ it('continues a confirmed batch through mixed outcomes and offers only no-resend
   const outcomes=['confirmed','failed','unknown'];let sent=0;
   api.batchConfirm.mockImplementation(async(_batch:string,requestId:string)=>{state='running';all.forEach(entry=>entry.state='queued');next=all[0].item_id;return bulkMutation(all,state,next,null,creationId,requestId);});
   api.batchContinue.mockImplementation(async(_batch:string,itemId:string)=>{const current=all.find(entry=>entry.item_id===itemId)!;current.state=outcomes[sent++];next=all[sent]?.item_id??null;if(sent===all.length)state='completed';if(current.state==='confirmed'){const syncedConfirmed={...item,id:current.segments[0].allocation_id,minutes:current.total_minutes,date:'2026-10-05',plan_id:current.plan_id,plan_total_minutes:current.total_minutes,task_id:current.task_id,task_workorder_id:current.task_workorder_id,assignment_id:current.source_assignment_id,sync_state:'synced',plan_sync_state:'synced'};current.receipt={attempt_id:'00000000-0000-4000-8000-000000000331',request_id:'00000000-0000-4000-8000-000000000332',plan_id:current.plan_id,state:'confirmed',mapping:null,items:[syncedConfirmed]};}if(current.state==='unknown'){const syncedUnknown={...item,id:current.segments[0].allocation_id,minutes:current.total_minutes,date:'2026-10-05',plan_id:current.plan_id,plan_total_minutes:current.total_minutes,task_id:current.task_id,task_workorder_id:current.task_workorder_id,assignment_id:current.source_assignment_id,sync_state:'unknown',plan_sync_state:'unknown'};current.receipt={attempt_id:'00000000-0000-4000-8000-000000000333',request_id:'00000000-0000-4000-8000-000000000334',plan_id:current.plan_id,state:'unknown',mapping:null,items:[syncedUnknown]};api.planUploadStatus.mockResolvedValue(current.receipt);}return bulkMutation(all,state,next,current,creationId,confirmationId);});
-  fireEvent.click(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'}));
+  fireEvent.click(screen.getByRole('button',{name:/^Gửi kế hoạch tháng lên Maximo/}));
   await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');
   fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));
   await screen.findByText('Preview đã sẵn sàng để xác nhận.');
   let finishCapacity!:(value:Snapshot)=>void;api.timeline.mockImplementationOnce(()=>new Promise(resolve=>{finishCapacity=resolve;}));
-  fireEvent.click(screen.getByRole('button',{name:'Xác nhận 3 mục sẵn sàng'}));
+  fireEvent.click(screen.getByRole('button',{name:'Gửi 3 kế hoạch'}));
   await waitFor(()=>expect(api.batchContinue).toHaveBeenCalledTimes(1));
   await waitFor(()=>expect(api.timeline).toHaveBeenCalledTimes(2));
   expect(api.batchContinue).toHaveBeenCalledTimes(1);
@@ -1097,9 +1118,9 @@ it('allows a replacement preview after a completed batch with no unknown outcome
   api.batchPrepare.mockImplementation(async()=>{all[0].state='ready';state='ready';next=null;return bulkMutation(all,state,next,all[0],creationId);});
   api.batchConfirm.mockImplementation(async(_batch:string,requestId:string)=>{all[0].state='queued';state='running';next=all[0].item_id;return bulkMutation(all,state,next,null,creationId,requestId);});
   api.batchContinue.mockImplementation(async()=>{all[0].state='confirmed';state='completed';next=null;return bulkMutation(all,state,next,all[0],creationId);});
-  fireEvent.click(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'}));await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');
+  fireEvent.click(screen.getByRole('button',{name:/^Gửi kế hoạch tháng lên Maximo/}));await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');
   fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));await screen.findByText('Preview đã sẵn sàng để xác nhận.');
-  fireEvent.click(screen.getByRole('button',{name:'Xác nhận 1 mục sẵn sàng'}));await screen.findByText('Batch đã hoàn tất.');
+  fireEvent.click(screen.getByRole('button',{name:'Gửi 1 kế hoạch'}));await screen.findByText('Batch đã hoàn tất.');
   fireEvent.click(screen.getByRole('button',{name:'Tạo preview mới'}));
   await waitFor(()=>expect(api.batchCreate).toHaveBeenCalledTimes(2));
 });
@@ -1113,14 +1134,14 @@ it('does not repeat a lost continue request and keeps sending status read-only',
   api.batchPrepare.mockImplementation(async()=>{all[0].state='ready';state='ready';next=null;return bulkMutation(all,state,next,all[0],creationId);});
   api.batchConfirm.mockImplementation(async(_batch:string,requestId:string)=>{state='running';all[0].state='queued';next=all[0].item_id;return bulkMutation(all,state,next,null,creationId,requestId);});
   api.batchContinue.mockRejectedValue(new Error('connection lost'));
-  fireEvent.click(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'}));
+  fireEvent.click(screen.getByRole('button',{name:/^Gửi kế hoạch tháng lên Maximo/}));
   await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');
   fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));
   await screen.findByText('Preview đã sẵn sàng để xác nhận.');
-  fireEvent.click(screen.getByRole('button',{name:'Xác nhận 1 mục sẵn sàng'}));
+  fireEvent.click(screen.getByRole('button',{name:'Gửi 1 kế hoạch'}));
   await waitFor(()=>expect(api.batchContinue).toHaveBeenCalledTimes(1));
   expect(await screen.findByRole('alert')).toHaveTextContent(/Không rõ kết quả gửi một mục/);
-  fireEvent.click(screen.getByRole('button',{name:'Kiểm tra trạng thái và tiếp tục mục đã xếp hàng'}));
+  fireEvent.click(screen.getByRole('button',{name:'Tiếp tục gửi'}));
   await waitFor(()=>expect(api.batchGet).toHaveBeenCalled());
   expect(api.batchContinue).toHaveBeenCalledTimes(1);
 });
@@ -1133,7 +1154,7 @@ it('does not issue later batch writes after the dialog closes while applying a c
   api.batchPrepare.mockImplementation(async()=>{const changed=all[prepared];changed.state='ready';prepared++;next=all[prepared]?.item_id??null;if(prepared===all.length)state='ready';return bulkMutation(all,state,next,changed,creationId);});
   api.batchConfirm.mockImplementation(async(_batch:string,requestId:string)=>{state='running';all.forEach(entry=>entry.state='queued');next=all[0].item_id;return bulkMutation(all,state,next,null,creationId,requestId);});
   let resolveContinue!:(value:unknown)=>void;api.batchContinue.mockImplementation(()=>new Promise(resolve=>{resolveContinue=resolve;}));
-  fireEvent.click(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'}));await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));await screen.findByText('Preview đã sẵn sàng để xác nhận.');fireEvent.click(screen.getByRole('button',{name:'Xác nhận 2 mục sẵn sàng'}));await waitFor(()=>expect(api.batchContinue).toHaveBeenCalledTimes(1));
+  fireEvent.click(screen.getByRole('button',{name:/^Gửi kế hoạch tháng lên Maximo/}));await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));await screen.findByText('Preview đã sẵn sàng để xác nhận.');fireEvent.click(screen.getByRole('button',{name:'Gửi 2 kế hoạch'}));await waitFor(()=>expect(api.batchContinue).toHaveBeenCalledTimes(1));
   let finishCapacity!:(value:Snapshot)=>void;api.timeline.mockImplementationOnce(()=>new Promise(resolve=>{finishCapacity=resolve;}));
   const synced={...item,id:all[0].segments[0].allocation_id,minutes:all[0].total_minutes,date:'2026-10-05',plan_id:all[0].plan_id,plan_total_minutes:all[0].total_minutes,task_id:all[0].task_id,task_workorder_id:all[0].task_workorder_id,assignment_id:all[0].source_assignment_id,sync_state:'synced',plan_sync_state:'synced'};
   all[0].state='confirmed';all[0].receipt={attempt_id:'00000000-0000-4000-8000-000000000331',request_id:'00000000-0000-4000-8000-000000000332',plan_id:all[0].plan_id,state:'confirmed',mapping:null,items:[synced]};next=all[1].item_id;
@@ -1199,7 +1220,7 @@ it('recovers a lost move response through the receipt without a second POST',asy
   expect(screen.getByText(input.request_id)).toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Hủy'})).toBeDisabled();
   expect(screen.getByLabelText('Tháng timeline')).toBeDisabled();
-  expect(screen.getByRole('button',{name:'Đồng bộ Maximo theo tháng'})).toBeDisabled();
+  expect(screen.getByRole('button',{name:/^Gửi kế hoạch tháng lên Maximo/})).toBeDisabled();
   fireEvent.keyDown(screen.getByRole('dialog'),{key:'Escape'});
   expect(screen.getByRole('dialog')).toBeInTheDocument();
   const unload=new Event('beforeunload',{cancelable:true});window.dispatchEvent(unload);expect(unload.defaultPrevented).toBe(true);

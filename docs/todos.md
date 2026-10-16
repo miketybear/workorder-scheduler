@@ -8,6 +8,20 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## UI/UX: nút và hộp thoại gửi kế hoạch tháng lên Maximo — 2026-10-16
+
+- [x] Nút đổi tên "Gửi kế hoạch tháng lên Maximo", nút nhấn (xanh) tách khỏi "Làm mới"; hiện
+      huy hiệu "N chưa gửi" (số kế hoạch cục bộ trong tháng), luôn hiện khi có quyền ghi và khóa
+      kèm lý do (tooltip) thay vì biến mất; đổi thành "Tiếp tục gửi kế hoạch (x/y)" khi tháng có
+      batch dở dang (gọi `getLatestPlanUploadBatch`, lỗi thì bỏ qua).
+- [x] Hộp thoại: stepper Giờ bắt đầu → Xem trước → Xác nhận → Kết quả; biểu ngữ môi trường (đỏ khi
+      Production); chip tóm tắt lọc bảng theo trạng thái; đếm ngược hết hạn preview; câu tóm tắt
+      "Sẽ gửi N kế hoạch (X ngày, Y giờ) lên …"; nhãn ngắn ("Gửi N kế hoạch", "Tiếp tục gửi");
+      CSS chuyển sang token (hết hex cứng). Logic tạo/xác nhận/khóa/đối soát không đổi.
+- [x] 409 frontend tests, lint, typecheck, build đạt; trên dữ liệu thật: nút ghi "2 chưa gửi", mở
+      dialog thấy stepper và biểu ngữ "Onshore test · Test". Không tạo preview/gửi gì.
+      Chưa xem bằng mắt bảng, chip và đếm ngược (ảnh chụp khung trình duyệt đứng khung).
+
 ## UI/UX: brand, tiêu đề trùng và biểu tượng trạng thái — 2026-10-16
 
 - [x] Brand: "WORKORDER / Scheduler" thành "Work Order Scheduler" (ẩn dưới 900px, chỉ còn logo);

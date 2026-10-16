@@ -284,3 +284,10 @@
 .assignmentMarks { gap: 3px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; white-space: normal; }
 .legendPopover .legend { width: 320px; }
+
+/* Bulk send: a write action, visually apart from the read-only refresh. */
+.headingActions .bulkSendButton { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; margin-left: 8px; padding: 6px 14px; border: 1px solid var(--accent); border-radius: var(--radius); background: var(--accent); color: #ffffff; font-weight: 600; cursor: pointer; justify-content: center; }
+.headingActions .bulkSendButton:hover:not(:disabled) { background: var(--button-hover); }
+.headingActions .bulkSendButton:disabled { background: var(--surface); border-color: var(--line); color: var(--muted); cursor: not-allowed; }
+.unsentBadge { padding: 0 8px; border-radius: 10px; background: #ffffff; color: var(--accent-deep); font-size: 12px; line-height: 20px; font-weight: 600; }
+.headingActions .bulkSendButton:disabled .unsentBadge { background: var(--layer); }
