@@ -63,7 +63,7 @@ export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?
   if (rotaImportsActive && !rotaImportsVisited) setRotaImportsVisited(true);
   if (resourceTimelineActive && !resourceTimelineVisited) setResourceTimelineVisited(true);
   return <div className={styles.shell}>
-    <header className={styles.header} onClickCapture={guardNavigation}><Link to="/" className={styles.brand}><img className={styles.brandLogo} src={bdpocLogo} alt="Petrovietnam Biendong POC" />WORKORDER <b>/ Scheduler</b></Link>
+    <header className={styles.header} onClickCapture={guardNavigation}><Link to="/" className={styles.brand} title="Về Tổng quan"><img className={styles.brandLogo} src={bdpocLogo} alt="Petrovietnam Biendong POC" /><span className={styles.brandName}>Work Order Scheduler</span></Link>
       <nav className={styles.mainNav} aria-label="Điều hướng chính">
         <NavLink to="/work-orders">Work orders</NavLink><NavLink to="/resource-timeline">Resource timeline</NavLink><NavLink to="/rota-imports">Rota</NavLink></nav>
       <UserMenu /></header>
@@ -82,6 +82,6 @@ export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?
       {rotaImportsVisited && <div hidden={!rotaImportsActive}><RotaImports active={rotaImportsActive} /></div>}
       {resourceTimelineVisited && <div hidden={!resourceTimelineActive}><ResourceTimeline active={resourceTimelineActive} onPendingChange={reportMutationPending} /></div>}
     </main>
-    <footer>Work Order Scheduler <span>Onshore + Offshore · Nội bộ</span></footer>
+    <footer><span>Onshore + Offshore · Nội bộ</span></footer>
   </div>;
 }

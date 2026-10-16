@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+
 import { getAuthSummary, loginUrl, type Session } from '../api/client';
 import { RetrievalError, retrieveWorkOrders, type WorkOrder, type WorkOrderFilter } from '../api/workOrders';
 import styles from '../App.module.css';
@@ -599,8 +599,7 @@ export function WorkOrders({ active = true, autoRetrieve = false }: { active?: b
     : view === 'drafts' ? 'Mở nháp nhóm' : `Lập lịch nhóm (${selectedKeys.length})`;
 
   return <div ref={workspace} tabIndex={-1}>
-    <Link to="/" className={styles.back}>← Tổng quan</Link>
-    <div className={styles.pageTitle}><h1>Work Orders</h1></div>
+    <h1 className={styles.srOnly}>Work Orders</h1>
     {uploadNotice && <p role="status" className={styles.notice}>{uploadNotice}</p>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {error && <button className={styles.tertiary} onClick={() => refreshSession.current?.()}>Kiểm tra lại phiên</button>}

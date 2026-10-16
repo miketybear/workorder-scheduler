@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { Assignment } from '../api/assignments';
+import { StatusIcon } from './StatusIcons';
 import styles from './ResourceTimeline.module.css';
 
 type Props = {
@@ -29,8 +30,8 @@ export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours
   const [hiddenUntilLeave, setHiddenUntilLeave] = useState(false);
   const state = item.plan_sync_state ?? item.sync_state;
   const multiDay = !!item.plan_id && (item.plan_total_minutes ?? item.minutes) > item.minutes;
-  const symbol = state === 'unknown' ? '!' : state === 'synced' ? '✓' : item.plan_id ? '◇' : '';
-  const status = state === 'unknown' ? 'Chờ đối soát Maximo' : state === 'synced' ? 'Đã đồng bộ Maximo' : item.plan_id ? multiDay ? 'Kế hoạch nhiều ngày lưu nội bộ' : 'Kế hoạch lưu nội bộ' : item.state === 'reserved' ? 'Lịch nội bộ' : 'Chỉ xem';
+  const mark = state === 'unknown' ? 'pending' : state === 'synced' ? 'synced' : item.plan_id ? 'draft' : null;
+  const status = state === 'unknown' ? 'Chờ đối soát Maximo' : state === 'synced' ? 'Đã đồng bộ Maximo' : item.plan_id ? multiDay ? 'Kế hoạch nhiều ngày, chưa gửi Maximo' : 'Đã xếp, chưa gửi Maximo' : item.state === 'reserved' ? 'Đã xếp, chưa gửi Maximo' : 'Chỉ xem';
   const ariaState = `${status}${multiDay ? ', nhiều ngày' : ''}`;
 
   function hide() {
@@ -108,7 +109,7 @@ export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours
   return <>
     <button ref={buttonRef} type="button" className={`${styles.assignment} ${state === 'unknown' ? styles.assignmentUnknown : ''} ${state === 'synced' ? styles.assignmentSynced : ''}`} draggable={false} onPointerEnter={onPointerEnter} onPointerLeave={leave} onFocus={onFocus} onBlur={leave} onKeyDown={onKeyDown} onPointerDown={pointerDown} onPointerMove={onPointerMove} onPointerUp={pointerUp} onPointerCancel={pointerCancel} onClick={event=>{hide();setEngaged(false);onClick(event);}} aria-label={`Phân công ${taskLabel}, ${hours} giờ, ${personName} ngày ${date}. Trạng thái: ${ariaState}.`} aria-describedby={tooltipVisible ? `assignment-tooltip-${item.id}` : undefined}>
       <span className={styles.assignmentLine}>{item.task_id !== null && item.task_id !== undefined ? `T${item.task_id} · ` : ''}{wonum || 'WO'} · {hours}h</span>
-      <span className={styles.assignmentMarks} aria-hidden="true">{symbol && <span className={state === 'unknown' ? styles.assignmentUnknownMark : ''}>{symbol}</span>}{multiDay && <svg className={styles.multiDayMark} viewBox="0 0 16 14"><path d="M5 1h9v9H5zM2 4H1v9h9v-1" /></svg>}</span>
+      <span className={styles.assignmentMarks} aria-hidden="true">{mark && <StatusIcon kind={mark} />}{multiDay && <StatusIcon kind="multiday" />}</span>
     </button>
     {tooltipVisible&&createPortal(<div ref={tooltipRef} id={`assignment-tooltip-${item.id}`} role="tooltip" className={styles.assignmentTooltip} style={{ top: tooltip!.top, left: tooltip!.left }}><strong>{taskLabel}</strong><span>{personName} · {date} · {hours} giờ</span><span>{status}{multiDay ? ' · Kế hoạch nhiều ngày' : ''}</span></div>, document.body)}
   </>;

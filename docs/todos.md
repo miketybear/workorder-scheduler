@@ -8,6 +8,20 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## UI/UX: brand, tiêu đề trùng và biểu tượng trạng thái — 2026-10-16
+
+- [x] Brand: "WORKORDER / Scheduler" thành "Work Order Scheduler" (ẩn dưới 900px, chỉ còn logo);
+      footer chỉ còn "Onshore + Offshore · Nội bộ". `/work-orders` và `/resource-timeline` bỏ
+      tiêu đề lớn (giữ `<h1>` ẩn cho trình đọc màn hình) và link "← Tổng quan"; timeline thêm
+      nút ‹ › chuyển tháng, điều khiển dồn một hàng (cùng hàng với chip vai trò từ 1360px).
+- [x] Biểu tượng trạng thái SVG (`StatusIcons.tsx`): đã đồng bộ (dấu tích xanh), chờ đối soát
+      (đồng hồ đỏ), chưa gửi Maximo (vòng nét đứt, mũi tên lên), nhiều ngày (lịch có mũi tên).
+      Chú giải đổi từ "Kế hoạch nội bộ" thành "Chưa gửi Maximo: mới lưu trong ứng dụng" và
+      "Chờ đối soát: chưa chắc Maximo đã nhận"; tooltip thẻ dùng "Đã xếp, chưa gửi Maximo".
+- [x] 407 frontend tests, lint, typecheck, build đạt; DOM trên dữ liệu thật: 14 biểu tượng, lưới
+      cao 594px, đáy 828/862px. Ảnh chụp khung trình duyệt đứng khung nên chưa xem biểu tượng
+      bằng mắt; cần xem lại hình dạng 14px trên màn hình thật.
+
 ## UI/UX: mở rộng khung làm việc timeline — 2026-10-16
 
 - [x] Sau khi viewport-fit làm khung thấp (lưới 490px/862px), thu gọn phần trên: tiêu đề nhỏ hơn,

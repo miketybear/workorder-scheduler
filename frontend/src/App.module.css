@@ -289,3 +289,7 @@
 .skeleton > div { height: 56px; background: linear-gradient(90deg, var(--layer) 25%, var(--hover) 50%, var(--layer) 75%); background-size: 200% 100%; animation: skeletonShimmer 1.4s linear infinite; }
 @keyframes skeletonShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton > div { animation: none; } }
+
+.brandName { font-size: 14px; font-weight: 600; letter-spacing: 0; white-space: nowrap; }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+@media (max-width: 900px) { .brandName { display: none; } }

@@ -38,3 +38,4 @@ export function todayIn(timeZone: string, now = new Date()): string {
   const value = (type: string) => parts.find(part => part.type === type)?.value ?? '';
   return `${value('year')}-${value('month')}-${value('day')}`;
 }
+export const subMonth = (month: string) => { const [year, number] = month.split('-').map(Number); return `${number === 1 ? year - 1 : year}-${String(number === 1 ? 12 : number - 1).padStart(2, '0')}`; };

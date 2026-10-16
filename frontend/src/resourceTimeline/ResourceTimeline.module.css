@@ -265,3 +265,22 @@
 @media (min-width: 1500px) { .heading { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "title stats actions"; } }
 @media (max-width: 900px) { .roleDonutPanel { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 760px) { .heading { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "actions" "stats"; } .gridWrap { max-height: 70vh; } }
+
+/* Single control row: stats chips on the left, month picker and actions on the right. No visible page title (the nav shows it). */
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.heading { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "actions" "stats"; grid-template-columns: minmax(0, 1fr); }
+.heading .headingActions { justify-content: flex-end; }
+.monthPicker { display: inline-flex; align-items: center; gap: 4px; }
+.monthPicker button { min-height: 40px; min-width: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--layer); color: var(--link); font-size: 18px; cursor: pointer; justify-content: center; }
+.monthPicker button:disabled { opacity: .5; cursor: default; }
+@media (min-width: 1360px) { .heading { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "stats actions"; } }
+
+/* Assignment state icons: colour reinforces, text and aria carry the meaning. */
+.statusIcon { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; vertical-align: -2px; }
+.icon_synced { color: var(--success-ink); }
+.icon_pending { color: var(--danger-ink); }
+.icon_draft { color: var(--muted); }
+.icon_multiday { color: var(--link); }
+.assignmentMarks { gap: 3px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; white-space: normal; }
+.legendPopover .legend { width: 320px; }

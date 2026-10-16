@@ -57,7 +57,7 @@ it('defaults filters to hidden and toggles beside refresh without losing filters
   expect(showFilters).toHaveAttribute('aria-expanded', 'false');
   expect(screen.queryByRole('search')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Cập nhật' }).nextElementSibling).toBe(showFilters);
-  expect(screen.getByRole('heading', { name: 'Work Orders' }).parentElement).not.toContainElement(showFilters);
+  expect(screen.getByRole('heading', { name: 'Work Orders' })).not.toContainElement(showFilters);
   fireEvent.click(showFilters);
   fireEvent.change(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name'), { target: { value: 'WO-REAL' } });
   fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' }));
@@ -470,7 +470,10 @@ it('protects edits on scope and filter changes and preserves them across unchang
   fireEvent.click(await screen.findByText('WO-REAL'));
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
   vi.spyOn(window, 'confirm').mockReturnValue(false);
-  fireEvent.click(screen.getByRole('link', { name: '← Tổng quan' }));
+  const homeLink = Object.assign(document.createElement('a'), { href: '/', textContent: 'Tổng quan' });
+  document.body.append(homeLink);
+  fireEvent.click(homeLink);
+  homeLink.remove();
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
   fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-09-02' } });
   expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');

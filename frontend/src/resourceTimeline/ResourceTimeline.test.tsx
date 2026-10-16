@@ -234,6 +234,10 @@ it('filters people by name, keeps role totals, and offers today and legend contr
   await loaded({...snapshot,rows:[person,second]});
   expect(screen.getByRole('button',{name:'Hôm nay'})).toBeEnabled();
   expect(screen.getByText('Có capacity theo rota')).toBeInTheDocument();
+  expect(screen.getByText('Chưa gửi Maximo: mới lưu trong ứng dụng')).toBeInTheDocument();
+  expect(screen.getByText('Chờ đối soát: chưa chắc Maximo đã nhận')).toBeInTheDocument();
+  expect(screen.getByRole('heading',{name:'Resource timeline'})).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Tháng sau'})).toBeEnabled();
   expect(screen.getByText(/Nguyen A/)).toBeInTheDocument();
   expect(screen.getByText(/Tran B/)).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Tìm nhân sự'),{target:{value:'lab-2'}});
