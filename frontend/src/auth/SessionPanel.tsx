@@ -30,7 +30,7 @@ export function SessionPanel() {
     } catch { setError('Chưa đăng xuất được. Hãy thử lại.'); setBusy(false); }
   }
   return <article>
-    <span>02 / DANH TÍNH</span><h2>{auth?.session?.user.name ?? 'Entra ID'}</h2>
+    <span>Tài khoản</span><h2>{auth?.session?.user.name ?? 'Entra ID'}</h2>
     {new URLSearchParams(window.location.search).get('auth') === 'failed' &&
       <p role="alert">Đăng nhập chưa thành công hoặc đã hết thời gian. Hãy thử lại.</p>}
     {error && <p role="alert">{error}</p>}

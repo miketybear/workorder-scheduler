@@ -57,7 +57,7 @@
 .menuIdentity small { color: var(--muted); }
 .menuDev { display: grid; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
 .menuDev small { padding: 4px 16px; color: var(--muted); }
-.menuPanel > p { margin: 0; padding: 8px 16px; color: var(--error); }
+.menuPanel > p[role="alert"] { margin: 0; padding: 8px 16px; color: var(--error); }
 .actionCard { display: block; padding: 24px; background: var(--layer); color: var(--ink); border: 1px solid transparent; }
 .actionCard:hover { border-color: var(--link); text-decoration: none; }
 .actionCard span { color: var(--muted); font-size: 12px; }

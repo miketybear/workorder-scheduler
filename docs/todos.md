@@ -10,7 +10,9 @@ Cập nhật: 2026-10-16.
       hiện ở bản dev (`import.meta.env.DEV`); route demo vẫn tồn tại.
 - [x] Trang chủ thay hero/tiến độ dự án bằng 3 thẻ vào việc, thẻ phiên đăng nhập và trạng thái
       dịch vụ. Chưa có số liệu dashboard (WO chưa lập lịch, upload lỗi) vì cần API tổng hợp mới.
-- [x] 401 frontend tests, lint, typecheck, build đạt. Chưa xem trực quan trên trình duyệt.
+- [x] 401 frontend tests, lint, typecheck, build đạt. Đã xem trực quan trang chủ, menu và
+      trang Rota ở light/dark với phiên giả lập; sửa màu tên tài khoản trong menu. Chưa xem
+      trang WO/timeline có dữ liệu thật.
 
 ## UI/UX bước 1: hợp nhất design token — 2026-10-16
 
