@@ -2,12 +2,6 @@
 
 Cập nhật: 2026-10-19.
 
-## Dừng môi trường local theo yêu cầu — 2026-10-16
-
-- [x] Dừng backend run_local_windows.py và frontend Vite HTTPS sau khi xác minh
-      PID/command line; kiểm tra cổng8000 và5173 không còn listener.
-- Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
-
 ## Đề xuất chưa làm — cập nhật 2026-10-19
 
 ### A. PIC và khoảng ngày lịch của WO trên backlog và timeline (đề xuất mới)
