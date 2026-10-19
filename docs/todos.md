@@ -6,7 +6,7 @@ Cập nhật: 2026-10-19.
 
 ### A. PIC và khoảng ngày lịch của WO trên backlog và timeline (đề xuất mới)
 
-- [ ] **A1. Thẻ WO hiện PIC và khoảng lịch.** Thẻ backlog và thẻ phân công/tooltip trên timeline hiện
+- [~] **A1. Thẻ WO hiện PIC và khoảng lịch.** *(2026-10-19: phần backlog đã xong — xem bên dưới; phần timeline còn chờ backend.)* Thẻ backlog và thẻ phân công/tooltip trên timeline hiện
       `assignedtechname` (hoặc "Chưa có PIC") và `schedstart → schedfinish`.
       - Backlog: dữ liệu đã có sẵn trong trang WO (`/work-orders/page` trả `schedstart`, `schedfinish`,
         `assignedtechname`), chỉ cần hiển thị.
@@ -35,6 +35,14 @@ Cập nhật: 2026-10-19.
         người dùng chủ động bấm "Lưu nháp").
       - Rủi ro: WO có nhiều người được giao nhưng PIC trống có thể không muốn lấy người đầu tiên; đây chỉ
         là gợi ý, luôn cần người xác nhận.
+- **Quyết định của chủ dự án (2026-10-19):** `assignedtechname` là mã PERSON, trùng với `laborcode`, nên so khớp PIC
+  với nhân sự theo mã là đúng (A2). A3: "người được giao đầu tiên" = phân công sớm nhất (hòa thì theo tên),
+  và nút mở editor đã điền sẵn PIC chưa lưu để người dùng chủ động bấm "Lưu nháp".
+- **A1 backlog đã làm (2026-10-19):** thẻ backlog hiện `PIC <mã>` hoặc "Chưa có PIC" (màu cam) và khoảng lịch
+  `dd/MM → dd/MM` theo múi giờ nghiệp vụ (thêm năm khi khác năm hiện tại) hoặc "Chưa có lịch"; tooltip có
+  `schedstart → schedfinish` đầy đủ; aria-label của thẻ gồm PIC và lịch. `scheduleRange` ở
+  `timelineHelpers.ts`, 5 test mới (helper và thẻ). Xem ảnh trên dữ liệu thật (117 WO tháng 10, nhiều WO
+  chưa có PIC/lịch).
 - Thứ tự đề xuất: A1 (backlog trước, dữ liệu sẵn) → A1 timeline (cần backend) → A2 → A3.
   Tiêu chí hoàn thành: test hiển thị, test quy tắc cảnh báo (biên ngày, thiếu lịch, múi giờ), test nút A3
   không gọi API ghi Maximo; xem ảnh trên dữ liệu thật.
@@ -61,7 +69,7 @@ Cập nhật: 2026-10-19.
       còn bằng viewport (1148 và 786px).
 - [x] Hộp thoại gửi kế hoạch: khi batch đã hoàn tất, form giờ bắt đầu/"Tạo preview mới" thu vào mục
       "Tạo preview mới cho thay đổi chưa gửi" ở cuối; kết quả hiện đầu. Preview hết hạn vẫn hiện form
-      ở đầu. 417 frontend tests, lint, build đạt; đã xem ảnh trên dữ liệu thật.
+      ở đầu. 416 frontend tests, lint, build đạt; đã xem ảnh trên dữ liệu thật.
 
 ## Gộp request auth/settings trùng — 2026-10-16
 

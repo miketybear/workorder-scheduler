@@ -710,6 +710,14 @@ it('requires saving changed hours before uploading the persisted task',async()=>
   expect(screen.getByText('Lưu thay đổi phân công trước khi gửi lên Maximo.')).toBeInTheDocument();
 });
 
+it('shows the PIC and schedule range on backlog cards, or says they are missing',async()=>{
+  const withPic={...workOrder,wonum:'WO-PIC',workorderid:'wo-pic',assignedtechname:'HAIDQ',schedstart:'2026-10-04T15:06:00+07:00',schedfinish:'2026-10-31T15:06:00+07:00'} as unknown as typeof workOrder;
+  await loaded(snapshot,[withPic,workOrder]);
+  expect(screen.getByText('PIC HAIDQ · 04/10 → 31/10')).toBeInTheDocument();
+  expect(screen.getByText('Chưa có PIC · Chưa có lịch')).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:/WO-PIC .*PIC HAIDQ · Lịch 04\/10 → 31\/10/})).toBeInTheDocument();
+});
+
 describe('live Resource timeline interactions', () => {
   it('lets the saved-to-plan notice be dismissed or expire', async () => {
     await loaded();

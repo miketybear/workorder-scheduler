@@ -39,3 +39,18 @@ export function todayIn(timeZone: string, now = new Date()): string {
   return `${value('year')}-${value('month')}-${value('day')}`;
 }
 export const subMonth = (month: string) => { const [year, number] = month.split('-').map(Number); return `${number === 1 ? year - 1 : year}-${String(number === 1 ? 12 : number - 1).padStart(2, '0')}`; };
+
+/** "04/10 → 31/10" in the business timezone (adds the year when it is not the current one); null when either end is missing. */
+export function scheduleRange(start: string | null, finish: string | null, timeZone: string, now = new Date()): string | null {
+  const parse = (value: string | null) => {
+    if (!value || !Number.isFinite(Date.parse(value))) return null;
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone, calendar: 'iso8601', numberingSystem: 'latn', day: '2-digit', month: '2-digit', year: 'numeric' }).formatToParts(new Date(value));
+    const pick = (type: string) => parts.find(part => part.type === type)?.value ?? '';
+    return { day: pick('day'), month: pick('month'), year: pick('year') };
+  };
+  const from = parse(start); const to = parse(finish);
+  if (!from || !to) return null;
+  const currentYear = new Intl.DateTimeFormat('en-GB', { timeZone, calendar: 'iso8601', numberingSystem: 'latn', year: 'numeric' }).format(now);
+  const show = (date: { day: string; month: string; year: string }) => `${date.day}/${date.month}${date.year === currentYear ? '' : `/${date.year}`}`;
+  return `${show(from)} → ${show(to)}`;
+}

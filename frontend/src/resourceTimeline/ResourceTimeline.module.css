@@ -295,3 +295,6 @@
 /* Visually hidden helper text is absolutely positioned; give it a containing block so it cannot widen the page. */
 .gridWrap { position: relative; }
 .capacity { position: relative; }
+
+.woCard .woMeta { color: var(--ink); font-weight: 600; }
+.woCard .woMeta[data-no-pic] { color: var(--warning-ink); }
