@@ -1121,6 +1121,7 @@ it('allows a replacement preview after a completed batch with no unknown outcome
   fireEvent.click(screen.getByRole('button',{name:/^Gửi kế hoạch tháng lên Maximo/}));await screen.findByLabelText('Giờ bắt đầu đồng bộ hàng loạt');
   fireEvent.click(screen.getByRole('button',{name:'Tạo preview tháng'}));await screen.findByText('Preview đã sẵn sàng để xác nhận.');
   fireEvent.click(screen.getByRole('button',{name:'Gửi 1 kế hoạch'}));await screen.findByText('Batch đã hoàn tất.');
+  expect(screen.getByText('Tạo preview mới cho thay đổi chưa gửi').closest('details')).not.toHaveAttribute('open');
   fireEvent.click(screen.getByRole('button',{name:'Tạo preview mới'}));
   await waitFor(()=>expect(api.batchCreate).toHaveBeenCalledTimes(2));
 });

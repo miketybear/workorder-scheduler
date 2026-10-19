@@ -8,6 +8,16 @@ Cập nhật: 2026-10-16.
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
 
+## UI/UX: tràn ngang trang và hộp thoại batch đã xong — 2026-10-19
+
+- [x] Nguyên nhân trang timeline có thanh cuộn ngang ở khung hẹp: chữ phụ ẩn của ô capacity là phần
+      tử `position:absolute` không có phần tử cha định vị nên thoát khỏi vùng cuộn của lưới và làm
+      rộng tài liệu (scrollWidth 3366px). Thêm `position:relative` cho lưới và ô capacity: tài liệu
+      còn bằng viewport (1148 và 786px).
+- [x] Hộp thoại gửi kế hoạch: khi batch đã hoàn tất, form giờ bắt đầu/"Tạo preview mới" thu vào mục
+      "Tạo preview mới cho thay đổi chưa gửi" ở cuối; kết quả hiện đầu. Preview hết hạn vẫn hiện form
+      ở đầu. 417 frontend tests, lint, build đạt; đã xem ảnh trên dữ liệu thật.
+
 ## Gộp request auth/settings trùng — 2026-10-16
 
 - [x] `api/shared.ts`: các lời gọi giống nhau đang chạy cùng lúc dùng chung một request, không cache sau

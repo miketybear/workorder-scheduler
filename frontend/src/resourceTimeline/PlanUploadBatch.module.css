@@ -39,3 +39,6 @@
 .pagination { display: flex; align-items: center; gap: 10px; }
 .pagination span { color: var(--muted); }
 @media (max-width: 700px) { .overlay { padding: 8px; } .dialog { max-height: calc(100dvh - 16px); padding: 12px; } .stepper li { font-size: 11px; } }
+.newBatch { padding: 8px 0; border-top: 1px solid var(--line); }
+.newBatch summary { cursor: pointer; color: var(--link); font-weight: 600; padding: 4px 0; }
+.newBatch > :not(summary) { margin-top: 12px; display: grid; gap: 12px; }

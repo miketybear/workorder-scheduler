@@ -291,3 +291,7 @@
 .headingActions .bulkSendButton:disabled { background: var(--surface); border-color: var(--line); color: var(--muted); cursor: not-allowed; }
 .unsentBadge { padding: 0 8px; border-radius: 10px; background: #ffffff; color: var(--accent-deep); font-size: 12px; line-height: 20px; font-weight: 600; }
 .headingActions .bulkSendButton:disabled .unsentBadge { background: var(--layer); }
+
+/* Visually hidden helper text is absolutely positioned; give it a containing block so it cannot widen the page. */
+.gridWrap { position: relative; }
+.capacity { position: relative; }
