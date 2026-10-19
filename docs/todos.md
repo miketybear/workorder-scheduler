@@ -1,12 +1,63 @@
 # TODO — Work Order Scheduler
 
-Cập nhật: 2026-10-16.
+Cập nhật: 2026-10-19.
 
 ## Dừng môi trường local theo yêu cầu — 2026-10-16
 
 - [x] Dừng backend run_local_windows.py và frontend Vite HTTPS sau khi xác minh
       PID/command line; kiểm tra cổng8000 và5173 không còn listener.
 - Khi cần tiếp tục nghiệm thu, khởi động lại hai dev server theo README.
+
+## Đề xuất chưa làm — cập nhật 2026-10-19
+
+### A. PIC và khoảng ngày lịch của WO trên backlog và timeline (đề xuất mới)
+
+- [ ] **A1. Thẻ WO hiện PIC và khoảng lịch.** Thẻ backlog và thẻ phân công/tooltip trên timeline hiện
+      `assignedtechname` (hoặc "Chưa có PIC") và `schedstart → schedfinish`.
+      - Backlog: dữ liệu đã có sẵn trong trang WO (`/work-orders/page` trả `schedstart`, `schedfinish`,
+        `assignedtechname`), chỉ cần hiển thị.
+      - Timeline: `work_orders` của `assignment-timeline` chỉ có `wonum/description/status/eligible`. Backend
+        đã đọc đủ WO bằng `read_detail` (có `schedstart`, `schedfinish`, `assignedtechname`) nên thêm 3 trường
+        vào payload là thay đổi cộng thêm, không thêm lời gọi Maximo. Cần agent backend và test hợp đồng API.
+      - Định dạng ngày theo múi giờ nghiệp vụ của kết nối (không dùng múi giờ trình duyệt).
+- [ ] **A2. Cảnh báo (không chặn).** Hiện huy hiệu cảnh báo trên thẻ WO, ô phân công và hộp thoại phân
+      công, kèm lý do; không bao giờ chặn lưu hay gửi.
+      - Cảnh báo 1: một phân công/đoạn kế hoạch của WO có ngày nằm ngoài `[schedstart, schedfinish]`.
+        Quy tắc biên: so theo ngày trong múi giờ nghiệp vụ; WO thiếu `schedstart` hoặc `schedfinish` thì
+        không cảnh báo mà hiện "WO chưa có lịch".
+      - Cảnh báo 2: PIC của WO không nằm trong số người đang được giao WO đó (xét cả phân công nội bộ và
+        đã đồng bộ).
+      - Cần chốt: cách so khớp PIC với nhân sự. `assignedtechname` trong dữ liệu thật trông giống mã nhân
+        công (ví dụ `HAIDQ`) và timeline có `laborcode`; phải xác minh trên Maximo test trước khi so khớp,
+        không so bằng tên hiển thị.
+- [ ] **A3. Gợi ý PIC khi WO chưa có PIC.** Nút "Đặt X làm PIC" trên thẻ/hộp thoại, X là người được giao
+      đầu tiên (đề xuất: theo ngày phân công sớm nhất, hòa thì theo tên; cần xác nhận quy tắc).
+      - Nút **không ghi Maximo**: chuyển sang trang Work orders, mở nháp của WO đó với `assignedtechname` đã
+        điền sẵn (nháp theo cơ chế hiện có: baseline, phiên bản, kiểm tra quyền). Planner xem lại rồi lưu
+        nháp; gửi lên Maximo vẫn qua luồng upload có đối chiếu.
+      - Chỉ bật khi X nằm trong danh sách PIC hợp lệ của discipline (`allowed_pics` từ crew group); nếu
+        không, vô hiệu hóa kèm lý do. Người dùng chỉ đọc không thấy nút.
+      - Cần chốt: tạo nháp ngay hay chỉ mở editor đã điền sẵn chưa lưu (đề xuất: mở editor đã điền sẵn để
+        người dùng chủ động bấm "Lưu nháp").
+      - Rủi ro: WO có nhiều người được giao nhưng PIC trống có thể không muốn lấy người đầu tiên; đây chỉ
+        là gợi ý, luôn cần người xác nhận.
+- Thứ tự đề xuất: A1 (backlog trước, dữ liệu sẵn) → A1 timeline (cần backend) → A2 → A3.
+  Tiêu chí hoàn thành: test hiển thị, test quy tắc cảnh báo (biên ngày, thiếu lịch, múi giờ), test nút A3
+  không gọi API ghi Maximo; xem ảnh trên dữ liệu thật.
+
+### B. Hiệu năng `assignment-timeline` (backend, kết quả điều tra 2026-10-19)
+
+- [ ] **B1. Gộp đọc tải phân công bằng `laborcode in ["A","B"]`** (2 truy vấn mỗi lô thay vì 42): đã thử
+      trên Maximo test, kết quả giống hệt cách cũ (3/6/21 người, tháng 6 và 10). Giữ nguyên bộ lọc sau,
+      chia lô ≤100 mã (URL ≤ ~8k), cú pháp không dấu cách, kiểm tra `totalCount`; không dùng truy vấn
+      chồng lấn một lần vì `finishdate` rỗng làm sót tải. Cần agent backend, test, review độc lập.
+- [ ] **B2. Song song hóa có giới hạn** các lần đọc WO và kiểm tra PERSON (giữ thứ tự kiểm tra quyền
+      trước/sau I/O). Không cache số tải.
+
+### C. Dọn dẹp
+
+- [ ] Xóa nhánh `ui/design-tokens` (local và remote) vì đã merge.
+- [ ] Lần tải nguội (25–30 giây) chưa đo được vì cần xóa cache backend/Maximo.
 
 ## UI/UX: tràn ngang trang và hộp thoại batch đã xong — 2026-10-19
 
