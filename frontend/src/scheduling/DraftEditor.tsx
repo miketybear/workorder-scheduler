@@ -16,10 +16,11 @@ const labels: Record<EditableField, string> = { schedstart: 'Scheduled Start', s
 const target = (field: EditableField) => field === 'targstartdate' || field === 'targcompdate';
 export type EditorSelection = { key: Identity } | { draftId: string };
 
-export function DraftEditor({ selection, scope, writable, suspended, active = true, verifiedDetail, pmRestoreOrigin = null, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, timezone, connection }: {
+export function DraftEditor({ selection, scope, writable, suspended, active = true, verifiedDetail, pmRestoreOrigin = null, prefill = null, onPrefillConsumed, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, timezone, connection }: {
   timezone: string;
   active?: boolean;
   connection?: UploadConnection;
+  prefill?: { site_id: string; workorder_id: string; pic: string } | null; onPrefillConsumed?: () => void;
   verifiedDetail?: Detail | Restored | null; pmRestoreOrigin?: Baseline | null; selection: EditorSelection; scope: Scope; writable: boolean; suspended: boolean;
   onDirty: (dirty: boolean) => void; onDenied: () => void; onClose: () => void;
   onDraftReady?: (draft: DraftNotice) => void;
@@ -36,6 +37,9 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   const [notice, setNotice] = useState('');
   const [uploadLocked, setUploadLocked] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // Read through refs so a changing callback identity never restarts the in-flight load.
+  const prefillRef = useRef(prefill); const prefillConsumedRef = useRef(onPrefillConsumed);
+  useEffect(() => { prefillRef.current = prefill; prefillConsumedRef.current = onPrefillConsumed; });
   const [committed, setCommitted] = useState('{}');
   const panel = useRef<HTMLElement>(null);
   const pending = useRef<AbortController | null>(null);
@@ -85,6 +89,15 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
         setSaved(value); setChanges(value.changes); setCommitted(JSON.stringify(value.changes));
         setBlocked(value.baseline_changed || !value.changes_valid_now);
         onDraftReady?.({ ...value, items: [value] });
+      }
+      const wanted = prefillRef.current;
+      if (wanted && wanted.site_id === value.item.siteid && wanted.workorder_id === value.item.workorderid) {
+        const existing = 'changes' in value ? value.changes : {};
+        if (value.baseline.assignedtechname) setNotice(`WO đã có PIC ${value.baseline.assignedtechname}; không điền sẵn PIC gợi ý.`);
+        else if (existing.assignedtechname !== undefined) setNotice('Nháp đã có PIC; không điền sẵn PIC gợi ý.');
+        else if (!value.allowed_pics.includes(wanted.pic)) setNotice(`${wanted.pic} không nằm trong danh sách PIC hợp lệ của discipline này.`);
+        else { setChanges({ ...existing, assignedtechname: wanted.pic }); setNotice(`Đã điền sẵn PIC ${wanted.pic} (chưa lưu). Xem lại rồi bấm Lưu nháp; Maximo chưa thay đổi.`); }
+        prefillConsumedRef.current?.();
       }
     }).catch((cause: unknown) => {
       if (controller.signal.aborted) return;

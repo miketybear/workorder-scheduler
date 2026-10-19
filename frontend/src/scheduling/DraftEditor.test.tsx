@@ -453,3 +453,39 @@ it('treats equivalent timezone offsets and numeric duration formatting as the or
   expect(screen.getByRole('button', { name: 'Khôi phục Duration gốc' })).toBeDisabled();
   expect(screen.queryByRole('alert', { name: /PIC, Target/ })).not.toBeInTheDocument();
 });
+
+const noPicDetail: Detail = { ...detail, baseline: { ...baseline, assignedtechname: null }, item: { ...detail.item, assignedtechname: null } as WorkOrder };
+const suggestion = { site_id: 'TEST', workorder_id: '100', pic: 'OTHER' };
+
+it('pre-fills a suggested PIC as an unsaved change and never saves it by itself', async () => {
+  vi.mocked(getDetail).mockResolvedValue(noPicDetail);
+  const consumed = vi.fn();
+  render(<DraftEditor {...props} prefill={suggestion} onPrefillConsumed={consumed} />);
+  await screen.findByText(/Đã điền sẵn PIC OTHER \(chưa lưu\)/);
+  expect(screen.getByLabelText('Assigned PIC')).toHaveValue('OTHER');
+  expect(props.onDirty).toHaveBeenLastCalledWith(true);
+  expect(consumed).toHaveBeenCalledTimes(1);
+  expect(saveDraft).not.toHaveBeenCalled();
+  expect(screen.getByText('Lưu nháp')).toBeEnabled();
+});
+
+it('does not pre-fill a PIC that is not in the discipline crew list or when the WO already has a PIC', async () => {
+  vi.mocked(getDetail).mockResolvedValue(noPicDetail);
+  const view = render(<DraftEditor {...props} prefill={{ ...suggestion, pic: 'STRANGER' }} />);
+  await screen.findByText(/STRANGER không nằm trong danh sách PIC hợp lệ/);
+  expect(props.onDirty).not.toHaveBeenCalledWith(true);
+  view.unmount();
+  vi.mocked(getDetail).mockResolvedValue(detail);
+  render(<DraftEditor {...props} prefill={suggestion} />);
+  await screen.findByText(/WO đã có PIC TECH; không điền sẵn/);
+  expect(screen.getByLabelText('Assigned PIC')).toHaveValue('TECH');
+});
+
+it('ignores a suggestion that belongs to a different work order', async () => {
+  vi.mocked(getDetail).mockResolvedValue(noPicDetail);
+  const consumed = vi.fn();
+  render(<DraftEditor {...props} prefill={{ ...suggestion, workorder_id: '999' }} onPrefillConsumed={consumed} />);
+  await screen.findByLabelText('Est. Duration');
+  expect(consumed).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('Assigned PIC')).toHaveValue('');
+});

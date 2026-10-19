@@ -13,6 +13,7 @@ import { displayDate, rowKey } from './presentation';
 import { chosenPlan, effectiveOrder, updatePlans } from './planning';
 import type { PlanningMarker } from '../api/workOrders';
 import { activeGrant } from '../auth/activeGrant';
+import type { PicSuggestion } from '../picSuggestion';
 import { config } from '../config';
 import { equalField } from './editing';
 import { usePanelFocus } from './usePanelFocus';
@@ -48,7 +49,7 @@ export function mergePmOrigin(current: Map<string, Baseline>, principal: string,
   return next;
 }
 
-export function WorkOrders({ active = true, autoRetrieve = false }: { active?: boolean; autoRetrieve?: boolean }) {
+export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion = null, onPicSuggestionHandled }: { active?: boolean; autoRetrieve?: boolean; picSuggestion?: PicSuggestion | null; onPicSuggestionHandled?: () => void }) {
   const sources = useRef<Partial<Record<Source, SourceSnapshot>>>({});
   const [session, setSession] = useState<Session | null>(null);
   const [available, setAvailable] = useState(false);
@@ -110,6 +111,8 @@ export function WorkOrders({ active = true, autoRetrieve = false }: { active?: b
     setDatesDefaulted(true); setStart(range.start); setEnd(range.end);
   }
   const autoRetrievedScope = useRef('');
+  const [picPrefill, setPicPrefill] = useState<{ site_id: string; workorder_id: string; pic: string } | null>(null);
+  const handledSuggestion = useRef(0);
   const editorScope = useMemo(() => ({ connection_id: grant?.connection_id ?? '', discipline: grant?.discipline ?? '' }), [grant]);
   const panelGuardToken = JSON.stringify([selection, batch]);
   useEffect(() => { finalizationGuard.current = { panel: panelGuardToken,
@@ -377,6 +380,7 @@ export function WorkOrders({ active = true, autoRetrieve = false }: { active?: b
   }
   function closePanel() {
     if (!discard()) return;
+    setPicPrefill(null);
     selected.current = null;
     setSelection(null); setBatch(null); setChooser(null); setRechecked(null); dirty.current = false;
   }
@@ -590,6 +594,28 @@ export function WorkOrders({ active = true, autoRetrieve = false }: { active?: b
     void retrieveRef.current();
   }, [autoRetrieve, active, checking, verifying, busy, grant, session, rows, view, start, end]);
 
+  // A PIC suggestion from the timeline opens that WO's editor with the PIC filled in but unsaved.
+  const applySuggestionRef = useRef<(suggestion: PicSuggestion) => void>(() => {});
+  useEffect(() => {
+    applySuggestionRef.current = (suggestion) => {
+      if (!grant || grant.connection_id !== suggestion.connection_id || grant.discipline !== suggestion.discipline) {
+        setError('PIC gợi ý thuộc kết nối hoặc discipline khác với phiên hiện tại.'); onPicSuggestionHandled?.(); return;
+      }
+      if (!discard()) { onPicSuggestionHandled?.(); return; }
+      dirty.current = false;
+      setPicPrefill({ site_id: suggestion.site_id, workorder_id: suggestion.workorder_id, pic: suggestion.pic });
+      const row = rows?.find((candidate) => candidate.siteid === suggestion.site_id && candidate.workorderid === suggestion.workorder_id);
+      if (row) openRow(row);
+      else choose({ key: { ...editorScope, site_id: suggestion.site_id, workorder_id: suggestion.workorder_id } });
+      onPicSuggestionHandled?.();
+    };
+  });
+  useEffect(() => {
+    if (!picSuggestion || !active || checking || verifying || !grant || handledSuggestion.current === picSuggestion.id) return;
+    handledSuggestion.current = picSuggestion.id;
+    applySuggestionRef.current(picSuggestion);
+  }, [picSuggestion, active, checking, verifying, grant]);
+
   const activeFilterCount = [!!search.trim(), !!statusFilter, !!planningFilter, view === 'maximo' && !!draftFilter].filter(Boolean).length;
   const pickedRows = visibleRows.filter((row) => selectedKeys.includes(rowKey(row)));
   const firstPickedPlan = pickedRows.length ? chosenPlan(pickedRows[0], choices[rowKey(pickedRows[0])]) : undefined;
@@ -655,7 +681,7 @@ export function WorkOrders({ active = true, autoRetrieve = false }: { active?: b
           {plan.baseline_changed ? ' · Cần đối chiếu' : ''}</button></p>)}
         <button className={styles.tertiary} onClick={() => choose({ key: { ...editorScope, site_id: chooser.siteid, workorder_id: chooser.workorderid } })}>Xem Maximo / tạo nháp mới</button>
       </section>}
-      {selection && grant && <DraftEditor key={editorGeneration} selection={selection} scope={editorScope}
+      {selection && grant && <DraftEditor key={editorGeneration} selection={selection} scope={editorScope} prefill={picPrefill} onPrefillConsumed={() => setPicPrefill(null)}
         timezone={grant.timezone} active={active}
         pmRestoreOrigin={'key' in selection && session?.user.id ? pmOrigins.get(JSON.stringify([session.user.id, editorScope.connection_id,
           editorScope.discipline, selection.key.site_id, selection.key.workorder_id])) ?? null : null}

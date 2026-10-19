@@ -11,6 +11,7 @@ type Props = {
   personName: string;
   date: string;
   hours: string;
+  warning?: string;
   onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void;
   onPointerMove: (event: PointerEvent<HTMLButtonElement>) => void;
   onPointerUp: (event: PointerEvent<HTMLButtonElement>) => void;
@@ -18,7 +19,7 @@ type Props = {
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
 };
 
-export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClick }: Props) {
+export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours, warning, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClick }: Props) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<number | null>(null);
@@ -32,7 +33,7 @@ export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours
   const multiDay = !!item.plan_id && (item.plan_total_minutes ?? item.minutes) > item.minutes;
   const mark = state === 'unknown' ? 'pending' : state === 'synced' ? 'synced' : item.plan_id ? 'draft' : null;
   const status = state === 'unknown' ? 'Chờ đối soát Maximo' : state === 'synced' ? 'Đã đồng bộ Maximo' : item.plan_id ? multiDay ? 'Kế hoạch nhiều ngày, chưa gửi Maximo' : 'Đã xếp, chưa gửi Maximo' : item.state === 'reserved' ? 'Đã xếp, chưa gửi Maximo' : 'Chỉ xem';
-  const ariaState = `${status}${multiDay ? ', nhiều ngày' : ''}`;
+  const ariaState = `${status}${multiDay ? ', nhiều ngày' : ''}${warning ? `. Cảnh báo: ${warning}` : ''}`;
 
   function hide() {
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
@@ -109,8 +110,8 @@ export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours
   return <>
     <button ref={buttonRef} type="button" className={`${styles.assignment} ${state === 'unknown' ? styles.assignmentUnknown : ''} ${state === 'synced' ? styles.assignmentSynced : ''}`} draggable={false} onPointerEnter={onPointerEnter} onPointerLeave={leave} onFocus={onFocus} onBlur={leave} onKeyDown={onKeyDown} onPointerDown={pointerDown} onPointerMove={onPointerMove} onPointerUp={pointerUp} onPointerCancel={pointerCancel} onClick={event=>{hide();setEngaged(false);onClick(event);}} aria-label={`Phân công ${taskLabel}, ${hours} giờ, ${personName} ngày ${date}. Trạng thái: ${ariaState}.`} aria-describedby={tooltipVisible ? `assignment-tooltip-${item.id}` : undefined}>
       <span className={styles.assignmentLine}>{item.task_id !== null && item.task_id !== undefined ? `T${item.task_id} · ` : ''}{wonum || 'WO'} · {hours}h</span>
-      <span className={styles.assignmentMarks} aria-hidden="true">{mark && <StatusIcon kind={mark} />}{multiDay && <StatusIcon kind="multiday" />}</span>
+      <span className={styles.assignmentMarks} aria-hidden="true">{mark && <StatusIcon kind={mark} />}{multiDay && <StatusIcon kind="multiday" />}{warning && <StatusIcon kind="warning" />}</span>
     </button>
-    {tooltipVisible&&createPortal(<div ref={tooltipRef} id={`assignment-tooltip-${item.id}`} role="tooltip" className={styles.assignmentTooltip} style={{ top: tooltip!.top, left: tooltip!.left }}><strong>{taskLabel}</strong><span>{personName} · {date} · {hours} giờ</span><span>{status}{multiDay ? ' · Kế hoạch nhiều ngày' : ''}</span></div>, document.body)}
+    {tooltipVisible&&createPortal(<div ref={tooltipRef} id={`assignment-tooltip-${item.id}`} role="tooltip" className={styles.assignmentTooltip} style={{ top: tooltip!.top, left: tooltip!.left }}><strong>{taskLabel}</strong><span>{personName} · {date} · {hours} giờ</span><span>{status}{multiDay ? ' · Kế hoạch nhiều ngày' : ''}</span>{warning && <span className={styles.tooltipWarning}>Cảnh báo: {warning}</span>}</div>, document.body)}
   </>;
 }

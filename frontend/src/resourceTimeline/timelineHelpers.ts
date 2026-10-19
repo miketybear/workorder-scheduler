@@ -54,3 +54,35 @@ export function scheduleRange(start: string | null, finish: string | null, timeZ
   const show = (date: { day: string; month: string; year: string }) => `${date.day}/${date.month}${date.year === currentYear ? '' : `/${date.year}`}`;
   return `${show(from)} → ${show(to)}`;
 }
+
+export type ScheduleInfo = { schedstart: string | null; schedfinish: string | null; pic: string | null };
+export type AssignedPerson = { date: string; laborcode: string; name: string };
+export type WoWarnings = { outsideDates: string[]; picNotAssigned: boolean };
+
+/** Calendar day (YYYY-MM-DD) of an instant in the business timezone; null for a missing/invalid value. */
+export function localDate(value: string | null, timeZone: string): string | null {
+  if (!value || !Number.isFinite(Date.parse(value))) return null;
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, calendar: 'iso8601', numberingSystem: 'latn', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(value));
+  const pick = (type: string) => parts.find(part => part.type === type)?.value ?? '';
+  return `${pick('year')}-${pick('month')}-${pick('day')}`;
+}
+
+const samePerson = (left: string, right: string) => left.trim().toUpperCase() === right.trim().toUpperCase();
+
+// Warnings never block anything: they only tell the planner the plan disagrees with Maximo's WO header.
+export function woWarnings(info: ScheduleInfo | undefined, assigned: AssignedPerson[], timeZone: string): WoWarnings {
+  if (!info || assigned.length === 0) return { outsideDates: [], picNotAssigned: false };
+  const start = localDate(info.schedstart, timeZone); const finish = localDate(info.schedfinish, timeZone);
+  const outsideDates = start && finish
+    ? [...new Set(assigned.map(person => person.date).filter(date => date < start || date > finish))].sort()
+    : [];
+  // assignedtechname is a PERSON code and equals the labor code, so compare codes, never display names.
+  const picNotAssigned = !!info.pic && !assigned.some(person => samePerson(person.laborcode, info.pic ?? ''));
+  return { outsideDates, picNotAssigned };
+}
+
+/** First assigned person: earliest assignment day, ties broken by name. Null when nobody is assigned. */
+export function suggestedPic(assigned: AssignedPerson[]): string | null {
+  const sorted = [...assigned].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, 'vi') || a.laborcode.localeCompare(b.laborcode));
+  return sorted[0]?.laborcode ?? null;
+}

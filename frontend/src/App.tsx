@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type MouseEvent } from 'react';
-import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { getLiveness } from './api/client';
 import { DemoScheduler } from './scheduling/DemoScheduler';
 import styles from './App.module.css';
@@ -13,6 +13,7 @@ import { AssignmentTimelineDemo } from './assignmentTimeline/AssignmentTimelineD
 import { RotaStagingPreview } from './rotaStaging/RotaStagingPreview';
 import { RotaImports } from './rotaImports/RotaImports';
 import { ResourceTimeline } from './resourceTimeline/ResourceTimeline';
+import type { PicSuggestion } from './picSuggestion';
 
 function Overview() {
   const [status, setStatus] = useState('Đang kiểm tra…');
@@ -53,6 +54,10 @@ export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?
   const [resourceMutationPending, setResourceMutationPending] = useState(false);
   const [navigationBlocked, setNavigationBlocked] = useState(false);
   const reportMutationPending = useCallback((value: boolean) => setResourceMutationPending(value), []);
+  const navigate = useNavigate();
+  const [picSuggestion, setPicSuggestion] = useState<PicSuggestion | null>(null);
+  const suggestPic = useCallback((suggestion: Omit<PicSuggestion, 'id'>) => { setPicSuggestion({ ...suggestion, id: Date.now() }); navigate('/work-orders'); }, [navigate]);
+  const clearPicSuggestion = useCallback(() => setPicSuggestion(null), []);
   const guardNavigation = useCallback((event: MouseEvent<HTMLElement>) => {
     if (resourceMutationPending && (event.target as HTMLElement).closest('a')) {
       event.preventDefault(); setNavigationBlocked(true);
@@ -76,11 +81,11 @@ export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?
       <Route path="/settings" element={<Settings />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="*" element={<p>Không tìm thấy trang. <Link to="/">Về tổng quan</Link></p>} /></Routes>
-      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} autoRetrieve={autoRetrieveWorkOrders} /></div>
+      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} autoRetrieve={autoRetrieveWorkOrders} picSuggestion={picSuggestion} onPicSuggestionHandled={clearPicSuggestion} /></div>
       {assignmentDemoVisited && <div hidden={!assignmentDemoActive}><AssignmentTimelineDemo /></div>}
       {rotaStagingVisited && <div hidden={!rotaStagingActive}><RotaStagingPreview /></div>}
       {rotaImportsVisited && <div hidden={!rotaImportsActive}><RotaImports active={rotaImportsActive} /></div>}
-      {resourceTimelineVisited && <div hidden={!resourceTimelineActive}><ResourceTimeline active={resourceTimelineActive} onPendingChange={reportMutationPending} /></div>}
+      {resourceTimelineVisited && <div hidden={!resourceTimelineActive}><ResourceTimeline active={resourceTimelineActive} onPendingChange={reportMutationPending} onSuggestPic={suggestPic} /></div>}
     </main>
     <footer><span>Onshore + Offshore · Nội bộ</span></footer>
   </div>;

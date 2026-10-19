@@ -6,7 +6,7 @@ Cập nhật: 2026-10-19.
 
 ### A. PIC và khoảng ngày lịch của WO trên backlog và timeline (đề xuất mới)
 
-- [~] **A1. Thẻ WO hiện PIC và khoảng lịch.** *(2026-10-19: phần backlog đã xong — xem bên dưới; phần timeline còn chờ backend.)* Thẻ backlog và thẻ phân công/tooltip trên timeline hiện
+- [x] **A1. Thẻ WO hiện PIC và khoảng lịch.** *(2026-10-19: xong cả backlog và timeline.)* Thẻ backlog và thẻ phân công/tooltip trên timeline hiện
       `assignedtechname` (hoặc "Chưa có PIC") và `schedstart → schedfinish`.
       - Backlog: dữ liệu đã có sẵn trong trang WO (`/work-orders/page` trả `schedstart`, `schedfinish`,
         `assignedtechname`), chỉ cần hiển thị.
@@ -14,7 +14,7 @@ Cập nhật: 2026-10-19.
         đã đọc đủ WO bằng `read_detail` (có `schedstart`, `schedfinish`, `assignedtechname`) nên thêm 3 trường
         vào payload là thay đổi cộng thêm, không thêm lời gọi Maximo. Cần agent backend và test hợp đồng API.
       - Định dạng ngày theo múi giờ nghiệp vụ của kết nối (không dùng múi giờ trình duyệt).
-- [ ] **A2. Cảnh báo (không chặn).** Hiện huy hiệu cảnh báo trên thẻ WO, ô phân công và hộp thoại phân
+- [x] **A2. Cảnh báo (không chặn).** *(2026-10-19: xong.)* Hiện huy hiệu cảnh báo trên thẻ WO, ô phân công và hộp thoại phân
       công, kèm lý do; không bao giờ chặn lưu hay gửi.
       - Cảnh báo 1: một phân công/đoạn kế hoạch của WO có ngày nằm ngoài `[schedstart, schedfinish]`.
         Quy tắc biên: so theo ngày trong múi giờ nghiệp vụ; WO thiếu `schedstart` hoặc `schedfinish` thì
@@ -24,7 +24,7 @@ Cập nhật: 2026-10-19.
       - Cần chốt: cách so khớp PIC với nhân sự. `assignedtechname` trong dữ liệu thật trông giống mã nhân
         công (ví dụ `HAIDQ`) và timeline có `laborcode`; phải xác minh trên Maximo test trước khi so khớp,
         không so bằng tên hiển thị.
-- [ ] **A3. Gợi ý PIC khi WO chưa có PIC.** Nút "Đặt X làm PIC" trên thẻ/hộp thoại, X là người được giao
+- [x] **A3. Gợi ý PIC khi WO chưa có PIC.** *(2026-10-19: xong.)* Nút "Đặt X làm PIC" trên thẻ/hộp thoại, X là người được giao
       đầu tiên (đề xuất: theo ngày phân công sớm nhất, hòa thì theo tên; cần xác nhận quy tắc).
       - Nút **không ghi Maximo**: chuyển sang trang Work orders, mở nháp của WO đó với `assignedtechname` đã
         điền sẵn (nháp theo cơ chế hiện có: baseline, phiên bản, kiểm tra quyền). Planner xem lại rồi lưu
@@ -46,6 +46,20 @@ Cập nhật: 2026-10-19.
 - Thứ tự đề xuất: A1 (backlog trước, dữ liệu sẵn) → A1 timeline (cần backend) → A2 → A3.
   Tiêu chí hoàn thành: test hiển thị, test quy tắc cảnh báo (biên ngày, thiếu lịch, múi giờ), test nút A3
   không gọi API ghi Maximo; xem ảnh trên dữ liệu thật.
+
+- **Làm xong 2026-10-19:**
+  - Backend: `work_orders[]` của `assignment-timeline` có thêm `schedstart`, `schedfinish`, `assignedtechname`
+    (nullable, serialise `model_dump(mode="json")` như các route WO khác; không thêm lời gọi Maximo). Test
+    `test_assignments_postgres.py` (4 passed với `--run-db-tests`), ruff sạch; chưa có assert cho
+    `assignedtechname=null`. Thay đổi nhỏ và chỉ cộng thêm nên không dùng review độc lập riêng.
+  - Frontend: thẻ backlog và ô phân công hiện cảnh báo (ngoài lịch WO, PIC chưa được giao; so mã
+    PERSON/laborcode không phân biệt hoa thường, biên ngày theo múi giờ nghiệp vụ); chú giải có mục cảnh báo.
+    Nút "Đặt X làm PIC (tạo nháp)" (X = người được giao sớm nhất, hòa theo tên) chuyển sang trang Work orders
+    và mở editor với PIC điền sẵn chưa lưu; không điền khi WO đã có PIC, nháp đã có PIC, PIC không thuộc
+    `allowed_pics`, hoặc khác kết nối/discipline. Không gọi API ghi.
+  - Giới hạn: cảnh báo chỉ xét phân công trong tháng đang xem; WO nhiều nháp nhóm (batch) không nhận PIC điền
+    sẵn; kiểm tra thủ công trên dữ liệu thật (Onshore test) chỉ mở editor, không lưu nháp.
+  - Cần restart backend để timeline có 3 trường mới (đã restart bản dev local).
 
 ### B. Hiệu năng `assignment-timeline` (backend, kết quả điều tra 2026-10-19)
 

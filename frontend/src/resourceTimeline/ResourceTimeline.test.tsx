@@ -54,12 +54,12 @@ function dragTo(source: HTMLElement, target: HTMLElement) {
   fireEvent.pointerMove(source,{clientX:150,clientY:150,pointerId:1});
   fireEvent.pointerUp(source,{clientX:150,clientY:150,pointerId:1});
 }
-async function loaded(initial: Snapshot = snapshot, orders: Array<import('../api/workOrders').WorkOrder> = [workOrder]) {
+async function loaded(initial: Snapshot = snapshot, orders: Array<import('../api/workOrders').WorkOrder> = [workOrder], props: React.ComponentProps<typeof ResourceTimeline> = {}) {
   api.settings.mockResolvedValue({ session, connections: [{ connection_id: 'conn', url: 'https://example.invalid' }] });
   api.auth.mockResolvedValue({ available: true, session }); api.pools.mockResolvedValue([pool]);
   api.revision.mockResolvedValue({pool_id:pool.id,connection_id:'conn',discipline:'E&I',revision:'r1'});
   api.timeline.mockResolvedValue(initial); api.orders.mockResolvedValue(orders);
-  const view = render(<ResourceTimeline />);
+  const view = render(<ResourceTimeline {...props} />);
   await screen.findByText(/Nguyen A/);
   await screen.findByRole('table');
   await waitFor(()=>expect(api.orders).toHaveBeenCalled());
@@ -716,6 +716,27 @@ it('shows the PIC and schedule range on backlog cards, or says they are missing'
   expect(screen.getByText('PIC HAIDQ · 04/10 → 31/10')).toBeInTheDocument();
   expect(screen.getByText('Chưa có PIC · Chưa có lịch')).toBeInTheDocument();
   expect(screen.getByRole('button',{name:/WO-PIC .*PIC HAIDQ · Lịch 04\/10 → 31\/10/})).toBeInTheDocument();
+});
+
+it('warns, without blocking, when assignments fall outside the WO schedule or the PIC is not assigned',async()=>{
+  const wo={...workOrder,assignedtechname:'NAMTX',schedstart:'2026-10-06T08:00:00+07:00',schedfinish:'2026-10-10T17:00:00+07:00'} as unknown as typeof workOrder;
+  await loaded({...snapshot,items:[item],work_orders:[order]},[wo]);
+  expect(screen.getByText(/1 ngày phân công ngoài lịch WO · PIC chưa nằm trong người được giao/)).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:/Trạng thái: .*Cảnh báo: ngày này nằm ngoài lịch WO/})).toBeEnabled();
+  expect(screen.queryByRole('button',{name:/làm PIC/})).not.toBeInTheDocument();
+});
+
+it('suggests the first assigned person as PIC for a WO without PIC and hands it to the page',async()=>{
+  const onSuggestPic=vi.fn();
+  await loaded({...snapshot,items:[item],work_orders:[order]},[workOrder],{onSuggestPic});
+  fireEvent.click(screen.getByRole('button',{name:'Đặt LAB-1 làm PIC (tạo nháp)'}));
+  expect(onSuggestPic).toHaveBeenCalledWith({connection_id:'conn',discipline:'E&I',site_id:'SITE',workorder_id:'wo-1',pic:'LAB-1'});
+});
+
+it('does not offer a PIC suggestion when the WO already has one or nobody is assigned',async()=>{
+  const withPic={...workOrder,assignedtechname:'LAB-1'} as unknown as typeof workOrder;
+  await loaded({...snapshot,items:[item],work_orders:[order]},[withPic],{onSuggestPic:vi.fn()});
+  expect(screen.queryByRole('button',{name:/làm PIC/})).not.toBeInTheDocument();
 });
 
 describe('live Resource timeline interactions', () => {

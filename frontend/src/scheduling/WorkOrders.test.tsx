@@ -1346,3 +1346,29 @@ it('does not retry automatically after a failed first load', async () => {
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
   expect(screen.getByRole('button', { name: 'Retrieve WO' })).toBeEnabled();
 });
+
+const picDetail = { item: row, baseline_token: 'a'.repeat(64), allowed_pics: ['TECH'],
+  baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedtechname: null, estdur: '8', targstartdate: null, targcompdate: row.targcompdate } };
+const suggestion = { id: 1, connection_id: 'two', discipline: 'MECH', site_id: 'SITE-A', workorder_id: '100', pic: 'TECH' };
+
+it('opens the suggested WO with the PIC pre-filled and unsaved, and reports the suggestion as handled', async () => {
+  vi.mocked(getLiveness).mockResolvedValue(true);
+  vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: { ...session, preferred_connection_id: 'two' } });
+  vi.mocked(getDetail).mockResolvedValue(picDetail);
+  const handled = vi.fn();
+  render(<MemoryRouter initialEntries={['/work-orders']}><WorkOrders picSuggestion={suggestion} onPicSuggestionHandled={handled} /></MemoryRouter>);
+  expect(await screen.findByText(/Đã điền sẵn PIC TECH \(chưa lưu\)/)).toBeInTheDocument();
+  expect(screen.getByLabelText('Assigned PIC')).toHaveValue('TECH');
+  expect(handled).toHaveBeenCalledTimes(1);
+  expect(saveDraft).not.toHaveBeenCalled();
+});
+
+it('refuses a PIC suggestion made for another connection or discipline', async () => {
+  vi.mocked(getLiveness).mockResolvedValue(true);
+  vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: { ...session, preferred_connection_id: 'two' } });
+  const handled = vi.fn();
+  render(<MemoryRouter initialEntries={['/work-orders']}><WorkOrders picSuggestion={{ ...suggestion, connection_id: 'one' }} onPicSuggestionHandled={handled} /></MemoryRouter>);
+  expect(await screen.findByText(/thuộc kết nối hoặc discipline khác/)).toBeInTheDocument();
+  expect(getDetail).not.toHaveBeenCalled();
+  expect(handled).toHaveBeenCalledTimes(1);
+});
