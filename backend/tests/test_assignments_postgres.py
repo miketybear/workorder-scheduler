@@ -108,6 +108,14 @@ def test_assignment_api_lifecycle_capacity_scope_and_replacement(monkeypatch, le
                                 siteid="OTHER"
                                 if 'siteid="OTHER"' in request.url.params.get("oslc.where", "")
                                 else "TEST",
+                                **(
+                                    {}
+                                    if 'siteid="OTHER"' in request.url.params.get("oslc.where", "")
+                                    else {
+                                        "schedstart": "2026-10-01T08:00:00+07:00",
+                                        "schedfinish": "2026-10-01T17:00:00+07:00",
+                                    }
+                                ),
                             )
                         ]
                     },
@@ -196,6 +204,14 @@ def test_assignment_api_lifecycle_capacity_scope_and_replacement(monkeypatch, le
                 assert len(timeline.json()["items"]) == 2
                 assert len(timeline.json()["work_orders"]) == 2
                 assert timeline.json()["work_orders"][0]["eligible"] is True
+                by_site = {w["site_id"]: w for w in timeline.json()["work_orders"]}
+                assert by_site["TEST"]["schedstart"] == "2026-10-01T08:00:00+07:00"
+                assert by_site["TEST"]["schedfinish"] == "2026-10-01T17:00:00+07:00"
+                assert by_site["TEST"]["assignedtechname"] == "TEST-PIC"
+                # Missing schedule values pass through as null.
+                assert by_site["OTHER"]["schedstart"] is None
+                assert by_site["OTHER"]["schedfinish"] is None
+                assert by_site["OTHER"]["assignedtechname"] == "TEST-PIC"
                 assert all(row["craft"] == "MECH" for row in timeline.json()["rows"])
                 assert (
                     await client.get(timeline_url, params={**timeline_params, "discipline": "DECK"})

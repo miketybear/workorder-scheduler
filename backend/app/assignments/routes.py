@@ -552,6 +552,10 @@ async def assignment_timeline(
                     "eligible": order.status in settings.open_statuses
                     and not order.istask
                     and order.parent in (None, ""),
+                    # Same JSON serialisation as the scoped WO list (pydantic mode="json").
+                    **order.model_dump(
+                        mode="json", include={"schedstart", "schedfinish", "assignedtechname"}
+                    ),
                 }
             )
     refreshed, _ = await checked_settings(request, scope_key, discipline)
