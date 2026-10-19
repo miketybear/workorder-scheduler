@@ -12,6 +12,7 @@ import { AssignmentCard } from './AssignmentCard';
 import { PlanMoveDialog } from './PlanMoveDialog';
 import { RoleDonut } from './RoleDonut';
 import { StatusIcon } from './StatusIcons';
+import { restoreFocus } from './focusRestore';
 import type { PicSuggestion } from '../picSuggestion';
 import { dayNames, monthOf, addMonth, monthDates, addCalendarDays, calendarRange, displayHours, displayDate, formatMaximoDateTime, expectedFinish, parseHours, displayRole, capacityFor, scheduleRange, subMonth, suggestedPic, suggestTaskPlans, todayIn, woWarnings, type AssignedPerson, type ScheduleInfo, type WoWarnings } from './timelineHelpers';
 import styles from './ResourceTimeline.module.css';
@@ -290,7 +291,7 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     };
     document.addEventListener('keydown', handleKey);
-    return () => { document.removeEventListener('keydown', handleKey); if (previous?.isConnected) previous.focus(); };
+    return () => { document.removeEventListener('keydown', handleKey); if (previous?.isConnected) restoreFocus(previous); };
     // Rebind only when dialog opens/closes or mutation locks change, not on hour input.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!proposal, active, busy, pending,uploading,uploadUnknownRequest,planUploadCloseLocked]);

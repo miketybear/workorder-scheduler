@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Assignment, AssignmentPlanMovePreview, ResourcePerson } from '../api/assignments';
+import { restoreFocus } from './focusRestore';
 import styles from './ResourceTimeline.module.css';
 
 type Props={
@@ -35,7 +36,7 @@ export function PlanMoveDialog(props:Props){
       else if(!event.shiftKey&&document.activeElement===controls.at(-1)){event.preventDefault();controls[0]?.focus();}
     };
     document.addEventListener('keydown',key);
-    return()=>{document.removeEventListener('keydown',key);if(prior?.isConnected)prior.focus();};
+    return()=>{document.removeEventListener('keydown',key);if(prior?.isConnected)restoreFocus(prior);};
   },[]);
   useEffect(()=>{
     if(!busy&&!unknown)return;

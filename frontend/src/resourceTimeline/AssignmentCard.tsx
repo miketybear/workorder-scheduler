@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type 
 import { createPortal } from 'react-dom';
 import type { Assignment } from '../api/assignments';
 import { StatusIcon } from './StatusIcons';
+import { isRestoringFocus } from './focusRestore';
 import styles from './ResourceTimeline.module.css';
 
 type Props = {
@@ -55,7 +56,7 @@ export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours
     timerRef.current = window.setTimeout(show, 2000);
   }
   function onFocus() {
-    if (pointerInteraction.current) return;
+    if (pointerInteraction.current || isRestoringFocus()) return;
     setHiddenUntilLeave(false);
     setEngaged(true);
     show();
