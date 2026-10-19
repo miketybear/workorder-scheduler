@@ -41,7 +41,7 @@
 .woHeading strong { min-width:0; overflow-wrap:anywhere; }
 .woCard .priorityBadge { justify-self:end; align-self:start; padding:2px 5px; border-radius:3px; font-weight:700; white-space:nowrap; color:var(--tag-neutral-ink); background:var(--tag-neutral-bg); }
 .woCard[data-priority="4"] { border-left:4px solid var(--error); }
-.woCard[data-priority="4"] .priorityBadge { color:#fffffffff; background:var(--danger-button); }
+.woCard[data-priority="4"] .priorityBadge { color:var(--tooltip-ink); background:var(--danger-button); }
 .woCard[data-priority="3"] { border-left:4px solid var(--warning-border); }
 .woCard[data-priority="3"] .priorityBadge { color:var(--tag-warm-ink); background:var(--tag-warm-bg); }
 .woCard[data-priority="2"] .priorityBadge { color:var(--tag-blue-ink); background:var(--tag-blue-bg); }
@@ -137,7 +137,7 @@
 .assignmentSynced { border-left-color:var(--teal); }
 .assignmentUnknown { border-left-color:var(--danger-ink); background:var(--warning-bg); color:var(--danger-ink); }
 .assignmentUnknownMark { display:inline-grid; place-items:center; width:14px; height:14px; border:1px solid currentColor; border-radius:50%; }
-.assignmentTooltip { position:fixed; z-index:50; box-sizing:border-box; width:max-content; max-width:min(360px,calc(100vw - 24px)); max-height:45vh; overflow:auto; display:grid; gap:5px; padding:9px 11px; border:1px solid var(--line); border-radius:7px; background:var(--tooltip-bg); color:#fffffffff; box-shadow:var(--shadow-overlay); font-size:12px; line-height:1.4; white-space:normal; overflow-wrap:anywhere; pointer-events:none; }
+.assignmentTooltip { position:fixed; z-index:50; box-sizing:border-box; width:max-content; max-width:min(360px,calc(100vw - 24px)); max-height:45vh; overflow:auto; display:grid; gap:5px; padding:9px 11px; border:1px solid var(--line); border-radius:7px; background:var(--tooltip-bg); color:var(--tooltip-ink); box-shadow:var(--shadow-overlay); font-size:12px; line-height:1.4; white-space:normal; overflow-wrap:anywhere; pointer-events:none; }
 .assignmentTooltip strong { font-size:13px; }
 .legend { display:flex; flex-wrap:wrap; gap:6px 14px; }
 .legend span { white-space:nowrap; }
@@ -304,3 +304,5 @@
 .woCardGroup .suggestPic { justify-self: start; min-height: 32px; padding: 4px 10px; border: 1px solid var(--link); border-radius: var(--radius); background: var(--layer); color: var(--link); font-size: 12px; cursor: pointer; }
 .woCardGroup .suggestPic:hover { background: var(--accent-tint); }
 .tooltipWarning { color: var(--warning-border); font-weight: 600; }
+/* The tooltip surface is inverted in the dark theme, so the warning colour needs the opposite contrast. */
+:global(:root[data-theme="g100"]) .tooltipWarning { color: #8a3800; }

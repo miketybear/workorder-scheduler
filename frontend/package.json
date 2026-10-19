@@ -10,7 +10,7 @@
     "dev": "vite --host 127.0.0.1",
     "dev:https": "vite --config vite.local-https.config.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/check-css-colors.mjs",
     "test": "vitest run",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1"
