@@ -75,6 +75,22 @@ Cập nhật: 2026-10-19.
 - [ ] Xóa nhánh `ui/design-tokens` (local và remote) vì đã merge.
 - [ ] Lần tải nguội (25–30 giây) chưa đo được vì cần xóa cache backend/Maximo.
 
+## Ô ngày giờ 24 giờ và họ tên PIC — 2026-10-20
+
+- [x] Ô ngày giờ trong cửa sổ lập lịch (Scheduled Start, Target Start/Finish; ô nhóm và từng dòng ở editor nhóm)
+      dùng một chuẩn: bộ chọn ngày gốc + giờ 00–23 + phút (`components/DateTimeInput.tsx`), thay cho
+      `datetime-local` vốn theo ngôn ngữ trình duyệt (12 giờ am/pm). Ô giờ bắt đầu kế hoạch/đồng bộ hàng loạt dùng
+      `TimeInput24`. Giờ mặc định khi mới chọn ngày: 06:30 cho Scheduled Start, 23:59 cho Target Finish, 00:00 cho
+      Target Start. Hiển thị chữ vẫn `dd/MM/yyyy, HH:mm` (24 giờ).
+- Còn dùng ô ngày gốc `type="date"`/`month` (thứ tự ngày theo ngôn ngữ trình duyệt): khoảng Target Finish ở trang WO,
+  ngày kế hoạch ở hộp thoại timeline, chọn tháng timeline (hiện "October 2026"). Chưa đổi.
+- [x] Assigned PIC hiện "MÃ — Họ tên" (select, bảng đối chiếu, thông tin WO, thẻ backlog timeline và nút gợi ý PIC);
+      giá trị lưu vẫn là mã PERSON. Backend thêm `pic_names` (additive) vào detail, restore, batch prepare và danh
+      sách nháp có `include_items`; đọc `mxperson` bằng một GET nhỏ (~40–90 ms); lỗi đọc thì trả `{}`, không làm hỏng
+      response. Tên lấy `displayname`, rỗng thì họ + tên (đúng thứ tự Maximo).
+- Chưa có tên cho "Onshore PIC" (`lead`) trừ khi trùng crew; thẻ backlog dùng tên từ roster timeline.
+- [x] 454 frontend tests, 718 backend tests (không integration), lint, typecheck, build đạt; kiểm tra trên dữ liệu thật.
+
 ## Scheduled Finish theo ca làm việc ngoài biển — 2026-10-20
 
 - [x] Finish = Start + Est. Duration tính theo giờ làm việc (`scheduling/workShift.ts`): cửa sổ 06:30–18:30, tối đa

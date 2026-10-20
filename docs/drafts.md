@@ -92,7 +92,10 @@ lại cả bảng. Backend luôn kiểm tra quyền/baseline/version trước th
 ## Hợp đồng API
 
 `GET /api/work-orders/detail` nhận connection_id, site_id, workorder_id, discipline;
-trả item, baseline, baseline_token, allowed_pics và revision=null.
+trả item, baseline, baseline_token, allowed_pics, pic_names và revision=null.
+`pic_names` là map mã PERSON -> tên hiển thị (Maximo PERSON; displayname, nếu trống thì lastname + firstname)
+cho allowed_pics và PIC hiện tại của WO; mã không rõ tên bị bỏ qua. Chỉ để hiển thị, không là cơ sở phân quyền.
+Draft restore và `POST /api/draft-batches/prepare` cũng trả `pic_names` cùng allowed_pics.
 
 `POST /api/drafts` nhận các trường identity trên, changes, baseline_token và request_id (UUID).
 `PUT /api/drafts/{draft_id}` nhận cùng payload và version (số nguyên dương).

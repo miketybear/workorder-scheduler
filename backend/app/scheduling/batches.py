@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.db.models import Draft, DraftItem
-from app.maximo.detail import current_snapshot, read_detail, read_pics
+from app.maximo.detail import current_snapshot, read_detail, read_pic_names, read_pics
 from app.maximo.reader import MaximoReadError
 from app.request_deadline import ReadDraftDeadlineRoute
 from app.scheduling.changes import ScheduleChanges, build_changes
@@ -62,7 +62,7 @@ class BatchUpdate(BatchSave):
     version: int = Field(gt=0, strict=True)
 
 
-async def snapshots(request, payload, *, write=True, csrf=True):
+async def snapshots(request, payload, *, write=True, csrf=True, names=False):
     key = WorkOrderKey(payload.connection_id, "", "")
     identity, config = await checked_settings(
         request, key, payload.discipline, write=write, csrf=csrf
@@ -70,6 +70,7 @@ async def snapshots(request, payload, *, write=True, csrf=True):
     semaphore = asyncio.Semaphore(4)
     async with request.app.state.maximo_client_factory() as client:
         pics = await read_pics(client, config, payload.discipline)
+        pic_names = await read_pic_names(client, config, pics) if names else {}
 
         async def read(item):
             key = WorkOrderKey(payload.connection_id, item.site_id, item.workorder_id)
@@ -80,7 +81,7 @@ async def snapshots(request, payload, *, write=True, csrf=True):
                         raise HTTPException(404, "Work order not found")
                     if order.status not in config.open_statuses or order.istask or order.parent:
                         raise HTTPException(409, "Work order no longer eligible")
-                    return order, current_snapshot(key, order, pics)
+                    return order, current_snapshot(key, order, pics, pic_names)
                 except (MaximoReadError, HTTPException):
                     # Never echo upstream values or disclose a guessed record outside scope.
                     return {
@@ -117,7 +118,7 @@ async def snapshots(request, payload, *, write=True, csrf=True):
 @router.post("/prepare")
 async def prepare(request: Request, response: Response, payload: BatchPrepare):
     response.headers["Cache-Control"] = "no-store"
-    _, results = await snapshots(request, payload)
+    _, results = await snapshots(request, payload, names=True)
     return {
         "connection_id": str(payload.connection_id),
         "discipline": payload.discipline,
@@ -127,6 +128,7 @@ async def prepare(request: Request, response: Response, payload: BatchPrepare):
                 "baseline": current.baseline.model_dump(mode="json"),
                 "baseline_token": snapshot_token(current),
                 "allowed_pics": sorted(current.allowed_pics),
+                "pic_names": current.pic_names,
             }
             for order, current in results
         ],

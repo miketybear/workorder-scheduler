@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.auth.sessions import SESSION_COOKIE, resolve_session
 from app.db.models import Draft, DraftItem
-from app.maximo.detail import current_snapshot, read_detail, read_pics
+from app.maximo.detail import current_snapshot, read_detail, read_pic_names, read_pics
 from app.maximo.reader import MaximoReadError
 from app.scheduling.drafts import WorkOrderKey, require_scope
 
@@ -37,11 +37,12 @@ def membership(items):
     return {(item.id, item.site_id, item.workorder_id, item.discipline) for item in items}
 
 
-async def fresh_page(request, config, connection_id, discipline, keys):
+async def fresh_page(request, config, connection_id, discipline, keys, *, names=False):
     """Read each distinct WO once, with one shared crew read and four active details."""
     semaphore = asyncio.Semaphore(4)
     async with request.app.state.maximo_client_factory() as client:
         pics = await read_pics(client, config, discipline)
+        pic_names = await read_pic_names(client, config, pics) if names else {}
 
         async def read(key):
             async with semaphore:
@@ -51,7 +52,7 @@ async def fresh_page(request, config, connection_id, discipline, keys):
                         raise HTTPException(404, "Work order not found")
                     if order.status not in config.open_statuses or order.istask or order.parent:
                         raise HTTPException(409, "Work order no longer eligible")
-                    return order, current_snapshot(key, order, pics)
+                    return order, current_snapshot(key, order, pics, pic_names)
                 except (HTTPException, MaximoReadError) as error:
                     return error
 
@@ -87,7 +88,11 @@ async def verified_page(request, actor, ids, connection_id, discipline, config, 
             for item in items
         )
     )
-    verified = await fresh_page(request, config, connection_id, discipline, keys) if keys else {}
+    verified = (
+        await fresh_page(request, config, connection_id, discipline, keys, names=include_items)
+        if keys
+        else {}
+    )
     fresh_actor, _ = await checked_settings(
         request, WorkOrderKey(connection_id, "", ""), discipline
     )

@@ -86,6 +86,11 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                             ]
                         },
                     )
+                if request.url.path.endswith("/mxperson"):
+                    return httpx.Response(
+                        200,
+                        json={"member": [{"personid": "TECH", "displayname": "Tech Person"}]},
+                    )
                 return httpx.Response(
                     200,
                     json={
@@ -163,6 +168,7 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                     assert detail.status_code == 200
                     assert detail.json()["pics_configured"] is False
                     assert detail.json()["allowed_pics"] == []
+                    assert detail.json()["pic_names"] == {}
                     assert detail.json()["item"]["workorderid"] == "100"
                     denied = await client.get(
                         "/api/work-orders/detail", params={**key, "discipline": "OTHER"}
@@ -177,6 +183,8 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                 assert restored.json()["items"][0]["changes"]["estdur"] == "9"
                 assert restored.json()["items"][0]["baseline_changed"] is False
                 assert restored.json()["items"][0]["changes_valid_now"] is True
+                assert restored.json()["items"][0]["allowed_pics"] == ["TECH"]
+                assert restored.json()["items"][0]["pic_names"] == {"TECH": "Tech Person"}
                 detail = await client.get(
                     "/api/work-orders/detail",
                     params={
@@ -187,6 +195,7 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                 )
                 assert detail.status_code == 200
                 assert detail.json()["allowed_pics"] == ["TECH"]
+                assert detail.json()["pic_names"] == {"TECH": "Tech Person"}
                 assert detail.json()["revision"] is None
                 headers = {"X-CSRF-Token": csrf}
                 duplicate = await client.post("/api/drafts", json=payload, headers=headers)

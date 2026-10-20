@@ -151,6 +151,9 @@ def test_batch_deadline_cancels_running_and_queued_children_before_client_close(
         async def pics(*args):
             return frozenset({"TECH"})
 
+        async def names(*args):
+            return {}
+
         async def detail(client, config, key, discipline):
             started.add(key.workorder_id)
             try:
@@ -168,6 +171,7 @@ def test_batch_deadline_cancels_running_and_queued_children_before_client_close(
 
         monkeypatch.setattr(batches, "checked_settings", checked)
         monkeypatch.setattr(batches, "read_pics", pics)
+        monkeypatch.setattr(batches, "read_pic_names", names)
         monkeypatch.setattr(batches, "read_detail", detail)
         app.state.maximo_client_factory = factory
         async with httpx.AsyncClient(

@@ -89,6 +89,11 @@ def test_draft_page_verifies_distinct_keys_and_current_scope(case, expanded):
                             ]
                         },
                     )
+                if request.url.path.endswith("mxperson"):
+                    return httpx.Response(
+                        200,
+                        json={"member": [{"personid": "TECH", "displayname": "Tech Person"}]},
+                    )
                 active += 1
                 peak = max(peak, active)
                 try:
@@ -142,7 +147,9 @@ def test_draft_page_verifies_distinct_keys_and_current_scope(case, expanded):
                 )
                 assert peak <= 4
                 assert active == 0
-                assert len(calls) == (402 if case == "distinct" else 202)
+                assert len([c for c in calls if not c.url.path.endswith("mxperson")]) == (
+                    402 if case == "distinct" else 202
+                )
                 if case == "revoked":
                     assert response.status_code == 404
                     return
@@ -161,6 +168,9 @@ def test_draft_page_verifies_distinct_keys_and_current_scope(case, expanded):
                     if expanded:
                         assert len(row["items"]) == row["item_count"]
                         assert all(item["allowed_pics"] == ["TECH"] for item in row["items"])
+                        assert all(
+                            item["pic_names"] == {"TECH": "Tech Person"} for item in row["items"]
+                        )
                         assert all(item["baseline_changed"] for item in row["items"])
                         assert all(item["changes_valid_now"] for item in row["items"])
 

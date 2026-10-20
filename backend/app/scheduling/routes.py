@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app.auth.person_access import sync_person_access
 from app.auth.sessions import SESSION_COOKIE, resolve_session, verify_csrf
 from app.db.models import AccessGrant, Draft, DraftItem, DraftSubmission
-from app.maximo.detail import current_snapshot, read_detail, read_pics
+from app.maximo.detail import current_snapshot, read_detail, read_pic_names, read_pics
 from app.maximo.routes import authorized_connection, configured_connection
 from app.request_deadline import ReadDraftDeadlineRoute
 from app.scheduling.changes import ScheduleChanges, build_changes
@@ -41,6 +41,7 @@ def restored_item(item, current):
         "baseline_changed": item.baseline != baseline,
         "changes_valid_now": valid,
         "allowed_pics": sorted(current.allowed_pics),
+        "pic_names": current.pic_names,
     }
 
 
@@ -68,7 +69,7 @@ async def checked_settings(request, key, discipline, *, write=False, csrf=False)
 
 
 async def retrieve_snapshot(
-    request, key, discipline, *, write=False, csrf=False, require_pics=True
+    request, key, discipline, *, write=False, csrf=False, require_pics=True, names=False
 ):
     identity, settings = await checked_settings(request, key, discipline, write=write, csrf=csrf)
     async with request.app.state.maximo_client_factory() as client:
@@ -87,8 +88,12 @@ async def retrieve_snapshot(
             if require_pics or discipline in settings.crew_groups
             else frozenset()
         )
+        # One small extra read covers the crew and this WO's current PIC.
+        pic_names = (
+            await read_pic_names(client, settings, {*pics, order.assignedtechname}) if names else {}
+        )
     await checked_settings(request, key, discipline, write=write, csrf=csrf)
-    return identity, order, current_snapshot(key, order, pics)
+    return identity, order, current_snapshot(key, order, pics, pic_names)
 
 
 @router.get("/work-orders/detail")
@@ -108,12 +113,17 @@ async def detail(
     ):
         raise HTTPException(422, "Unsupported or duplicate query parameter")
     _, order, current = await retrieve_snapshot(
-        request, WorkOrderKey(connection_id, site_id, workorder_id), discipline, require_pics=False
+        request,
+        WorkOrderKey(connection_id, site_id, workorder_id),
+        discipline,
+        require_pics=False,
+        names=True,
     )
     return {
         "connection_id": str(connection_id),
         "item": order.model_dump(mode="json"),
         "allowed_pics": sorted(current.allowed_pics),
+        "pic_names": current.pic_names,
         "pics_configured": discipline
         in request.app.state.settings.maximo[connection_id].crew_groups,
         "revision": None,
@@ -266,14 +276,14 @@ async def restore_data(request, draft_id):
                     {"site_id": item.site_id, "workorder_id": item.workorder_id} for item in scopes
                 ],
             )
-            _, results = await snapshots(request, payload, write=False, csrf=False)
+            _, results = await snapshots(request, payload, write=False, csrf=False, names=True)
             for order, current in results:
                 orders[current.key], currents[current.key] = order, current
         else:
             for item in scopes:
                 key = WorkOrderKey(draft.connection_id, item.site_id, item.workorder_id)
                 _, orders[key], currents[key] = await retrieve_snapshot(
-                    request, key, item.discipline
+                    request, key, item.discipline, names=True
                 )
 
         async def reader(key):

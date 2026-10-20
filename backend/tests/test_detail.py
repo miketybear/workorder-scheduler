@@ -1,11 +1,12 @@
 import asyncio
+import json
 from uuid import uuid4
 
 import httpx
 import pytest
 from test_maximo import config, record
 
-from app.maximo.detail import read_detail, read_pics
+from app.maximo.detail import read_detail, read_pic_names, read_pics
 from app.maximo.reader import MaximoReadError
 from app.scheduling.drafts import WorkOrderKey
 
@@ -135,3 +136,73 @@ def test_crew_group_is_server_configured_and_response_checked(fault):
             asyncio.run(scenario())
     else:
         asyncio.run(scenario())
+
+
+def person_handler(people, seen):
+    def handler(request):
+        assert request.method == "GET"
+        assert request.url.path.endswith("/mxperson")
+        seen.append(request.url.params["oslc.where"])
+        return httpx.Response(200, json={"member": people})
+
+    return handler
+
+
+def test_pic_names_use_display_name_then_name_parts_and_omit_unknown():
+    async def scenario():
+        seen = []
+        people = [
+            {"personid": "HAIDQ", "displayname": "Dao Quang Hai", "firstname": "X"},
+            {"personid": "BANPV", "displayname": "  ", "firstname": "Ban", "lastname": "Pham Van"},
+            {"personid": "NONAME", "displayname": "", "firstname": None},
+            {"personid": "NOTASKED", "displayname": "Nobody"},
+        ]
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(person_handler(people, seen))
+        ) as client:
+            names = await read_pic_names(
+                client, config(), ["HAIDQ", "BANPV", "NONAME", "MISSING", "bad;code", "", None]
+            )
+        assert names == {"HAIDQ": "Dao Quang Hai", "BANPV": "Pham Van Ban"}
+        assert seen == ['personid in ["BANPV","HAIDQ","MISSING","NONAME"]']
+
+    asyncio.run(scenario())
+
+
+def test_pic_names_chunk_at_100_and_skip_request_without_codes():
+    async def scenario():
+        seen = []
+        codes = [f"P{number:03}" for number in range(150)]
+        people = [{"personid": value, "displayname": value} for value in codes]
+
+        def handler(request):
+            wanted = request.url.params["oslc.where"][len("personid in [") : -1].split(",")
+            seen.append(len(wanted))
+            return httpx.Response(
+                200,
+                json={"member": [p for p in people if json.dumps(p["personid"]) in wanted]},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            assert len(await read_pic_names(client, config(), codes)) == 150
+            assert seen == [100, 50]
+            assert await read_pic_names(client, config(), [None, "bad;code"]) == {}
+            assert seen == [100, 50]
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("fault", ["status", "no-id", "garbage"])
+def test_pic_name_failures_degrade_to_no_names(fault):
+    async def scenario():
+        def handler(request):
+            if fault == "status":
+                return httpx.Response(500)
+            if fault == "garbage":
+                return httpx.Response(200, json={"member": "x"})
+            return httpx.Response(200, json={"member": [{"displayname": "No id"}]})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            assert await read_pic_names(client, config(), ["HAIDQ"]) == {}
+
+    asyncio.run(scenario())

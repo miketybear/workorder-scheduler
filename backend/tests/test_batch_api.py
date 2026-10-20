@@ -68,6 +68,11 @@ def test_batch_atomic_validation_and_lifecycle(case):
                             ]
                         },
                     )
+                if request.url.path.endswith("/mxperson"):
+                    return httpx.Response(
+                        200,
+                        json={"member": [{"personid": "TECH", "displayname": "Tech Person"}]},
+                    )
                 identifier = re.search(
                     r"workorderid=(\d+)", request.url.params["oslc.where"]
                 ).group(1)
@@ -128,6 +133,13 @@ def test_batch_atomic_validation_and_lifecycle(case):
                     "101",
                 ]
                 assert sum(call.url.path.endswith("/mxpersongroup") for call in calls) == 1
+                # One shared PERSON read per batch; allowed_pics itself is unchanged.
+                assert sum(call.url.path.endswith("/mxperson") for call in calls) == 1
+                assert all(
+                    item["allowed_pics"] == ["TECH"]
+                    and item["pic_names"] == {"TECH": "Tech Person"}
+                    for item in prepared.json()["items"]
+                )
                 edits = [
                     {**key, "baseline_token": item["baseline_token"], "changes": {"estdur": "9"}}
                     for key, item in zip(keys, prepared.json()["items"], strict=True)
@@ -229,6 +241,8 @@ def test_monthly_batch_persistence_and_atomic_failure(count, fault):
                             ]
                         },
                     )
+                if request.url.path.endswith("/mxperson"):
+                    return httpx.Response(200, json={"member": []})
                 identifier = int(
                     re.search(r"workorderid=(\d+)", request.url.params["oslc.where"]).group(1)
                 )

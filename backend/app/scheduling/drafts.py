@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -25,6 +25,8 @@ class CurrentWorkOrder:
     revision: str | None
     baseline: WorkOrderBaseline
     allowed_pics: frozenset[str]
+    # Display-only PERSON names; never part of authorization or the baseline token.
+    pic_names: dict[str, str] = field(default_factory=dict, compare=False, hash=False)
 
 
 ReadCurrent = Callable[[WorkOrderKey], Awaitable[CurrentWorkOrder]]

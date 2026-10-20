@@ -1,5 +1,6 @@
 import json
 import re
+from collections.abc import Iterable
 from urllib.parse import urlsplit
 
 import httpx
@@ -122,6 +123,59 @@ async def read_pics(
     return frozenset(people)
 
 
+def display_name(raw) -> str | None:
+    """Maximo displayname, else lastname + firstname (Maximo's own display order)."""
+    parts = [raw.get(field) for field in ("displayname", "firstname", "lastname")]
+    if not all(part is None or isinstance(part, str) for part in parts):
+        return None
+    display, first, last = (" ".join((part or "").split()) for part in parts)
+    name = display or " ".join(part for part in (last, first) if part)
+    return name if 0 < len(name) <= 200 and name.isprintable() else None
+
+
+async def read_pic_names(
+    client: httpx.AsyncClient, settings: MaximoSettings, codes: Iterable[str | None]
+) -> dict[str, str]:
+    """PERSON display names for already-authorized codes; unknown names are omitted.
+
+    Names are display-only, so an unavailable PERSON read yields no names instead of
+    failing the work order response. Names never come from the browser.
+    """
+    quoted = {}
+    for value in sorted({value for value in codes if value}):
+        try:
+            quoted[value] = code(value)
+        except MaximoReadError:
+            continue  # Not a valid PERSON code; there is nothing safe to look up.
+    person_settings = settings.model_copy(
+        update={"collection_url": settings.collection_url.rsplit("/", 1)[0] + "/mxperson"}
+    )
+    names: dict[str, str] = {}
+    values = list(quoted)
+    for start in range(0, len(values), 100):
+        chunk = values[start : start + 100]
+        params = {
+            "lean": "1",
+            "oslc.select": "personid,displayname,firstname,lastname",
+            "oslc.where": "personid in [" + ",".join(quoted[value] for value in chunk) + "]",
+            "oslc.pageSize": str(len(chunk)),
+        }
+
+        def validate(raw, chunk=chunk):
+            personid = raw.get("personid")
+            if not isinstance(personid, str):
+                raise MaximoReadError("Invalid PERSON response")
+            # Ignore anything that was not requested rather than trusting it.
+            return (personid, display_name(raw) if personid in chunk else None), personid
+
+        try:
+            people = await read_collection(client, person_settings, params, validate)
+        except MaximoReadError:
+            return {}
+        names.update({personid: name for personid, name in people if name})
+    return names
+
+
 def trusted_team_relation(raw: dict, collection_url: str) -> str:
     parent, relation = raw.get("href"), raw.get("persongroupteam_collectionref")
     if not isinstance(parent, str) or not isinstance(relation, str):
@@ -150,9 +204,13 @@ def trusted_team_relation(raw: dict, collection_url: str) -> str:
     return str(httpx.URL(collection_url).copy_with(path=target.path))
 
 
-def current_snapshot(key: WorkOrderKey, order, pics: frozenset[str]) -> CurrentWorkOrder:
+def current_snapshot(
+    key: WorkOrderKey, order, pics: frozenset[str], pic_names: dict[str, str] | None = None
+) -> CurrentWorkOrder:
     baseline = WorkOrderBaseline.model_validate(
         {field: getattr(order, field) for field in WorkOrderBaseline.model_fields}
     )
     # Collection ETags are not record revisions. Leave revision unset until verified on test.
-    return CurrentWorkOrder(key, order.wonum, order.bdpocdiscipline, None, baseline, pics)
+    return CurrentWorkOrder(
+        key, order.wonum, order.bdpocdiscipline, None, baseline, pics, pic_names or {}
+    )
