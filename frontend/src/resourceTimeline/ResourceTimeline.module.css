@@ -76,7 +76,8 @@
 .dialog button { min-height: 38px; border: 1px solid var(--line); border-radius: 7px; padding: 7px 12px; background: var(--hover); color: var(--ink); cursor: pointer; }
 .actions button:last-child { border-color: var(--accent); background: var(--accent); color: #ffffff; }
 .dialog .delete { justify-self: start; border-color: var(--danger-border); color: var(--danger-ink); }
-.personDateRow { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(220px,1fr); gap:10px; }
+.personDateRow { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(220px,1fr); gap:10px; align-items:start; }
+.personDateRow .field > small { color:var(--muted); }
 .personDateRow label { min-width:0; }
 .personDateRow select { min-width:0; width:100%; }
 .syncedDetails { display:grid; gap:8px; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--surface); }
