@@ -84,8 +84,6 @@ Cập nhật: 2026-10-19.
       "Xong" hoặc Esc để đóng, phím mũi tên di chuyển trong lịch và cột. Ô giờ bắt đầu kế hoạch/đồng bộ hàng loạt
       dùng `TimeInput24` (hai select, phút bước 5). Giờ mặc định khi mới chọn ngày: 06:30 cho Scheduled Start, 23:59 cho Target Finish, 00:00 cho
       Target Start. Hiển thị chữ vẫn `dd/MM/yyyy, HH:mm` (24 giờ).
-- Còn dùng ô ngày gốc `type="date"`/`month` (thứ tự ngày theo ngôn ngữ trình duyệt): khoảng Target Finish ở trang WO,
-  ngày kế hoạch ở hộp thoại timeline, chọn tháng timeline (hiện "October 2026"). Chưa đổi.
 - [x] Assigned PIC hiện "MÃ — Họ tên" (select, bảng đối chiếu, thông tin WO, thẻ backlog timeline và nút gợi ý PIC);
       giá trị lưu vẫn là mã PERSON. Backend thêm `pic_names` (additive) vào detail, restore, batch prepare và danh
       sách nháp có `include_items`; đọc `mxperson` bằng một GET nhỏ (~40–90 ms); lỗi đọc thì trả `{}`, không làm hỏng
@@ -109,6 +107,35 @@ Cập nhật: 2026-10-19.
       chỉ mới thử dịch cùng +1h7m13s). Cần một thử nghiệm ghi rồi khôi phục có duyệt riêng.
 - [ ] Nhiều WO lớn (ví dụ 300 giờ) sẽ vượt Target Finish theo quy tắc mới; cần quy trình cập nhật Target hàng loạt
       nếu số này nhiều.
+
+## Ô ngày/tháng thống nhất, thanh task nhiều ngày và lỗi lưu nháp — 2026-10-20
+
+- [x] **Lỗi 503 khi lưu nháp ("Không hoàn tất yêu cầu")**: role runtime thiếu quyền UPDATE cột `result` của
+      `draft_submission` (biên nhận được chèn rỗng rồi cập nhật trong cùng transaction). Thêm
+      `GRANT UPDATE (result)` vào `backend/sql/provision_roles.sql`, áp vào DB dev local bằng role owner, và
+      `test_db_roles.py` kiểm tra quyền này cùng việc `request_hash` vẫn không sửa được. Chưa rõ vì sao các lần
+      lưu trước 10/10 chạy được. Giao diện vẫn hiện thông báo chung cho 503 (chưa đổi).
+- [x] **Ô ngày/tháng thống nhất** (`components/DateTimeInput.tsx`): `DateTimeInput` có chế độ `dateOnly`
+      (`dd/mm/yyyy`, một lần bấm chọn, `min`/`max`/`isDayDisabled`) và `MonthInput` (`Oct 2026`, nhận cả `10/2026`,
+      lưới Jan–Dec). Thay mọi ô gốc `date`/`month`/`datetime-local` ở: khoảng Target Finish trang WO, tháng
+      timeline và timeline phân công, ngày bắt đầu task, ngày chuyển plan, ngày rota (khóa ngày không có capacity),
+      giờ bắt đầu gửi Maximo, ngày timeline thử nghiệm. Còn ô gốc trong bảng của `DemoScheduler.tsx` (trang demo).
+- [x] **Ô ngày timeline yên tĩnh**: ngày không có capacity (gạch chéo) không hiện chữ; ngày làm việc chỉ có
+      `đã dùng / capacity h`; dòng "vượt X h"/"chưa xác minh" thành biểu tượng cảnh báo trên cùng hàng. Mã ca và
+      giờ còn lại nằm trong tooltip, nên rê chuột không còn làm lệch hàng.
+- [x] **Task nhiều ngày là một thanh nối liền** (`timelineHelpers.computeLanes`): mỗi kế hoạch một màu
+      (`--task-1..6` trong `tokens.css`, có bản tối) và một làn cố định theo người; ngày liền nhau nối thành
+      thanh start/middle/end, tên và biểu tượng trạng thái chỉ ở ngày đầu, ngày nghỉ giữa kế hoạch nối bằng nét đứt.
+      Hover một ngày làm sáng cả task, mờ các thẻ khác; bóng khi kéo ghi "Chuyển cả task (N ngày)"; kế hoạch đã
+      đồng bộ/chờ đối soát dùng con trỏ thường; thẻ chờ đối soát có nền sọc. Thẻ nằm dưới cột Nhân sự khi cuộn.
+      Thẻ không còn bị kéo cao 40px bởi quy tắc nút chung (nguyên nhân lệch hàng).
+- [x] Cột Nhân sự thêm "Rota còn X h" (tổng giờ còn lại các ngày có ca trong tháng, không tính ngày vượt giờ;
+      "chưa xác minh" nếu có ngày chưa tải xong).
+- [x] Điện thoại (dưới 760px): Resource timeline chỉ hiện thống kê tải và chọn tháng; ẩn backlog, lưới và nút gửi
+      kế hoạch kèm ghi chú cần màn hình lớn.
+- [x] 476 frontend tests, lint, typecheck đạt; kiểm tra thủ công trên dữ liệu thật ở khung rộng/mobile, sáng/tối.
+- Chưa làm: nét đứt qua ngày nghỉ chỉ có test đơn vị và đã được người dùng tạo thử; thông báo riêng cho lỗi 503;
+  ô gốc trong `DemoScheduler.tsx`; chưa có tên cho `lead`.
 
 ## UI/UX: tràn ngang trang và hộp thoại batch đã xong — 2026-10-19
 
