@@ -314,7 +314,7 @@ Maximo 7.6.1.3 của Onshore/Offshore hỗ trợ cùng hợp đồng.
 | Quyền và WO thử | CM/PM/CFT cụ thể, fields được đổi, actor, window, conflict và restore | Chủ dự án cho phép mọi thử cần thiết trên Onshore test; operator field proof bảy type, browser CM/PM đơn/PM nhóm/CFT duration đã chạy; exact restore và actor audit xác nhận |
 | Method/headers | POST override PATCH, Content-Type/Accept, lean representation; không child arrays | Onshore test JSON `_rowstamp` + estdur qua204/readback; app chưa nối |
 | Revision | Exact source/header/body và phạm vi token theo representation | ETag0 và rowstamp-as-header bị412; native JSON rowstamp qua fresh/stale/pair/restore; snapshot app vẫn `None` |
-| Dates | Offset/timezone, precision, giờ mặc định, DST nếu có; schedfinish tính giờ liên tục hay ca; write/read-back normalization | Onshore timezone Asia/Ho_Chi_Minh; giờ liên tục ở UI |
+| Dates | Offset/timezone, precision, giờ mặc định, DST nếu có; schedfinish tính giờ liên tục hay ca (đổi sang ca 06:30–18:30, 10,5 giờ/ngày từ 2026-10-20; Maximo test chưa thử nhận Finish nhiều ngày); write/read-back normalization | Onshore timezone Asia/Ho_Chi_Minh; giờ liên tục ở UI |
 | Null/clear | Missing nghĩa không đổi; null/empty/date/PIC clear được chấp nhận hay từ chối riêng từng field | Explicit clear bị từ chối hiện tại |
 | PIC/duration | Membership/group, giới hạn tên PIC, estdur đơn vị/min/max/scale/rounding và kiểu JSON | PIC E&I GET qua; write bounds/rounding chưa chốt |
 | Allowlist/target | schedstart/schedfinish/assignedtechname/estdur; targstartdate/targcompdate chỉ khi explicit intent, cấm PM/CFT; không status/discipline/arbitrary fields | Backend nháp đã validate; remote chưa thử |

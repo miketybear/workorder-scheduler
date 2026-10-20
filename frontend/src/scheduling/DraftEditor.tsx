@@ -3,6 +3,7 @@ import { deleteDraft, editableFields, getDetail, openDraft, saveDraft,
   type Baseline, type Changes, type Detail, type DraftNotice, type EditableField, type Identity, type Restored, type Saved, type Scope } from '../api/drafts';
 import { RetrievalError } from '../api/workOrders';
 import { equalField, scheduledChange, validateChanges } from './editing';
+import { ShiftNotice } from './ShiftNotice';
 import styles from '../App.module.css';
 import { WorkOrderFacts } from './WorkOrderFacts';
 import { isAwareDate, localDateTime, zonedDateTime } from '../api/dates';
@@ -37,6 +38,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   const [notice, setNotice] = useState('');
   const [uploadLocked, setUploadLocked] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [keptStart, setKeptStart] = useState<string | null>(null);
   // Read through refs so a changing callback identity never restarts the in-flight load.
   const prefillRef = useRef(prefill); const prefillConsumedRef = useRef(onPrefillConsumed);
   useEffect(() => { prefillRef.current = prefill; prefillConsumedRef.current = onPrefillConsumed; });
@@ -115,7 +117,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
     setNotice(''); setError('');
     setChanges((previous) => {
       if (!detail) return previous;
-      const next = scheduledChange(previous, detail.baseline, field, value);
+      const next = scheduledChange(previous, detail.baseline, field, value, timezone);
       if (target(field)) next.change_target = true;
       return next;
     });
@@ -157,7 +159,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   function fieldControl(field: EditableField) {
     if (!detail) return null;
     return <label key={field} className={changed.includes(field) ? styles.modified : undefined}>
-      {labels[field]}{field === 'schedfinish' ? <><input aria-label={labels[field]} readOnly value={displayDate(changes.schedfinish ?? detail.baseline.schedfinish, timezone)} /><small>Tự tính: Start + Duration (giờ).</small></> : field === 'assignedtechname' ? <select value={changes[field] ?? detail.baseline[field] ?? ''} onChange={(e) => change(field, e.target.value)}>
+      {labels[field]}{field === 'schedfinish' ? <><input aria-label={labels[field]} readOnly value={displayDate(changes.schedfinish ?? detail.baseline.schedfinish, timezone)} /><small>Tự tính theo ca 06:30–18:30, tối đa 10,5 giờ/ngày.</small></> : field === 'assignedtechname' ? <select value={changes[field] ?? detail.baseline[field] ?? ''} onChange={(e) => change(field, e.target.value)}>
         <option value={detail.baseline[field] ?? ''}>{detail.baseline[field] ?? 'Chọn PIC'}</option>
         {changes.assignedtechname && changes.assignedtechname !== detail.baseline.assignedtechname && !pics.includes(changes.assignedtechname) &&
           <option value={changes.assignedtechname}>{changes.assignedtechname} (không còn trong crew)</option>}
@@ -191,6 +193,8 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
             <fieldset className={styles.editorSection} disabled={editingDisabled}>
               <legend>Lịch và phân công</legend>
               <div className={styles.filters}>{editableFields.filter((field) => !target(field)).map(fieldControl)}</div>
+              {changes.schedstart !== undefined && <ShiftNotice start={changes.schedstart} timezone={timezone} keptStart={keptStart}
+                onKeep={() => setKeptStart(changes.schedstart ?? null)} onMove={(opening) => change('schedstart', opening)} />}
             </fieldset>
             <fieldset className={styles.editorSection} disabled={editingDisabled}>
               <legend>Ngày mục tiêu</legend>

@@ -79,7 +79,7 @@ it('shows schedule containment errors immediately and blocks save and preview fo
     changes: { estdur: '9', schedfinish: '2026-09-30T17:00:00+07:00' }, baseline_changed: false, changes_valid_now: true });
   const view = render(<DraftEditor {...props} selection={{ draftId: 'legacy' }} />);
   await view.findByLabelText('Est. Duration');
-  expect(screen.getByRole('alert')).toHaveTextContent('Scheduled Finish phải bằng hoặc trước Target Finish.');
+  expect(screen.getByRole('alert')).toHaveTextContent(/Scheduled Finish .* vượt Target Finish/);
   expect(screen.getByText('Đối chiếu với Maximo trước upload')).toBeDisabled();
   expect(previewUpload).not.toHaveBeenCalled();
 });
@@ -368,11 +368,12 @@ it('uses date pickers in the connection timezone and serializes a changed date w
   expect(finish).toHaveAttribute('readonly');
   expect(finish).toHaveValue('30/09/2026, 16:00');
   fireEvent.change(screen.getByLabelText('Scheduled Start'), { target: { value: '2026-10-01T13:45' } });
-  expect(finish).toHaveValue('01/10/2026, 21:45');
+  // 13:45 leaves 4h45 in the 06:30-18:30 window; the other 3h15 run from 06:30 the next morning.
+  expect(finish).toHaveValue('02/10/2026, 09:45');
   expect(screen.getByRole('table')).toHaveTextContent('01/10/2026, 13:45');
   fireEvent.click(screen.getByText('Lưu nháp'));
   await waitFor(() => expect(saveDraft).toHaveBeenCalled());
-  expect(vi.mocked(saveDraft).mock.calls[0][1]).toEqual({ schedstart: '2026-10-01T13:45:00+07:00', schedfinish: '2026-10-01T14:45:00.000Z' });
+  expect(vi.mocked(saveDraft).mock.calls[0][1]).toEqual({ schedstart: '2026-10-01T13:45:00+07:00', schedfinish: '2026-10-02T02:45:00.000Z' });
 });
 
 it('enables both target pickers and sends explicit intent after selecting a target date', async () => {
@@ -488,4 +489,28 @@ it('ignores a suggestion that belongs to a different work order', async () => {
   await screen.findByLabelText('Est. Duration');
   expect(consumed).not.toHaveBeenCalled();
   expect(screen.getByLabelText('Assigned PIC')).toHaveValue('');
+});
+
+it('warns about a start outside the 06:30-18:30 shift and lets the planner keep it or move it to the next opening', async () => {
+  vi.mocked(getDetail).mockResolvedValue(detail);
+  render(<DraftEditor {...props} />);
+  const start = await screen.findByLabelText('Scheduled Start');
+  fireEvent.change(start, { target: { value: '2026-10-01T20:00' } });
+  expect(screen.getByText(/Giờ bắt đầu nằm ngoài ca làm việc \(06:30–18:30\)/)).toBeInTheDocument();
+  // Kept as chosen: the warning goes away and the start stays at 20:00; hours count from the next 06:30.
+  fireEvent.click(screen.getByText('Giữ nguyên giờ đã chọn'));
+  expect(screen.queryByText(/Giờ bắt đầu nằm ngoài ca làm việc/)).not.toBeInTheDocument();
+  expect(start).toHaveValue('2026-10-01T20:00');
+  expect(screen.getByLabelText('Scheduled Finish')).toHaveValue('02/10/2026, 14:30');
+  fireEvent.change(start, { target: { value: '2026-10-01T22:00' } });
+  fireEvent.click(screen.getByText(/^Dời sang /));
+  expect(start).toHaveValue('2026-10-02T06:30');
+  expect(screen.queryByText(/Giờ bắt đầu nằm ngoài ca làm việc/)).not.toBeInTheDocument();
+});
+
+it('does not warn about a start inside the shift', async () => {
+  vi.mocked(getDetail).mockResolvedValue(detail);
+  render(<DraftEditor {...props} />);
+  fireEvent.change(await screen.findByLabelText('Scheduled Start'), { target: { value: '2026-10-01T08:00' } });
+  expect(screen.queryByText(/Giờ bắt đầu nằm ngoài ca làm việc/)).not.toBeInTheDocument();
 });

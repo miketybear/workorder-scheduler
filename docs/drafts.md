@@ -11,7 +11,12 @@ Nháp một hoặc nhiều WO được hỗ trợ, tối đa 200 WO mỗi nhóm;
 2. Bấm số WO để mở phần lập lịch. Backend lấy lại detail/PIC và kiểm tra WO còn trong scope.
 3. Chọn Scheduled Start bằng date/time picker, sửa PIC và Duration (giờ). Scheduled Finish
    chỉ đọc, tự tính từ Start + Duration khi đổi Start hoặc Duration, cả đơn lẻ và nhóm.
-   Dùng giờ liên tục, chưa áp lịch ca/ngày làm việc. Mở WO hoặc chỉ sửa PIC không tự viết lại lịch gốc.
+   Finish tính theo ca làm việc ngoài biển (từ 2026-10-20): cửa sổ 06:30–18:30, tối đa 10,5 giờ làm việc
+   mỗi ngày (đã gồm ăn nghỉ), tính cả 7 ngày/tuần, áp dụng cho mọi loại WO. Ngày đầu chỉ còn
+   min(10,5 giờ, thời gian đến 18:30); các ngày sau bắt đầu 06:30. Start ngoài cửa sổ: hiện cảnh báo và
+   hai lựa chọn (giữ nguyên giờ đã chọn, giờ làm việc tính từ đầu ca kế tiếp; hoặc dời Start sang đầu ca
+   gần nhất). Finish vượt Target Finish thì chặn lưu và yêu cầu cập nhật Target Finish (CM, bật Change
+   Target) hoặc rút ngắn Duration/dời Start (PM/CFT). Mở WO hoặc chỉ sửa PIC không tự viết lại lịch gốc.
    Ngày serialize ISO có offset theo múi giờ kết nối (ẩn nhãn), không theo timezone trình duyệt.
    Chưa hỗ trợ xóa giá trị thành null.
 4. Chọn ngày trên Target Start/Finish tự bật Change Target; PM/CFT luôn bị khóa.

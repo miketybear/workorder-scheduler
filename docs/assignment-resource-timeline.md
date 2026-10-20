@@ -191,9 +191,9 @@ Ngày làm 6h không đủ để xác định thời điểm trong ca, permit ha
   hoặc nhập tay có nguồn/audit. Không có nhu cầu thì báo chưa biết còn thiếu bao
   nhiêu người/giờ. WO discipline không đồng nghĩa mọi labor requirement cùng craft.
 
-`estdur` hiện được code coi là elapsed duration; `schedfinish` tính theo contract
-WO hiện có. V1 không đổi cách tính này. Chuyển sang working-calendar scheduling
-cần quyết định nghiệp vụ riêng; allocation envelope không tự trở thành WO finish.
+`estdur` là số giờ làm việc; từ 2026-10-20 `schedfinish` của editor WO tính theo ca
+ngoài biển (06:30–18:30, tối đa 10,5 giờ/ngày, 7 ngày/tuần, xem `docs/drafts.md`).
+Allocation envelope không tự trở thành WO finish.
 
 ## 5. Mô hình dữ liệu nội bộ đề xuất
 

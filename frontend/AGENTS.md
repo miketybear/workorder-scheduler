@@ -61,8 +61,10 @@ scopes, monthly-load usability and uploads remain pending.
 - List only permitted systems/disciplines supplied by the backend.
 - Display WO identity, description, type, location/system, status, priority, PIC, duration,
   percentage complete and schedule/target/actual dates as available.
-- Edit schedule start, PIC and duration; derive read-only finish from start plus elapsed
-  duration hours when start or duration changes. Target date-picker edits set explicit user
+- Edit schedule start, PIC and duration; derive read-only finish from start plus duration as
+  working time on the offshore shift (06:30-18:30, at most 10.5 h per day, 7 days a week,
+  `scheduling/workShift.ts`) when start or duration changes. A start outside the window warns and
+  lets the planner keep it or move it to the nearest opening; a finish past Target Finish blocks saving. Target date-picker edits set explicit user
   intent; disable them for PM/CFT with a clear explanation.
 - Support selected-row date assignment, clear modified-cell indicators, undo/reset to the
   retrieved baseline and a field-level before/after preview.

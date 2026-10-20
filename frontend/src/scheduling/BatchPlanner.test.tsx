@@ -91,7 +91,7 @@ it('shows per-WO containment errors and blocks batch save when a row exceeds Tar
   vi.mocked(prepareBatch).mockResolvedValue(bounded);
   render(<BatchPlanner {...props} selection={{ keys: [{ site_id: bounded[0].item.siteid, workorder_id: bounded[0].item.workorderid }] }} />);
   fireEvent.change(await screen.findByLabelText('WO-100 Est. Duration'), { target: { value: '9' } });
-  expect(screen.getByRole('alert')).toHaveTextContent('Scheduled Finish phải bằng hoặc trước Target Finish.');
+  expect(screen.getByRole('alert')).toHaveTextContent(/Scheduled Finish .* vượt Target Finish/);
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
   expect(screen.getByText('Lưu nháp nhóm')).toBeDisabled();
   expect(saveBatch).not.toHaveBeenCalled();
@@ -237,7 +237,7 @@ it('blocks upload preview for a restored batch containing a schedule outside its
   vi.mocked(openBatch).mockResolvedValue({ draft_id: 'legacy-group', version: 1, state: 'draft', items: [row] });
   render(<BatchPlanner {...props} selection={{ draftId: 'legacy-group' }} />);
   await screen.findByLabelText('WO-100 Est. Duration');
-  expect(screen.getByRole('alert')).toHaveTextContent('Scheduled Finish phải bằng hoặc trước Target Finish.');
+  expect(screen.getByRole('alert')).toHaveTextContent(/Scheduled Finish .* vượt Target Finish/);
   expect(screen.getByText('Đối chiếu nhóm với Maximo trước upload')).toBeDisabled();
   expect(previewUpload).not.toHaveBeenCalled();
 });
@@ -284,7 +284,7 @@ it('derives each group finish from its duration and recalculates row exceptions 
   expect(screen.getByLabelText('WO-100 Scheduled Finish')).toHaveValue('05/10/2026, 16:00');
   expect(screen.getByLabelText('WO-101 Scheduled Finish')).toHaveValue('05/10/2026, 18:30');
   fireEvent.change(screen.getByLabelText('WO-101 Est. Duration'), { target: { value: '20' } });
-  expect(screen.getByLabelText('WO-101 Scheduled Finish')).toHaveValue('06/10/2026, 04:00');
+  expect(screen.getByLabelText('WO-101 Scheduled Finish')).toHaveValue('06/10/2026, 16:00');
   fireEvent.click(screen.getByText('Undo'));
   expect(screen.getByLabelText('WO-101 Scheduled Finish')).toHaveValue('05/10/2026, 18:30');
 });
@@ -339,4 +339,18 @@ it('restores a multi-WO draft and deletes its exact version only after confirmat
   await act(async () => {});
   expect(vi.mocked(deleteDraft).mock.calls[0][0]).toMatchObject({ draft_id: 'group', version: 3 });
   expect(props.onClose).toHaveBeenCalled();
+});
+
+it('warns once about starts outside the shift and can keep them or move them all to the nearest opening', async () => {
+  vi.mocked(prepareBatch).mockResolvedValue(details.map((row) => ({ ...row, baseline: { ...row.baseline, estdur: '8' } })));
+  render(<BatchPlanner {...props} />);
+  await screen.findByLabelText('WO-100 Scheduled Start');
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Scheduled Start' }));
+  fireEvent.change(screen.getByLabelText('Nhóm Scheduled Start'), { target: { value: '2026-10-05T20:00' } });
+  fireEvent.click(screen.getByText('Áp dụng vào nháp'));
+  expect(screen.getByText(/WO có giờ bắt đầu ngoài ca làm việc/)).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Dời tất cả sang đầu ca gần nhất'));
+  expect(screen.queryByText(/WO có giờ bắt đầu ngoài ca làm việc/)).not.toBeInTheDocument();
+  expect(screen.getByLabelText('WO-100 Scheduled Start')).toHaveValue('2026-10-06T06:30');
+  expect(screen.getByLabelText('WO-100 Scheduled Finish')).toHaveValue('06/10/2026, 14:30');
 });

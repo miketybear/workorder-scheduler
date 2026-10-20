@@ -1,5 +1,6 @@
 import { editableFields, type Baseline, type Changes, type EditableField } from '../api/drafts';
 import { isAwareDate } from '../api/dates';
+import { workingFinish } from './workShift';
 
 export function equalField(field: EditableField, value: string, original: string | null): boolean {
   if (value === (original ?? '')) return true;
@@ -17,17 +18,15 @@ export function changedValue(changes: Changes, baseline: Baseline, field: Editab
   return next;
 }
 
-export function scheduledChange(changes: Changes, baseline: Baseline, field: EditableField, value: string): Changes {
+export function scheduledChange(changes: Changes, baseline: Baseline, field: EditableField, value: string, timeZone: string): Changes {
   const next = changedValue(changes, baseline, field, value);
   if (field !== 'schedstart' && field !== 'estdur') return next;
   const start = next.schedstart ?? baseline.schedstart;
   const duration = next.estdur ?? baseline.estdur;
   if (!start || !isAwareDate(start) || !duration || !/^\d+(\.\d+)?$/.test(duration)) return next;
-  // Duration is elapsed hours; no shift calendar or working-day assumptions.
-  const finish = Date.parse(start) + Math.round(Number(duration) * 3600000);
-  if (!Number.isFinite(finish) || Math.abs(finish) > 8640000000000000) return { ...next, schedfinish: '' };
-  const date = new Date(finish).toISOString();
-  return changedValue(next, baseline, 'schedfinish', isAwareDate(date) ? date : '');
+  // Duration is working time on the offshore shift (06:30-18:30, at most 10.5 h a day, 7 days a week).
+  const finish = workingFinish(start, Number(duration), timeZone);
+  return changedValue(next, baseline, 'schedfinish', finish && isAwareDate(finish) ? finish : '');
 }
 
 export function validateChanges(baseline: Baseline, changes: Changes, pics: string[]): string {
@@ -82,7 +81,11 @@ export function validateChanges(baseline: Baseline, changes: Changes, pics: stri
       if (!isAwareDate(scheduleValue) || !Number.isFinite(Date.parse(scheduleValue))) return 'Ngày lịch hiện có không hợp lệ.';
       const instant = Date.parse(scheduleValue);
       if (targetStart && instant < Date.parse(targetStart)) return `${scheduleName} phải bằng hoặc sau Target Start.`;
-      if (targetFinish && instant > Date.parse(targetFinish)) return `${scheduleName} phải bằng hoặc trước Target Finish.`;
+      if (targetFinish && instant > Date.parse(targetFinish)) {
+        return scheduleName === 'Scheduled Finish'
+          ? 'Scheduled Finish (tính theo giờ làm việc 10,5 giờ/ngày) vượt Target Finish. Cập nhật Target Finish (bật Change Target, chỉ áp dụng cho CM) rồi lưu; WO PM/CFT không đổi được Target nên hãy rút ngắn Est. Duration hoặc dời Scheduled Start sớm hơn.'
+          : `${scheduleName} phải bằng hoặc trước Target Finish.`;
+      }
     }
   }
   return '';

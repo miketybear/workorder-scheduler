@@ -75,6 +75,23 @@ Cập nhật: 2026-10-19.
 - [ ] Xóa nhánh `ui/design-tokens` (local và remote) vì đã merge.
 - [ ] Lần tải nguội (25–30 giây) chưa đo được vì cần xóa cache backend/Maximo.
 
+## Scheduled Finish theo ca làm việc ngoài biển — 2026-10-20
+
+- [x] Finish = Start + Est. Duration tính theo giờ làm việc (`scheduling/workShift.ts`): cửa sổ 06:30–18:30, tối đa
+      10,5 giờ/ngày (đã gồm ăn nghỉ), 7 ngày/tuần, mọi loại WO. Ngày đầu còn min(10,5 giờ, đến 18:30); các ngày
+      sau từ 06:30. Áp dụng ở editor một WO và editor nhóm. Không tự tính lại Duration của PM (Maximo có thể tự
+      tính lại, luồng upload đã ghi nhận `pm_duration_recalculated`).
+- [x] Start ngoài cửa sổ: cảnh báo và hai lựa chọn (giữ nguyên giờ đã chọn, giờ làm việc tính từ đầu ca kế tiếp;
+      hoặc dời sang đầu ca gần nhất; hòa lúc 18:30 chọn ngày sau). Editor nhóm có nút áp cho mọi WO bị ảnh hưởng.
+- [x] Finish vượt Target Finish: chặn lưu, thông báo yêu cầu cập nhật Target Finish (CM, bật Change Target) hoặc
+      rút ngắn Duration/dời Start (PM/CFT).
+- [x] 452 frontend tests (8 test `workShift`, các test editor/nhóm cập nhật), lint, typecheck, build đạt. Trên dữ liệu
+      thật (WO 300 giờ, Start 20:00 ngày 08/10): Finish 06/11 12:30, vượt Target 31/10 nên chặn lưu; không lưu gì.
+- [ ] **Chưa kiểm chứng:** Maximo test có nhận `schedfinish` nhiều ngày cho CM và đọc lại đúng không (hợp đồng ghi
+      chỉ mới thử dịch cùng +1h7m13s). Cần một thử nghiệm ghi rồi khôi phục có duyệt riêng.
+- [ ] Nhiều WO lớn (ví dụ 300 giờ) sẽ vượt Target Finish theo quy tắc mới; cần quy trình cập nhật Target hàng loạt
+      nếu số này nhiều.
+
 ## UI/UX: tràn ngang trang và hộp thoại batch đã xong — 2026-10-19
 
 - [x] Nguyên nhân trang timeline có thanh cuộn ngang ở khung hẹp: chữ phụ ẩn của ô capacity là phần

@@ -4,9 +4,11 @@ import { BatchError, deleteDraft, openBatch, prepareBatch, saveBatch, editableFi
 import { localDateTime, zonedDateTime } from '../api/dates';
 import { RetrievalError } from '../api/workOrders';
 import { changedValue, scheduledChange, validateChanges } from './editing';
+import { outsideShift } from './ShiftNotice';
+import { nearestShiftStart } from './workShift';
+import styles from '../App.module.css';
 import { displayDate, rowKey } from './presentation';
 import { BatchWorkOrderInfo } from './BatchWorkOrderInfo';
-import styles from '../App.module.css';
 import { UploadPreviewControls, type FinalizedUpload, type UploadConnection } from './UploadPreviewPanel';
 import type { UploadRecoveryEntry } from '../api/drafts';
 
@@ -39,6 +41,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   const [notice, setNotice] = useState('');
   const [issues, setIssues] = useState<Record<string, string>>({});
   const [group, setGroup] = useState<Changes>({});
+  const [keptStarts, setKeptStarts] = useState<string[]>([]);
   const [paste, setPaste] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [history, setHistory] = useState<BatchRow[][]>([]);
@@ -123,7 +126,18 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     setHistory((previous) => [...previous.slice(-19), rows]); setRows(next); setNotice(''); setError(''); setShowPreview(false);
   }
   function edit(index: number, field: EditableField, value: string) {
-    stage(rows.map((row, i) => i === index ? { ...row, changes: scheduledChange(row.changes, row.baseline, field, value) } : row));
+    stage(rows.map((row, i) => i === index ? { ...row, changes: scheduledChange(row.changes, row.baseline, field, value, timezone) } : row));
+  }
+  const outsideRows = rows.flatMap((row, index) => {
+    const start = row.changes.schedstart;
+    return outsideShift(start, timezone) && !keptStarts.includes(start) ? [index] : [];
+  });
+  function moveOutsideStarts() {
+    stage(rows.map((row, index) => outsideRows.includes(index) && row.changes.schedstart
+      ? { ...row, changes: scheduledChange(row.changes, row.baseline, 'schedstart', nearestShiftStart(row.changes.schedstart, timezone), timezone) } : row));
+  }
+  function keepOutsideStarts() {
+    setKeptStarts((previous) => [...new Set([...previous, ...outsideRows.flatMap((index) => rows[index].changes.schedstart ?? [])])]);
   }
   function editTarget(index: number, field: typeof targetFields[number], value: string) {
     const row = rows[index];
@@ -146,7 +160,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   function apply() {
     if (!Object.keys(group).length) return;
     stage(rows.map((row) => ({ ...row, changes: inputFields.reduce((changes, field) => group[field] === undefined ? changes :
-      scheduledChange(changes, row.baseline, field, group[field]!), row.changes) })));
+      scheduledChange(changes, row.baseline, field, group[field]!, timezone), row.changes) })));
   }
   function applyPaste() {
     const lines = paste.replace(/\r?\n$/, '').split(/\r?\n/);
@@ -159,7 +173,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
         inputFields.forEach((field, i) => {
           const value = values[i].trim();
           if (value) changes = scheduledChange(changes, row.baseline, field,
-            field === 'schedstart' ? zonedDateTime(value, timezone) : value);
+            field === 'schedstart' ? zonedDateTime(value, timezone) : value, timezone);
         });
         const problem = validateChanges(row.baseline, changes, row.allowed_pics);
         if (problem) throw new Error(`${row.item.wonum}: ${problem}`);
@@ -203,6 +217,13 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {notice && <p role="status">{notice}</p>}
     {busy && <p role="status">Đang kiểm tra từng WO…</p>}
+    {outsideRows.length > 0 && <div role="status" className={styles.shiftNotice}>
+      <p>{outsideRows.length} WO có giờ bắt đầu ngoài ca làm việc (06:30–18:30). Nếu giữ nguyên, giờ làm việc được tính từ đầu ca kế tiếp.</p>
+      <div>
+        <button type="button" className={styles.tertiary} disabled={blocked} onClick={keepOutsideStarts}>Giữ nguyên giờ đã chọn</button>
+        <button type="button" className={styles.tertiary} disabled={blocked} onClick={moveOutsideStarts}>Dời tất cả sang đầu ca gần nhất</button>
+      </div>
+    </div>}
     <fieldset disabled={blocked} className={styles.groupFields}><legend>Áp dụng cho nhóm · trường không chọn giữ nguyên</legend>
       {inputFields.map((field) => <label key={field}><input type="checkbox" aria-label={labels[field]} checked={group[field] !== undefined}
         onChange={(event) => setGroup((previous) => { const next = { ...previous }; if (event.target.checked) next[field] = ''; else delete next[field]; return next; })} />{labels[field]}
