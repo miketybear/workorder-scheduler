@@ -86,3 +86,63 @@ export function suggestedPic(assigned: AssignedPerson[]): string | null {
   const sorted = [...assigned].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, 'vi') || a.laborcode.localeCompare(b.laborcode));
   return sorted[0]?.laborcode ?? null;
 }
+
+export type PlanItem = { id: string; person_id: string; date: string; plan_id?: string | null; workorder_id: string };
+export type Lanes = {
+  /** Vertical lane of each item inside its day cell; one plan keeps one lane across its days. */
+  lane: Map<string, number>;
+  /** Day-off cells that a plan crosses, drawn as a dashed link at the plan's lane. */
+  bridges: Map<string, { plan: string; lane: number }[]>;
+  /** `${plan}|${person}|${date}` for each plan day, bridges included. */
+  joined: Set<string>;
+};
+
+/**
+ * Packs each person's assignments into lanes (greedy by start day) so a multi-day plan is one aligned bar.
+ * A plan whose consecutive days are separated only by days off (`isOff`) is bridged across them.
+ */
+export function computeLanes(items: PlanItem[], dates: string[], isOff: (personId: string, date: string) => boolean): Lanes {
+  const result: Lanes = { lane: new Map(), bridges: new Map(), joined: new Set() };
+  const position = new Map(dates.map((date, index) => [date, index]));
+  const byPerson = new Map<string, PlanItem[]>();
+  for (const item of items) if (position.has(item.date)) byPerson.set(item.person_id, [...(byPerson.get(item.person_id) ?? []), item]);
+  for (const [person, list] of byPerson) {
+    type Span = { key: string; start: number; end: number; ids: string[]; plan?: string };
+    const spans: Span[] = [];
+    const plans = new Map<string, PlanItem[]>();
+    const seenDay = new Set<string>();
+    for (const item of list) {
+      const day = `${item.plan_id}|${item.date}`;
+      if (item.plan_id && !seenDay.has(day)) { seenDay.add(day); plans.set(item.plan_id, [...(plans.get(item.plan_id) ?? []), item]); }
+      else { const index = position.get(item.date)!; spans.push({ key: item.id, start: index, end: index, ids: [item.id] }); }
+    }
+    const bridgeDays: { date: string; plan: string; index: number }[] = [];
+    for (const [plan, group] of plans) {
+      const indexes = group.map(item => position.get(item.date)!).sort((a, b) => a - b);
+      const bridged: number[] = [];
+      for (let k = 1; k < indexes.length; k++) {
+        const between = Array.from({ length: indexes[k] - indexes[k - 1] - 1 }, (_, n) => indexes[k - 1] + 1 + n);
+        if (between.length && between.every(index => isOff(person, dates[index]))) bridged.push(...between);
+      }
+      for (const index of bridged) bridgeDays.push({ date: dates[index], plan, index });
+      for (const item of group) result.joined.add(`${plan}|${person}|${item.date}`);
+      for (const bridge of bridged) result.joined.add(`${plan}|${person}|${dates[bridge]}`);
+      spans.push({ key: `plan:${plan}`, start: indexes[0], end: indexes[indexes.length - 1], ids: group.map(item => item.id), plan });
+    }
+    spans.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+    const laneEnds: number[] = [];
+    const laneOfSpan = new Map<string, number>();
+    for (const span of spans) {
+      let lane = laneEnds.findIndex(end => end < span.start);
+      if (lane === -1) lane = laneEnds.length;
+      laneEnds[lane] = span.end;
+      laneOfSpan.set(span.key, lane);
+      for (const id of span.ids) result.lane.set(id, lane);
+    }
+    for (const bridge of bridgeDays) {
+      const key = `${person}|${bridge.date}`;
+      result.bridges.set(key, [...(result.bridges.get(key) ?? []), { plan: bridge.plan, lane: laneOfSpan.get(`plan:${bridge.plan}`)! }]);
+    }
+  }
+  return result;
+}

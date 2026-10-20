@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { localDate, scheduleRange, suggestedPic, woWarnings } from './timelineHelpers';
+import { computeLanes, localDate, scheduleRange, suggestedPic, woWarnings } from './timelineHelpers';
 
 const now = new Date('2026-10-19T03:00:00Z');
 
@@ -70,5 +70,35 @@ describe('localDate', () => {
     expect(localDate('2026-10-03T20:00:00Z', 'Asia/Ho_Chi_Minh')).toBe('2026-10-04');
     expect(localDate(null, 'UTC')).toBeNull();
     expect(localDate('nope', 'UTC')).toBeNull();
+  });
+});
+
+describe('computeLanes', () => {
+  const dates = ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09'];
+  const item = (id: string, date: string, plan: string | null, person = 'p1') => ({ id, person_id: person, date, plan_id: plan, workorder_id: id });
+  const none = () => false;
+
+  it('keeps one lane per plan across its days and puts a same-day single on another lane', () => {
+    const lanes = computeLanes([item('a1', dates[0], 'A'), item('a2', dates[1], 'A'), item('s', dates[1], null)], dates, none);
+    expect(lanes.lane.get('a1')).toBe(lanes.lane.get('a2'));
+    expect(lanes.lane.get('s')).not.toBe(lanes.lane.get('a2'));
+    expect(lanes.joined.has('A|p1|2026-10-05')).toBe(true);
+  });
+
+  it('reuses a freed lane and keeps people independent', () => {
+    const lanes = computeLanes([item('a1', dates[0], 'A'), item('b1', dates[2], 'B'), item('x', dates[0], 'X', 'p2')], dates, none);
+    expect(lanes.lane.get('a1')).toBe(0);
+    expect(lanes.lane.get('b1')).toBe(0);
+    expect(lanes.lane.get('x')).toBe(0);
+  });
+
+  it('bridges days off between two days of one plan but not working days', () => {
+    const off = (_person: string, date: string) => date === dates[1];
+    const bridged = computeLanes([item('a1', dates[0], 'A'), item('a2', dates[2], 'A')], dates, off);
+    expect(bridged.bridges.get('p1|2026-10-06')).toEqual([{ plan: 'A', lane: 0 }]);
+    expect(bridged.joined.has('A|p1|2026-10-06')).toBe(true);
+    const open = computeLanes([item('a1', dates[0], 'A'), item('a2', dates[2], 'A')], dates, none);
+    expect(open.bridges.size).toBe(0);
+    expect(open.joined.has('A|p1|2026-10-06')).toBe(false);
   });
 });

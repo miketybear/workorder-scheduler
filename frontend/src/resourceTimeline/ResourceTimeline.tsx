@@ -16,7 +16,7 @@ import { restoreFocus } from './focusRestore';
 import { DateTimeInput, MonthInput } from '../components/DateTimeInput';
 import { picLabel } from '../scheduling/presentation';
 import type { PicSuggestion } from '../picSuggestion';
-import { dayNames, monthOf, addMonth, monthDates, addCalendarDays, calendarRange, displayHours, displayDate, formatMaximoDateTime, expectedFinish, parseHours, displayRole, capacityFor, scheduleRange, subMonth, suggestedPic, suggestTaskPlans, todayIn, woWarnings, type AssignedPerson, type ScheduleInfo, type WoWarnings } from './timelineHelpers';
+import { computeLanes, dayNames, monthOf, addMonth, monthDates, addCalendarDays, calendarRange, displayHours, displayDate, formatMaximoDateTime, expectedFinish, parseHours, displayRole, capacityFor, scheduleRange, subMonth, suggestedPic, suggestTaskPlans, todayIn, woWarnings, type AssignedPerson, type ScheduleInfo, type WoWarnings } from './timelineHelpers';
 import styles from './ResourceTimeline.module.css';
 
 type PointerDrag = { payload: string; label: string; startX: number; startY: number; moved: boolean; context: string };
@@ -1026,12 +1026,17 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
     }
     return map;
   }, [shownTimeline]);
-  // A multi-day plan is drawn as one bar: adjacent days of the same plan and person join into start/middle/end segments.
-  const planDays = useMemo(() => new Set((shownTimeline?.items ?? []).filter(item => item.plan_id).map(item => `${item.plan_id}|${item.person_id}|${item.date}`)), [shownTimeline]);
+  const hueOf = (key: string) => 1 + [...key].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 6, 0);
+  // A multi-day plan is one bar: it keeps one lane across its days and is bridged over days off.
+  const lanes = useMemo(() => {
+    const people = new Map((shownTimeline?.rows ?? []).map(row => [row.person_id, row]));
+    const isOff = (personId: string, date: string) => { const person = people.get(personId); const day = person && capacityFor(person, date); return !day || day.capacity_minutes <= 0; };
+    return computeLanes((shownTimeline?.items ?? []).filter(item => item.state === 'reserved'), dates, isOff);
+  }, [shownTimeline, dates]);
   const segmentOf = (item: Assignment): 'single' | 'start' | 'middle' | 'end' => {
     if (!item.plan_id) return 'single';
     const index = dates.indexOf(item.date);
-    const joined = (offset: number) => index + offset >= 0 && index + offset < dates.length && planDays.has(`${item.plan_id}|${item.person_id}|${dates[index + offset]}`);
+    const joined = (offset: number) => index + offset >= 0 && index + offset < dates.length && lanes.joined.has(`${item.plan_id}|${item.person_id}|${dates[index + offset]}`);
     const before = joined(-1), after = joined(1);
     return before && after ? 'middle' : before ? 'end' : after ? 'start' : 'single';
   };
@@ -1088,13 +1093,23 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
           const day = capacityFor(person, date); const items = shownTimeline.items.filter(item => item.state === 'reserved' && item.person_id === person.person_id && item.date === date);
           return <td key={date} className={!day ? styles.off : day.capacity_minutes > 0 ? styles.working : day.code === '' ? styles.blank : styles.off} data-person-id={person.person_id} data-date={date}>
             {(() => {
-              // Hatched or missing days show nothing; the shift code and remaining hours live in the tooltip. Only exceptions get a visible line.
+              // Hatched or missing days show nothing; the shift code and remaining hours live in the tooltip. The row keeps its height so bars align across days.
               const unverified = day?.load_complete === false, over = !!day && day.remaining_minutes < 0;
-              if (!unverified && !over && !(day && day.capacity_minutes > 0)) return null;
-              const tooltip = [day?.code && `Ca ${day.code}`, day && `còn ${displayHours(day.remaining_minutes)}h`, ...(person.dayMetadata[date] ?? [])].filter(Boolean).join(' · ');
-              return <div className={styles.capacity} title={tooltip}><b>{day ? `${displayHours(day.allocated_minutes)} / ${displayHours(day.capacity_minutes)}h` : '—'}</b>{(unverified || over) && <small data-alert>{unverified ? 'Tải chưa xác minh' : `vượt ${displayHours(-day!.remaining_minutes)}h`}</small>}</div>;
+              if (!unverified && !over && !(day && day.capacity_minutes > 0)) return <div className={styles.capacity} aria-hidden="true" />;
+              const note = unverified ? 'Tải chưa xác minh' : over ? `vượt ${displayHours(-day!.remaining_minutes)}h` : '';
+              const tooltip = [day?.code && `Ca ${day.code}`, day && `còn ${displayHours(day.remaining_minutes)}h`, note, ...(person.dayMetadata[date] ?? [])].filter(Boolean).join(' · ');
+              return <div className={styles.capacity} title={tooltip}><b>{day ? `${displayHours(day.allocated_minutes)} / ${displayHours(day.capacity_minutes)}h` : '—'}</b>{note && <small data-alert><StatusIcon kind="warning" /><span className={styles.srOnly}>{note}</span></small>}</div>;
             })()}
-            {items.map(item => {const label=workOrderLabel(item,shownTimeline); const taskLabel=item.task_id!==null && item.task_id!==undefined ? `${item.task_description||`Task ${item.task_id}`} · ${label}` : label; return <AssignmentCard key={item.id} item={item} segment={segmentOf(item)} warning={cardWarning(item)} taskLabel={taskLabel} wonum={shownTimeline.work_orders.find(order => order.site_id === item.site_id && order.workorder_id === item.workorder_id)?.wonum} personName={person.name} date={date} hours={displayHours(item.minutes)} onPointerDown={event=>{if(canEditItem(item))beginDrag(event,item.id,taskLabel);}} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={cancelDrag} onClick={event=>clickAssignment(event,item)} />;})}
+            {(() => {
+              const bridges = lanes.bridges.get(`${person.person_id}|${date}`) ?? [];
+              const top = Math.max(-1, ...items.map(item => lanes.lane.get(item.id) ?? 0), ...bridges.map(bridge => bridge.lane));
+              return Array.from({ length: top + 1 }, (_, lane) => {
+                const item = items.find(entry => (lanes.lane.get(entry.id) ?? 0) === lane);
+                if (item) { const label=workOrderLabel(item,shownTimeline); const taskLabel=item.task_id!==null && item.task_id!==undefined ? `${item.task_description||`Task ${item.task_id}`} · ${label}` : label; return <AssignmentCard key={item.id} item={item} segment={segmentOf(item)} hue={hueOf(item.plan_id ?? item.workorder_id)} warning={cardWarning(item)} taskLabel={taskLabel} wonum={shownTimeline.work_orders.find(order => order.site_id === item.site_id && order.workorder_id === item.workorder_id)?.wonum} personName={person.name} date={date} hours={displayHours(item.minutes)} onPointerDown={event=>{if(canEditItem(item))beginDrag(event,item.id,taskLabel);}} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={cancelDrag} onClick={event=>clickAssignment(event,item)} />;}
+                const bridge = bridges.find(entry => entry.lane === lane);
+                return bridge ? <div key={`bridge-${lane}`} className={styles.bridge} data-hue={hueOf(bridge.plan)} aria-hidden="true" /> : <div key={`gap-${lane}`} className={styles.laneGap} aria-hidden="true" />;
+              });
+            })()}
             <button className={styles.addCell} aria-label={`Thêm phân công cho ${person.name} ngày ${date}`} disabled={!canWrite || !day || day.capacity_minutes < 1} onClick={() => beginCreate(person, date)}>+ WO</button>
           </td>;
         })}</tr>)}</Fragment>; })}</tbody></table></div></section></div>

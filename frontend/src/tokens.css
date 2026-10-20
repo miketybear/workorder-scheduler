@@ -2,6 +2,8 @@
    Pages must use these variables instead of hex colors so both themes stay correct. */
 :root {
   color-scheme: light;
+  /* Task bar colours (white text on each passes AA); one per plan, repeated in dark mode. */
+  --task-1: #534ab7; --task-2: #0f6e56; --task-3: #993c1d; --task-4: #185fa5; --task-5: #993556; --task-6: #854f0b;
   --ground: #f4f4f4;
   --layer: #ffffff;
   --surface: #e0e0e0;
@@ -52,6 +54,7 @@
 }
 :root[data-theme="g100"] {
   color-scheme: dark;
+  --task-1: #6b62d1; --task-2: #1b8467; --task-3: #b34a27; --task-4: #2574c0; --task-5: #b04570; --task-6: #9a6212;
   --ground: #161616;
   --layer: #262626;
   --surface: #393939;
