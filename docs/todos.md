@@ -134,6 +134,18 @@ Cập nhật: 2026-10-19.
 - [x] Điện thoại (dưới 760px): Resource timeline chỉ hiện thống kê tải và chọn tháng; ẩn backlog, lưới và nút gửi
       kế hoạch kèm ghi chú cần màn hình lớn.
 - [x] 476 frontend tests, lint, typecheck đạt; kiểm tra thủ công trên dữ liệu thật ở khung rộng/mobile, sáng/tối.
+- [x] **Drawer kế hoạch task** (thẻ thuộc kế hoạch nội bộ mở "Kế hoạch task" thay cho "Sửa phân công" một ngày):
+      tóm tắt task/người/khoảng ngày/tổng giờ, bảng giờ từng ngày sửa được (tổng phải bằng tổng task; để 0 để bỏ
+      một ngày), "Lưu giờ các ngày", "Chuyển task", đồng bộ Maximo, xóa. Bỏ ô Nhân lực/Ngày rota/giờ một ngày cho
+      thẻ thuộc kế hoạch (thẻ lẻ giữ panel cũ). Thêm ngày hoặc đổi người vẫn dùng "Chuyển task".
+- [x] **Backend `POST /resource-pools/{pool}/assignment-plans/{plan}/segments`** (`assignments/plan_segments.py`):
+      thay các ngày của kế hoạch local trong một transaction; `expected_version`, `request_id` + biên nhận
+      (`/assignment-submissions/{id}`), kiểm tra capacity và tải Maximo từng ngày, tổng phút phải bằng `demand_minutes`,
+      ngày bị bỏ chuyển `released` (role runtime không có DELETE), sự kiện kiểm toán từng dòng đổi, tăng version kế
+      hoạch và assignment revision. Từ chối kế hoạch đã đồng bộ/chờ đối soát (409) và yêu cầu không đổi gì (422).
+      Không cần đổi quyền DB. 12 test nhanh, 20 test Postgres (DB test cổng 55432), 730 test backend không integration.
+- Chưa làm với endpoint này: chưa chạy trên dữ liệu thật (chỉ kiểm thử trên DB test); chưa thêm ngày mới hay đổi người
+  trong bảng giờ; không có test endpoint không cần Postgres.
 - Chưa làm: nét đứt qua ngày nghỉ chỉ có test đơn vị và đã được người dùng tạo thử; thông báo riêng cho lỗi 503;
   ô gốc trong `DemoScheduler.tsx`; chưa có tên cho `lead`.
 
