@@ -14,6 +14,9 @@ type Props = {
   hours: string;
   warning?: string;
   hue?: number;
+  emphasis?: 'on' | 'dim';
+  locked?: boolean;
+  onPlanHover?: (hovered: boolean) => void;
   segment?: 'single' | 'start' | 'middle' | 'end';
   onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void;
   onPointerMove: (event: PointerEvent<HTMLButtonElement>) => void;
@@ -22,7 +25,7 @@ type Props = {
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
 };
 
-export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours, warning, segment = 'single', hue = 1, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClick }: Props) {
+export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours, warning, segment = 'single', hue = 1, emphasis, locked, onPlanHover, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClick }: Props) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<number | null>(null);
@@ -53,6 +56,7 @@ export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours
     setTooltip({ top, left, contextKey });
   }
   function onPointerEnter() {
+    onPlanHover?.(true);
     if (hiddenUntilLeave) return;
     setEngaged(true);
     timerRef.current = window.setTimeout(show, 2000);
@@ -72,6 +76,7 @@ export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours
     }
   }
   function leave() {
+    onPlanHover?.(false);
     hide();
     setEngaged(false);
     setHiddenUntilLeave(false);
@@ -111,7 +116,7 @@ export function AssignmentCard({ item, taskLabel, wonum, personName, date, hours
   }, [tooltip, tooltipVisible]);
 
   return <>
-    <button ref={buttonRef} type="button" data-segment={segment} data-hue={hue} className={`${styles.assignment} ${state === 'unknown' ? styles.assignmentUnknown : ''} ${state === 'synced' ? styles.assignmentSynced : ''}`} draggable={false} onPointerEnter={onPointerEnter} onPointerLeave={leave} onFocus={onFocus} onBlur={leave} onKeyDown={onKeyDown} onPointerDown={pointerDown} onPointerMove={onPointerMove} onPointerUp={pointerUp} onPointerCancel={pointerCancel} onClick={event=>{hide();setEngaged(false);onClick(event);}} aria-label={`Phân công ${taskLabel}, ${hours} giờ, ${personName} ngày ${date}. Trạng thái: ${ariaState}.`} aria-describedby={tooltipVisible ? `assignment-tooltip-${item.id}` : undefined}>
+    <button ref={buttonRef} type="button" data-segment={segment} data-hue={hue} data-emphasis={emphasis} data-locked={locked || undefined} className={`${styles.assignment} ${state === 'unknown' ? styles.assignmentUnknown : ''} ${state === 'synced' ? styles.assignmentSynced : ''}`} draggable={false} onPointerEnter={onPointerEnter} onPointerLeave={leave} onFocus={onFocus} onBlur={leave} onKeyDown={onKeyDown} onPointerDown={pointerDown} onPointerMove={onPointerMove} onPointerUp={pointerUp} onPointerCancel={pointerCancel} onClick={event=>{hide();setEngaged(false);onClick(event);}} aria-label={`Phân công ${taskLabel}, ${hours} giờ, ${personName} ngày ${date}. Trạng thái: ${ariaState}.`} aria-describedby={tooltipVisible ? `assignment-tooltip-${item.id}` : undefined}>
       <span className={styles.assignmentLine}>{segment === 'middle' || segment === 'end' ? `${hours}h` : `${item.task_id !== null && item.task_id !== undefined ? `T${item.task_id} · ` : ''}${wonum || 'WO'} · ${hours}h`}</span>
       {(segment === 'single' || segment === 'start') && <span className={styles.assignmentMarks} aria-hidden="true">{mark && <StatusIcon kind={mark} />}{warning && <StatusIcon kind="warning" />}</span>}
     </button>

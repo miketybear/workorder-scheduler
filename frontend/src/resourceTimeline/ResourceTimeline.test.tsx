@@ -89,6 +89,22 @@ beforeEach(() => { vi.stubGlobal('PointerEvent',MouseEvent); vi.useFakeTimers({ 
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); Reflect.deleteProperty(document,'elementFromPoint'); });
 
+it('highlights every day of a plan when one day is hovered and dims other assignments',async()=>{
+  const base={...item,task_id:20,task_workorder_id:'task-20',plan_id:'plan-hover',plan_total_minutes:240} as Assignment;
+  const first={...base,id:'h-1',date:'2026-10-05',minutes:120} as Assignment;
+  const last={...base,id:'h-2',date:'2026-10-06',minutes:120} as Assignment;
+  const alone={...item,id:'h-solo',date:'2026-10-06',minutes:60,plan_id:undefined} as Assignment;
+  await loaded({...snapshot,items:[first,last,alone],work_orders:[order]});
+  const cards=screen.getAllByRole('button',{name:/^Phân công/});
+  const bySegment=(segment:string)=>cards.find(card=>card.getAttribute('data-segment')===segment)!;
+  fireEvent.pointerEnter(bySegment('end'));
+  expect(bySegment('start')).toHaveAttribute('data-emphasis','on');
+  expect(bySegment('end')).toHaveAttribute('data-emphasis','on');
+  expect(bySegment('single')).toHaveAttribute('data-emphasis','dim');
+  fireEvent.pointerLeave(bySegment('end'));
+  expect(bySegment('start')).not.toHaveAttribute('data-emphasis');
+});
+
 it('shows the remaining rota hours of the month in the people column, or that it is unverified',async()=>{
   const open={...person,person_id:'open',name:'Nguyen A',days:[
     {...person.days[0],date:'2026-10-05',remaining_minutes:630},{...person.days[0],date:'2026-10-06',remaining_minutes:-30},

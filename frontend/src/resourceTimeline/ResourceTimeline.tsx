@@ -1027,6 +1027,9 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
     return map;
   }, [shownTimeline]);
   const rotaLeftText = (person: ResourcePerson) => person.days.some(day => day.load_complete === false) ? 'Rota còn: chưa xác minh' : `Rota còn ${displayHours(person.days.reduce((sum, day) => sum + (day.capacity_minutes > 0 ? Math.max(0, day.remaining_minutes) : 0), 0))}h`;
+  // Hovering any day of a plan highlights the whole task; dragging any day moves the whole task.
+  const [hoverPlan, setHoverPlan] = useState<string | null>(null);
+  const planDayCount = (item: Assignment) => (shownTimeline?.items ?? []).filter(other => other.plan_id === item.plan_id && other.person_id === item.person_id).length;
   const hueOf = (key: string) => 1 + [...key].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 6, 0);
   // A multi-day plan is one bar: it keeps one lane across its days and is bridged over days off.
   const lanes = useMemo(() => {
@@ -1106,7 +1109,7 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
               const top = Math.max(-1, ...items.map(item => lanes.lane.get(item.id) ?? 0), ...bridges.map(bridge => bridge.lane));
               return Array.from({ length: top + 1 }, (_, lane) => {
                 const item = items.find(entry => (lanes.lane.get(entry.id) ?? 0) === lane);
-                if (item) { const label=workOrderLabel(item,shownTimeline); const taskLabel=item.task_id!==null && item.task_id!==undefined ? `${item.task_description||`Task ${item.task_id}`} · ${label}` : label; return <AssignmentCard key={item.id} item={item} segment={segmentOf(item)} hue={hueOf(item.plan_id ?? item.workorder_id)} warning={cardWarning(item)} taskLabel={taskLabel} wonum={shownTimeline.work_orders.find(order => order.site_id === item.site_id && order.workorder_id === item.workorder_id)?.wonum} personName={person.name} date={date} hours={displayHours(item.minutes)} onPointerDown={event=>{if(canEditItem(item))beginDrag(event,item.id,taskLabel);}} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={cancelDrag} onClick={event=>clickAssignment(event,item)} />;}
+                if (item) { const label=workOrderLabel(item,shownTimeline); const taskLabel=item.task_id!==null && item.task_id!==undefined ? `${item.task_description||`Task ${item.task_id}`} · ${label}` : label; return <AssignmentCard key={item.id} item={item} segment={segmentOf(item)} hue={hueOf(item.plan_id ?? item.workorder_id)} emphasis={hoverPlan && item.plan_id ? (item.plan_id === hoverPlan ? 'on' : 'dim') : hoverPlan ? 'dim' : undefined} locked={!canEditItem(item)} onPlanHover={hovered => setHoverPlan(hovered ? item.plan_id ?? null : null)} warning={cardWarning(item)} taskLabel={taskLabel} wonum={shownTimeline.work_orders.find(order => order.site_id === item.site_id && order.workorder_id === item.workorder_id)?.wonum} personName={person.name} date={date} hours={displayHours(item.minutes)} onPointerDown={event=>{if(canEditItem(item))beginDrag(event,item.id,item.plan_id&&planDayCount(item)>1?`Chuyển cả task (${planDayCount(item)} ngày) · ${taskLabel}`:taskLabel);}} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={cancelDrag} onClick={event=>clickAssignment(event,item)} />;}
                 const bridge = bridges.find(entry => entry.lane === lane);
                 return bridge ? <div key={`bridge-${lane}`} className={styles.bridge} data-hue={hueOf(bridge.plan)} aria-hidden="true" /> : <div key={`gap-${lane}`} className={styles.laneGap} aria-hidden="true" />;
               });
