@@ -65,6 +65,8 @@ GRANT INSERT, UPDATE, DELETE ON access_grant, planner_permission, user_connectio
     login_session, login_flow, draft, draft_item TO :"runtime_role";
 GRANT INSERT ON maximo_person_binding, draft_submission, upload_batch,
     audit_event, authorization_event TO :"runtime_role";
+-- The receipt is inserted empty, then its result is filled in the same transaction; the hash and key stay immutable.
+GRANT UPDATE (result) ON draft_submission TO :"runtime_role";
 GRANT INSERT, UPDATE ON upload_item TO :"runtime_role";
 GRANT INSERT, UPDATE ON rota_import TO :"runtime_role";
 GRANT INSERT ON rota_event TO :"runtime_role";

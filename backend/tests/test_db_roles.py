@@ -181,6 +181,9 @@ def test_provisioned_runtime_has_dml_but_no_ddl_admin_or_audit_mutation():
                         "SELECT has_table_privilege(current_user, %s, %s)",
                         (table, privilege),
                     ).fetchone() == (True,)
+            assert db.execute(
+                "SELECT has_column_privilege(current_user, 'draft_submission', 'result', 'UPDATE')"
+            ).fetchone() == (True,)
             for column in ("state", "version", "sync_state", "person_id", "laborcode"):
                 assert db.execute(
                     "SELECT has_column_privilege(current_user, 'assignment_plan', %s, 'UPDATE')",
@@ -210,6 +213,7 @@ def test_provisioned_runtime_has_dml_but_no_ddl_admin_or_audit_mutation():
                 "INSERT INTO resource_pool_grant(pool_id,user_id,capability) "
                 "VALUES(gen_random_uuid(),gen_random_uuid(),'write')",
                 "DELETE FROM draft_submission",
+                "UPDATE draft_submission SET request_hash='changed'",
                 "DELETE FROM upload_item",
                 "DELETE FROM upload_batch",
                 "UPDATE resource_person SET person_key='changed'",
