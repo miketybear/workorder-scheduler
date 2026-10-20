@@ -233,11 +233,6 @@
 .legendPopover summary::-webkit-details-marker { display: none; }
 .legendPopover .legend { position: absolute; z-index: 10; top: 36px; right: 0; width: 280px; flex-direction: column; gap: 6px; padding: 12px; background: var(--layer); border: 1px solid var(--line); box-shadow: var(--shadow-overlay); font-size: 12px; }
 .grid thead th[data-today] { background: var(--accent-tint); box-shadow: inset 0 -3px var(--link); }
-/* Secondary capacity line is visually quiet until hover/focus, except warnings. */
-@media (hover: hover) {
-  .capacity small:not([data-alert]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .grid td:hover .capacity small:not([data-alert]) { position: static; width: auto; height: auto; clip-path: none; }
-}
 
 /* Scrolling: size scroll areas to the viewport so both scrollbars stay reachable; chain wheel to the page. */
 .gridWrap { max-height: max(320px, calc(100dvh - 372px)); overscroll-behavior-x: contain; overscroll-behavior-y: auto; }

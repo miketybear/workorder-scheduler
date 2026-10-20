@@ -222,6 +222,22 @@ it('marks incomplete and zero-capacity role loads unavailable instead of showing
   expect(view.container.querySelector('i[data-fill]')).not.toBeInTheDocument();
 });
 
+it('keeps day cells quiet: nothing on zero-capacity days, a line only for over-capacity or unverified days, details in the tooltip',async()=>{
+  const base=person.days[0];
+  const days=[
+    {...base,date:'2026-10-05',capacity_minutes:0,allocated_minutes:0,remaining_minutes:0},
+    {...base,date:'2026-10-06',allocated_minutes:700,remaining_minutes:-70},
+    {...base,date:'2026-10-07'}];
+  const view=await loaded({...snapshot,rows:[{...person,days}]});
+  const cell=(date:string)=>view.container.querySelector<HTMLElement>(`td[data-date="${date}"]`);
+  expect(cell('2026-10-05')?.textContent).not.toMatch(/d/);
+  expect(cell('2026-10-06')).toHaveTextContent('vượt 1,17h');
+  const quiet=cell('2026-10-07')!;
+  expect(quiet).toHaveTextContent('0 / 10,5h');
+  expect(quiet.querySelector('small')).toBeNull();
+  expect(quiet.querySelector('[title]')?.getAttribute('title')).toContain('còn 10,5h');
+});
+
 it('caps an over-capacity donut ring while preserving actual percentage and monthly hours',async()=>{
   const over={...person,role:'TECH',days:person.days.map(day=>({...day,allocated_minutes:700,remaining_minutes:-70,load_complete:true}))};
   const view=await loaded({...snapshot,rows:[over]});
