@@ -904,7 +904,7 @@ describe('live Resource timeline interactions', () => {
     ],planning_summary:{state:'partial',remaining_minutes:60,remaining_tasks:1,total_tasks:2,verified_at:'2026-10-01T09:00:00+07:00'},assignment_revision:'r2'});
     await loaded(rowItem(item));
     fireEvent.click(screen.getByRole('button',{name:/Phân công WO-1 · Pump repair, 2 giờ/}));
-    fireEvent.change(screen.getByLabelText('Ngày phân công'),{target:{value:'2026-10-06'}});
+    setDate(screen.getByLabelText('Ngày phân công'),'2026-10-06');
     fireEvent.click(screen.getByRole('button',{name:'Xác nhận lưu'}));
     await waitFor(()=>expect(api.update).toHaveBeenCalled());
     await waitFor(()=>expect(screen.getAllByText('0 / 10,5h').length).toBeGreaterThan(0));

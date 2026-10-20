@@ -34,13 +34,13 @@ function scrollToSelected(element: HTMLElement | null) {
   if (element && column) column.scrollTop = element.offsetTop - column.clientHeight / 2 + element.offsetHeight / 2;
 }
 
-type DateTimeProps = TimeProps & { defaultTime?: string; today?: string; dateOnly?: boolean; min?: string; max?: string };
+type DateTimeProps = TimeProps & { defaultTime?: string; today?: string; dateOnly?: boolean; min?: string; max?: string; isDayDisabled?: (day: string) => boolean };
 
 /** Date and 24 h time. `value` is "YYYY-MM-DDTHH:mm" (the datetime-local format) or "". With `dateOnly` it is "YYYY-MM-DD". */
-export function DateTimeInput({ label, value: given, onChange: emit, disabled, defaultTime = '00:00', today, dateOnly, min, max }: DateTimeProps) {
+export function DateTimeInput({ label, value: given, onChange: emit, disabled, defaultTime = '00:00', today, dateOnly, min, max, isDayDisabled }: DateTimeProps) {
   const value = dateOnly && given ? `${given}T00:00` : given;
   const onChange = (next: string) => emit(dateOnly ? next.slice(0, 10) : next);
-  const inRange = (day: string) => (!min || day >= min) && (!max || day <= max);
+  const inRange = (day: string) => (!min || day >= min) && (!max || day <= max) && !isDayDisabled?.(day);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
