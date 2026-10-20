@@ -63,7 +63,7 @@ Cập nhật: 2026-10-19.
 
 ### B. Hiệu năng `assignment-timeline` (backend, kết quả điều tra 2026-10-19)
 
-- [ ] **B1. Gộp đọc tải phân công bằng `laborcode in ["A","B"]`** (2 truy vấn mỗi lô thay vì 42): đã thử
+- [-] **B1. (Không làm — quyết định chủ dự án 2026-10-20: chỉ giảm ~1 giây trên ~2,6 giây, không đáng rủi ro ở đường kiểm tra quá tải; xét lại nếu số người/WO tăng.) Gộp đọc tải phân công bằng `laborcode in ["A","B"]`** (2 truy vấn mỗi lô thay vì 42): đã thử
       trên Maximo test, kết quả giống hệt cách cũ (3/6/21 người, tháng 6 và 10). Giữ nguyên bộ lọc sau,
       chia lô ≤100 mã (URL ≤ ~8k), cú pháp không dấu cách, kiểm tra `totalCount`; không dùng truy vấn
       chồng lấn một lần vì `finishdate` rỗng làm sót tải. Cần agent backend, test, review độc lập.
