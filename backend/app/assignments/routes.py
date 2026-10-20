@@ -12,6 +12,7 @@ from app.assignments.incremental import metadata, receipt_metadata, revision
 from app.assignments.load import enrich_rows, load_lock, validate_remote_capacity
 from app.assignments.models import Allocation, AssignmentEvent, AssignmentSubmission
 from app.assignments.plan_moves import register as register_plan_moves
+from app.assignments.plan_segments import register as register_plan_segments
 from app.assignments.plan_uploads import register as register_plan_uploads
 from app.assignments.plans import register as register_plans
 from app.assignments.plans import release_empty_plan, validate_plan_edit
@@ -643,3 +644,4 @@ register_plans(router)
 register_plan_uploads(router)
 register_bulk_uploads(router)
 register_plan_moves(router)
+register_plan_segments(router)
