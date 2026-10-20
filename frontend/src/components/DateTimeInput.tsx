@@ -178,7 +178,7 @@ export function MonthInput({ label, value, onChange, disabled }: { label: string
     if (disabled) return;
     const rect = wrapper.current?.getBoundingClientRect();
     if (rect) setPosition({ top: rect.bottom + 4 + 190 > window.innerHeight ? Math.max(8, rect.top - 194) : rect.bottom + 4,
-      left: Math.max(8, Math.min(rect.left, window.innerWidth - 228 - 8)) });
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - 268 - 8)) });
     setYear(Number(value.slice(0, 4)) || new Date().getFullYear());
     setOpen(true);
   }
