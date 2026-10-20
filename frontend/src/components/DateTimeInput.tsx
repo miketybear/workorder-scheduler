@@ -148,6 +148,8 @@ export function DateTimeInput({ label, value: given, onChange: emit, disabled, d
   </div>;
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+
 /** Month only. `value` is "YYYY-MM" (the month-input format) or "". */
 export function MonthInput({ label, value, onChange, disabled }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -158,7 +160,7 @@ export function MonthInput({ label, value, onChange, disabled }: { label: string
   const wrapper = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const popup = useRef<HTMLDivElement>(null);
-  const text = /^\d{4}-\d{2}$/.test(value) ? `${value.slice(5)}/${value.slice(0, 4)}` : '';
+  const text = /^\d{4}-(0[1-9]|1[0-2])$/.test(value) ? `${MONTHS[Number(value.slice(5)) - 1]} ${value.slice(0, 4)}` : '';
 
   useEffect(() => {
     if (!open) return;
@@ -182,17 +184,21 @@ export function MonthInput({ label, value, onChange, disabled }: { label: string
   }
   function commit(entry: string) {
     if (!entry.trim()) { setInvalid(false); setDraft(null); return; }
-    const match = /^\s*(\d{1,2})\/(\d{4})\s*$/.exec(entry);
-    if (!match || Number(match[1]) < 1 || Number(match[1]) > 12) { setInvalid(true); return; }
+    // Accepts "Oct 2026" (as shown) or "10/2026".
+    const named = /^\s*([A-Za-z]{3})\s+(\d{4})\s*$/.exec(entry);
+    const numeric = /^\s*(\d{1,2})\/(\d{4})\s*$/.exec(entry);
+    const number = named ? MONTHS.findIndex((name) => name.toLowerCase() === named[1].toLowerCase()) + 1 : numeric ? Number(numeric[1]) : 0;
+    const year = named?.[2] ?? numeric?.[2];
+    if (!year || number < 1 || number > 12) { setInvalid(true); return; }
     setInvalid(false); setDraft(null);
-    const next = `${match[2]}-${match[1].padStart(2, '0')}`;
+    const next = `${year}-${String(number).padStart(2, '0')}`;
     if (next !== value) onChange(next);
   }
   const key = (number: number) => `${String(year).padStart(4, '0')}-${String(number).padStart(2, '0')}`;
   const pickMonth = (number: number) => { setDraft(null); setInvalid(false); onChange(key(number)); setOpen(false); input.current?.focus(); };
 
-  return <div role="group" aria-label={label} className={styles.dateTimeField} ref={wrapper}>
-    <input ref={input} type="text" inputMode="numeric" placeholder="mm/yyyy" autoComplete="off" aria-label={`${label} (nhập)`}
+  return <div role="group" aria-label={label} className={`${styles.dateTimeField} ${styles.monthInput}`} ref={wrapper}>
+    <input ref={input} type="text" placeholder="Oct 2026" autoComplete="off" aria-label={`${label} (nhập)`}
       aria-invalid={invalid || undefined} disabled={disabled} value={draft ?? text}
       onChange={(event) => { setDraft(event.target.value); setInvalid(false); }}
       onBlur={(event) => commit(event.target.value)}
@@ -205,7 +211,7 @@ export function MonthInput({ label, value, onChange, disabled }: { label: string
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="1.8" y="3" width="12.4" height="10.6" rx="1.6" /><path d="M1.8 6.4h12.4M5.2 1.8v2.6M10.8 1.8v2.6" /></svg>
     </button>
-    {invalid && <small role="alert" className={styles.dateTimeError}>Nhập mm/yyyy.</small>}
+    {invalid && <small role="alert" className={styles.dateTimeError}>Nhập tháng dạng Oct 2026 hoặc 10/2026.</small>}
     {open && createPortal(<div ref={popup} role="dialog" aria-label={`Chọn ${label}`} className={`${styles.dtPopover} ${styles.dtDateOnly}`} style={position}
       onKeyDown={(event) => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); input.current?.focus(); } }}>
       <div className={styles.dtCalendar}>
@@ -215,7 +221,7 @@ export function MonthInput({ label, value, onChange, disabled }: { label: string
           <button type="button" aria-label="Năm sau" onClick={() => setYear(year + 1)}>›</button>
         </div>
         <div className={styles.dtMonths}>{Array.from({ length: 12 }, (_, index) => index + 1).map((number) =>
-          <button type="button" key={number} aria-pressed={value === key(number)} aria-label={`Tháng ${number}/${year}`} onClick={() => pickMonth(number)}>T{number}</button>)}</div>
+          <button type="button" key={number} aria-pressed={value === key(number)} aria-label={`Tháng ${number}/${year}`} onClick={() => pickMonth(number)}>{MONTHS[number - 1]}</button>)}</div>
       </div>
     </div>, document.body)}
   </div>;

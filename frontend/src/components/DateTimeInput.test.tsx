@@ -128,11 +128,11 @@ it('month field types mm/yyyy and picks a month from the year grid', () => {
   const onChange = vi.fn();
   render(<MonthInput label="Tháng" value="2026-10" onChange={onChange} />);
   const text = screen.getByLabelText('Tháng (nhập)') as HTMLInputElement;
-  expect(text.value).toBe('10/2026');
+  expect(text.value).toBe('Oct 2026');
   fireEvent.change(text, { target: { value: '13/2026' } });
   fireEvent.blur(text);
-  expect(screen.getByRole('alert')).toHaveTextContent('mm/yyyy');
-  fireEvent.change(text, { target: { value: '3/2027' } });
+  expect(screen.getByRole('alert')).toHaveTextContent('Oct 2026');
+  fireEvent.change(text, { target: { value: 'mar 2027' } });
   fireEvent.blur(text);
   expect(onChange).toHaveBeenLastCalledWith('2027-03');
   fireEvent.click(screen.getByRole('button', { name: 'Chọn tháng Tháng' }));

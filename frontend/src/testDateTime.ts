@@ -46,6 +46,7 @@ export function setMonthValue(group: HTMLElement, value: string): void {
 }
 
 export function getMonthValue(group: HTMLElement): string {
-  const match = /^(\d{2})\/(\d{4})$/.exec((within(group).getByLabelText(/\(nhập\)$/) as HTMLInputElement).value);
-  return match ? `${match[2]}-${match[1]}` : '';
+  const match = /^([A-Za-z]{3}) (\d{4})$/.exec((within(group).getByLabelText(/\(nhập\)$/) as HTMLInputElement).value);
+  const index = match ? ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(match[1].toLowerCase()) + 1 : 0;
+  return match && index ? `${match[2]}-${String(index).padStart(2, '0')}` : '';
 }

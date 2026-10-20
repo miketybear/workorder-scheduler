@@ -337,5 +337,8 @@
 .planningTable .dateTimeField input[type="text"] { min-width: 130px; flex-basis: 130px; }
 
 .dtDateOnly { grid-template-columns: auto; grid-template-areas: "cal"; width: auto; }
-.dtMonths { display: grid; grid-template-columns: repeat(3, 56px); gap: 4px; }
+.dtMonths { display: grid; grid-template-columns: repeat(4, 56px); gap: 4px; }
+.monthInput { flex-wrap: nowrap; }
+.monthInput input[type="text"] { flex: 1 1 96px; min-width: 96px; }
+.monthInput .dateTimeError { position: absolute; top: 100%; left: 0; white-space: nowrap; }
 .dtMonths button { min-height: 36px; }
