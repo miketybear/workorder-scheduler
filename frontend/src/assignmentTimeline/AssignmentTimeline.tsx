@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
+import { MonthInput } from '../components/DateTimeInput';
 import styles from './AssignmentTimeline.module.css';
 import { initialRoster } from './fixtures';
 import { AllocationPreview } from './AllocationPreview';
@@ -52,7 +53,7 @@ export function AssignmentTimeline() {
   return <div className={styles.page}>
     <div className={styles.banner}><strong>PoC local · dữ liệu tổng hợp</strong><span>Không lưu, không gọi server hoặc Maximo. Đây không phải rota thực tế.</span></div>
     <header className={styles.heading}><div><p className={styles.eyebrow}>ASSIGNMENT MANAGER / SYNTHETIC PREVIEW</p><h1>Resource timeline</h1><p>Phân bổ giờ theo người và ngày. Một người dùng chung capacity qua mọi WO, site và connection.</p></div>
-      <div className={styles.controls}><label>Tháng<input type="month" value={month} onChange={e => setMonth(e.target.value)} /></label><label>Craft<select aria-label="Craft" value={craftFilter} onChange={e => { setCraftFilter(e.target.value as Craft | 'ALL'); setEditingId(null); }}><option value="ALL">Tất cả craft</option>{CRAFTS.map(c => <option key={c}>{c}</option>)}</select></label></div>
+      <div className={styles.controls}><div className={styles.monthField}><span>Tháng</span><MonthInput label="Tháng" value={month} onChange={setMonth} /></div><label>Craft<select aria-label="Craft" value={craftFilter} onChange={e => { setCraftFilter(e.target.value as Craft | 'ALL'); setEditingId(null); }}><option value="ALL">Tất cả craft</option>{CRAFTS.map(c => <option key={c}>{c}</option>)}</select></label></div>
     </header>
     <div className={styles.toolbar}><div><button type="button" onClick={undo} disabled={!history.length}>Hoàn tác</button><button type="button" onClick={reset}>Đặt lại PoC</button><button type="button" onClick={() => setPreview(v => !v)} aria-pressed={preview}>{preview ? 'Ẩn xem trước' : 'Xem trước'}</button></div><span>{roster.people.length} nhân sự đủ điều kiện · 87 dòng nguồn mô phỏng · gồm Control RM Engineer và Material Controller</span></div>
     {preview && <aside className={styles.preview} role="status"><strong>Xem trước trong bộ nhớ</strong><p>{monthAllocations.length} phân bổ trong {monthName}; giờ labor trước/sau: {fmtHours(initialRoster.allocations.filter(a => a.date.startsWith(`${month}-`)).reduce((n, a) => n + a.minutes, 0))} → {fmtHours(monthAllocations.reduce((n, a) => n + a.minutes, 0))}. Không thay đổi PIC hoặc estdur.</p><AllocationPreview baseline={initialRoster} current={roster} /></aside>}

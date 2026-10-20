@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { expect, it, vi } from 'vitest';
-import { DateTimeInput } from './DateTimeInput';
+import { DateTimeInput, MonthInput } from './DateTimeInput';
 
 function Harness({ initial = '', onChange = vi.fn(), parentKey = vi.fn(), defaultTime = '06:30' }: { initial?: string; onChange?: (value: string) => void; parentKey?: () => void; defaultTime?: string }) {
   const [value, setValue] = useState(initial);
@@ -105,4 +105,39 @@ it('does not open when disabled', () => {
   render(<DateTimeInput label="Target Start" value="" disabled onChange={vi.fn()} />);
   expect(screen.getByRole('button', { name: 'Chọn ngày giờ Target Start' })).toBeDisabled();
   expect(screen.getByLabelText('Target Start (nhập)')).toBeDisabled();
+});
+
+it('date-only field shows just the date, picks a day in one click and respects min and max', () => {
+  const onChange = vi.fn();
+  render(<DateTimeInput dateOnly label="Ngày" value="2026-10-05" min="2026-10-05" max="2026-10-20" today="2026-10-05" onChange={onChange} />);
+  const text = screen.getByLabelText('Ngày (nhập)') as HTMLInputElement;
+  expect(text.value).toBe('05/10/2026');
+  fireEvent.change(text, { target: { value: '07/10/2026' } });
+  fireEvent.blur(text);
+  expect(onChange).toHaveBeenLastCalledWith('2026-10-07');
+  fireEvent.click(screen.getByRole('button', { name: 'Chọn ngày giờ Ngày' }));
+  expect(screen.queryByRole('group', { name: 'Giờ' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '04/10/2026' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '21/10/2026' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: '12/10/2026' }));
+  expect(onChange).toHaveBeenLastCalledWith('2026-10-12');
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+
+it('month field types mm/yyyy and picks a month from the year grid', () => {
+  const onChange = vi.fn();
+  render(<MonthInput label="Tháng" value="2026-10" onChange={onChange} />);
+  const text = screen.getByLabelText('Tháng (nhập)') as HTMLInputElement;
+  expect(text.value).toBe('10/2026');
+  fireEvent.change(text, { target: { value: '13/2026' } });
+  fireEvent.blur(text);
+  expect(screen.getByRole('alert')).toHaveTextContent('mm/yyyy');
+  fireEvent.change(text, { target: { value: '3/2027' } });
+  fireEvent.blur(text);
+  expect(onChange).toHaveBeenLastCalledWith('2027-03');
+  fireEvent.click(screen.getByRole('button', { name: 'Chọn tháng Tháng' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Năm trước' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Tháng 12/2025' }));
+  expect(onChange).toHaveBeenLastCalledWith('2025-12');
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });

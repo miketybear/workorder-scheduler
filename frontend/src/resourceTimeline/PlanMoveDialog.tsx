@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { DateTimeInput } from '../components/DateTimeInput';
 import type { Assignment, AssignmentPlanMovePreview, ResourcePerson } from '../api/assignments';
 import { restoreFocus } from './focusRestore';
 import styles from './ResourceTimeline.module.css';
@@ -60,7 +61,7 @@ export function PlanMoveDialog(props:Props){
     {partialCoverage&&<p role="status">Chưa tải đủ các ngày của task; tổng giờ hiển thị chỉ gồm {existing.length} ngày đã biết. Preview máy chủ sẽ trả toàn bộ ngày trước khi xác nhận.</p>}
     <div className={styles.moveTargets}>
       <label>Nhân lực đích<select aria-label="Nhân lực đích" value={targetPersonId} disabled={busy||unknown} onChange={event=>onPersonChange(event.target.value)}>{people.map(person=><option key={person.person_id} value={person.person_id}>{person.name} · {person.laborcode}</option>)}</select></label>
-      <label>Ngày chuyển đến<input aria-label="Ngày chuyển đến" type="date" value={targetDate} disabled={busy||unknown} onChange={event=>onDateChange(event.target.value)}/></label>
+      <div className={styles.field}><span>Ngày chuyển đến</span><DateTimeInput dateOnly label="Ngày chuyển đến" value={targetDate} disabled={busy||unknown} onChange={onDateChange}/></div>
     </div>
     {preview?.mode==='reallocate'?<p>Xếp lại từ {targetDate?dateLabel(targetDate):'ngày đã chọn'} theo capacity đã xác minh; ngày và giờ từng đoạn có thể thay đổi.</p>:<p>Ngày đang kéo: {dateLabel(item.date)} → {targetDate?dateLabel(targetDate):'—'}; các ngày còn lại {anchorOffsetDays>=0?'dịch thêm':'lùi'} {Math.abs(anchorOffsetDays)} ngày theo cùng độ lệch.</p>}
     <table className={styles.moveComparison} aria-label="Đối chiếu lịch trước và sau chuyển"><thead><tr><th>Ngày cũ</th><th>Giờ</th><th></th><th>Ngày mới</th><th>Giờ</th></tr></thead><tbody>{Array.from({length:Math.max(existing.length,preview?.segments.length??0)},(_,index)=>{const old=existing.slice().sort((a,b)=>a.date.localeCompare(b.date))[index];const next=preview?.segments.slice().sort((a,b)=>a.date.localeCompare(b.date))[index];return <tr key={`${old?.id??'none'}-${next?.date??'pending'}`}><td>{old?`${dateLabel(old.date)}${old.date.slice(0,7)!==visibleMonth?' *':''}`:'—'}</td><td>{old?`${hours(old.minutes)}h`:'—'}</td><td aria-hidden="true">→</td><td>{next?`${dateLabel(next.date)}${next.date.slice(0,7)!==visibleMonth?' *':''}`:'—'}</td><td>{next?`${hours(next.minutes)}h`:'—'}</td></tr>;})}</tbody></table>

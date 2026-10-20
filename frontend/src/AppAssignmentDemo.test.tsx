@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { getMonthValue, setMonthValue } from './testDateTime';
 
 vi.mock('./scheduling/WorkOrders', () => ({ WorkOrders: () => null }));
 vi.mock('./components/Settings', () => ({ Settings: () => <h1>Account settings</h1> }));
@@ -23,14 +24,14 @@ describe('assignment demo route', () => {
     const navigation=within(screen.getByText('Cài đặt', {selector:'a'}).closest('header')!);
     const timelineHeader=screen.getByText('Resource timeline', {selector:'h1'}).closest('header')!;
     const month = within(timelineHeader).getByLabelText('Tháng');
-    fireEvent.change(month, { target: { value: '2026-12' } });
+    setMonthValue(month, '2026-12');
     fireEvent.click(navigation.getByRole('link', { name: 'Cài đặt' }));
     expect(screen.getByRole('heading', { name: 'Account settings' })).toBeInTheDocument();
     expect(screen.getByText('Resource timeline', {selector:'h1'})).not.toBeVisible();
     fireEvent.click(navigation.getByRole('link', { name: 'Timeline thử nghiệm' }));
     expect(screen.getByText('Resource timeline', {selector:'h1'})).toBeVisible();
     expect(month).toBeVisible();
-    expect(month).toHaveValue('2026-12');
+    expect(getMonthValue(month)).toBe('2026-12');
   });
 
   it('retains the staged preview selection when navigating to settings and back', () => {

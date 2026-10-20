@@ -94,7 +94,7 @@
 .retrieveHeading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
 .retrieveHeading > strong { font-weight: 600; }
 .retrieveDates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; gap: 12px; }
-.retrieveDates label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; line-height: 16px; min-width: 0; }
+.retrieveDates label, .dateRange { display: grid; gap: 6px; color: var(--muted); font-size: 12px; line-height: 16px; min-width: 0; }
 .retrieveDates input { width: 100%; }
 .retrieveDates[hidden], .retrieveHeading[hidden] { display: none; }
 .retrieveSummary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
@@ -335,3 +335,7 @@
 .dtFooter { grid-area: foot; display: flex; justify-content: flex-end; }
 .dtPopover .dtFooter button { background: var(--accent); color: #ffffff; padding: 0 20px; min-height: 36px; }
 .planningTable .dateTimeField input[type="text"] { min-width: 130px; flex-basis: 130px; }
+
+.dtDateOnly { grid-template-columns: auto; grid-template-areas: "cal"; width: auto; }
+.dtMonths { display: grid; grid-template-columns: repeat(3, 56px); gap: 4px; }
+.dtMonths button { min-height: 36px; }

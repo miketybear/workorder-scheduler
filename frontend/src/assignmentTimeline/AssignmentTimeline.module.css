@@ -6,7 +6,7 @@
 .heading p { margin: 0; }
 .eyebrow { font-size: 11px; letter-spacing: .8px; }
 .controls, .toolbar, .toolbar > div, .panelTitle { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.controls label, .form label, .search { display: grid; gap: 6px; color: var(--muted); font-size: 12px; min-width: 0; }
+.controls label, .monthField, .form label, .search { display: grid; gap: 6px; color: var(--muted); font-size: 12px; min-width: 0; }
 .controls input, .controls select { min-width: 130px; }
 .toolbar { justify-content: space-between; margin: 14px 0; font-size: 12px; }
 .toolbar button, .form button { min-height: 36px; }

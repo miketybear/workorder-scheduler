@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { getDate } from '../testDateTime';
 import type { Assignment, AssignmentPlanMovePreview, ResourcePerson } from '../api/assignments';
 import { PlanMoveDialog } from './PlanMoveDialog';
 
@@ -36,7 +37,7 @@ describe('PlanMoveDialog',()=>{
   it('shows a full before/after shift and explains the selected-date offset',()=>{
     const preview={plan_id:'plan-1',plan_version:3,pool_id:'pool',connection_id:'conn',discipline:'E&I',task_workorder_id:'task-10',task_id:10,assignment_id:'source-10',source_person_id:'p1',target_person_id:'p2',source_laborcode:'L1',target_laborcode:'L2',original_demand_minutes:120,total_minutes:120,mode:'shift',old_items:[item,second],segments:[{date:'2026-10-06',minutes:60},{date:'2026-10-07',minutes:60}],capacity:[{person_id:'p2',date:'2026-10-06',laborcode:'L2',capacity_minutes:630,allocated_minutes:60,remaining_minutes:570,proposed_minutes:60,remaining_after_minutes:510},{person_id:'p2',date:'2026-10-07',laborcode:'L2',capacity_minutes:630,allocated_minutes:0,remaining_minutes:630,proposed_minutes:60,remaining_after_minutes:570}],anchor_allocation_id:item.id,target_date:'2026-10-06'} as AssignmentPlanMovePreview;
     const view=render(<PlanMoveDialog {...props({preview,workOrderLabel:'WO-1'})}/>);
-    expect(screen.getByLabelText('Ngày chuyển đến')).toHaveValue('2026-10-06');
+    expect(getDate(screen.getByLabelText('Ngày chuyển đến'))).toBe('2026-10-06');
     expect([...view.container.querySelectorAll('p')].some(node=>node.textContent?.includes('Ngày đang kéo: 04/10/2026')&&node.textContent.includes('dịch thêm'))).toBe(true);
     expect(screen.getByText(/WO-1/)).toBeInTheDocument();
     expect(screen.getByRole('table',{name:'Đối chiếu lịch trước và sau chuyển'}).querySelectorAll('tbody tr')).toHaveLength(2);

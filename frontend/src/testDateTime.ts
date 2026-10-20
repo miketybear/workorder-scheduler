@@ -24,3 +24,28 @@ export function groupControl(group: HTMLElement): HTMLElement {
   const parts = within(group);
   return parts.queryByLabelText(/\(nhập\)$/) ?? parts.getByLabelText(/\(giờ\)$/);
 }
+
+// Date-only fields are typed "dd/mm/yyyy"; month fields "mm/yyyy". Values are the native "YYYY-MM-DD" / "YYYY-MM" strings.
+export function setDate(group: HTMLElement, value: string): void {
+  const field = within(group).getByLabelText(/\(nhập\)$/);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  fireEvent.change(field, { target: { value: match ? `${match[3]}/${match[2]}/${match[1]}` : '' } });
+  fireEvent.blur(field);
+}
+
+export function getDate(group: HTMLElement): string {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((within(group).getByLabelText(/\(nhập\)$/) as HTMLInputElement).value);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : '';
+}
+
+export function setMonthValue(group: HTMLElement, value: string): void {
+  const field = within(group).getByLabelText(/\(nhập\)$/);
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  fireEvent.change(field, { target: { value: match ? `${match[2]}/${match[1]}` : '' } });
+  fireEvent.blur(field);
+}
+
+export function getMonthValue(group: HTMLElement): string {
+  const match = /^(\d{2})\/(\d{4})$/.exec((within(group).getByLabelText(/\(nhập\)$/) as HTMLInputElement).value);
+  return match ? `${match[2]}-${match[1]}` : '';
+}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { DateTimeInput } from '../components/DateTimeInput';
 
 import { getAuthSummary, loginUrl, type Session } from '../api/client';
 import { RetrievalError, retrieveWorkOrders, type WorkOrder, type WorkOrderFilter } from '../api/workOrders';
@@ -664,11 +665,11 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         <strong>Lấy dữ liệu WO</strong>
       </div>
       <form className={styles.retrieveDates} hidden={view === 'drafts' || view === 'maximo' && rows !== null && !!loadedRange && !rangeExpanded} onSubmit={(event) => { event.preventDefault(); void retrieve(); }}>
-        <label>Target Finish từ<input type="date" required value={start}
-          onChange={(event) => changeDate(event.target.value, 'start')} /></label>
-        <label>Target Finish trước<input type="date" required value={end}
-          onChange={(event) => changeDate(event.target.value, 'end')} /></label>
-        <button className={styles.primary} disabled={!grant || busy}>{busy ? 'Đang lấy WO…' : 'Retrieve WO'}</button>
+        <div className={styles.dateRange}><span>Target Finish từ</span><DateTimeInput dateOnly label="Target Finish từ" value={start}
+          onChange={(value) => changeDate(value, 'start')} /></div>
+        <div className={styles.dateRange}><span>Target Finish trước</span><DateTimeInput dateOnly label="Target Finish trước" value={end}
+          onChange={(value) => changeDate(value, 'end')} /></div>
+        <button className={styles.primary} disabled={!grant || busy || !start || !end}>{busy ? 'Đang lấy WO…' : 'Retrieve WO'}</button>
       </form>
       </section>}
       {grant && view === 'maximo' && rows === null && !busy && <p>Chưa Retrieve WO cho khoảng ngày này. Chọn ngày và bấm Retrieve WO để tải bảng.</p>}

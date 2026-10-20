@@ -7,7 +7,7 @@ import { mergePmOrigin, WorkOrders } from './WorkOrders';
 import { App } from '../App';
 import { deleteDraft, getDetail, listPlannedWorkOrders, lookupUploadRequest, openBatch, openDraft, prepareBatch, previewUpload, saveBatch, saveDraft, submitUpload } from '../api/drafts';
 import { getConnectionSettings, saveConnectionSetting } from '../api/settings';
-import { setDateTime } from '../testDateTime';
+import { getDate, setDate, setDateTime } from '../testDateTime';
 
 vi.mock('../api/client', () => ({ getAuthSummary: vi.fn(), getLiveness: vi.fn().mockResolvedValue(true), loginUrl: '/api/auth/login' }));
 vi.mock('../api/settings', () => ({ getConnectionSettings: vi.fn(), saveConnectionSetting: vi.fn() }));
@@ -40,7 +40,7 @@ it('collapses only a successfully retrieved range and opens date controls withou
   expect(screen.getByLabelText('Target Finish từ')).toBeVisible();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
-  fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-09-02' } });
+  setDate(screen.getByLabelText('Target Finish từ'), '2026-09-02');
   expect(screen.queryByText(/Đã tải:/)).not.toBeInTheDocument();
   vi.mocked(retrieveWorkOrders).mockRejectedValue(new Error('Retrieve failed'));
   fireEvent.click(screen.getByText('Retrieve WO'));
@@ -317,8 +317,8 @@ async function setup(withApp = false, connectionId = 'one') {
   vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: { ...session, preferred_connection_id: connectionId } });
   render(<MemoryRouter initialEntries={['/work-orders']}>{withApp ? <App autoRetrieveWorkOrders={false} /> : <WorkOrders />}</MemoryRouter>);
   await waitFor(() => expect(screen.getByRole('button', { name: 'Retrieve WO' })).toBeEnabled());
-  fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-09-01' } });
-  fireEvent.change(screen.getByLabelText('Target Finish trước'), { target: { value: '2026-10-01' } });
+  setDate(screen.getByLabelText('Target Finish từ'), '2026-09-01');
+  setDate(screen.getByLabelText('Target Finish trước'), '2026-10-01');
   expect(screen.queryByLabelText('Hệ thống / Discipline')).not.toBeInTheDocument();
 }
 
@@ -413,8 +413,8 @@ it('clears table filters and old scope data when the connection changes', async 
 
 it('submits calendar dates as local midnight with the exclusive end unchanged', async () => {
   await setup();
-  expect(screen.getByLabelText('Target Finish từ')).toHaveAttribute('type', 'date');
-  expect(screen.getByLabelText('Target Finish trước')).toHaveAttribute('type', 'date');
+  expect(within(screen.getByLabelText('Target Finish từ')).getByLabelText('Target Finish từ (nhập)')).toHaveAttribute('placeholder', 'dd/mm/yyyy');
+  expect(within(screen.getByLabelText('Target Finish trước')).getByLabelText('Target Finish trước (nhập)')).toHaveAttribute('placeholder', 'dd/mm/yyyy');
   vi.mocked(retrieveWorkOrders).mockResolvedValue([]);
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByText('Không có WO trong phạm vi và khoảng ngày đã chọn.');
@@ -441,7 +441,7 @@ it('clears old results on date changes and distinguishes retrieval errors from e
   vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByText('WO-REAL');
-  fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-09-02' } });
+  setDate(screen.getByLabelText('Target Finish từ'), '2026-09-02');
   expect(screen.queryByText('WO-REAL')).not.toBeInTheDocument();
   vi.mocked(retrieveWorkOrders).mockRejectedValue(new RetrievalError(502, 'Lỗi retrieve'));
   fireEvent.click(screen.getByText('Retrieve WO'));
@@ -476,8 +476,8 @@ it('protects edits on scope and filter changes and preserves them across unchang
   fireEvent.click(homeLink);
   homeLink.remove();
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
-  fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-09-02' } });
-  expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');
+  setDate(screen.getByLabelText('Target Finish từ'), '2026-09-02');
+  expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
   await act(async () => { returnToPage(); });
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
   vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: { ...session, grants: [session.grants[0]] } });
@@ -615,7 +615,7 @@ it('deletes a saved draft without a native dialog or resetting login, query, fil
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(screen.getByRole('cell', { name: '8' })).toBeInTheDocument();
   expect(screen.queryByText('Nháp · v1')).not.toBeInTheDocument();
-  expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');
+  expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
   expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('WO-REAL');
   expect(screen.queryByText('Đăng nhập Microsoft')).not.toBeInTheDocument();
   expect(getAuthSummary).toHaveBeenCalledTimes(1);
@@ -636,7 +636,7 @@ it('closes a draft deleted in another tab on explicit update without signing out
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(screen.queryByText('Nháp · v1')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
-  expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');
+  expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
   expect(screen.queryByText('Đăng nhập Microsoft')).not.toBeInTheDocument();
   expect(screen.getByRole('alert')).toHaveTextContent('WO hoặc nháp không còn tồn tại');
 });
@@ -780,7 +780,7 @@ it('restores separate source tables, filters, selection and timestamps without r
   expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('REAL');
   expect(screen.getByLabelText('Chọn WO-REAL · dòng 1')).toBeChecked();
   expect(screen.getByText(/Cập nhật lần cuối:/)).toHaveTextContent(timestamp!);
-  expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');
+  expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
   fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   expect(screen.getByRole('button', { name: 'DRAFT-ONLY' })).toBeVisible();
   expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('DRAFT');
@@ -918,7 +918,7 @@ it('changing the date range invalidates only Maximo results and retains the draf
   await screen.findByRole('button', { name: 'WO-REAL' });
   fireEvent.click(screen.getByRole('button', { name: 'Nháp của tôi' }));
   await screen.findByRole('button', { name: 'DRAFT-ONLY' });
-  fireEvent.change(screen.getByLabelText('Target Finish từ'), { target: { value: '2026-08-01' } });
+  setDate(screen.getByLabelText('Target Finish từ'), '2026-08-01');
   expect(screen.getByRole('button', { name: 'DRAFT-ONLY' })).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
@@ -1040,8 +1040,8 @@ it('does not refresh or disturb retrieval state while the user remains on the pa
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
   expect(getAuthSummary).toHaveBeenCalledTimes(authCalls);
   expect(screen.getByRole('button', { name: 'Đổi khoảng ngày' })).toBeEnabled();
-  expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');
-  expect(screen.getByLabelText('Target Finish trước')).toHaveValue('2026-10-01');
+  expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
+  expect(getDate(screen.getByLabelText('Target Finish trước'))).toBe('2026-10-01');
   expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('WO-REAL');
   expect(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' })).toBeChecked();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
@@ -1112,7 +1112,7 @@ it('replaces old list data with the fresh scoped response and drops disappeared 
   fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' }));
   await act(async () => fireEvent.click(screen.getByText('Cập nhật')));
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
-  expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');
+  expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
   expect(screen.getByRole('button', { name: 'Đổi khoảng ngày' })).toBeEnabled();
 });
 
@@ -1126,7 +1126,7 @@ it('keeps the verified snapshot visible after a failed explicit update and prese
   expect(screen.getByRole('alert')).toHaveTextContent('Không cập nhật được dữ liệu');
   await act(async () => fireEvent.click(screen.getByText('Cập nhật')));
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
-  expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-09-01');
+  expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
 });
 
 it('shows every business data field in the panel while hiding technical identity and system', async () => {
@@ -1333,8 +1333,8 @@ it('prefills the current month and retrieves it once without a click', async () 
   expect(vi.mocked(retrieveWorkOrders).mock.calls[0][0]).toMatchObject({ connection_id: 'two', discipline: 'MECH',
     target_from: '2026-10-01T00:00:00+07:00', target_before: '2026-11-01T00:00:00+07:00' });
   fireEvent.click(screen.getByText('Đổi khoảng ngày'));
-  expect(screen.getByLabelText('Target Finish từ')).toHaveValue('2026-10-01');
-  expect(screen.getByLabelText('Target Finish trước')).toHaveValue('2026-11-01');
+  expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-10-01');
+  expect(getDate(screen.getByLabelText('Target Finish trước'))).toBe('2026-11-01');
 });
 
 it('does not retry automatically after a failed first load', async () => {

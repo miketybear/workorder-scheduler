@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { getDate, setDate } from '../testDateTime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResourceTimeline } from './ResourceTimeline';
 import { AssignmentError, type Assignment, type ResourceTimeline as Snapshot } from '../api/assignments';
@@ -541,7 +542,7 @@ function capacityReply(params:{date_from:string;date_before:string},row=person):
 it.each(['2026-10-31','2026-11-01'])('automatically fetches from chosen start %s and saves exactly the preview',async start=>{
   await longTaskDialog();
   api.timeline.mockImplementation(async(_pool:string,params:{date_from:string;date_before:string})=>capacityReply(params));
-  fireEvent.change(screen.getByLabelText('Ngày bắt đầu'),{target:{value:start}});
+  setDate(screen.getByLabelText('Ngày bắt đầu'),start);
   await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận lưu'})).toBeEnabled());
   expect(screen.getByLabelText(`Task 20 giờ ngày ${start}`)).toHaveValue(10.5);
   const next=calendarTestDates(start,'2026-11-03')[1];
@@ -553,7 +554,7 @@ it.each(['2026-10-31','2026-11-01'])('automatically fetches from chosen start %s
 
 it('blocks an empty start without fetching or saving',async()=>{
   await longTaskDialog();
-  fireEvent.change(screen.getByLabelText('Ngày bắt đầu'),{target:{value:''}});
+  setDate(screen.getByLabelText('Ngày bắt đầu'),'');
   expect(screen.getByRole('button',{name:'Xác nhận lưu'})).toBeDisabled();
   expect(api.timeline).toHaveBeenCalledTimes(1);
   expect(api.planBatch).not.toHaveBeenCalled();
@@ -565,12 +566,14 @@ it('uses one task start date in the header, keeps its anchor on person change an
   let capacityPerson=person;
   api.timeline.mockImplementation(async(_pool:string,params:{date_from:string;date_before:string})=>capacityReply(params,capacityPerson));
   const start=screen.getByLabelText('Ngày bắt đầu');
-  expect(start).toHaveValue('2026-10-05');
-  expect(start).toHaveAttribute('min','2026-10-05');
-  expect(start).toHaveAttribute('max','2027-10-05');
+  expect(getDate(start)).toBe('2026-10-05');
+  fireEvent.click(within(start).getByRole('button',{name:/Chọn ngày giờ/}));
+  expect(screen.getByRole('button',{name:'04/10/2026'})).toBeDisabled();
+  expect(screen.getByRole('button',{name:'05/10/2026'})).toBeEnabled();
+  fireEvent.keyDown(screen.getByRole('dialog',{name:'Chọn Ngày bắt đầu'}),{key:'Escape'});
   expect(screen.queryByLabelText('Ngày phân công')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Bắt đầu xếp từ ngày')).not.toBeInTheDocument();
-  fireEvent.change(start,{target:{value:'2026-10-06'}});
+  setDate(start,'2026-10-06');
   await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận lưu'})).toBeEnabled());
   expect(screen.getByLabelText('Task 20 giờ ngày 2026-10-06')).toHaveValue(10.5);
   expect(screen.getByLabelText('Task 20 giờ ngày 2026-10-07')).toHaveValue(1.5);
@@ -578,7 +581,7 @@ it('uses one task start date in the header, keeps its anchor on person change an
   expect(screen.getByRole('columnheader',{name:'06/10/2026'})).toBeInTheDocument();
   capacityPerson=second;
   fireEvent.change(screen.getByLabelText('Nhân lực phân công'),{target:{value:'person-2'}});
-  expect(screen.getByLabelText('Ngày bắt đầu')).toHaveValue('2026-10-06');
+  expect(getDate(screen.getByLabelText('Ngày bắt đầu'))).toBe('2026-10-06');
   await waitFor(()=>expect(screen.getByLabelText('Task 20 giờ ngày 2026-10-06')).toHaveValue(10.5));
 });
 
@@ -1219,7 +1222,7 @@ it('moves a whole local plan from a cross-person drag and merges released segmen
   const source=screen.getAllByRole('button',{name:/Phân công Relocate inspection/})[0];
   dragTo(source,screen.getByRole('button',{name:'Thêm phân công cho Nguyen B ngày 2026-10-05'}));
   await screen.findByRole('heading',{name:'Xem trước chuyển toàn task'});
-  expect(screen.getByLabelText('Tháng timeline')).toBeDisabled();
+  expect(screen.getByLabelText('Tháng timeline (nhập)')).toBeDisabled();
   expect(screen.getByRole('button',{name:'Làm mới timeline'})).toBeDisabled();
   fireEvent.click(await screen.findByRole('button',{name:'Phân bổ lại từ ngày thả'}));
   await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận chuyển'})).toBeEnabled());
@@ -1249,7 +1252,7 @@ it('recovers a lost move response through the receipt without a second POST',asy
   const input=api.planMove.mock.calls[0][2] as {request_id:string};
   expect(screen.getByText(input.request_id)).toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Hủy'})).toBeDisabled();
-  expect(screen.getByLabelText('Tháng timeline')).toBeDisabled();
+  expect(screen.getByLabelText('Tháng timeline (nhập)')).toBeDisabled();
   expect(screen.getByRole('button',{name:/^Gửi kế hoạch tháng lên Maximo/})).toBeDisabled();
   fireEvent.keyDown(screen.getByRole('dialog'),{key:'Escape'});
   expect(screen.getByRole('dialog')).toBeInTheDocument();
