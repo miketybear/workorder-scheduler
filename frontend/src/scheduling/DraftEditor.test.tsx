@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deleteDraft, getDetail, openDraft, previewUpload, saveDraft, submitUpload, type Detail, type Restored, type UploadPreview } from '../api/drafts';
 import { columns, RetrievalError, type WorkOrder } from '../api/workOrders';
 import { DraftEditor } from './DraftEditor';
+import { getDateTime, groupControl, setDateTime } from '../testDateTime';
 
 vi.mock('../api/drafts', async (original) => ({ ...await original<object>(),
   getDetail: vi.fn(), openDraft: vi.fn(), saveDraft: vi.fn(), deleteDraft: vi.fn(), previewUpload: vi.fn(), submitUpload: vi.fn() }));
@@ -67,7 +68,7 @@ it('shows schedule containment errors immediately and blocks save and preview fo
   vi.mocked(getDetail).mockResolvedValue({ ...detail, baseline: { ...baseline,
     targstartdate: '2026-09-30T08:00:00+07:00', targcompdate: '2026-09-30T16:00:00+07:00' } });
   const first = render(<DraftEditor {...props} />);
-  fireEvent.change(await screen.findByLabelText('Scheduled Start'), { target: { value: '2026-09-30T07:59' } });
+  setDateTime(await screen.findByLabelText('Scheduled Start'), '2026-09-30T07:59');
   expect(await screen.findByRole('alert')).toHaveTextContent('Scheduled Start phải bằng hoặc sau Target Start.');
   expect(screen.getByText('Lưu nháp')).toBeDisabled();
   expect(saveDraft).not.toHaveBeenCalled();
@@ -234,15 +235,15 @@ it('requires target intent, resets targets when unchecked, and validates duratio
   vi.mocked(getDetail).mockResolvedValue({ ...detail, baseline: { ...baseline, targstartdate: '2026-09-30T08:00:00+07:00', targcompdate: '2026-09-30T16:00:00+07:00' } });
   render(<DraftEditor {...props} />);
   expect(await screen.findByLabelText('Target Finish')).toBeEnabled();
-  fireEvent.change(screen.getByLabelText('Target Finish'), { target: { value: '2026-10-01T16:00' } });
+  setDateTime(screen.getByLabelText('Target Finish'), '2026-10-01T16:00');
   expect(screen.getByLabelText('Change Target?')).toBeChecked();
   fireEvent.click(screen.getByLabelText('Change Target?'));
-  expect(screen.getByLabelText('Target Finish')).toHaveValue('2026-09-30T16:00');
+  expect(getDateTime(screen.getByLabelText('Target Finish'))).toBe('2026-09-30T16:00');
   fireEvent.change(screen.getByLabelText('Est. Duration'), { target: { value: '-1' } });
   fireEvent.click(screen.getByText('Lưu nháp'));
   expect(await screen.findByRole('alert')).toHaveTextContent('Duration phải là số không âm');
   fireEvent.click(screen.getByText('Reset về baseline'));
-  fireEvent.change(screen.getByLabelText('Target Finish'), { target: { value: '2026-09-29T16:00' } });
+  setDateTime(screen.getByLabelText('Target Finish'), '2026-09-29T16:00');
   fireEvent.click(screen.getByText('Lưu nháp'));
   expect(await screen.findByRole('alert')).toHaveTextContent('kết thúc không được trước bắt đầu');
   expect(saveDraft).not.toHaveBeenCalled();
@@ -252,7 +253,7 @@ it.each(['PM', 'CFT'])('locks target controls for %s', async (worktype) => {
   vi.mocked(getDetail).mockResolvedValue({ ...detail, baseline: { ...baseline, worktype } });
   render(<DraftEditor {...props} />);
   expect(await screen.findByLabelText('Change Target?')).toBeDisabled();
-  expect(screen.getByLabelText('Target Start')).toBeDisabled();
+  expect(groupControl(screen.getByLabelText('Target Start'))).toBeDisabled();
 });
 
 it.each(['read-only', 'session recheck', 'missing crew'])('disables editing and footer actions during %s', async (condition) => {
@@ -343,7 +344,7 @@ it('treats equivalent durations and timezone instants as unchanged', async () =>
   vi.mocked(getDetail).mockResolvedValue(detail);
   render(<DraftEditor {...props} />);
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '08.00' } });
-  fireEvent.change(screen.getByLabelText('Scheduled Start'), { target: { value: '2026-09-30T08:00' } });
+  setDateTime(screen.getByLabelText('Scheduled Start'), '2026-09-30T08:00');
   expect(screen.getByText('Lưu nháp')).toBeDisabled();
   expect(props.onDirty).toHaveBeenLastCalledWith(false);
 });
@@ -351,7 +352,7 @@ it('treats equivalent durations and timezone instants as unchanged', async () =>
 it('blocks clearing a date through the date picker', async () => {
   vi.mocked(getDetail).mockResolvedValue(detail);
   render(<DraftEditor {...props} />);
-  fireEvent.change(await screen.findByLabelText('Scheduled Start'), { target: { value: '' } });
+  setDateTime(await screen.findByLabelText('Scheduled Start'), '');
   fireEvent.click(screen.getByText('Lưu nháp'));
   expect(screen.getByRole('alert')).toHaveTextContent('Chưa hỗ trợ xóa giá trị.');
   expect(saveDraft).not.toHaveBeenCalled();
@@ -363,11 +364,12 @@ it('uses date pickers in the connection timezone and serializes a changed date w
   render(<DraftEditor {...props} />);
   const finish = await screen.findByLabelText('Scheduled Finish');
   for (const label of ['Scheduled Start', 'Target Start', 'Target Finish']) {
-    expect(screen.getByLabelText(label)).toHaveAttribute('type', 'datetime-local');
+    expect(within(screen.getByLabelText(label)).getByLabelText(/\(ngày\)$/)).toHaveAttribute('type', 'date');
+    expect(within(screen.getByLabelText(label)).getByLabelText(/\(giờ\)$/)).toBeInTheDocument();
   }
   expect(finish).toHaveAttribute('readonly');
   expect(finish).toHaveValue('30/09/2026, 16:00');
-  fireEvent.change(screen.getByLabelText('Scheduled Start'), { target: { value: '2026-10-01T13:45' } });
+  setDateTime(screen.getByLabelText('Scheduled Start'), '2026-10-01T13:45');
   // 13:45 leaves 4h45 in the 06:30-18:30 window; the other 3h15 run from 06:30 the next morning.
   expect(finish).toHaveValue('02/10/2026, 09:45');
   expect(screen.getByRole('table')).toHaveTextContent('01/10/2026, 13:45');
@@ -382,7 +384,7 @@ it('enables both target pickers and sends explicit intent after selecting a targ
   render(<DraftEditor {...props} />);
   expect(await screen.findByLabelText('Target Start')).toBeEnabled();
   expect(screen.getByLabelText('Target Finish')).toBeEnabled();
-  fireEvent.change(screen.getByLabelText('Target Finish'), { target: { value: '2026-10-01T16:00' } });
+  setDateTime(screen.getByLabelText('Target Finish'), '2026-10-01T16:00');
   expect(screen.getByLabelText('Change Target?')).toBeChecked();
   expect(screen.queryByText(/Lập lịch ·/)).not.toBeInTheDocument();
   fireEvent.click(screen.getByText('Lưu nháp'));
@@ -495,22 +497,44 @@ it('warns about a start outside the 06:30-18:30 shift and lets the planner keep 
   vi.mocked(getDetail).mockResolvedValue(detail);
   render(<DraftEditor {...props} />);
   const start = await screen.findByLabelText('Scheduled Start');
-  fireEvent.change(start, { target: { value: '2026-10-01T20:00' } });
+  setDateTime(start, '2026-10-01T20:00');
   expect(screen.getByText(/Giờ bắt đầu nằm ngoài ca làm việc \(06:30–18:30\)/)).toBeInTheDocument();
   // Kept as chosen: the warning goes away and the start stays at 20:00; hours count from the next 06:30.
   fireEvent.click(screen.getByText('Giữ nguyên giờ đã chọn'));
   expect(screen.queryByText(/Giờ bắt đầu nằm ngoài ca làm việc/)).not.toBeInTheDocument();
-  expect(start).toHaveValue('2026-10-01T20:00');
+  expect(getDateTime(start)).toBe('2026-10-01T20:00');
   expect(screen.getByLabelText('Scheduled Finish')).toHaveValue('02/10/2026, 14:30');
-  fireEvent.change(start, { target: { value: '2026-10-01T22:00' } });
+  setDateTime(start, '2026-10-01T22:00');
   fireEvent.click(screen.getByText(/^Dời sang /));
-  expect(start).toHaveValue('2026-10-02T06:30');
+  expect(getDateTime(start)).toBe('2026-10-02T06:30');
   expect(screen.queryByText(/Giờ bắt đầu nằm ngoài ca làm việc/)).not.toBeInTheDocument();
 });
 
 it('does not warn about a start inside the shift', async () => {
   vi.mocked(getDetail).mockResolvedValue(detail);
   render(<DraftEditor {...props} />);
-  fireEvent.change(await screen.findByLabelText('Scheduled Start'), { target: { value: '2026-10-01T08:00' } });
+  setDateTime(await screen.findByLabelText('Scheduled Start'), '2026-10-01T08:00');
   expect(screen.queryByText(/Giờ bắt đầu nằm ngoài ca làm việc/)).not.toBeInTheDocument();
+});
+
+it('shows the PIC code with the person name but keeps the code as the value that is saved', async () => {
+  vi.mocked(getDetail).mockResolvedValue({ ...detail, pic_names: { TECH: 'Tran Van Tech', OTHER: 'Le Thi Other' } });
+  vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'id', version: 1, state: 'draft' });
+  render(<DraftEditor {...props} />);
+  const select = await screen.findByLabelText('Assigned PIC');
+  expect(within(select).getByRole('option', { name: 'TECH — Tran Van Tech' })).toBeInTheDocument();
+  expect(within(select).getByRole('option', { name: 'OTHER — Le Thi Other' })).toBeInTheDocument();
+  fireEvent.change(select, { target: { value: 'OTHER' } });
+  expect(select).toHaveValue('OTHER');
+  expect(screen.getByRole('table')).toHaveTextContent('OTHER — Le Thi Other');
+  fireEvent.click(screen.getByText('Lưu nháp'));
+  await waitFor(() => expect(saveDraft).toHaveBeenCalled());
+  expect(vi.mocked(saveDraft).mock.calls[0][1]).toEqual({ assignedtechname: 'OTHER' });
+});
+
+it('falls back to the bare code when no name is known', async () => {
+  vi.mocked(getDetail).mockResolvedValue({ ...detail, pic_names: { TECH: 'Tran Van Tech' } });
+  render(<DraftEditor {...props} />);
+  const select = await screen.findByLabelText('Assigned PIC');
+  expect(within(select).getByRole('option', { name: 'OTHER' })).toBeInTheDocument();
 });

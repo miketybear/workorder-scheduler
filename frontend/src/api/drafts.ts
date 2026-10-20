@@ -8,7 +8,7 @@ export type Baseline = Record<EditableField, string | null> & { worktype: string
 export type Changes = Partial<Record<EditableField, string>> & { change_target?: boolean };
 export type Scope = { connection_id: string; discipline: string };
 export type Identity = Scope & { site_id: string; workorder_id: string };
-export type Detail = { item: WorkOrder; baseline: Baseline; baseline_token: string; allowed_pics: string[]; pics_configured?: boolean };
+export type Detail = { item: WorkOrder; baseline: Baseline; baseline_token: string; allowed_pics: string[]; pic_names?: Record<string, string>; pics_configured?: boolean };
 export type Saved = { draft_id: string; version: number; state: 'draft'; updated_at?: string };
 export type Restored = Detail & Saved & { changes: Changes; baseline_changed: boolean; changes_valid_now: boolean };
 export type DraftSummary = { draft_id: string; version: number; wonum: string; site_id: string; item_count?: number; system_name?: string | null };
@@ -74,12 +74,17 @@ function baseline(raw: unknown): Baseline {
     !editableFields.every((key) => raw[key] === null || typeof raw[key] === 'string')) return invalid();
   return raw as Baseline;
 }
+// Display names are informational: anything malformed is dropped instead of failing the whole response.
+function picNames(value: unknown): Record<string, string> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0));
+}
 function detail(raw: unknown, scope: Scope): Detail {
   if (!isRecord(raw) || typeof raw.baseline_token !== 'string' || !/^[a-f0-9]{64}$/.test(raw.baseline_token) ||
       !Array.isArray(raw.allowed_pics) || !raw.allowed_pics.every((pic) => typeof pic === 'string') ||
       (raw.pics_configured !== undefined && typeof raw.pics_configured !== 'boolean')) return invalid();
   return { item: parseWorkOrder(raw.item, scope.discipline), baseline: baseline(raw.baseline),
-    baseline_token: raw.baseline_token, allowed_pics: raw.allowed_pics, pics_configured: raw.pics_configured as boolean | undefined };
+    baseline_token: raw.baseline_token, allowed_pics: raw.allowed_pics, pic_names: picNames(raw.pic_names), pics_configured: raw.pics_configured as boolean | undefined };
 }
 function saved(raw: unknown): Saved {
   if (!isRecord(raw) || typeof raw.draft_id !== 'string' || !Number.isInteger(raw.version) || Number(raw.version) < 1 || raw.state !== 'draft' ||

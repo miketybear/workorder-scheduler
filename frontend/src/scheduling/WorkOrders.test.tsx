@@ -7,6 +7,7 @@ import { mergePmOrigin, WorkOrders } from './WorkOrders';
 import { App } from '../App';
 import { deleteDraft, getDetail, listPlannedWorkOrders, lookupUploadRequest, openBatch, openDraft, prepareBatch, previewUpload, saveBatch, saveDraft, submitUpload } from '../api/drafts';
 import { getConnectionSettings, saveConnectionSetting } from '../api/settings';
+import { setDateTime } from '../testDateTime';
 
 vi.mock('../api/client', () => ({ getAuthSummary: vi.fn(), getLiveness: vi.fn().mockResolvedValue(true), loginUrl: '/api/auth/login' }));
 vi.mock('../api/settings', () => ({ getConnectionSettings: vi.fn(), saveConnectionSetting: vi.fn() }));
@@ -1198,7 +1199,7 @@ it('keeps the first PM origin through date restoration, offers a duration-only s
   vi.mocked(lookupUploadRequest).mockResolvedValue(receipt('date-restore', shifted.baseline));
   fireEvent.click(screen.getByText('Retrieve WO'));
   fireEvent.click(await screen.findByRole('button', { name: 'WO-REAL' }));
-  fireEvent.change(await screen.findByLabelText('Scheduled Start'), { target: { value: '2026-09-30T09:00' } });
+  setDateTime(await screen.findByLabelText('Scheduled Start'), '2026-09-30T09:00');
   fireEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));

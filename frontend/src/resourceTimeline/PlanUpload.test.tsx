@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { PlanUpload } from './PlanUpload';
 import type { Assignment } from '../api/assignments';
+import { groupControl } from '../testDateTime';
 
 const api=vi.hoisted(()=>({preview:vi.fn(),upload:vi.fn(),lookup:vi.fn(),reconcile:vi.fn(),status:vi.fn()}));
 vi.mock('../api/assignments',async importOriginal=>{const actual=await importOriginal<typeof import('../api/assignments')>();return {...actual,previewAssignmentPlan:api.preview,uploadAssignmentPlan:api.upload,lookupAssignmentPlanUpload:api.lookup,reconcileAssignmentPlanUpload:api.reconcile,getAssignmentPlanUploadStatus:api.status};});
@@ -20,7 +21,7 @@ it('keeps a sent plan locked after a lost response and a missing receipt without
   fireEvent.click(screen.getByRole('button',{name:'Đối soát (không gửi lại)'}));
   await screen.findByText(/tiếp tục đối soát, không gửi lại/);
   expect(api.upload).toHaveBeenCalledTimes(1);
-  expect(screen.getByLabelText('Giờ bắt đầu kế hoạch')).toBeDisabled();
+  expect(groupControl(screen.getByLabelText('Giờ bắt đầu kế hoạch'))).toBeDisabled();
 });
 
 it('rediscovers an unknown receipt when reopening a plan',async()=>{

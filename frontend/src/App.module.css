@@ -297,3 +297,18 @@
 .shiftNotice { margin: 12px 0; padding: 12px 16px; background: var(--warning-bg); color: var(--warning-ink); border-left: 3px solid var(--warning-border); }
 .shiftNotice p { margin: 0 0 8px; color: inherit; }
 .shiftNotice > div { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* One date/time standard: native date picker plus 24 h hour and minute selects. */
+.dateTime { display: flex; align-items: center; gap: 4px; }
+.dateTime input[type="date"] { flex: 1 1 150px; min-width: 0; }
+.dateTime select { flex: 0 0 auto; width: 68px; min-width: 0; }
+.dateField { display: grid; gap: 8px; min-width: 0; color: var(--muted); font-size: 12px; line-height: 16px; letter-spacing: .32px; }
+.dateField > span { color: var(--muted); }
+.singlePanel .filters .dateField { align-items: start; }
+.planningTable .dateTime input[type="date"] { width: 138px; flex: 0 0 138px; }
+.planningTable .dateTime select { width: 62px; }
+/* Beat the generic "form control fills its label" rules for the composite date-time control. */
+.dateTime.dateTime.dateTime select { width: 68px; flex: 0 0 68px; }
+.dateTime.dateTime.dateTime input[type="date"] { width: auto; flex: 1 1 140px; }
+.planningTable .dateTime.dateTime.dateTime select { width: 62px; flex-basis: 62px; }
+.planningTable .dateTime.dateTime.dateTime input[type="date"] { width: 138px; flex: 0 0 138px; }

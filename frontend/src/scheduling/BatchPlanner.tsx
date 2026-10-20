@@ -5,9 +5,10 @@ import { localDateTime, zonedDateTime } from '../api/dates';
 import { RetrievalError } from '../api/workOrders';
 import { changedValue, scheduledChange, validateChanges } from './editing';
 import { outsideShift } from './ShiftNotice';
+import { DateTimeInput } from '../components/DateTimeInput';
 import { nearestShiftStart } from './workShift';
 import styles from '../App.module.css';
-import { displayDate, rowKey } from './presentation';
+import { displayDate, rowKey, picLabel } from './presentation';
 import { BatchWorkOrderInfo } from './BatchWorkOrderInfo';
 import { UploadPreviewControls, type FinalizedUpload, type UploadConnection } from './UploadPreviewPanel';
 import type { UploadRecoveryEntry } from '../api/drafts';
@@ -21,6 +22,8 @@ const labels = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish',
 const pmScheduleChanged = (row: BatchRow) => row.baseline.worktype.toUpperCase() === 'PM' &&
   (['schedstart', 'schedfinish'] as const).some((field) => (row.changes[field] ?? row.baseline[field]) !== row.baseline[field]);
 const targetForbidden = (row: BatchRow) => ['PM', 'CFT'].includes(row.baseline.worktype.toUpperCase());
+
+const groupDefaultTime = (field: EditableField) => (field === 'schedstart' ? '06:30' : field === 'targcompdate' ? '23:59' : '00:00');
 
 export function BatchPlanner({ selection, scope, timezone, writable, suspended, active = true, refreshVersion = 0, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, connection }: {
   selection: BatchSelection; scope: Scope; timezone: string; writable: boolean; suspended: boolean;
@@ -115,6 +118,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     return () => controller.abort();
   }, [selection, scope, suspended, refreshVersion, fail, onDraftReady]);
 
+  const groupNames = Object.assign({}, ...rows.map((row) => row.pic_names ?? {})) as Record<string, string>;
   const pics = rows.length ? rows[0].allowed_pics.filter((pic) => rows.every((row) => row.allowed_pics.includes(pic))) : [];
   const changed = rows.filter((row) => editableFields.some((field) => row.changes[field] !== undefined));
   const problems = Object.fromEntries(rows.map((row) => [rowKey(row.item), issues[rowKey(row.item)] || validateChanges(row.baseline, row.changes, row.allowed_pics)]));
@@ -213,7 +217,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy) onClose(); }} className={`${styles.sidePanel} ${styles.batchPanel}`} role="dialog" aria-label="Lập lịch hàng loạt" aria-modal="false">
     <div className={styles.panelHeading}><h2>Lập lịch {rows.length || ('keys' in selection ? selection.keys.length : '')} WO</h2>{connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng nhóm</button></div>
     <p>{scope.discipline} · {saved ? `Nháp v${saved.version}` : 'Chưa lưu nháp'}</p>
-    <p>Scheduled Finish tự tính từ Scheduled Start + Est. Duration (giờ).</p>
+    <p>Scheduled Finish tự tính từ Scheduled Start + Est. Duration theo ca 06:30–18:30, tối đa 10,5 giờ/ngày.</p>
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {notice && <p role="status">{notice}</p>}
     {busy && <p role="status">Đang kiểm tra từng WO…</p>}
@@ -228,13 +232,14 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
       {inputFields.map((field) => <label key={field}><input type="checkbox" aria-label={labels[field]} checked={group[field] !== undefined}
         onChange={(event) => setGroup((previous) => { const next = { ...previous }; if (event.target.checked) next[field] = ''; else delete next[field]; return next; })} />{labels[field]}
         {group[field] !== undefined && (field === 'assignedtechname' ? <select aria-label={`Nhóm ${labels[field]}`} value={group[field]}
-          onChange={(e) => setGroup((previous) => ({ ...previous, [field]: e.target.value }))}><option value="">Chọn PIC</option>{pics.map((pic) => <option key={pic}>{pic}</option>)}</select>
-          : <input aria-label={`Nhóm ${labels[field]}`} type={field === 'estdur' ? 'text' : 'datetime-local'} value={field === 'estdur' ? group[field] : group[field] ? localDateTime(group[field]!, timezone) : ''}
-            inputMode={field === 'estdur' ? 'decimal' : undefined} onChange={(e) => {
-              try { const value = field === 'estdur' || !e.target.value ? e.target.value : zonedDateTime(e.target.value, timezone);
-                setGroup((previous) => ({ ...previous, [field]: value })); setError('');
-              } catch (cause) { setError(cause instanceof Error ? cause.message : 'Ngày không hợp lệ.'); }
-            }} />)}
+          onChange={(e) => setGroup((previous) => ({ ...previous, [field]: e.target.value }))}><option value="">Chọn PIC</option>{pics.map((pic) => <option key={pic} value={pic}>{picLabel(pic, groupNames)}</option>)}</select>
+          : field === 'estdur' ? <input aria-label={`Nhóm ${labels[field]}`} type="text" inputMode="decimal" value={group[field]}
+            onChange={(e) => { setGroup((previous) => ({ ...previous, [field]: e.target.value })); setError(''); }} />
+            : <DateTimeInput label={`Nhóm ${labels[field]}`} value={group[field] ? localDateTime(group[field]!, timezone) : ''} defaultTime={groupDefaultTime(field)}
+              onChange={(wall) => {
+                try { const value = wall ? zonedDateTime(wall, timezone) : ''; setGroup((previous) => ({ ...previous, [field]: value })); setError(''); }
+                catch (cause) { setError(cause instanceof Error ? cause.message : 'Ngày không hợp lệ.'); }
+              }} />)}
       </label>)}
       <button className={styles.primary} onClick={apply} disabled={!Object.keys(group).length || Object.values(group).some((value) => !String(value).trim())}>Áp dụng vào nháp</button>
     </fieldset>
@@ -262,13 +267,14 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
           return <td key={field} className={row.changes[field] !== undefined ? styles.modified : undefined}>
             {field === 'schedfinish' ? <input aria-label={`${row.item.wonum} ${labels[field]}`} readOnly value={displayDate(value || null, timezone)} /> :
               field === 'assignedtechname' ? <select aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked} value={value} onChange={(e) => edit(index, field, e.target.value)}>
-                <option value={row.baseline[field] ?? ''}>{row.baseline[field] ?? 'Chưa có PIC'}</option>{row.allowed_pics.filter((pic) => pic !== row.baseline[field]).map((pic) => <option key={pic}>{pic}</option>)}</select> :
-                <input aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked || (isTarget && targetForbidden(row))}
-                  type={field === 'estdur' ? 'text' : 'datetime-local'} value={field === 'estdur' ? value : value ? localDateTime(value, timezone) : ''}
-                  inputMode={field === 'estdur' ? 'decimal' : undefined} onChange={(e) => { try {
-                    if (isTarget) editTarget(index, field as typeof targetFields[number], !e.target.value ? '' : zonedDateTime(e.target.value, timezone));
-                    else edit(index, field, field === 'estdur' || !e.target.value ? e.target.value : zonedDateTime(e.target.value, timezone));
-                  } catch (cause) { setError(cause instanceof Error ? cause.message : 'Ngày không hợp lệ.'); } }} />}
+                <option value={row.baseline[field] ?? ''}>{picLabel(row.baseline[field], row.pic_names) || 'Chưa có PIC'}</option>{row.allowed_pics.filter((pic) => pic !== row.baseline[field]).map((pic) => <option key={pic} value={pic}>{picLabel(pic, row.pic_names)}</option>)}</select> :
+                field === 'estdur' ? <input aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked} type="text" inputMode="decimal" value={value}
+                  onChange={(e) => edit(index, field, e.target.value)} />
+                  : <DateTimeInput label={`${row.item.wonum} ${labels[field]}`} disabled={blocked || (isTarget && targetForbidden(row))} defaultTime={groupDefaultTime(field)}
+                    value={value ? localDateTime(value, timezone) : ''} onChange={(wall) => { try {
+                      const iso = wall ? zonedDateTime(wall, timezone) : '';
+                      if (isTarget) editTarget(index, field as typeof targetFields[number], iso); else edit(index, field, iso);
+                    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Ngày không hợp lệ.'); } }} />}
             {isTarget && targetForbidden(row) && <small>PM/CFT không được đổi Target.</small>}
           </td>;
         })}

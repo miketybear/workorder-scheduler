@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { BatchPlanner } from './BatchPlanner';
 import { BatchError, openBatch, prepareBatch, saveBatch, type Detail } from '../api/drafts';
 import { columns, RetrievalError, type WorkOrder } from '../api/workOrders';
+import { getDateTime, setDateTime } from '../testDateTime';
 
 vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), prepareBatch: vi.fn(), saveBatch: vi.fn(), openBatch: vi.fn() }));
 afterEach(() => vi.resetAllMocks());
@@ -31,7 +32,7 @@ it.each([100, 200])('edits, pastes, previews, saves and restores a %i-WO monthly
   const view = render(<BatchPlanner {...callbacks} />);
   await screen.findByLabelText(`MONTH-${count} Est. Duration`);
   fireEvent.click(screen.getByRole('checkbox', { name: 'Scheduled Start' }));
-  fireEvent.change(screen.getByLabelText('Nhóm Scheduled Start'), { target: { value: '2026-10-08T08:00' } });
+  setDateTime(screen.getByLabelText('Nhóm Scheduled Start'), '2026-10-08T08:00');
   fireEvent.click(screen.getByRole('checkbox', { name: 'Assigned PIC' }));
   fireEvent.change(screen.getByLabelText('Nhóm Assigned PIC'), { target: { value: 'OTHER' } });
   fireEvent.click(screen.getByText('Áp dụng vào nháp'));
@@ -42,7 +43,7 @@ it.each([100, 200])('edits, pastes, previews, saves and restores a %i-WO monthly
   expect(screen.getByLabelText(`MONTH-${count} Est. Duration`)).toHaveValue('8');
   const lastRow = screen.getByLabelText(`MONTH-${count} Est. Duration`).closest('tr')!;
   fireEvent.click(within(lastRow).getByText('Reset dòng'));
-  expect(screen.getByLabelText(`MONTH-${count} Scheduled Start`)).toHaveValue('');
+  expect(getDateTime(screen.getByLabelText(`MONTH-${count} Scheduled Start`))).toBe('');
   fireEvent.click(screen.getByText('Undo'));
 
   const paste = screen.getByLabelText('Vùng dữ liệu Excel');
@@ -51,7 +52,7 @@ it.each([100, 200])('edits, pastes, previews, saves and restores a %i-WO monthly
   fireEvent.click(screen.getByText('Kiểm tra và áp dữ liệu dán'));
   expect(screen.getByRole('alert')).toHaveTextContent(`MONTH-${count}`);
   expect(screen.getByLabelText('MONTH-1 Assigned PIC')).toHaveValue('OTHER');
-  expect(screen.getByLabelText('MONTH-1 Scheduled Start')).toHaveValue('2026-10-08T08:00');
+  expect(getDateTime(screen.getByLabelText('MONTH-1 Scheduled Start'))).toBe('2026-10-08T08:00');
   const valid = rows.map((_, index) => `2026-10-09T08:00\t\t${index === count - 1 ? '2.25' : '9.5'}`).join('\r\n') + '\r\n';
   fireEvent.change(paste, { target: { value: valid } });
   fireEvent.click(screen.getByText('Kiểm tra và áp dữ liệu dán'));

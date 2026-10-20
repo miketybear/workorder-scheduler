@@ -4,6 +4,8 @@ import { deleteDraft, editableFields, getDetail, openDraft, saveDraft,
 import { RetrievalError } from '../api/workOrders';
 import { equalField, scheduledChange, validateChanges } from './editing';
 import { ShiftNotice } from './ShiftNotice';
+import { DateTimeInput } from '../components/DateTimeInput';
+import { picLabel } from './presentation';
 import styles from '../App.module.css';
 import { WorkOrderFacts } from './WorkOrderFacts';
 import { isAwareDate, localDateTime, zonedDateTime } from '../api/dates';
@@ -47,6 +49,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   const pending = useRef<AbortController | null>(null);
   const retry = useRef<{ fingerprint: string; id: string } | null>(null);
   const pics = verifiedDetail?.allowed_pics ?? detail?.allowed_pics ?? [];
+  const names = { ...detail?.pic_names, ...verifiedDetail?.pic_names };
   const versionChanged = !!saved && !!verifiedDetail && 'version' in verifiedDetail &&
     typeof verifiedDetail.version === 'number' && verifiedDetail.version > saved.version;
   const blocked = restoreBlocked || versionChanged || (!!detail && !!verifiedDetail && verifiedDetail.baseline_token !== detail.baseline_token) || (!!changes.assignedtechname && !pics.includes(changes.assignedtechname));
@@ -156,22 +159,30 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
     } finally { if (!controller.signal.aborted) setBusy(false); }
   }
   const editingDisabled = !writable || busy || suspended || blocked || uploadLocked || detail?.pics_configured === false;
+  const defaultTimes: Partial<Record<EditableField, string>> = { schedstart: '06:30', targcompdate: '23:59' };
   function fieldControl(field: EditableField) {
     if (!detail) return null;
-    return <label key={field} className={changed.includes(field) ? styles.modified : undefined}>
+    const className = changed.includes(field) ? styles.modified : undefined;
+    if (field === 'schedstart' || field === 'targstartdate' || field === 'targcompdate') {
+      const current = changes[field] ?? detail.baseline[field];
+      return <div key={field} className={`${styles.dateField} ${className ?? ''}`}>
+        <span>{labels[field]}</span>
+        <DateTimeInput label={labels[field]} value={current ? localDateTime(current, timezone) : ''} defaultTime={defaultTimes[field]}
+          disabled={target(field) && ['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase())}
+          onChange={(wall) => {
+            try { change(field, wall ? zonedDateTime(wall, timezone) : ''); }
+            catch (cause) { setError(cause instanceof Error ? cause.message : 'Ngày giờ không hợp lệ.'); }
+          }} />
+      </div>;
+    }
+    return <label key={field} className={className}>
       {labels[field]}{field === 'schedfinish' ? <><input aria-label={labels[field]} readOnly value={displayDate(changes.schedfinish ?? detail.baseline.schedfinish, timezone)} /><small>Tự tính theo ca 06:30–18:30, tối đa 10,5 giờ/ngày.</small></> : field === 'assignedtechname' ? <select value={changes[field] ?? detail.baseline[field] ?? ''} onChange={(e) => change(field, e.target.value)}>
-        <option value={detail.baseline[field] ?? ''}>{detail.baseline[field] ?? 'Chọn PIC'}</option>
+        <option value={detail.baseline[field] ?? ''}>{picLabel(detail.baseline[field], names) || 'Chọn PIC'}</option>
         {changes.assignedtechname && changes.assignedtechname !== detail.baseline.assignedtechname && !pics.includes(changes.assignedtechname) &&
-          <option value={changes.assignedtechname}>{changes.assignedtechname} (không còn trong crew)</option>}
-        {pics.filter((pic) => pic !== detail.baseline[field]).map((pic) => <option key={pic}>{pic}</option>)}
-      </select> : <input type={field === 'estdur' ? 'text' : 'datetime-local'}
-        value={field === 'estdur' ? changes[field] ?? detail.baseline[field] ?? '' :
-          (changes[field] ?? detail.baseline[field]) ? localDateTime((changes[field] ?? detail.baseline[field])!, timezone) : ''}
-        disabled={target(field) && ['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase())} inputMode={field === 'estdur' ? 'decimal' : undefined}
-        onChange={(e) => {
-          try { change(field, field === 'estdur' || !e.target.value ? e.target.value : zonedDateTime(e.target.value, timezone)); }
-          catch (cause) { setError(cause instanceof Error ? cause.message : 'Ngày giờ không hợp lệ.'); }
-        }} />}
+          <option value={changes.assignedtechname}>{picLabel(changes.assignedtechname, names)} (không còn trong crew)</option>}
+        {pics.filter((pic) => pic !== detail.baseline[field]).map((pic) => <option key={pic} value={pic}>{picLabel(pic, names)}</option>)}
+      </select> : <input type="text" inputMode="decimal"
+        value={changes[field] ?? detail.baseline[field] ?? ''} onChange={(e) => change(field, e.target.value)} />}
     </label>;
   }
   return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy && !uploadLocked) onClose(); }} aria-label="Chỉnh sửa nháp" role="dialog" aria-modal="false" className={`${styles.draftEditor} ${styles.sidePanel} ${styles.singlePanel}`}>
@@ -234,8 +245,8 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
               {pmScheduleChanged && <p role="status">Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.</p>}
               <div className={styles.tableWrap}><table aria-label="Thay đổi trước / sau"><thead><tr><th>Trường</th><th>Maximo khi tạo nháp</th><th>Nháp</th>{blocked && <th>Maximo hiện tại</th>}</tr></thead>
                 <tbody>{changed.map((field) => <tr key={field}><th>{labels[field]}</th>
-                  <td>{field === 'assignedtechname' || field === 'estdur' ? detail.baseline[field] ?? '—' : displayDate(detail.baseline[field], timezone)}</td>
-                  <td>{field === 'assignedtechname' || field === 'estdur' ? changes[field] : displayDate(changes[field] ?? null, timezone)}</td>
+                  <td>{field === 'assignedtechname' ? picLabel(detail.baseline[field], names) || '—' : field === 'estdur' ? detail.baseline[field] ?? '—' : displayDate(detail.baseline[field], timezone)}</td>
+                  <td>{field === 'assignedtechname' ? picLabel(changes[field], names) : field === 'estdur' ? changes[field] : displayDate(changes[field] ?? null, timezone)}</td>
                   {blocked && <td>{field === 'assignedtechname' || field === 'estdur' ? (verifiedDetail ?? detail).item[field] ?? '—' : displayDate((verifiedDetail ?? detail).item[field], timezone)}</td>}</tr>)}</tbody></table></div>
             </section>}
             {saved && writable && <section className={styles.editorSection} aria-label="Upload nháp đã lưu">
@@ -251,7 +262,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
           <section className={`${styles.editorSection} ${styles.editorReference}`} aria-label="Thông tin WO từ Maximo">
             <h3>Thông tin WO</h3>
             <p className={styles.editorHint}>Dữ liệu gốc từ Maximo</p>
-            <WorkOrderFacts row={detail.item} timezone={timezone} datesOnly={false} />
+            <WorkOrderFacts row={detail.item} timezone={timezone} datesOnly={false} picNames={names} />
             <details><summary>Lịch Maximo và thực tế</summary><WorkOrderFacts row={detail.item} timezone={timezone} datesOnly /></details>
           </section>
         </div>

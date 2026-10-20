@@ -4,6 +4,7 @@ import { BatchPlanner } from './BatchPlanner';
 import { BatchError, deleteDraft, openBatch, prepareBatch, previewUpload, saveBatch, type Detail } from '../api/drafts';
 import { columns, RetrievalError, type WorkOrder } from '../api/workOrders';
 import { zonedDateTime } from '../api/dates';
+import { getDateTime, groupControl, setDateTime } from '../testDateTime';
 
 vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), prepareBatch: vi.fn(), saveBatch: vi.fn(), openBatch: vi.fn(), deleteDraft: vi.fn(), previewUpload: vi.fn() }));
 afterEach(() => vi.resetAllMocks());
@@ -118,8 +119,8 @@ it('validates group duration overflow per WO and rejects paste atomically when o
   fireEvent.change(paste, { target: { value: '2026-10-05T08:00\t\t8\n2026-10-05T07:59\t\t8' } });
   fireEvent.click(screen.getByText('Kiểm tra và áp dữ liệu dán'));
   expect(screen.getByRole('alert')).toHaveTextContent('WO-101: Scheduled Start');
-  expect(screen.getByLabelText('WO-100 Scheduled Start')).toHaveValue('2026-10-05T08:00');
-  expect(screen.getByLabelText('WO-101 Scheduled Start')).toHaveValue('2026-10-05T08:00');
+  expect(getDateTime(screen.getByLabelText('WO-100 Scheduled Start'))).toBe('2026-10-05T08:00');
+  expect(getDateTime(screen.getByLabelText('WO-101 Scheduled Start'))).toBe('2026-10-05T08:00');
   expect(saveBatch).not.toHaveBeenCalled();
 });
 
@@ -132,16 +133,16 @@ it('keeps PM and CFT targets disabled in a mixed batch and saves allowed row tar
   vi.mocked(prepareBatch).mockResolvedValue(mixed);
   render(<BatchPlanner {...props} selection={{ keys: mixed.map(({ item }) => ({ site_id: item.siteid, workorder_id: item.workorderid })) }} />);
   const pmTarget = await screen.findByLabelText('WO-100 Target Start');
-  expect(pmTarget).toBeDisabled();
-  expect(screen.getByLabelText('WO-101 Target Finish')).toBeDisabled();
+  expect(groupControl(pmTarget)).toBeDisabled();
+  expect(groupControl(screen.getByLabelText('WO-101 Target Finish'))).toBeDisabled();
   expect(screen.getAllByText('PM/CFT không được đổi Target.')).toHaveLength(4);
   expect(screen.getByLabelText('WO-102 Target Finish')).toBeEnabled();
-  fireEvent.change(pmTarget, { target: { value: '2026-10-03T08:00' } });
-  fireEvent.change(screen.getByLabelText('WO-101 Target Finish'), { target: { value: '2026-10-03T08:00' } });
-  fireEvent.change(screen.getByLabelText('WO-102 Target Finish'), { target: { value: '2026-10-05T09:30' } });
-  expect(screen.getByLabelText('WO-100 Target Start')).toHaveValue('2026-10-01T08:00');
-  expect(screen.getByLabelText('WO-101 Target Finish')).toHaveValue('2026-10-02T08:00');
-  expect(screen.getByLabelText('WO-102 Target Finish')).toHaveValue('2026-10-05T09:30');
+  setDateTime(pmTarget, '2026-10-03T08:00');
+  setDateTime(screen.getByLabelText('WO-101 Target Finish'), '2026-10-03T08:00');
+  setDateTime(screen.getByLabelText('WO-102 Target Finish'), '2026-10-05T09:30');
+  expect(getDateTime(screen.getByLabelText('WO-100 Target Start'))).toBe('2026-10-01T08:00');
+  expect(getDateTime(screen.getByLabelText('WO-101 Target Finish'))).toBe('2026-10-02T08:00');
+  expect(getDateTime(screen.getByLabelText('WO-102 Target Finish'))).toBe('2026-10-05T09:30');
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
   vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'target-batch', version: 1, state: 'draft' });
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
@@ -157,16 +158,17 @@ it('restores permitted target proposals to their non-null row baseline and undo 
   vi.mocked(prepareBatch).mockResolvedValue([row]);
   render(<BatchPlanner {...props} selection={{ keys: [{ site_id: row.item.siteid, workorder_id: row.item.workorderid }] }} />);
   const start = await screen.findByLabelText('WO-100 Target Start');
-  fireEvent.change(start, { target: { value: '2026-10-03T09:00' } });
-  expect(start).toHaveValue('2026-10-03T09:00');
-  fireEvent.click(screen.getByText('Undo'));
-  expect(start).toHaveValue('2026-10-01T08:00');
-  fireEvent.change(start, { target: { value: '2026-10-04T09:00' } });
+  setDateTime(start, '2026-10-03T09:00');
+  expect(getDateTime(start)).toBe('2026-10-03T09:00');
+  // The date and the hour are separate edits: undo until the history is empty.
+  for (let step = 0; step < 4 && !(screen.getByText('Undo') as HTMLButtonElement).disabled; step++) fireEvent.click(screen.getByText('Undo'));
+  expect(getDateTime(start)).toBe('2026-10-01T08:00');
+  setDateTime(start, '2026-10-04T09:00');
   fireEvent.click(screen.getByRole('button', { name: 'Khôi phục Target gốc' }));
-  expect(start).toHaveValue('2026-10-01T08:00');
+  expect(getDateTime(start)).toBe('2026-10-01T08:00');
   expect(screen.queryByRole('button', { name: 'Khôi phục Target gốc' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByText('Undo'));
-  expect(screen.getByLabelText('WO-100 Target Start')).toHaveValue('2026-10-04T09:00');
+  expect(getDateTime(screen.getByLabelText('WO-100 Target Start'))).toBe('2026-10-04T09:00');
 });
 
 it('drops allowed target no-ops and their intent while retaining PM/CFT duration rows in the atomic save', async () => {
@@ -180,10 +182,10 @@ it('drops allowed target no-ops and their intent while retaining PM/CFT duration
   fireEvent.change(await screen.findByLabelText('WO-200 Est. Duration'), { target: { value: '9' } });
   fireEvent.change(screen.getByLabelText('WO-201 Est. Duration'), { target: { value: '10' } });
   for (const wonum of ['WO-202', 'WO-203']) {
-    fireEvent.change(screen.getByLabelText(`${wonum} Target Start`), { target: { value: '2026-10-03T08:00' } });
-    fireEvent.change(screen.getByLabelText(`${wonum} Target Finish`), { target: { value: '2026-10-04T08:00' } });
-    fireEvent.change(screen.getByLabelText(`${wonum} Target Start`), { target: { value: '2026-10-01T08:00' } });
-    fireEvent.change(screen.getByLabelText(`${wonum} Target Finish`), { target: { value: '2026-10-02T08:00' } });
+    setDateTime(screen.getByLabelText(`${wonum} Target Start`), '2026-10-03T08:00');
+    setDateTime(screen.getByLabelText(`${wonum} Target Finish`), '2026-10-04T08:00');
+    setDateTime(screen.getByLabelText(`${wonum} Target Start`), '2026-10-01T08:00');
+    setDateTime(screen.getByLabelText(`${wonum} Target Finish`), '2026-10-02T08:00');
   }
   expect(screen.queryByRole('button', { name: 'Khôi phục Target gốc' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
@@ -203,7 +205,7 @@ it('warns per PM row for a duration-derived finish while a CM calendar edit stay
   render(<BatchPlanner {...props} />);
   await screen.findByLabelText('WO-100 Est. Duration');
   fireEvent.change(screen.getByLabelText('WO-100 Est. Duration'), { target: { value: '9' } });
-  fireEvent.change(screen.getByLabelText('WO-101 Scheduled Start'), { target: { value: '2026-10-01T09:00' } });
+  setDateTime(screen.getByLabelText('WO-101 Scheduled Start'), '2026-10-01T09:00');
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
   const warning = 'Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.';
   const warningRow = screen.getByText(warning).closest('tr');
@@ -262,7 +264,7 @@ it('pastes empty trailing columns without clearing PIC and rejects invalid paste
   fireEvent.change(input, { target: { value: '2026-10-05T08:00\t\t\n2026-10-06T08:00\t\t\n' } });
   fireEvent.click(screen.getByText('Kiểm tra và áp dữ liệu dán'));
   expect(screen.getByLabelText('WO-100 Assigned PIC')).toHaveValue('TECH');
-  expect(screen.getByLabelText('WO-100 Scheduled Start')).toHaveValue('2026-10-05T08:00');
+  expect(getDateTime(screen.getByLabelText('WO-100 Scheduled Start'))).toBe('2026-10-05T08:00');
   expect(screen.getByLabelText('WO-100 Scheduled Finish')).toHaveValue('05/10/2026, 16:00');
   fireEvent.change(input, { target: { value: '\tOTHER\t9\n\tBAD\t10' } });
   fireEvent.click(screen.getByText('Kiểm tra và áp dữ liệu dán'));
@@ -279,7 +281,7 @@ it('derives each group finish from its duration and recalculates row exceptions 
   expect(screen.queryByRole('checkbox', { name: 'Scheduled Finish' })).not.toBeInTheDocument();
   expect(screen.getByLabelText('WO-100 Scheduled Finish')).toHaveAttribute('readonly');
   fireEvent.click(screen.getByRole('checkbox', { name: 'Scheduled Start' }));
-  fireEvent.change(screen.getByLabelText('Nhóm Scheduled Start'), { target: { value: '2026-10-05T08:00' } });
+  setDateTime(screen.getByLabelText('Nhóm Scheduled Start'), '2026-10-05T08:00');
   fireEvent.click(screen.getByText('Áp dụng vào nháp'));
   expect(screen.getByLabelText('WO-100 Scheduled Finish')).toHaveValue('05/10/2026, 16:00');
   expect(screen.getByLabelText('WO-101 Scheduled Finish')).toHaveValue('05/10/2026, 18:30');
@@ -346,11 +348,11 @@ it('warns once about starts outside the shift and can keep them or move them all
   render(<BatchPlanner {...props} />);
   await screen.findByLabelText('WO-100 Scheduled Start');
   fireEvent.click(screen.getByRole('checkbox', { name: 'Scheduled Start' }));
-  fireEvent.change(screen.getByLabelText('Nhóm Scheduled Start'), { target: { value: '2026-10-05T20:00' } });
+  setDateTime(screen.getByLabelText('Nhóm Scheduled Start'), '2026-10-05T20:00');
   fireEvent.click(screen.getByText('Áp dụng vào nháp'));
   expect(screen.getByText(/WO có giờ bắt đầu ngoài ca làm việc/)).toBeInTheDocument();
   fireEvent.click(screen.getByText('Dời tất cả sang đầu ca gần nhất'));
   expect(screen.queryByText(/WO có giờ bắt đầu ngoài ca làm việc/)).not.toBeInTheDocument();
-  expect(screen.getByLabelText('WO-100 Scheduled Start')).toHaveValue('2026-10-06T06:30');
+  expect(getDateTime(screen.getByLabelText('WO-100 Scheduled Start'))).toBe('2026-10-06T06:30');
   expect(screen.getByLabelText('WO-100 Scheduled Finish')).toHaveValue('06/10/2026, 14:30');
 });

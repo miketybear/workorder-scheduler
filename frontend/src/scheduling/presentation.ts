@@ -22,3 +22,10 @@ export function displayDate(value: string | null, timeZone: string, withTime = t
   return new Intl.DateTimeFormat('en-GB', { timeZone, day: '2-digit', month: '2-digit', year: 'numeric',
     ...(withTime ? { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' as const } : {}) }).format(new Date(value));
 }
+
+/** "HAIDQ — Dao Quang Hai" when the name is known, else the bare PERSON code. */
+export function picLabel(code: string | null | undefined, names?: Record<string, string>): string {
+  if (!code) return '';
+  const name = names?.[code];
+  return name ? `${code} — ${name}` : code;
+}

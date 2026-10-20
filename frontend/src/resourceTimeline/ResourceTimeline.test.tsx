@@ -60,7 +60,7 @@ async function loaded(initial: Snapshot = snapshot, orders: Array<import('../api
   api.revision.mockResolvedValue({pool_id:pool.id,connection_id:'conn',discipline:'E&I',revision:'r1'});
   api.timeline.mockResolvedValue(initial); api.orders.mockResolvedValue(orders);
   const view = render(<ResourceTimeline {...props} />);
-  await screen.findByText(/Nguyen A/);
+  await screen.findAllByText(/Nguyen A/);
   await screen.findByRole('table');
   await waitFor(()=>expect(api.orders).toHaveBeenCalled());
   await waitFor(()=>expect(screen.queryByText('Đang tải trang WO…')).not.toBeInTheDocument());
@@ -729,7 +729,7 @@ it('warns, without blocking, when assignments fall outside the WO schedule or th
 it('suggests the first assigned person as PIC for a WO without PIC and hands it to the page',async()=>{
   const onSuggestPic=vi.fn();
   await loaded({...snapshot,items:[item],work_orders:[order]},[workOrder],{onSuggestPic});
-  fireEvent.click(screen.getByRole('button',{name:'Đặt LAB-1 làm PIC (tạo nháp)'}));
+  fireEvent.click(screen.getByRole('button',{name:'Đặt LAB-1 — Nguyen A làm PIC (tạo nháp)'}));
   expect(onSuggestPic).toHaveBeenCalledWith({connection_id:'conn',discipline:'E&I',site_id:'SITE',workorder_id:'wo-1',pic:'LAB-1'});
 });
 
