@@ -531,14 +531,15 @@ it('treats a reloaded plan as one task: summary with its days, no per-day person
   await loaded(rowItem(segment));
   api.tasks.mockResolvedValue({connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',upload_enabled:true,tasks:[]});
   fireEvent.click(screen.getByRole('button',{name:/Phân công Long repair/}));
-  await screen.findByText(/Kế hoạch theo ngày đang lưu nội bộ/);
+  await screen.findByRole('region',{name:'Tóm tắt kế hoạch task'});
   expect(screen.getByRole('heading',{name:'Kế hoạch task'})).toBeInTheDocument();
   const summary=screen.getByRole('region',{name:'Tóm tắt kế hoạch task'});
-  expect(within(summary).getByRole('table',{name:'Giờ theo ngày của kế hoạch'})).toHaveTextContent('Tổng');
-  expect(within(summary).getByText(/1 ngày · 20 giờ/)).toBeInTheDocument();
+  expect(within(summary).getByRole('list',{name:'Giờ theo ngày của kế hoạch'})).toBeInTheDocument();
+  expect(within(summary).getByText(/Tổng 2 \/ 20h/)).toBeInTheDocument();
+  expect(within(summary).getByText(/1 ngày/)).toBeInTheDocument();
   expect(screen.queryByLabelText('Nhân lực phân công')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Ngày phân công')).not.toBeInTheDocument();
-  expect(screen.getByRole('button',{name:'Chuyển task'})).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:/^Chuyển task/})).toBeInTheDocument();
   expect(screen.queryByRole('button',{name:'Upload assignment lên Maximo'})).not.toBeInTheDocument();
 });
 
@@ -1342,7 +1343,7 @@ it('recovers a lost move response through the receipt without a second POST',asy
   api.planMove.mockRejectedValue(new TypeError('response lost'));
   api.planMoveReceipt.mockResolvedValueOnce(null);
   fireEvent.click(screen.getAllByRole('button',{name:/Phân công Relocate inspection/})[0]);
-  fireEvent.click(await screen.findByRole('button',{name:'Chuyển task'}));
+  fireEvent.click(await screen.findByRole('button',{name:/^Chuyển task/}));
   fireEvent.change(screen.getByLabelText('Nhân lực đích'),{target:{value:f.target.person_id}});
   await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận chuyển'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Xác nhận chuyển'}));

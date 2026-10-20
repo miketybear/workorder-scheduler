@@ -338,12 +338,34 @@
 .assignment[data-locked] { cursor: pointer; }
 .assignment.assignment:hover:not(:disabled):not(.assignmentUnknown), .assignment.assignment:focus-visible:not(.assignmentUnknown) { background: var(--task); color: #ffffff; }
 .assignment:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
-.planSummary { display: grid; gap: 6px; margin: 4px 0 12px; }
-.planSummary p { margin: 0; }
-.planSummary table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.planSummary th, .planSummary td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; font-weight: 400; }
-.planSummary td { text-align: right; }
-.planSummary tr[data-current] th, .planSummary tr[data-current] td { background: var(--accent-tint); font-weight: 500; }
-.planSummary tbody tr:last-child th, .planSummary tbody tr:last-child td { font-weight: 500; border-bottom: 0; }
-.planSummary td input { width: 64px; min-height: 28px; padding: 2px 6px; text-align: right; }
-.planSummary tr[data-total-mismatch] td { color: var(--danger-ink); }
+/* Task-level drawer for a multi-day plan. */
+.planPanel { display: grid; gap: 14px; }
+.planHead { --task: var(--task-1); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 14px; border-left: 4px solid var(--task); background: var(--ground); }
+.planHead[data-hue="2"] { --task: var(--task-2); } .planHead[data-hue="3"] { --task: var(--task-3); } .planHead[data-hue="4"] { --task: var(--task-4); } .planHead[data-hue="5"] { --task: var(--task-5); } .planHead[data-hue="6"] { --task: var(--task-6); }
+.planHead strong { display: block; font-size: 15px; }
+.planHead small { display: block; margin-top: 2px; color: var(--muted); }
+.statusChip { flex: none; padding: 2px 10px; border-radius: 12px; background: var(--tag-neutral-bg); color: var(--tag-neutral-ink); font-size: 12px; white-space: nowrap; }
+.statusChip[data-state="unknown"] { background: var(--warning-bg); color: var(--warning-ink); }
+.planFacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 16px; margin: 0; }
+.planFacts dt { color: var(--muted); font-size: 12px; }
+.planFacts dd { margin: 2px 0 0; font-weight: 500; }
+.planPanel h3 { margin: 0; font-size: 13px; color: var(--muted); font-weight: 500; }
+.dayRows { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.dayRows li { display: grid; grid-template-columns: 130px minmax(0, 1fr) 96px; align-items: center; gap: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.dayRows li[data-current] { background: var(--accent-tint); }
+.dayName { font-size: 13px; }
+.dayBar { height: 6px; border-radius: 3px; background: var(--hover); overflow: hidden; }
+.dayBar i { display: block; height: 100%; background: var(--link); }
+.dayInput { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.dayInput input { width: 68px; min-height: 32px; padding: 2px 8px; text-align: right; }
+.planTotal { margin: 0; text-align: right; font-weight: 500; }
+.planTotal[data-state="diff"] { color: var(--danger-ink); }
+.planTools { display: flex; flex-wrap: wrap; gap: 8px; }
+.syncDetails { border: 1px solid var(--line); padding: 8px 12px; }
+.syncDetails > summary { cursor: pointer; font-weight: 500; }
+.syncDetails[open] > summary { margin-bottom: 10px; }
+@media (max-width: 520px) { .dayRows li { grid-template-columns: minmax(0, 1fr) 96px; } .dayBar { display: none; } }
+.dayRows .dayInput { display: flex; align-items: center; justify-content: flex-end; gap: 4px; color: var(--ink); font-size: 13px; }
+.dayRows .dayInput input { width: 68px; min-height: 32px; padding: 2px 8px; text-align: right; }
+.dayRows li { min-height: 44px; }
+.syncDetails h3 { display: none; }
