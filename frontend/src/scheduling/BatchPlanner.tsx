@@ -6,6 +6,7 @@ import { RetrievalError } from '../api/workOrders';
 import { changedValue, scheduledChange, validateChanges } from './editing';
 import { outsideShift } from './ShiftNotice';
 import { DateTimeInput } from '../components/DateTimeInput';
+import { todayIn } from '../resourceTimeline/timelineHelpers';
 import { nearestShiftStart } from './workShift';
 import styles from '../App.module.css';
 import { displayDate, rowKey, picLabel } from './presentation';
@@ -235,7 +236,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
           onChange={(e) => setGroup((previous) => ({ ...previous, [field]: e.target.value }))}><option value="">Chọn PIC</option>{pics.map((pic) => <option key={pic} value={pic}>{picLabel(pic, groupNames)}</option>)}</select>
           : field === 'estdur' ? <input aria-label={`Nhóm ${labels[field]}`} type="text" inputMode="decimal" value={group[field]}
             onChange={(e) => { setGroup((previous) => ({ ...previous, [field]: e.target.value })); setError(''); }} />
-            : <DateTimeInput label={`Nhóm ${labels[field]}`} value={group[field] ? localDateTime(group[field]!, timezone) : ''} defaultTime={groupDefaultTime(field)}
+            : <DateTimeInput label={`Nhóm ${labels[field]}`} value={group[field] ? localDateTime(group[field]!, timezone) : ''} defaultTime={groupDefaultTime(field)} today={todayIn(timezone)}
               onChange={(wall) => {
                 try { const value = wall ? zonedDateTime(wall, timezone) : ''; setGroup((previous) => ({ ...previous, [field]: value })); setError(''); }
                 catch (cause) { setError(cause instanceof Error ? cause.message : 'Ngày không hợp lệ.'); }
@@ -270,7 +271,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
                 <option value={row.baseline[field] ?? ''}>{picLabel(row.baseline[field], row.pic_names) || 'Chưa có PIC'}</option>{row.allowed_pics.filter((pic) => pic !== row.baseline[field]).map((pic) => <option key={pic} value={pic}>{picLabel(pic, row.pic_names)}</option>)}</select> :
                 field === 'estdur' ? <input aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked} type="text" inputMode="decimal" value={value}
                   onChange={(e) => edit(index, field, e.target.value)} />
-                  : <DateTimeInput label={`${row.item.wonum} ${labels[field]}`} disabled={blocked || (isTarget && targetForbidden(row))} defaultTime={groupDefaultTime(field)}
+                  : <DateTimeInput label={`${row.item.wonum} ${labels[field]}`} disabled={blocked || (isTarget && targetForbidden(row))} defaultTime={groupDefaultTime(field)} today={todayIn(timezone)}
                     value={value ? localDateTime(value, timezone) : ''} onChange={(wall) => { try {
                       const iso = wall ? zonedDateTime(wall, timezone) : '';
                       if (isTarget) editTarget(index, field as typeof targetFields[number], iso); else edit(index, field, iso);

@@ -312,3 +312,26 @@
 .dateTime.dateTime.dateTime input[type="date"] { width: auto; flex: 1 1 140px; }
 .planningTable .dateTime.dateTime.dateTime select { width: 62px; flex-basis: 62px; }
 .planningTable .dateTime.dateTime.dateTime input[type="date"] { width: 138px; flex: 0 0 138px; }
+/* Date-time field: typed dd/mm/yyyy hh:mm plus one popup with calendar, hours and 5-minute steps. */
+.dateTimeField { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.dateTimeField input[type="text"] { flex: 1 1 150px; min-width: 136px; width: auto; }
+.dateTimeField input[aria-invalid="true"] { border-bottom: 2px solid var(--error); }
+.dateTimeButton { flex: 0 0 auto; min-height: 40px; min-width: 40px; padding: 0 10px; justify-content: center; border: 1px solid var(--line); background: var(--layer); color: var(--link); cursor: pointer; }
+.dateTimeError { flex-basis: 100%; color: var(--error); }
+.dtPopover { position: fixed; z-index: 60; display: grid; grid-template-columns: 252px auto; grid-template-areas: "cal time" "foot foot"; gap: 8px 12px; padding: 12px; width: 372px; box-sizing: border-box; background: var(--layer); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow-overlay); font-size: 13px; }
+.dtCalendar { grid-area: cal; }
+.dtMonth { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.dtWeek { display: grid; grid-template-columns: repeat(7, 36px); }
+.dtWeek span { text-align: center; color: var(--muted); font-size: 12px; line-height: 24px; }
+.dtPopover button { min-height: 30px; padding: 0 8px; border: 0; border-radius: var(--radius); background: transparent; color: var(--ink); justify-content: center; cursor: pointer; }
+.dtPopover button:hover:not(:disabled) { background: var(--hover); }
+.dtWeek button { width: 36px; min-height: 34px; padding: 0; }
+.dtPopover button[aria-pressed="true"] { background: var(--accent); color: #ffffff; }
+.dtPopover button[data-outside] { color: var(--muted); opacity: .65; }
+.dtPopover button[data-today] { box-shadow: inset 0 0 0 1px var(--link); }
+.dtPopover button:disabled { opacity: .4; cursor: not-allowed; }
+.dtTime { grid-area: time; display: flex; gap: 4px; height: 252px; }
+.dtColumn { display: flex; flex-direction: column; overflow-y: auto; width: 54px; position: relative; padding-right: 2px; }
+.dtFooter { grid-area: foot; display: flex; justify-content: flex-end; }
+.dtPopover .dtFooter button { background: var(--accent); color: #ffffff; padding: 0 20px; min-height: 36px; }
+.planningTable .dateTimeField input[type="text"] { min-width: 130px; flex-basis: 130px; }

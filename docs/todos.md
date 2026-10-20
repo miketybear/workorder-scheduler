@@ -78,9 +78,11 @@ Cập nhật: 2026-10-19.
 ## Ô ngày giờ 24 giờ và họ tên PIC — 2026-10-20
 
 - [x] Ô ngày giờ trong cửa sổ lập lịch (Scheduled Start, Target Start/Finish; ô nhóm và từng dòng ở editor nhóm)
-      dùng một chuẩn: bộ chọn ngày gốc + giờ 00–23 + phút (`components/DateTimeInput.tsx`), thay cho
-      `datetime-local` vốn theo ngôn ngữ trình duyệt (12 giờ am/pm). Ô giờ bắt đầu kế hoạch/đồng bộ hàng loạt dùng
-      `TimeInput24`. Giờ mặc định khi mới chọn ngày: 06:30 cho Scheduled Start, 23:59 cho Target Finish, 00:00 cho
+      dùng một chuẩn 24 giờ (`components/DateTimeInput.tsx`), thay cho `datetime-local` vốn theo ngôn ngữ trình
+      duyệt (12 giờ am/pm): ô gõ `dd/mm/yyyy hh:mm` (gõ được mọi phút) và một popup duy nhất có lịch (Thứ 2 là ngày
+      đầu tuần), cột giờ 00–23 và cột phút bước 5 (giữ nguyên phút hiện có nếu lệch bước); mỗi lần bấm áp dụng ngay,
+      "Xong" hoặc Esc để đóng, phím mũi tên di chuyển trong lịch và cột. Ô giờ bắt đầu kế hoạch/đồng bộ hàng loạt
+      dùng `TimeInput24` (hai select, phút bước 5). Giờ mặc định khi mới chọn ngày: 06:30 cho Scheduled Start, 23:59 cho Target Finish, 00:00 cho
       Target Start. Hiển thị chữ vẫn `dd/MM/yyyy, HH:mm` (24 giờ).
 - Còn dùng ô ngày gốc `type="date"`/`month` (thứ tự ngày theo ngôn ngữ trình duyệt): khoảng Target Finish ở trang WO,
   ngày kế hoạch ở hộp thoại timeline, chọn tháng timeline (hiện "October 2026"). Chưa đổi.

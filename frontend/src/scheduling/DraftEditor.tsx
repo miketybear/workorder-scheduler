@@ -6,6 +6,7 @@ import { equalField, scheduledChange, validateChanges } from './editing';
 import { ShiftNotice } from './ShiftNotice';
 import { DateTimeInput } from '../components/DateTimeInput';
 import { picLabel } from './presentation';
+import { todayIn } from '../resourceTimeline/timelineHelpers';
 import styles from '../App.module.css';
 import { WorkOrderFacts } from './WorkOrderFacts';
 import { isAwareDate, localDateTime, zonedDateTime } from '../api/dates';
@@ -167,7 +168,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
       const current = changes[field] ?? detail.baseline[field];
       return <div key={field} className={`${styles.dateField} ${className ?? ''}`}>
         <span>{labels[field]}</span>
-        <DateTimeInput label={labels[field]} value={current ? localDateTime(current, timezone) : ''} defaultTime={defaultTimes[field]}
+        <DateTimeInput label={labels[field]} value={current ? localDateTime(current, timezone) : ''} defaultTime={defaultTimes[field]} today={todayIn(timezone)}
           disabled={target(field) && ['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase())}
           onChange={(wall) => {
             try { change(field, wall ? zonedDateTime(wall, timezone) : ''); }

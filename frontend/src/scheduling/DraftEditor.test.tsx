@@ -364,8 +364,8 @@ it('uses date pickers in the connection timezone and serializes a changed date w
   render(<DraftEditor {...props} />);
   const finish = await screen.findByLabelText('Scheduled Finish');
   for (const label of ['Scheduled Start', 'Target Start', 'Target Finish']) {
-    expect(within(screen.getByLabelText(label)).getByLabelText(/\(ngày\)$/)).toHaveAttribute('type', 'date');
-    expect(within(screen.getByLabelText(label)).getByLabelText(/\(giờ\)$/)).toBeInTheDocument();
+    expect(within(screen.getByLabelText(label)).getByLabelText(/\(nhập\)$/)).toHaveAttribute('type', 'text');
+    expect(within(screen.getByLabelText(label)).getByRole('button', { name: /Chọn ngày giờ/ })).toBeInTheDocument();
   }
   expect(finish).toHaveAttribute('readonly');
   expect(finish).toHaveValue('30/09/2026, 16:00');
