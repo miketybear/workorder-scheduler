@@ -89,6 +89,19 @@ beforeEach(() => { vi.stubGlobal('PointerEvent',MouseEvent); vi.useFakeTimers({ 
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); Reflect.deleteProperty(document,'elementFromPoint'); });
 
+it('joins adjacent days of one plan into a start/end bar and keeps the title only on the first day',async()=>{
+  const base={...item,task_id:20,task_workorder_id:'task-20',task_description:'Long inspection',plan_id:'plan-bar',plan_total_minutes:240} as Assignment;
+  const first={...base,id:'bar-1',date:'2026-10-05',minutes:120} as Assignment;
+  const last={...base,id:'bar-2',date:'2026-10-06',minutes:120} as Assignment;
+  const alone={...item,id:'solo',date:'2026-10-06',minutes:60,plan_id:undefined} as Assignment;
+  await loaded({...snapshot,items:[first,last,alone],work_orders:[order]});
+  const cards=screen.getAllByRole('button',{name:/^Phân công/});
+  expect(cards.map(card=>card.getAttribute('data-segment')).sort()).toEqual(['end','single','start']);
+  const end=cards.find(card=>card.getAttribute('data-segment')==='end')!;
+  expect(end).toHaveTextContent(/^2h$/);
+  expect(cards.find(card=>card.getAttribute('data-segment')==='start')).toHaveTextContent('T20 · WO-1 · 2h');
+});
+
 it('shows compact status icons and a delayed, cancellable, keyboard-accessible assignment tooltip',async()=>{
   const compact={...item,task_id:20,task_workorder_id:'task-20',task_description:'Long description for inspection',plan_id:'plan-card',plan_total_minutes:240,plan_sync_state:'unknown',sync_state:'unknown'} as Assignment;
   await loaded({...snapshot,items:[compact],work_orders:[order]});
