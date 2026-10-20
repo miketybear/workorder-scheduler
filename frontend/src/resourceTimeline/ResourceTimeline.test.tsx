@@ -230,7 +230,7 @@ it('keeps day cells quiet: nothing on zero-capacity days, a line only for over-c
     {...base,date:'2026-10-07'}];
   const view=await loaded({...snapshot,rows:[{...person,days}]});
   const cell=(date:string)=>view.container.querySelector<HTMLElement>(`td[data-date="${date}"]`);
-  expect(cell('2026-10-05')?.textContent).not.toMatch(/d/);
+  expect(cell('2026-10-05')?.textContent).not.toMatch(/\d/);
   expect(cell('2026-10-06')).toHaveTextContent('vượt 1,17h');
   const quiet=cell('2026-10-07')!;
   expect(quiet).toHaveTextContent('0 / 10,5h');
