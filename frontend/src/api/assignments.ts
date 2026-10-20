@@ -297,6 +297,23 @@ function parsePlanMovePreview(value:unknown,poolId:string,planId:string,input:As
   if(new Set(capacity.map(day=>`${day.person_id}|${day.date}`)).size!==capacity.length||capacity.some(day=>day.person_id!==input.target_person_id||day.laborcode!==body.target_laborcode||day.capacity_minutes>630||day.proposed_minutes>630||day.remaining_after_minutes<0)||segments.some(segment=>!capacity.some(day=>day.person_id===input.target_person_id&&day.date===segment.date&&day.proposed_minutes===segment.minutes)))throw new Error('Capacity preview không bao phủ đủ các ngày và giờ đề xuất.');
   return {...input,plan_id:planId,plan_version:Number(body.plan_version),pool_id:poolId,task_workorder_id:String(body.task_workorder_id),task_id:Number(body.task_id),assignment_id:String(body.assignment_id),source_person_id:String(body.source_person_id),source_laborcode:String(body.source_laborcode),target_laborcode:String(body.target_laborcode),original_demand_minutes:Number(body.original_demand_minutes),total_minutes:Number(body.total_minutes),old_items:oldItems,segments,capacity};
 }
+export type PlanSegmentsInput={request_id:string;expected_version:number;segments:{date:string;minutes:number}[]};
+function parsePlanSegmentsResult(value:unknown,poolId:string,planId:string,input:PlanSegmentsInput):AssignmentPlanMoveResult{
+  const body=record(value)&&record(value.result)?value.result:value;
+  if(!record(body)||body.request_id!==input.request_id||body.plan_id!==planId||![input.expected_version,input.expected_version+1].includes(Number(body.plan_version))||!Array.isArray(body.items))throw new Error('Biên nhận sửa giờ kế hoạch không hợp lệ.');
+  const items=body.items.map(item=>parseAssignment(item));
+  const expectedDates=new Set(input.segments.map(segment=>segment.date));
+  if(items.some(item=>item.plan_id!==planId||item.pool_id!==poolId)||items.filter(item=>item.state==='reserved').some(item=>!expectedDates.has(item.date)||input.segments.find(segment=>segment.date===item.date)?.minutes!==item.minutes))throw new Error('Kết quả sửa giờ kế hoạch không khớp yêu cầu.');
+  return {request_id:input.request_id,plan_id:planId,plan_version:Number(body.plan_version),items,...mutationMetadata({...value as Record<string,unknown>,...body})};
+}
+/** Atomically replaces the day hours of a local plan; the person and total hours stay the same. */
+export async function savePlanSegments(poolId:string,planId:string,input:PlanSegmentsInput,signal:AbortSignal):Promise<AssignmentPlanMoveResult>{
+  if(!str(poolId)||!str(planId)||!uuid(input.request_id)||!Number.isInteger(input.expected_version)||input.expected_version<1||!input.segments.length||input.segments.some(segment=>!/^\d{4}-\d{2}-\d{2}$/.test(segment.date)||!Number.isInteger(segment.minutes)||segment.minutes<1||segment.minutes>630))throw new Error('Yêu cầu sửa giờ kế hoạch không hợp lệ.');
+  return json(`${planMovePath(poolId,planId)}/segments`,signal,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)},value=>parsePlanSegmentsResult(value,poolId,planId,input));
+}
+export async function lookupPlanSegmentsRequest(poolId:string,planId:string,input:PlanSegmentsInput,signal:AbortSignal):Promise<AssignmentPlanMoveResult|null>{
+  try{return await json(`/assignment-submissions/${encodeURIComponent(input.request_id)}`,signal,undefined,value=>parsePlanSegmentsResult(value,poolId,planId,input));}catch(error){if(error instanceof AssignmentError&&error.status===404)return null;throw error;}
+}
 export async function previewAssignmentPlanMove(poolId:string,planId:string,input:AssignmentPlanMoveRequest,knownItems:Assignment[],signal:AbortSignal):Promise<AssignmentPlanMovePreview>{
   validatePlanMoveRequest(poolId,planId,input);
   return json(`${planMovePath(poolId,planId)}/move-preview`,signal,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)},value=>parsePlanMovePreview(value,poolId,planId,input,knownItems));

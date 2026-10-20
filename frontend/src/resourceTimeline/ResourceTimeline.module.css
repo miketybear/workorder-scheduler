@@ -338,3 +338,12 @@
 .assignment[data-locked] { cursor: pointer; }
 .assignment.assignment:hover:not(:disabled):not(.assignmentUnknown), .assignment.assignment:focus-visible:not(.assignmentUnknown) { background: var(--task); color: #ffffff; }
 .assignment:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.planSummary { display: grid; gap: 6px; margin: 4px 0 12px; }
+.planSummary p { margin: 0; }
+.planSummary table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.planSummary th, .planSummary td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; font-weight: 400; }
+.planSummary td { text-align: right; }
+.planSummary tr[data-current] th, .planSummary tr[data-current] td { background: var(--accent-tint); font-weight: 500; }
+.planSummary tbody tr:last-child th, .planSummary tbody tr:last-child td { font-weight: 500; border-bottom: 0; }
+.planSummary td input { width: 64px; min-height: 28px; padding: 2px 6px; text-align: right; }
+.planSummary tr[data-total-mismatch] td { color: var(--danger-ink); }
