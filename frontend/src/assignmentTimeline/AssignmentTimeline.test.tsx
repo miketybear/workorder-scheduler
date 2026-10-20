@@ -2,12 +2,13 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { AssignmentTimelineDemo } from './AssignmentTimelineDemo';
 import { initialRoster } from './fixtures';
+import { setDate } from '../testDateTime';
 import { availability, monthDays } from './model';
 
 describe('AssignmentTimelineDemo', () => {
   it('accepts one minute without native number-input underflow', () => {
     render(<AssignmentTimelineDemo />);
-    fireEvent.change(screen.getByLabelText('Ngày'), { target: { value: '2026-11-02' } });
+    setDate(screen.getByLabelText('Ngày'), '2026-11-02');
     const hours = screen.getByLabelText('Giờ') as HTMLInputElement;
     fireEvent.change(hours, { target: { value: String(1 / 60) } });
     expect(hours.checkValidity()).toBe(true);
@@ -23,7 +24,7 @@ describe('AssignmentTimelineDemo', () => {
     expect(screen.getByText(/Không lưu, không gọi server hoặc Maximo/)).toBeTruthy();
     const person = 'EI-TECH-1';
     const workingDate = monthDays('2026-11').find(d => availability(person, d) === 'working')!;
-    fireEvent.change(screen.getByLabelText('Ngày'), { target: { value: workingDate } });
+    setDate(screen.getByLabelText('Ngày'), workingDate);
     fireEvent.change(screen.getByLabelText('Giờ'), { target: { value: '1.15' } });
     fireEvent.click(screen.getByText('Thêm phân bổ', { selector: 'button' }));
     fireEvent.click(screen.getByText('Xem trước', { selector: 'button' }));

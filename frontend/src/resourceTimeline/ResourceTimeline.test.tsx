@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { getDate, setDate } from '../testDateTime';
+import { getDate, setDate, setDateTime } from '../testDateTime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResourceTimeline } from './ResourceTimeline';
 import { AssignmentError, type Assignment, type ResourceTimeline as Snapshot } from '../api/assignments';
@@ -675,7 +675,7 @@ async function uploadDialog(){
   api.tasks.mockResolvedValue({connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',discipline:'E&I',upload_enabled:true,tasks:[]});
   fireEvent.click(screen.getByRole('button',{name:/Phân công Prepare/}));
   await screen.findByLabelText('Ngày giờ bắt đầu Maximo');
-  fireEvent.change(screen.getByLabelText('Ngày giờ bắt đầu Maximo'),{target:{value:'2026-10-05T06:30'}});
+  setDateTime(screen.getByLabelText('Ngày giờ bắt đầu Maximo'),'2026-10-05T06:30');
 }
 
 it('retains unknown upload identity, locks resubmission and reconciles the original attempt',async()=>{
