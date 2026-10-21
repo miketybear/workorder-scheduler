@@ -144,6 +144,25 @@ Cập nhật: 2026-10-19.
       ngày bị bỏ chuyển `released` (role runtime không có DELETE), sự kiện kiểm toán từng dòng đổi, tăng version kế
       hoạch và assignment revision. Từ chối kế hoạch đã đồng bộ/chờ đối soát (409) và yêu cầu không đổi gì (422).
       Không cần đổi quyền DB. 12 test nhanh, 20 test Postgres (DB test cổng 55432), 730 test backend không integration.
+- [x] **Drawer kế hoạch task (thiết kế cuối)**: chân drawer chỉ có "Đóng/Hủy thay đổi" và "Lưu thay đổi"; "Đổi người / ngày
+      bắt đầu…" và "Xóa cả kế hoạch…" nằm trong menu ⋯ ở đầu panel; nhãn "Chưa lưu" khi có giờ chưa lưu; chú giải màu thanh
+      giờ (xanh = task này, xám = task khác, đỏ = vượt rota). Bỏ phần gửi Maximo từng task khỏi kế hoạch chưa gửi (việc gửi
+      là gửi cả tháng); khối đồng bộ chỉ còn cho kế hoạch đã gửi hoặc chờ đối soát. Kế hoạch đã đồng bộ: cùng khung, bảng
+      4 cột Ngày/Giờ/Lịch Maximo/Trạng thái, một dòng "Đã khớp N ngày với Maximo".
+- [x] **Xóa cả kế hoạch**: `POST /resource-pools/{pool}/assignment-plans/{plan}/release` (`assignments/plan_release.py`):
+      `expected_version` + `request_id`, mọi ngày chuyển `released` (không xóa cứng), version kế hoạch tăng, sự kiện
+      `plan_release` từng dòng, biên nhận, capacity các ngày được trả lại, kế hoạch đã gửi/chờ đối soát bị từ chối (409).
+      Giao diện có hộp xác nhận nêu số ngày/giờ và "Maximo không bị thay đổi". 16 test Postgres, 7 test nhanh. Chưa chạy
+      xóa thật trên DB dev.
+- [x] **Dồn task lấp chỗ trống khi kéo** (`assignments/plan_backfill.py` + `plan_moves.py`): khi chuyển một kế hoạch đi,
+      các kế hoạch local cùng WO của nhân sự cũ dồn lên từ ngày đầu của kế hoạch bị chuyển, theo thứ tự (ngày đầu, task),
+      tổng giờ giữ nguyên và không bao giờ kết thúc muộn hơn; ngày chưa xác minh tải bị bỏ qua. `move-preview` trả
+      `backfill {enabled, plans[before/after/finish], skipped}`; `move` nhận `backfill_plans`, tự tính lại và so sánh (lệch
+      thì 409 yêu cầu xem trước lại), áp dụng cùng giao dịch (sự kiện `plan_backfill`, một lần đổi revision) và trả
+      `backfill_items`. Giao diện: ô tick "Dồn các task khác cùng WO…" mặc định bật trong hộp thoại chuyển task, hiện từng
+      task đổi gì (ngày, giờ trước → sau, ngày kết thúc). Kiểm tra preview trên dữ liệu thật P13468596 (chuyển T10 sang
+      Nguyen Duy Minh): T20 01/10 0,5h → 10,5h, kết thúc 05/10 → 04/10, T30/T40/T50 dịch lên một ngày; chưa bấm xác nhận.
+      14 test đơn vị + 9 test Postgres; 751 test backend nhanh, 477 test frontend.
 - Chưa làm với endpoint này: chưa chạy trên dữ liệu thật (chỉ kiểm thử trên DB test); chưa thêm ngày mới hay đổi người
   trong bảng giờ; không có test endpoint không cần Postgres.
 - Chưa làm: nét đứt qua ngày nghỉ chỉ có test đơn vị và đã được người dùng tạo thử; thông báo riêng cho lỗi 503;
