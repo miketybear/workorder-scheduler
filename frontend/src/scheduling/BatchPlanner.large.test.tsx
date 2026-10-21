@@ -68,7 +68,7 @@ it.each([100, 200])('edits, pastes, previews, saves and restores a %i-WO monthly
     .toHaveLength(count / 10);
   vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'monthly', version: 1, state: 'draft' });
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
-  await screen.findByText(`Đã lưu nháp ${count} WO · v1. Maximo chưa thay đổi.`);
+  await screen.findByText(`Đã lưu nháp ${count} WO. Maximo chưa thay đổi.`);
   const saved = vi.mocked(saveBatch).mock.calls[0][1];
   expect(saved).toHaveLength(count);
   expect(saved.map(({ item }) => [item.siteid, item.workorderid])).toEqual(rows.map(({ item }) => [item.siteid, item.workorderid]));

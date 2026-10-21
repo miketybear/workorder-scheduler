@@ -154,7 +154,7 @@ it('retains the same request ID after an uncertain server error and recovers wit
   const view = render(<DraftEditor {...props} selection={{ draftId: 'saved' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
   await screen.findByLabelText('Est. Duration');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText('Upload lên Onshore test'));
   await screen.findByText('Lấy kết quả yêu cầu trước');
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
@@ -274,7 +274,7 @@ it('opens a saved draft and blocks stale baseline saves while retaining its prop
   render(<DraftEditor {...props} selection={{ draftId: 'id' }} />);
   expect(await screen.findByLabelText('Est. Duration')).toHaveValue('12');
   expect(screen.getByText('Lưu nháp')).toBeDisabled();
-  expect(screen.getByRole('alert')).toHaveTextContent('Dữ liệu gốc hoặc PIC đã thay đổi');
+  expect(screen.getByRole('alert')).toHaveTextContent('Maximo vừa đổi dữ liệu của WO này');
   expect(props.onDirty).toHaveBeenLastCalledWith(false);
   const confirm = vi.spyOn(window, 'confirm');
   vi.mocked(deleteDraft).mockResolvedValue();
@@ -336,8 +336,43 @@ it('keeps unsaved edits but blocks saving when explicit verification finds a new
   view.rerender(<DraftEditor {...props} selection={{ draftId: 'id' }} verifiedDetail={{ ...restored, version: 2 }} />);
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('12');
   expect(screen.getByText('Lưu nháp')).toBeDisabled();
-  expect(screen.getByRole('alert')).toHaveTextContent('Nháp đã thay đổi phiên bản');
+  expect(screen.getByRole('alert')).toHaveTextContent('Nháp này vừa được lưu ở nơi khác');
   expect(saveDraft).not.toHaveBeenCalled();
+});
+
+it('keeps the typed changes on the newest draft version and saves them on that version', async () => {
+  const restored: Restored = { ...detail, draft_id: 'id', version: 1, state: 'draft',
+    changes: { estdur: '10' }, baseline_changed: false, changes_valid_now: true };
+  vi.mocked(openDraft).mockResolvedValue(restored);
+  vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'id', version: 3, state: 'draft' });
+  const view = render(<DraftEditor {...props} selection={{ draftId: 'id' }} />);
+  fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '12' } });
+  view.rerender(<DraftEditor {...props} selection={{ draftId: 'id' }} verifiedDetail={{ ...restored, version: 2, changes: { estdur: '11' } }} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Cập nhật theo bản mới nhất' }));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Est. Duration')).toHaveValue('12');
+  fireEvent.click(screen.getByText('Lưu nháp'));
+  await waitFor(() => expect(saveDraft).toHaveBeenCalledTimes(1));
+  const call = vi.mocked(saveDraft).mock.calls[0];
+  expect(call[1]).toMatchObject({ estdur: '12' });
+  expect(call[4]).toMatchObject({ draft_id: 'id', version: 2 });
+  expect(call[6]).toBe(true);
+});
+
+it('rebases a draft whose Maximo values changed, dropping only the edits that now equal Maximo', async () => {
+  const restored: Restored = { ...detail, draft_id: 'id', version: 2, state: 'draft', changes: { estdur: '12' },
+    baseline_changed: true, changes_valid_now: true };
+  vi.mocked(openDraft).mockResolvedValue(restored);
+  vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'id', version: 3, state: 'draft' });
+  render(<DraftEditor {...props} selection={{ draftId: 'id' }} />);
+  await screen.findByLabelText('Est. Duration');
+  fireEvent.click(screen.getByRole('button', { name: 'Cập nhật theo Maximo' }));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(screen.getByText(/Đã cập nhật theo bản mới nhất/)).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Lưu nháp'));
+  await waitFor(() => expect(saveDraft).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(saveDraft).mock.calls[0][1]).toMatchObject({ estdur: '12' });
+  expect(vi.mocked(saveDraft).mock.calls[0][6]).toBe(true);
 });
 
 it('treats equivalent durations and timezone instants as unchanged', async () => {

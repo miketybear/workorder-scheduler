@@ -99,10 +99,11 @@ export async function getDetail(key: Identity, signal: AbortSignal): Promise<Det
   return result;
 }
 export async function saveDraft(key: Identity, changes: Changes, token: string, requestId: string,
-  existing: Saved | null, signal: AbortSignal): Promise<Saved> {
+  existing: Saved | null, signal: AbortSignal, rebase = false): Promise<Saved> {
+  // rebase asks the server to adopt the current Maximo values as the draft's baseline while keeping these changes.
   return saved(await call(existing ? `/drafts/${encodeURIComponent(existing.draft_id)}` : '/drafts', signal,
     existing ? 'PUT' : 'POST', { ...key, changes, baseline_token: token, request_id: requestId,
-      ...(existing ? { version: existing.version } : {}) }));
+      ...(existing ? { version: existing.version, ...(rebase ? { rebase: true } : {}) } : {}) }));
 }
 export async function openDraft(id: string, scope: Scope, signal: AbortSignal): Promise<Restored> {
   const raw = await call(`/drafts/${encodeURIComponent(id)}`, signal);

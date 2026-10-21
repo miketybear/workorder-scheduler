@@ -103,7 +103,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
           }
         });
         if (existing.current && !Array.isArray(result) && result.version !== existing.current.version) {
-          before.forEach((row) => { changed[rowKey(row.item)] = 'Nháp đã đổi phiên bản; mở lại trước khi lưu.'; });
+          before.forEach((row) => { changed[rowKey(row.item)] = 'Nháp vừa được lưu ở nơi khác; đóng và mở lại nháp trước khi lưu.'; });
         }
         setRows(before.map((row) => ({ ...row, allowed_pics: fresh.get(rowKey(row.item))?.allowed_pics ?? [] })));
         setIssues(changed);
@@ -200,7 +200,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
       const result = await saveBatch(scope, items, retry.current.id, saved, controller.signal);
       if (!controller.signal.aborted) {
         setSaved(result); setRows(items); setCommitted(JSON.stringify(items.map((row) => row.changes)));
-        setHistory([]); retry.current = null; setNotice(`Đã lưu nháp ${items.length} WO · v${result.version}. Maximo chưa thay đổi.`);
+        setHistory([]); retry.current = null; setNotice(`Đã lưu nháp ${items.length} WO. Maximo chưa thay đổi.`);
         onDraftReady?.({ ...result, items });
       }
     } catch (cause) { if (!controller.signal.aborted) fail(cause); }
@@ -217,7 +217,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   }
   return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy) onClose(); }} className={`${styles.sidePanel} ${styles.batchPanel}`} role="dialog" aria-label="Lập lịch hàng loạt" aria-modal="false">
     <div className={styles.panelHeading}><h2>Lập lịch {rows.length || ('keys' in selection ? selection.keys.length : '')} WO</h2>{connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng nhóm</button></div>
-    <p>{scope.discipline} · {saved ? `Nháp v${saved.version}` : 'Chưa lưu nháp'}</p>
+    <p>{scope.discipline} · {saved ? 'Nháp đã lưu' : 'Chưa lưu nháp'}</p>
     <p>Scheduled Finish tự tính từ Scheduled Start + Est. Duration theo ca 06:30–18:30, tối đa 10,5 giờ/ngày.</p>
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {notice && <p role="status">{notice}</p>}

@@ -676,9 +676,9 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       {chooser && grant && <section role="dialog" tabIndex={-1} aria-label="Chọn nháp của WO"
         onKeyDown={(event) => { if (event.key === 'Escape') closePanel(); }} className={`${styles.draftEditor} ${styles.sidePanel}`}>
         <div className={styles.panelHeading}><h2>{chooser.wonum} · chọn nháp</h2><button className={styles.ghost} onClick={closePanel}>Đóng</button></div>
-        <p>WO này có nhiều kế hoạch đã lưu. Chọn kế hoạch để mở đúng phiên bản.</p>
+        <p>WO này có nhiều kế hoạch đã lưu. Chọn nháp bạn muốn mở.</p>
         {chooser.drafts?.map((plan) => <p key={plan.draft_id}><button className={styles.ghost} onClick={() => openPlan(chooser, plan)}>
-          {plan.is_batch ? 'Nháp nhóm' : 'Nháp'} · v{plan.version} · {displayDate(plan.updated_at, grant.timezone)}
+          {plan.is_batch ? 'Nháp nhóm' : 'Nháp'} · sửa lần cuối {displayDate(plan.updated_at, grant.timezone)}
           {plan.baseline_changed ? ' · Cần đối chiếu' : ''}</button></p>)}
         <button className={styles.tertiary} onClick={() => choose({ key: { ...editorScope, site_id: chooser.siteid, workorder_id: chooser.workorderid } })}>Xem Maximo / tạo nháp mới</button>
       </section>}
@@ -773,8 +773,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
               return <tr key={JSON.stringify([scope, row.siteid, row.workorderid])}>
               {grant.capability === 'write' && <td><input type="checkbox" aria-label={`Chọn ${row.wonum} · dòng ${index + 1}`} checked={selectedKeys.includes(rowKey(row))} onChange={(e) => setSelectedKeys((previous) => e.target.checked ? [...previous, rowKey(row)] : previous.filter((key) => key !== rowKey(row)))} /></td>}
               <td data-label="Work Order"><button className={styles.woLink} onClick={() => openRow(row)}>{row.wonum}</button><small>{row.worktype}</small>
-                {!!row.drafts?.length && <small className={styles.draftMarker}>{row.drafts.length > 1 ? plan ? `${plan.is_batch ? 'Nháp nhóm' : 'Nháp'} · v${plan.version} · ${row.drafts.length} nháp` : `${row.drafts.length} nháp · chọn để mở` :
-                  `${row.drafts[0].is_batch ? 'Nháp nhóm' : 'Nháp'} · v${row.drafts[0].version}`}
+                {!!row.drafts?.length && <small className={styles.draftMarker}>{row.drafts.length > 1 ? plan ? `${plan.is_batch ? 'Nháp nhóm' : 'Nháp'} · ${row.drafts.length} nháp` : `${row.drafts.length} nháp · chọn để mở` :
+                  row.drafts[0].is_batch ? 'Nháp nhóm' : 'Nháp'}
                   {plan?.baseline_changed && ' · Cần đối chiếu'}</small>}
               </td>
               <td className={styles.descriptionCell} data-label="Công việc">{row.description ?? '—'}<small>{row.location ?? 'Chưa có Tag Name'}</small></td>

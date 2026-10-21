@@ -162,7 +162,7 @@ it('does not overwrite a just-saved plan with an older table response from a con
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   await act(async () => finish([row]));
   expect(screen.getByRole('cell', { name: '9Nháp' })).toBeInTheDocument();
-  expect(screen.getByText('Nháp · v1')).toBeInTheDocument();
+  expect(document.querySelector('[class*=draftMarker]')).toHaveTextContent(/^Nháp$/);
   expect(screen.getByRole('alert')).toHaveTextContent('Nháp đã thay đổi trong lúc tải');
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
 });
@@ -508,7 +508,7 @@ it('keeps a saved draft reachable after closing without refreshing or deleting i
   // Removing focused panel controls may produce focus without a real window departure.
   await act(async () => fireEvent(window, new Event('focus')));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  expect(screen.getByText('Nháp · v1')).toBeInTheDocument();
+  expect(document.querySelector('[class*=draftMarker]')).toHaveTextContent(/^Nháp$/);
   expect(within(screen.getByRole('region', { name: 'WO từ Maximo' })).getByRole('cell', { name: '9Nháp' })).toHaveAttribute('data-draft', 'true');
   expect(screen.queryByRole('button', { name: 'Danh sách nháp' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
@@ -521,7 +521,7 @@ it('keeps a saved draft reachable after closing without refreshing or deleting i
   // A returned grant change still clears the shortcut and operational content.
   vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: { ...session, grants: [session.grants[0]] } });
   await act(async () => returnToPage());
-  expect(screen.queryByText('Nháp · v1')).not.toBeInTheDocument();
+  expect(document.querySelector('[class*=draftMarker]')).toBeNull();
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
 });
 
@@ -573,10 +573,10 @@ it('keeps a saved group accessible after closing and reopens the batch API', asy
   fireEvent.click(screen.getByText('Áp dụng vào nháp'));
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
-  await screen.findByText('Đã lưu nháp 2 WO · v2. Maximo chưa thay đổi.');
+  await screen.findByText('Đã lưu nháp 2 WO. Maximo chưa thay đổi.');
   fireEvent.click(screen.getByText('Đóng nhóm'));
   await act(async () => fireEvent(window, new Event('focus')));
-  expect(screen.getAllByText('Nháp nhóm · v2')).toHaveLength(2);
+  expect(screen.getAllByText('Nháp nhóm')).toHaveLength(2);
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByRole('button', { name: 'WO-SECOND' }));
   expect(await screen.findByLabelText('WO-SECOND Est. Duration')).toHaveValue('9');
@@ -614,7 +614,7 @@ it('deletes a saved draft without a native dialog or resetting login, query, fil
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(screen.getByRole('cell', { name: '8' })).toBeInTheDocument();
-  expect(screen.queryByText('Nháp · v1')).not.toBeInTheDocument();
+  expect(document.querySelector('[class*=draftMarker]')).toBeNull();
   expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
   expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('WO-REAL');
   expect(screen.queryByText('Đăng nhập Microsoft')).not.toBeInTheDocument();
@@ -634,7 +634,7 @@ it('closes a draft deleted in another tab on explicit update without signing out
   vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
   await act(async () => fireEvent.click(screen.getByText('Cập nhật')));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  expect(screen.queryByText('Nháp · v1')).not.toBeInTheDocument();
+  expect(document.querySelector('[class*=draftMarker]')).toBeNull();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
   expect(screen.queryByText('Đăng nhập Microsoft')).not.toBeInTheDocument();
@@ -721,12 +721,12 @@ it('requires a choice for competing plans and preserves other plans when one is 
   fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
   expect(openDraft).not.toHaveBeenCalled();
   expect(screen.getByRole('dialog', { name: 'Chọn nháp của WO' })).toHaveFocus();
-  fireEvent.click(within(screen.getByRole('dialog', { name: 'Chọn nháp của WO' })).getByRole('button', { name: /Nháp · v2/ }));
+  fireEvent.click(within(screen.getByRole('dialog', { name: 'Chọn nháp của WO' })).getAllByRole('button', { name: /Nháp · sửa lần cuối/ }).at(-1)!);
   expect(await screen.findByLabelText('Est. Duration')).toHaveValue('10');
   fireEvent.click(screen.getByText('Xóa nháp'));
   expect(deleteDraft).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Xác nhận xóa nháp' }));
-  await screen.findByText('Nháp · v1');
+  await waitFor(() => expect(document.querySelector('[class*=draftMarker]')).toHaveTextContent(/^Nháp$/));
   expect(screen.queryByText('2 nháp · chọn để mở')).not.toBeInTheDocument();
   expect(screen.getByRole('cell', { name: '9Nháp' })).toBeInTheDocument();
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
@@ -736,7 +736,7 @@ it('shows current Maximo values with a review marker when a saved baseline is st
   await setup();
   vi.mocked(retrieveWorkOrders).mockResolvedValue([{ ...row, estdur: '8', drafts: [{ ...marker, baseline_changed: true }] }]);
   fireEvent.click(screen.getByText('Retrieve WO'));
-  await screen.findByText(/Nháp · v1 · Cần đối chiếu/);
+  await screen.findByText(/Nháp · Cần đối chiếu/);
   expect(screen.getByRole('cell', { name: '8' })).not.toHaveAttribute('data-draft', 'true');
   expect(screen.queryByRole('cell', { name: 'TECHNháp' })).not.toBeInTheDocument();
 });
@@ -844,7 +844,7 @@ it('updates the hidden Maximo snapshot after deleting a draft from the drafts so
   fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(screen.getByRole('cell', { name: '8' })).toBeInTheDocument();
-  expect(screen.queryByText('Nháp · v1')).not.toBeInTheDocument();
+  expect(document.querySelector('[class*=draftMarker]')).toBeNull();
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
 });
 
@@ -859,7 +859,7 @@ it('updates a hidden source snapshot after saving a newer draft version', async 
   fireEvent.click(screen.getByText('Lưu nháp'));
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
-  expect(screen.getByText('Nháp · v2')).toBeInTheDocument();
+  expect(document.querySelector('[class*=draftMarker]')).toHaveTextContent(/^Nháp$/);
   expect(screen.getByRole('cell', { name: '11Nháp' })).toBeInTheDocument();
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
 });
@@ -1203,7 +1203,7 @@ it('keeps the first PM origin through date restoration, offers a duration-only s
   fireEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText('Upload lên Offshore test'));
   await screen.findByText(/Đã xác nhận 1 WO trong Maximo/);
 
@@ -1214,7 +1214,7 @@ it('keeps the first PM origin through date restoration, offers a duration-only s
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   expect(vi.mocked(saveDraft).mock.calls[1][1]).toEqual({ schedstart: original.baseline.schedstart, schedfinish: original.baseline.schedfinish });
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText('Upload lên Offshore test'));
   await screen.findByText(/Maximo đã xác nhận thay đổi, nhưng chưa làm mới được bảng/);
   fireEvent.click(screen.getByRole('button', { name: 'Đóng nháp' }));
@@ -1229,7 +1229,7 @@ it('keeps the first PM origin through date restoration, offers a duration-only s
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   expect(vi.mocked(saveDraft).mock.calls[2][1]).toEqual({ estdur: '8' });
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText('Upload lên Offshore test'));
   await screen.findByText(/Đã xác nhận 1 WO trong Maximo/);
 
@@ -1264,7 +1264,7 @@ it('keeps an in-memory recovery entry after an ambiguous submit 404 unmounts the
   vi.mocked(submitUpload).mockRejectedValue(new RetrievalError(404, 'Scoped read failed after send'));
   vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000002');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText('Upload lên Offshore test'));
   await screen.findByRole('button', { name: 'Kiểm tra kết quả upload trước' });
   expect(screen.queryByLabelText('Est. Duration')).not.toBeInTheDocument();
@@ -1297,9 +1297,9 @@ async function prepareBatchUpload() {
   fireEvent.change(await screen.findByLabelText('WO-REAL Est. Duration'), { target: { value: '9' } });
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
-  await screen.findByText('Đã lưu nháp 1 WO · v1. Maximo chưa thay đổi.');
+  await screen.findByText('Đã lưu nháp 1 WO. Maximo chưa thay đổi.');
   fireEvent.click(screen.getByText('Đối chiếu nhóm với Maximo trước upload'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
 }
 
 it('shows the bulk bar only for selected rows and remembers the table density', async () => {

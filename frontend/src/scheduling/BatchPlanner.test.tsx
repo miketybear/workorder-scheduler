@@ -80,7 +80,7 @@ it('applies group duration, supports undo, and requires preview before atomic sa
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
   vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'group', version: 1, state: 'draft' });
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
-  await screen.findByText('Đã lưu nháp 2 WO · v1. Maximo chưa thay đổi.');
+  await screen.findByText('Đã lưu nháp 2 WO. Maximo chưa thay đổi.');
   expect(vi.mocked(saveBatch).mock.calls[0][1]).toHaveLength(2);
   await vi.waitFor(() => expect(props.onDirty).toHaveBeenLastCalledWith(false));
 });
@@ -146,7 +146,7 @@ it('keeps PM and CFT targets disabled in a mixed batch and saves allowed row tar
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
   vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'target-batch', version: 1, state: 'draft' });
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
-  await screen.findByText('Đã lưu nháp 1 WO · v1. Maximo chưa thay đổi.');
+  await screen.findByText('Đã lưu nháp 1 WO. Maximo chưa thay đổi.');
   expect(vi.mocked(saveBatch).mock.calls[0][1]).toHaveLength(1);
   expect(vi.mocked(saveBatch).mock.calls[0][1][0].changes).toEqual({
     targcompdate: '2026-10-05T09:30:00+07:00', change_target: true,
@@ -191,7 +191,7 @@ it('drops allowed target no-ops and their intent while retaining PM/CFT duration
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
   vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'duration-only-pm-cft', version: 1, state: 'draft' });
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
-  await screen.findByText('Đã lưu nháp 2 WO · v1. Maximo chưa thay đổi.');
+  await screen.findByText('Đã lưu nháp 2 WO. Maximo chưa thay đổi.');
   const items = vi.mocked(saveBatch).mock.calls[0][1];
   expect(items.map((item) => item.item.worktype)).toEqual(['PM', 'CFT']);
   expect(items.map((item) => item.changes)).toEqual([{ estdur: '9' }, { estdur: '10' }]);
@@ -219,7 +219,7 @@ it('previews the persisted batch and disables the upload action while unsaved ed
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
   vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'group', version: 2, state: 'draft' });
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
-  await screen.findByText('Đã lưu nháp 1 WO · v2. Maximo chưa thay đổi.');
+  await screen.findByText('Đã lưu nháp 1 WO. Maximo chưa thay đổi.');
   vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'group', version: 2, preview_hash: 'c'.repeat(64),
     send_enabled: false, gate: 'write_contract_unverified', items: [{ site_id: 'BD1', workorder_id: '100', code: 'ready', warnings: [],
       before: { estdur: '8' }, changes: { estdur: '9' } }] });
@@ -254,7 +254,7 @@ it.each([new Error('Network lost'), new RetrievalError(504, 'Yêu cầu xử lý
   expect(screen.getByLabelText('WO-100 Est. Duration')).toHaveValue('9');
   expect(saveBatch).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
-  await screen.findByText('Đã lưu nháp 1 WO · v1. Maximo chưa thay đổi.');
+  await screen.findByText('Đã lưu nháp 1 WO. Maximo chưa thay đổi.');
   expect(vi.mocked(saveBatch).mock.calls[0][2]).toBe(vi.mocked(saveBatch).mock.calls[1][2]);
 });
 

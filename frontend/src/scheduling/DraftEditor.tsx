@@ -42,6 +42,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   const [uploadLocked, setUploadLocked] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [keptStart, setKeptStart] = useState<string | null>(null);
+  const [rebase, setRebase] = useState(false);
   // Read through refs so a changing callback identity never restarts the in-flight load.
   const prefillRef = useRef(prefill); const prefillConsumedRef = useRef(onPrefillConsumed);
   useEffect(() => { prefillRef.current = prefill; prefillConsumedRef.current = onPrefillConsumed; });
@@ -126,6 +127,23 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
       return next;
     });
   }
+  // Take the newest Maximo values (and draft version) as the new base and keep what the user typed on top of them.
+  function adoptLatest() {
+    const latest = (verifiedDetail ?? detail) as (Detail | Restored) | null;
+    if (!detail || !latest) return;
+    const kept: Changes = {}; const dropped: string[] = [];
+    for (const field of editableFields) {
+      const value = changes[field];
+      if (value === undefined) continue;
+      if (value === latest.baseline[field] || (field === 'assignedtechname' && !latest.allowed_pics.includes(value))) dropped.push(labels[field]);
+      else kept[field] = value;
+    }
+    if (changes.change_target !== undefined && Object.keys(kept).some((field) => target(field as EditableField))) kept.change_target = changes.change_target;
+    setDetail(latest);
+    if (saved && 'version' in latest && typeof latest.version === 'number') setSaved({ ...saved, version: latest.version, updated_at: latest.updated_at ?? saved.updated_at });
+    setChanges(kept); setBlocked(false); setRebase(!!saved); setCommitted('__refreshed__'); retry.current = null; setError('');
+    setNotice(`Đã cập nhật theo bản mới nhất.${dropped.length ? ` Bỏ ${dropped.join(', ')} vì đã trùng Maximo hoặc không còn hợp lệ.` : ''} Xem lại rồi bấm Lưu nháp; Maximo chưa thay đổi.`);
+  }
   function validation(): string {
     return detail ? validateChanges(detail.baseline, changes, pics) : '';
   }
@@ -143,11 +161,11 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
         if (!controller.signal.aborted) { onDraftReady?.({ ...saved, items: null }); onDirty(false); onClose(); }
       } else {
         const key = { ...scope, site_id: detail.item.siteid, workorder_id: detail.item.workorderid };
-        const fingerprint = JSON.stringify([key, changes, detail.baseline_token, saved?.version]);
+        const fingerprint = JSON.stringify([key, changes, detail.baseline_token, saved?.version, rebase]);
         if (retry.current?.fingerprint !== fingerprint) retry.current = { fingerprint, id: crypto.randomUUID() };
-        const result = await saveDraft(key, changes, detail.baseline_token, retry.current.id, saved, controller.signal);
+        const result = await saveDraft(key, changes, detail.baseline_token, retry.current.id, saved, controller.signal, rebase);
         if (!controller.signal.aborted) {
-          setCommitted(JSON.stringify(changes)); setSaved(result); onDirty(false); retry.current = null;
+          setCommitted(JSON.stringify(changes)); setSaved(result); setRebase(false); onDirty(false); retry.current = null;
           setNotice('Đã lưu nháp trên server. Maximo chưa thay đổi.');
           onDraftReady?.({ ...result, items: [{ ...detail, changes }] });
         }
@@ -188,7 +206,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   }
   return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy && !uploadLocked) onClose(); }} aria-label="Chỉnh sửa nháp" role="dialog" aria-modal="false" className={`${styles.draftEditor} ${styles.sidePanel} ${styles.singlePanel}`}>
     <div className={`${styles.panelHeading} ${styles.editorHeader}`}>
-      <div><h2>{detail ? detail.item.wonum : 'Đang mở WO…'}</h2>{saved && <span className={styles.badge}>Nháp phiên bản {saved.version}</span>}{connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>}</div>
+      <div><h2>{detail ? detail.item.wonum : 'Đang mở WO…'}</h2>{saved && <span className={styles.badge}>Nháp đã lưu{saved.updated_at ? ` · ${displayDate(saved.updated_at, timezone)}` : ''}</span>}{connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>}</div>
       <button className={styles.ghost} disabled={busy || uploadLocked} onClick={onClose}>Đóng nháp</button>
     </div>
     <div className={styles.editorBody}>
@@ -197,8 +215,11 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
       {!detail && error && <button className={styles.ghost} onClick={onClose}>Đóng để mở lại</button>}
       {detail && <>
         {validation() && <p role="alert" className={styles.error}>{validation()}</p>}
-        {blocked && <p role="alert">{versionChanged ? 'Nháp đã thay đổi phiên bản. Phần đang sửa được giữ để đối chiếu; đóng và mở lại nháp trước khi tiếp tục.' :
-          'Dữ liệu gốc hoặc PIC đã thay đổi. Nháp được giữ để đối chiếu; mở WO từ bảng để tạo nháp mới sau khi kiểm tra.'}</p>}
+        {blocked && <div role="alert"><p>{versionChanged ? 'Nháp này vừa được lưu ở nơi khác. Phần bạn đang sửa vẫn được giữ.' :
+          (!!changes.assignedtechname && !pics.includes(changes.assignedtechname)) && !restoreBlocked && verifiedDetail?.baseline_token === detail?.baseline_token
+            ? 'PIC đã chọn không còn nằm trong danh sách hợp lệ. Phần bạn đang sửa vẫn được giữ.'
+            : 'Maximo vừa đổi dữ liệu của WO này. Phần bạn đang sửa vẫn được giữ để đối chiếu.'}</p>
+          <button type="button" className={styles.ghost} disabled={busy} onClick={adoptLatest}>{versionChanged ? 'Cập nhật theo bản mới nhất' : 'Cập nhật theo Maximo'}</button></div>}
         {detail.pics_configured === false && <p>Chưa cấu hình crew/PIC cho discipline này. Có thể xem chi tiết WO; chưa thể chỉnh sửa hoặc lưu nháp.</p>}
         <div className={styles.editorLayout}>
           <div className={styles.editorSections}>

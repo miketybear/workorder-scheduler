@@ -26,11 +26,11 @@ it('shows an in-flight upload without claiming Maximo is unchanged or the result
   vi.mocked(submitUpload).mockReturnValueOnce(new Promise((resolve) => { resolveSubmit = resolve; }));
   render(<UploadPreviewControls {...baseProps} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   await screen.findByText('Đang xử lý yêu cầu upload và kiểm tra kết quả…');
   expect(submitUpload).toHaveBeenCalledTimes(1);
-  expect(screen.queryByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.')).not.toBeInTheDocument();
+  expect(screen.queryByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.')).not.toBeInTheDocument();
   expect(screen.queryByText('Kết quả yêu cầu chưa xác định; dữ liệu nháp được giữ nguyên.')).not.toBeInTheDocument();
   resolveSubmit(receipt(200, true));
   await screen.findByText('Tiến độ: 200/200 WO đã xác nhận.');
@@ -45,7 +45,7 @@ it('sends a 200 WO group in twenty sequential requests with one request ID and p
   });
   render(<UploadPreviewControls {...baseProps} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   await screen.findByText('Tiến độ: 200/200 WO đã xác nhận.');
   expect(submitUpload).toHaveBeenCalledTimes(1);
@@ -59,7 +59,7 @@ it('stops automatic chunks on an unknown result and resumes only after explicit 
   vi.mocked(submitUpload).mockResolvedValue({ ...receipt(9), counts: { confirmed: 9, pending: 190, unknown: 1 }, items: receipt(9).items.map((item, index) => index === 9 ? { ...item, state: 'unknown' } : item) });
   render(<UploadPreviewControls {...baseProps} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   await screen.findByText('Kết quả chưa hoàn tất. Kiểm tra trạng thái để quyết định bước tiếp theo.');
   expect(continueUpload).not.toHaveBeenCalled();
@@ -72,7 +72,7 @@ it('requires a status lookup after a timed out chunk before resuming with the sa
   vi.mocked(getUploadStatus).mockResolvedValue(receipt(10));
   render(<UploadPreviewControls {...baseProps} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   await screen.findByRole('alert');
   expect(continueUpload).toHaveBeenCalledTimes(1);
@@ -91,7 +91,7 @@ it('does not write when stopped during the fresh preflight and ignores a duplica
   vi.mocked(previewUpload).mockReturnValueOnce(new Promise((resolve) => { resolveFresh = resolve; }));
   const view = render(<UploadPreviewControls {...baseProps} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   const send = screen.getByText(baseProps.buttonLabel);
   fireEvent.click(send); fireEvent.click(send);
   expect(previewUpload).toHaveBeenCalledTimes(2);
@@ -109,7 +109,7 @@ it('stops after the in-flight chunk when the group is hidden, even if it becomes
   vi.mocked(continueUpload).mockReturnValueOnce(new Promise((resolve) => { resolveChunk = resolve; }));
   const view = render(<UploadPreviewControls {...baseProps} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   await screen.findByRole('button', { name: 'Dừng sau đợt đang gửi' });
   view.rerender(<UploadPreviewControls {...baseProps} active={false} />);
@@ -127,7 +127,7 @@ it('requires a status lookup after context changes during an in-flight chunk', a
   vi.mocked(continueUpload).mockReturnValueOnce(new Promise((resolve) => { resolveChunk = resolve; }));
   const view = render(<UploadPreviewControls {...baseProps} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   await screen.findByRole('button', { name: 'Dừng sau đợt đang gửi' });
   view.rerender(<UploadPreviewControls {...baseProps} context="new-scope-context" />);
@@ -148,7 +148,7 @@ it.each(['failed', 'conflict', 'sending'] as const)('does not auto-continue when
   vi.mocked(submitUpload).mockResolvedValue(partial);
   render(<UploadPreviewControls {...baseProps} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   await screen.findByText(`Tiến độ: 9/200 WO đã xác nhận.`);
   expect(continueUpload).not.toHaveBeenCalled();
@@ -161,7 +161,7 @@ it('requires a status lookup when a chunk response makes no confirmed progress',
   vi.mocked(continueUpload).mockResolvedValue(receipt(10));
   render(<UploadPreviewControls {...baseProps} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   await screen.findByText('Upload tự động đã dừng vì trạng thái chưa tiến triển an toàn. Kiểm tra trạng thái trước khi tiếp tục.');
   expect(continueUpload).toHaveBeenCalledTimes(1);
@@ -176,7 +176,7 @@ it('keeps the current chunk but stops future chunks after permission is lost and
   vi.mocked(continueUpload).mockReturnValueOnce(new Promise((resolve) => { resolveChunk = resolve; }));
   const view = render(<UploadPreviewControls {...baseProps} permitted />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   await screen.findByRole('button', { name: 'Dừng sau đợt đang gửi' });
   view.rerender(<UploadPreviewControls {...baseProps} permitted={false} />);
@@ -196,7 +196,7 @@ it('keeps the finalized receipt and offers a refresh when the table refresh fail
   const onUploadFinalized = vi.fn().mockResolvedValue(false);
   render(<UploadPreviewControls {...baseProps} onUploadFinalized={onUploadFinalized} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   await screen.findByText('Tiến độ: 200/200 WO đã xác nhận.');
   expect(await screen.findByText(/Maximo đã xác nhận thay đổi, nhưng bảng chưa được làm mới/)).toBeInTheDocument();
@@ -210,7 +210,7 @@ it('shows the upload steps, a production warning and grouped result counts', asy
     items: receipt(9).items.map((item, index) => index === 9 ? { ...item, state: 'failed' } : item) });
   render(<UploadPreviewControls {...baseProps} uploadAll={false} connection={{ label: 'Onshore prod', system: 'onshore', environment: 'production' }} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
-  await screen.findByText('Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.');
+  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   const steps = screen.getByRole('list', { name: 'Các bước upload' });
   expect(steps.querySelector('[aria-current="step"]')).toHaveTextContent('Đối chiếu');
   expect(screen.getByText(/thay đổi sẽ ghi vào Maximo thật/)).toHaveAttribute('data-env', 'production');

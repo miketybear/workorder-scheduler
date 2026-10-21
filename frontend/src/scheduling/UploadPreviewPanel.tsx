@@ -267,7 +267,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
               <td colSpan={4} role="status">Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.</td></tr>)])}</tbody></table></div>
         {!currentPreview.send_enabled && <p role="status">Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.</p>}
         {!currentPreview.send_enabled && <button className={styles.primary} disabled>Upload chưa khả dụng</button>}
-        {currentPreview.send_enabled && <p role="status">Maximo chưa thay đổi. Kiểm tra lại phiên bản và Maximo trước khi gửi.</p>}
+        {currentPreview.send_enabled && <p role="status">Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.</p>}
         {currentPreview.send_enabled && currentPreview.items.every((item) => item.code === 'ready') && <button className={styles.primary} disabled={busy} onClick={() => void submitOrRecover()}>{buttonLabel}</button>}
         {currentPreview.send_enabled && currentPreview.items.some((item) => item.code !== 'ready') && <>
           <p role="status">Maximo chưa thay đổi. Xử lý các WO có xung đột hoặc thay đổi không hợp lệ trước khi upload.</p>
@@ -294,7 +294,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
                 : '—'}</td><td>{new Intl.DateTimeFormat('vi-VN', { timeZone: timezone, dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.updated_at))}</td></tr>)}</tbody></table></div>
         {status.source_finalized ? <p role="status">Các thay đổi đã được xác nhận trong Maximo; đang cập nhật dữ liệu trên bảng.</p>
           : status.items.every((item) => ['confirmed', 'failed', 'conflict'].includes(item.state))
-            ? <p role="status">Draft được giữ lại vì dữ liệu hiện tại hoặc phiên bản nháp chưa đủ điều kiện hoàn tất.</p>
+            ? <p role="status">Nháp được giữ lại vì dữ liệu hiện tại hoặc nháp chưa đủ điều kiện hoàn tất.</p>
             : <p role="status">Kết quả chưa hoàn tất. Kiểm tra trạng thái để quyết định bước tiếp theo.</p>}
         {(needsStatusCheck || error || needsExplicitStatus) && <button className={styles.tertiary} disabled={busy || !active || !permitted} onClick={() => void refreshStatus()}>Kiểm tra trạng thái</button>}
         {safeToContinue && <button className={styles.primary} disabled={busy || !active || !permitted} onClick={() => uploadAll
