@@ -110,6 +110,19 @@ Cập nhật: 2026-10-19.
 
 ## Ô ngày/tháng thống nhất, thanh task nhiều ngày và lỗi lưu nháp — 2026-10-20
 
+- [x] **Trang WO gọn lại: một bảng, "Gửi N WO lên Maximo", cảnh báo đổi khoảng ngày** (frontend, 2026-10-21): bỏ nguồn thứ hai
+      "Nháp của tôi" (nút chuyển nguồn, phân trang nháp, snapshot theo nguồn) và nút "Lập lịch nhóm"; còn một bảng WO của
+      khoảng ngày, bộ lọc Nháp (tất cả/có/chưa có), nhãn "Nháp" trên dòng (không phân biệt đơn/nhóm), bấm số WO mở panel
+      `DraftEditor` (WO thuộc nháp nhóm mở bản Maximo để sửa, nhóm được sửa trong bảng). Ô tick dòng chỉ còn cho Ctrl+D.
+      Đổi khoảng ngày khi có dòng có nháp mở hộp thoại `alertdialog` ("Hủy, giữ danh sách" / "Xóa nháp và đổi ngày"):
+      xóa tuần tự từng nháp (mỗi nháp nhóm một lần), lỗi xóa giữ hộp thoại và khoảng ngày cũ. Thanh "Gửi N WO lên
+      Maximo" (quyền ghi, có WO có nháp; N = số WO có nháp, luôn là tất cả; khóa khi còn sửa ô chưa lưu hoặc đang bận) chạy
+      `consolidateDrafts`: dùng nguyên nháp nếu đã đúng một nháp phủ đúng tập WO, ngược lại gộp mọi nháp liên quan
+      (kể cả thành viên ngoài bảng; WO nằm ở nhiều nháp lấy bản mới nhất) thành MỘT nháp nhóm mới với baseline mới, bỏ
+      trường đã trùng Maximo/PIC không còn hợp lệ và báo WO bị loại, rồi mới xóa các nháp cũ (lỗi xóa chỉ cảnh báo) và mở
+      `BatchPlanner sendOnly` (bảng tóm tắt chỉ đọc + phần upload cũ). Giới hạn 200 WO mỗi lần gửi (vượt thì báo thu hẹp
+      bằng bộ lọc, không lưu/xóa gì). Chưa kiểm tra thủ công trên trình duyệt với dữ liệu thật; 489 frontend test, lint,
+      typecheck đạt.
 - [x] **Lỗi 503 khi lưu nháp ("Không hoàn tất yêu cầu")**: role runtime thiếu quyền UPDATE cột `result` của
       `draft_submission` (biên nhận được chèn rỗng rồi cập nhật trong cùng transaction). Thêm
       `GRANT UPDATE (result)` vào `backend/sql/provision_roles.sql`, áp vào DB dev local bằng role owner, và

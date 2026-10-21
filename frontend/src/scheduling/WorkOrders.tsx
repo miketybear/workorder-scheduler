@@ -5,11 +5,12 @@ import { getAuthSummary, loginUrl, type Session } from '../api/client';
 import { RetrievalError, retrieveWorkOrders, type WorkOrder, type WorkOrderFilter } from '../api/workOrders';
 import styles from '../App.module.css';
 import { DraftEditor, type EditorSelection } from './DraftEditor';
-import { continueUpload, editableFields, getDetail, listPlannedWorkOrders, lookupUploadRequest, openDraft, reconcileUpload, type Baseline, type Detail, type DraftNotice,
+import { continueUpload, deleteDraft, editableFields, getDetail, lookupUploadRequest, openDraft, reconcileUpload, type Baseline, type Detail, type DraftNotice,
   type Scope, type UploadRecoveryEntry, type UploadStatus, type UploadStatusItem, UploadRequestNotFoundError } from '../api/drafts';
 import type { FinalizedUpload } from './UploadPreviewPanel';
 import { currentMonthRange, startOfDay } from '../api/dates';
-import { BatchPlanner, type BatchSelection } from './BatchPlanner';
+import { BatchPlanner } from './BatchPlanner';
+import { consolidateDrafts } from './consolidateDrafts';
 import { displayDate, rowKey } from './presentation';
 import { chosenPlan, effectiveOrder, updatePlans } from './planning';
 import type { PlanningMarker } from '../api/workOrders';
@@ -22,22 +23,6 @@ import { problemOf, shown, stage, type Staged, type StagedField } from './inline
 import { saveInlineEdits, type InlineRow } from './inlineSave';
 import { outsideShift } from './ShiftNotice';
 import { usePanelFocus } from './usePanelFocus';
-
-type Source = 'maximo' | 'drafts';
-type SourceSnapshot = {
-  rows: WorkOrder[] | null;
-  query: WorkOrderFilter | null;
-  page: { scope: Scope; offset: number } | null;
-  updatedAt: number | null;
-  search: string;
-  statusFilter: string;
-  planningFilter: string;
-  draftFilter: string;
-  selectedKeys: string[];
-  choices: Record<string, string>;
-  offset: number;
-  nextOffset: number | null;
-};
 
 function sameBaseline(left: Baseline, right: Baseline): boolean {
   return left.worktype === right.worktype && editableFields.every((field) =>
@@ -55,7 +40,6 @@ export function mergePmOrigin(current: Map<string, Baseline>, principal: string,
 }
 
 export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion = null, onPicSuggestionHandled }: { active?: boolean; autoRetrieve?: boolean; picSuggestion?: PicSuggestion | null; onPicSuggestionHandled?: () => void }) {
-  const sources = useRef<Partial<Record<Source, SourceSnapshot>>>({});
   const [session, setSession] = useState<Session | null>(null);
   const [available, setAvailable] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -78,6 +62,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     try { localStorage.setItem('workorder-scheduler-density', next ? 'dense' : 'comfortable'); } catch { /* preference is optional */ }
   };
   const tableFiltersId = useId();
+  const rangeTitleId = useId();
+  const rangeBodyId = useId();
   const [statusFilter, setStatusFilter] = useState('');
   const [planningFilter, setPlanningFilter] = useState('');
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -87,7 +73,14 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const [inlineErrors, setInlineErrors] = useState<Record<string, string>>({});
   const [inlineNotice, setInlineNotice] = useState('');
   const [crew, setCrew] = useState<{ scope: string; pics: string[]; names: Record<string, string> } | null>(null);
-  const [batch, setBatch] = useState<BatchSelection | null>(null);
+  // The send panel always opens on the one draft that consolidateDrafts produced or reused.
+  const [batch, setBatch] = useState<{ selection: { draftId: string }; notes: string[] } | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
+  // Changing the date range while WOs still have drafts asks first; this holds the pending change.
+  const [rangeChange, setRangeChange] = useState<{ value: string; field: 'start' | 'end' } | null>(null);
+  const [rangeBusy, setRangeBusy] = useState(false);
+  const [rangeError, setRangeError] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [uploadNotice, setUploadNotice] = useState('');
@@ -103,10 +96,6 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const [draftFilter, setDraftFilter] = useState('');
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [chooser, setChooser] = useState<WorkOrder | null>(null);
-  const [view, setView] = useState<Source>('maximo');
-  const planningPage = useRef<{ scope: Scope; offset: number } | null>(null);
-  const [offset, setOffset] = useState(0);
-  const [nextOffset, setNextOffset] = useState<number | null>(null);
   const dirty = useRef(false);
   const draftRevision = useRef(0);
   const knownDrafts = useRef(new Map<string, { version: number; members: string[] }>());
@@ -141,22 +130,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     if (draft.items === null) knownDrafts.current.delete(draft.draft_id);
     else knownDrafts.current.set(draft.draft_id, { version: draft.version,
       members: draft.items.map((item) => JSON.stringify([item.item.siteid, item.item.workorderid])) });
-    for (const source of ['maximo', 'drafts'] as const) {
-      const snapshot = sources.current[source];
-      if (!snapshot) continue;
-      const next = snapshot.rows && updatePlans(snapshot.rows, draft);
-      snapshot.rows = source === 'drafts' ? next?.filter((row) => row.drafts?.length) ?? null : next;
-      snapshot.choices = Object.fromEntries([
-        ...Object.entries(snapshot.choices).filter(([, id]) => id !== draft.draft_id),
-        ...draft.items?.map((item) => [rowKey(item.item), draft.draft_id]) ?? [],
-      ]);
-      const keys = new Set(snapshot.rows?.map(rowKey));
-      snapshot.selectedKeys = snapshot.selectedKeys.filter((key) => keys.has(key));
-    }
-    setRows((previous) => {
-      const next = previous && updatePlans(previous, draft);
-      return planningPage.current ? next?.filter((row) => row.drafts?.length) ?? null : next;
-    });
+    setRows((previous) => previous && updatePlans(previous, draft));
     setChoices((previous) => Object.fromEntries([
       ...Object.entries(previous).filter(([, id]) => id !== draft.draft_id),
       ...draft.items?.map((item) => [rowKey(item.item), draft.draft_id]) ?? [],
@@ -176,7 +150,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     const returned = new Set(result.items.map(identity));
     if (returned.size !== result.items.length || !source || returned.size !== source.members.length ||
         source.members.some((key) => !returned.has(key))) return false;
-    if (batch && 'draftId' in batch && batch.draftId !== result.draft_id) return false;
+    if (batch && batch.selection.draftId !== result.draft_id) return false;
     if (selection && 'draftId' in selection && selection.draftId !== result.draft_id) return false;
     if (selection && 'key' in selection && (returned.size !== 1 || !returned.has(identity(selection.key)))) return false;
     const controller = new AbortController();
@@ -203,19 +177,15 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         return next;
       });
       const freshByKey = new Map(details.map((detail) => [rowKey(detail.item), detail.item]));
-      const apply = (current: WorkOrder[] | null, draftsOnly: boolean) => current?.map((row) => {
+      const apply = (current: WorkOrder[] | null) => current?.map((row) => {
         const fresh = freshByKey.get(rowKey(row));
         const markers = row.drafts ?? [];
         const matching = markers.find((marker) => marker.draft_id === result.draft_id);
         if (matching && matching.version !== result.version) return row;
         const drafts = markers.filter((marker) => !(marker.draft_id === result.draft_id && marker.version === result.version));
         return { ...(fresh ?? row), drafts };
-      }).filter((row) => !draftsOnly || !!row.drafts?.length) ?? null;
-      for (const source of ['maximo', 'drafts'] as const) {
-        const snapshot = sources.current[source];
-        if (snapshot) snapshot.rows = apply(snapshot.rows, source === 'drafts');
-      }
-      setRows((current) => apply(current, !!planningPage.current));
+      }) ?? null;
+      setRows(apply);
       setChoices((current) => Object.fromEntries(Object.entries(current).filter(([, id]) => id !== result.draft_id)));
       setUploadRecoveries((current) => current.filter((record) =>
         !(record.entry.draft_id === result.draft_id && record.entry.version === result.version)));
@@ -301,11 +271,11 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const visibleRows = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('vi');
     return rows?.map((row) => effectiveOrder(row, choices[rowKey(row)])).filter((row) => (!statusFilter || row.status === statusFilter) &&
-      (view === 'drafts' || (draftFilter !== 'yes' || !!row.drafts?.length) && (draftFilter !== 'no' || !row.drafts?.length)) &&
+      (draftFilter !== 'yes' || !!row.drafts?.length) && (draftFilter !== 'no' || !row.drafts?.length) &&
       (planningFilter !== 'schedule' || !row.schedstart || !row.schedfinish) &&
       (planningFilter !== 'pic' || !row.assignedtechname) &&
       (!query || [row.wonum, row.description, row.location].some((value) => value?.toLocaleLowerCase('vi').includes(query)))) ?? [];
-  }, [rows, search, statusFilter, planningFilter, draftFilter, choices, view]);
+  }, [rows, search, statusFilter, planningFilter, draftFilter, choices]);
 
   // The PIC drop-down needs the crew of the scope; read it once, the first time the pointer or focus reaches the table.
   const crewScope = JSON.stringify(editorScope);
@@ -373,12 +343,11 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   useEffect(() => { selected.current = selection ? { selection, scope: editorScope } : null; }, [selection, editorScope]);
 
   const onDenied = useCallback(() => {
-    sources.current = {};
     setPmOrigins(new Map());
     setUpdatedAt(null); setStale(false);
     retrieved.current = null; setLoadedRange(null);
     setBatch(null); setSelectedKeys([]);
-    planningPage.current = null; setChooser(null); setChoices({});
+    setChooser(null); setChoices({}); setRangeChange(null); setSendError('');
     selected.current = null;
     pending.current?.abort(); setRows(null); setRechecked(null); setSelection(null);
     dirty.current = false; authIdentity.current = '';
@@ -400,14 +369,13 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     setSelection(next);
     setEditorGeneration((previous) => previous + 1);
   }
-  function clearResults(clearSources = true) {
-    if (clearSources) sources.current = {};
+  function clearResults() {
     setUpdatedAt(null); setStale(false);
     selected.current = null;
     retrieved.current = null; setLoadedRange(null);
     setBatch(null); setSelectedKeys([]); setPlanningFilter(''); setInline({}); setInlineErrors({}); setInlineNotice('');
-    planningPage.current = null; setView('maximo'); setOffset(0); setDraftFilter(''); setChoices({}); setChooser(null);
-    setSelection(null); setRechecked(null); setNextOffset(null); dirty.current = false;
+    setDraftFilter(''); setChoices({}); setChooser(null); setSendError('');
+    setSelection(null); setRechecked(null); dirty.current = false;
     pending.current?.abort();
     pending.current = null;
     setRows(null);
@@ -415,32 +383,55 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     setBusy(false);
     setError('');
   }
-  function rememberSource() {
-    sources.current[view] = { rows, query: retrieved.current, page: planningPage.current,
-      updatedAt, search, statusFilter, planningFilter, draftFilter, selectedKeys, choices, offset, nextOffset };
-  }
-  function switchSource(source: Source) {
-    if (source === view || !discard()) return;
-    rememberSource();
-    clearResults(false); setView(source);
-    const snapshot = sources.current[source];
-    if (!snapshot) {
-      if (source === 'drafts') void loadDraftPage(0);
-      return;
-    }
-    retrieved.current = snapshot.query; setLoadedRange(snapshot.query); planningPage.current = snapshot.page;
-    setRows(snapshot.rows); setUpdatedAt(snapshot.updatedAt);
-    setSearch(snapshot.search); setStatusFilter(snapshot.statusFilter); setPlanningFilter(snapshot.planningFilter);
-    setDraftFilter(snapshot.draftFilter); setSelectedKeys(snapshot.selectedKeys); setChoices(snapshot.choices);
-    setOffset(snapshot.offset); setNextOffset(snapshot.nextOffset);
-    if (source === 'drafts' && snapshot.rows === null) void loadDraftPage(snapshot.offset);
+  function applyDate(value: string, field: 'start' | 'end') {
+    clearResults();
+    if (field === 'start') setStart(value);
+    else setEnd(value);
   }
   function changeDate(value: string, field: 'start' | 'end') {
     if (!discard()) return;
-    delete sources.current.maximo;
-    if (view === 'maximo') clearResults(false);
-    if (field === 'start') setStart(value);
-    else setEnd(value);
+    // Drafts live on the server, so dropping the table would leave them unreachable: ask before discarding them.
+    if (rows?.some((row) => row.drafts?.length)) { setRangeError(''); setRangeChange({ value, field }); return; }
+    applyDate(value, field);
+  }
+  // Every distinct draft the loaded WOs point at; a group draft counts once.
+  function loadedDrafts() {
+    const found = new Map<string, number>();
+    for (const row of rows ?? []) for (const marker of row.drafts ?? []) found.set(marker.draft_id, Math.max(found.get(marker.draft_id) ?? 0, marker.version));
+    return found;
+  }
+  async function confirmRangeChange() {
+    if (!rangeChange || rangeBusy) return;
+    setRangeBusy(true); setRangeError('');
+    const controller = new AbortController();
+    try {
+      for (const [draft_id, version] of loadedDrafts()) {
+        await deleteDraft({ draft_id, version, state: 'draft' }, controller.signal);
+        onDraftReady({ draft_id, version, state: 'draft', items: null });
+      }
+      applyDate(rangeChange.value, rangeChange.field);
+      setRangeChange(null);
+    } catch (cause) {
+      if (cause instanceof RetrievalError && [401, 403].includes(cause.status)) { setRangeChange(null); onDenied(); }
+      else setRangeError(`Chưa xóa được hết nháp: ${cause instanceof Error ? cause.message : 'lỗi không rõ'}. Khoảng ngày chưa đổi.`);
+    } finally { setRangeBusy(false); }
+  }
+  // Gathers every draft of the table into one group (or reuses the one that already is) and opens it for upload.
+  async function sendAll() {
+    if (!grant || sending || !discard()) return;
+    const controller = new AbortController();
+    setSending(true); setSendError('');
+    try {
+      const result = await consolidateDrafts(editorScope, rows ?? [], controller.signal, onDraftReady);
+      const notes = [...result.dropped.length ? [`Bỏ khỏi nhóm ${result.dropped.join(', ')} vì thay đổi đã trùng Maximo hoặc PIC không còn hợp lệ.`] : [], ...result.warnings];
+      selected.current = null;
+      setChooser(null); setSelection(null); setRechecked(null); dirty.current = false;
+      setBatch({ selection: { draftId: result.draftId }, notes });
+      setEditorGeneration((previous) => previous + 1);
+    } catch (cause) {
+      if (cause instanceof RetrievalError && [401, 403].includes(cause.status)) onDenied();
+      else setSendError(cause instanceof Error ? cause.message : 'Không gom được nháp để gửi.');
+    } finally { setSending(false); }
   }
   function closePanel() {
     if (!discard()) return;
@@ -448,18 +439,13 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     selected.current = null;
     setSelection(null); setBatch(null); setChooser(null); setRechecked(null); dirty.current = false;
   }
-  function chooseBatch(next: BatchSelection) {
-    if (!discard()) return;
-    selected.current = null;
-    setChooser(null); setSelection(null); setRechecked(null); setBatch(next); dirty.current = false;
-    setEditorGeneration((previous) => previous + 1);
-  }
   function filterChanged() { setSelectedKeys([]); }
   function openPlan(row: WorkOrder, plan: PlanningMarker) {
     if (!discard()) return;
     dirty.current = false;
     setChoices((previous) => ({ ...previous, [rowKey(row)]: plan.draft_id }));
-    if (plan.is_batch) chooseBatch({ draftId: plan.draft_id });
+    // A group draft has no single-WO editor; its rows are edited in the table and sent together.
+    if (plan.is_batch) choose({ key: { ...editorScope, site_id: row.siteid, workorder_id: row.workorderid } });
     else choose({ draftId: plan.draft_id });
   }
   function openRow(row: WorkOrder) {
@@ -510,19 +496,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
               }
             }
           }
-          if (refreshData && identity === authIdentity.current && auth.session && planningPage.current) {
-            const page = planningPage.current;
-            const revision = draftRevision.current;
-            const latest = await listPlannedWorkOrders(page.scope, page.offset, signal);
-            if (signal.aborted) return;
-            if (revision !== draftRevision.current) {
-              setStale(true); setError('Nháp đã thay đổi trong lúc tải. Bảng giữ kế hoạch mới nhất; bấm Cập nhật để lấy lại dữ liệu.'); return;
-            }
-            setRows(latest.items); setNextOffset(latest.next_offset);
-            const keys = new Set(latest.items.map(rowKey));
-            setSelectedKeys((previous) => previous.filter((key) => keys.has(key)));
-            setUpdatedAt(Date.now()); setStale(false); setBatchRefresh((value) => value + 1);
-          } else if (refreshData && identity === authIdentity.current && auth.session && retrieved.current) {
+          if (refreshData && identity === authIdentity.current && auth.session && retrieved.current) {
             const revision = draftRevision.current;
             const latest = await retrieveWorkOrders(retrieved.current, signal);
             if (signal.aborted) return;
@@ -570,7 +544,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     if (updatedAt === null) return;
     const timer = window.setTimeout(() => setStale(true), Math.max(0, updatedAt + config.workOrderFreshnessMs - Date.now()));
     return () => window.clearTimeout(timer);
-  }, [updatedAt, view]);
+  }, [updatedAt]);
 
   useEffect(() => {
     if (!active) return;
@@ -597,35 +571,9 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     return () => { window.removeEventListener('beforeunload', leaving); document.removeEventListener('click', navigating, true); window.removeEventListener('wo-connection-change', changingConnection); };
   }, []);
 
-  async function browseDrafts(offset = 0) {
-    if (!grant || !discard()) return;
-    setSelectedKeys([]);
-    await loadDraftPage(offset);
-  }
-
-  async function loadDraftPage(offset: number) {
-    const controller = new AbortController(); pending.current?.abort(); pending.current = controller;
-    setBusy(true); setError('');
-    try {
-      const result = await listPlannedWorkOrders(editorScope, offset, controller.signal);
-      if (!controller.signal.aborted) {
-        planningPage.current = { scope: editorScope, offset }; setOffset(offset);
-        setRows(result.items); setNextOffset(result.next_offset);
-        markUpdated();
-      }
-    } catch (cause) {
-      if (!controller.signal.aborted) {
-        if (cause instanceof RetrievalError && [401, 403, 404].includes(cause.status)) onDenied();
-        setError(cause instanceof Error ? cause.message : 'Không lấy được danh sách nháp.');
-      }
-    } finally { if (!controller.signal.aborted) { pending.current = null; setBusy(false); } }
-  }
-
   async function retrieve() {
     if (!grant || !discard()) return;
-    if (view === 'drafts') rememberSource();
-    delete sources.current.maximo;
-    clearResults(false);
+    clearResults();
     const controller = new AbortController();
     pending.current = controller;
     setBusy(true);
@@ -651,12 +599,12 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const retrieveRef = useRef(retrieve);
   useEffect(() => { retrieveRef.current = retrieve; });
   useEffect(() => {
-    if (!autoRetrieve || !active || checking || verifying || busy || !grant || !session || rows !== null || view !== 'maximo' || !start || !end) return;
+    if (!autoRetrieve || !active || checking || verifying || busy || !grant || !session || rows !== null || !start || !end) return;
     const key = JSON.stringify([session.user.id, grant.connection_id, grant.discipline]);
     if (autoRetrievedScope.current === key) return;
     autoRetrievedScope.current = key;
     void retrieveRef.current();
-  }, [autoRetrieve, active, checking, verifying, busy, grant, session, rows, view, start, end]);
+  }, [autoRetrieve, active, checking, verifying, busy, grant, session, rows, start, end]);
 
   // A PIC suggestion from the timeline opens that WO's editor with the PIC filled in but unsaved.
   const applySuggestionRef = useRef<(suggestion: PicSuggestion) => void>(() => {});
@@ -680,13 +628,9 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     applySuggestionRef.current(picSuggestion);
   }, [picSuggestion, active, checking, verifying, grant]);
 
-  const activeFilterCount = [!!search.trim(), !!statusFilter, !!planningFilter, view === 'maximo' && !!draftFilter].filter(Boolean).length;
-  const pickedRows = visibleRows.filter((row) => selectedKeys.includes(rowKey(row)));
-  const firstPickedPlan = pickedRows.length ? chosenPlan(pickedRows[0], choices[rowKey(pickedRows[0])]) : undefined;
-  const selectedBatchPlan = firstPickedPlan?.is_batch && pickedRows.every((row) =>
-    chosenPlan(row, choices[rowKey(row)])?.draft_id === firstPickedPlan.draft_id) ? firstPickedPlan : undefined;
-  const groupActionLabel = selectedBatchPlan ? `Mở nháp nhóm (${selectedKeys.length})`
-    : view === 'drafts' ? 'Mở nháp nhóm' : `Lập lịch nhóm (${selectedKeys.length})`;
+  const activeFilterCount = [!!search.trim(), !!statusFilter, !!planningFilter, !!draftFilter].filter(Boolean).length;
+  const draftedCount = rows?.filter((row) => row.drafts?.length).length ?? 0;
+  const draftsToDiscard = loadedDrafts().size;
 
   return <div ref={workspace} tabIndex={-1}>
     <h1 className={styles.srOnly}>Work Orders</h1>
@@ -716,18 +660,14 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
           <button className={styles.tertiary} disabled={recoveryBusy} onClick={() => void recoverUpload(recoveryResult.entry)}>Kiểm tra trạng thái</button>}
       </section>}
       {grant && <section className={styles.retrievePanel} aria-label="Lấy dữ liệu WO">
-      {view === 'drafts' && <div className={`${styles.retrieveSummary} ${styles.draftSummary}`}>
-        <strong>Nháp của tôi</strong>
-        <span>Phạm vi {grant.discipline} · không phụ thuộc khoảng ngày Retrieve</span>
-      </div>}
-      {view === 'maximo' && rows !== null && loadedRange && !rangeExpanded && <div className={styles.retrieveSummary}>
+      {rows !== null && loadedRange && !rangeExpanded && <div className={styles.retrieveSummary}>
         <span>Đã tải: {displayDate(loadedRange.target_from, grant.timezone, false)} → trước {displayDate(loadedRange.target_before, grant.timezone, false)}</span>
         <button className={styles.tertiary} onClick={() => setRangeExpanded(true)}>Đổi khoảng ngày</button>
       </div>}
-      <div className={styles.retrieveHeading} hidden={view === 'drafts' || view === 'maximo' && rows !== null && !!loadedRange && !rangeExpanded}>
+      <div className={styles.retrieveHeading} hidden={rows !== null && !!loadedRange && !rangeExpanded}>
         <strong>Lấy dữ liệu WO</strong>
       </div>
-      <form className={styles.retrieveDates} hidden={view === 'drafts' || view === 'maximo' && rows !== null && !!loadedRange && !rangeExpanded} onSubmit={(event) => { event.preventDefault(); void retrieve(); }}>
+      <form className={styles.retrieveDates} hidden={rows !== null && !!loadedRange && !rangeExpanded} onSubmit={(event) => { event.preventDefault(); void retrieve(); }}>
         <div className={styles.dateRange}><span>Target Finish từ</span><DateTimeInput dateOnly label="Target Finish từ" value={start}
           onChange={(value) => changeDate(value, 'start')} /></div>
         <div className={styles.dateRange}><span>Target Finish trước</span><DateTimeInput dateOnly label="Target Finish trước" value={end}
@@ -735,7 +675,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         <button className={styles.primary} disabled={!grant || busy || !start || !end}>{busy ? 'Đang lấy WO…' : 'Retrieve WO'}</button>
       </form>
       </section>}
-      {grant && view === 'maximo' && rows === null && !busy && <p>Chưa Retrieve WO cho khoảng ngày này. Chọn ngày và bấm Retrieve WO để tải bảng.</p>}
+      {grant && rows === null && !busy && <p>Chưa Retrieve WO cho khoảng ngày này. Chọn ngày và bấm Retrieve WO để tải bảng.</p>}
       {chooser && grant && <section role="dialog" tabIndex={-1} aria-label="Chọn nháp của WO"
         onKeyDown={(event) => { if (event.key === 'Escape') closePanel(); }} className={`${styles.draftEditor} ${styles.sidePanel}`}>
         <div className={styles.panelHeading}><h2>{chooser.wonum} · chọn nháp</h2><button className={styles.ghost} onClick={closePanel}>Đóng</button></div>
@@ -752,16 +692,12 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         connection={{ label: grant.label, system: grant.system, environment: grant.environment }}
         verifiedDetail={rechecked} writable={grant.capability === 'write'} suspended={checking} onDirty={onDirty} onDenied={onDenied}
         onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onClose={closePanel} />}
-      {batch && grant && <BatchPlanner key={editorGeneration} selection={batch} scope={editorScope} timezone={grant.timezone} active={active}
+      {batch && grant && <BatchPlanner key={editorGeneration} sendOnly sendNotes={batch.notes} selection={batch.selection} scope={editorScope} timezone={grant.timezone} active={active}
         connection={{ label: grant.label, system: grant.system, environment: grant.environment }}
         writable={grant.capability === 'write'} suspended={checking} refreshVersion={batchRefresh} onDirty={onDirty} onDenied={onDenied} onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onClose={closePanel} />}
       {busy && <p role="status">Đang lấy và kiểm tra đầy đủ các trang dữ liệu…</p>}
-      {busy && rows === null && view === 'maximo' && <div className={styles.skeleton} aria-hidden="true">{[0, 1, 2, 3, 4, 5].map((index) => <div key={index} />)}</div>}
+      {busy && rows === null && <div className={styles.skeleton} aria-hidden="true">{[0, 1, 2, 3, 4, 5].map((index) => <div key={index} />)}</div>}
       {grant && <div className={styles.woToolbar}>
-        <div role="group" aria-label="Nguồn WO" className={styles.segmented}>
-          <button aria-pressed={view === 'maximo'} disabled={busy} onClick={() => switchSource('maximo')}>WO đã tải</button>
-          <button aria-pressed={view === 'drafts'} disabled={busy} onClick={() => switchSource('drafts')}>Nháp của tôi</button>
-        </div>
         {rows !== null && rows.length > 0 && !checking && <label className={styles.toolbarSearch}>
           <input type="search" placeholder="Tìm WO, mô tả hoặc Tag Name" aria-label="Tìm WO, mô tả hoặc Tag Name" value={search}
             onChange={(event) => { filterChanged(); setSearch(event.target.value); }} /></label>}
@@ -778,52 +714,31 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
           </span>}
         {stale && updatedAt !== null && rows !== null && <span role="status" className={styles.staleNotice}>Dữ liệu có thể đã thay đổi.</span>}
       </div>}
-      {rows !== null && rows.length === 0 && <p role="status">{view === 'drafts' ? 'Không có WO có nháp khả dụng trong trang này.' : 'Không có WO trong phạm vi và khoảng ngày đã chọn.'}</p>}
+      {rows !== null && rows.length === 0 && <p role="status">Không có WO trong phạm vi và khoảng ngày đã chọn.</p>}
       {rows !== null && rows.length > 0 && <div id={tableFiltersId} hidden={!filtersVisible} className={`${styles.filters} ${styles.tableFilters}`} role="search" aria-label="Lọc WO đã tải">
             <label>Status<select value={statusFilter} onChange={(event) => { filterChanged(); setStatusFilter(event.target.value); }}>
               <option value="">Tất cả status đã tải</option>
               {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
             </select></label>
             <label>Lập lịch<select value={planningFilter} onChange={(e) => { filterChanged(); setPlanningFilter(e.target.value); }}><option value="">Tất cả WO</option><option value="schedule">Chưa lập lịch đầy đủ</option><option value="pic">Chưa có Assigned PIC</option></select></label>
-            {view === 'drafts' ? <span className={styles.filterPlaceholder} aria-hidden="true" /> : <label>Nháp<select aria-label="Nháp" value={draftFilter} onChange={(e) => { filterChanged(); setDraftFilter(e.target.value); }}>
+            <label>Nháp<select aria-label="Nháp" value={draftFilter} onChange={(e) => { filterChanged(); setDraftFilter(e.target.value); }}>
               <option value="">Tất cả ({rows.length})</option><option value="yes">Có nháp ({rows.filter((row) => row.drafts?.length).length})</option>
-              <option value="no">Chưa có nháp ({rows.filter((row) => !row.drafts?.length).length})</option></select></label>}
-            <button className={styles.ghost} disabled={!search && !statusFilter && !planningFilter && (view === 'drafts' || !draftFilter)} onClick={() => { filterChanged(); setSearch(''); setStatusFilter(''); setPlanningFilter(''); if (view === 'maximo') setDraftFilter(''); }}>Xóa bộ lọc bảng</button>
+              <option value="no">Chưa có nháp ({rows.filter((row) => !row.drafts?.length).length})</option></select></label>
+            <button className={styles.ghost} disabled={!search && !statusFilter && !planningFilter && !draftFilter} onClick={() => { filterChanged(); setSearch(''); setStatusFilter(''); setPlanningFilter(''); setDraftFilter(''); }}>Xóa bộ lọc bảng</button>
       </div>}
-      {rows !== null && <>
-        {rows.length > 0 && <>
-          <div className={view === 'drafts' ? styles.draftCountRow : undefined}>
-          <p role="status">{view === 'drafts' ? `Hiển thị ${visibleRows.length} / ${rows.length} WO · trang ${offset / 20 + 1}.` : `Hiển thị ${visibleRows.length} / ${rows.length} WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.`}</p>
-          {view === 'drafts' && (offset > 0 || nextOffset !== null) && <div className={styles.draftPagination} aria-label="Phân trang nháp">
-            <button className={styles.tertiary} disabled={busy || offset === 0} onClick={() => void browseDrafts(Math.max(0, offset - 20))}>Trang trước</button>
-            <button className={styles.tertiary} disabled={busy || nextOffset === null} onClick={() => void browseDrafts(nextOffset ?? 0)}>Trang tiếp</button>
-          </div>}
-          </div>
-          {visibleRows.length === 0 && <p>Không có WO khớp bộ lọc bảng. Xóa bộ lọc để xem lại dữ liệu đã tải.</p>}
-        </>}
-        {view === 'drafts' && rows.length === 0 && <div className={styles.draftCountRow}>
-          <p role="status">Trang {offset / 20 + 1} · 0 WO.</p>
-          {(offset > 0 || nextOffset !== null) && <div className={styles.draftPagination} aria-label="Phân trang nháp">
-            <button className={styles.tertiary} disabled={busy || offset === 0} onClick={() => void browseDrafts(Math.max(0, offset - 20))}>Trang trước</button>
-            <button className={styles.tertiary} disabled={busy || nextOffset === null} onClick={() => void browseDrafts(nextOffset ?? 0)}>Trang tiếp</button>
-          </div>}
-        </div>}
+      {rows !== null && rows.length > 0 && <>
+        <p role="status">{`Hiển thị ${visibleRows.length} / ${rows.length} WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.`}</p>
+        {visibleRows.length === 0 && <p>Không có WO khớp bộ lọc bảng. Xóa bộ lọc để xem lại dữ liệu đã tải.</p>}
       </>}
       {grant && visibleRows.length > 0 && grant.capability === 'write' && selectedKeys.length > 0 && <div className={styles.bulkBar} role="region" aria-label="Thao tác với WO đã chọn">
-            <span>{selectedKeys.length} WO đã chọn</span>
-            <button className={styles.primary} disabled={busy || view === 'drafts' && !selectedBatchPlan} title={view === 'drafts' && !selectedBatchPlan ? 'Chọn các WO thuộc cùng một nháp nhóm để mở nhóm; nháp đơn mở bằng cách bấm WO.' : undefined} onClick={() => {
-                if (selectedBatchPlan && pickedRows.length) { openPlan(pickedRows[0], selectedBatchPlan); return; }
-                if (view === 'drafts') return;
-                const planned = pickedRows.filter((row) => row.drafts?.length);
-                if (planned.length) {
-                  setError('Có WO đã có nháp. Bấm WO để mở kế hoạch đã lưu, hoặc lọc Chưa có nháp để lập lịch nhóm mới.'); return;
-                }
-                const keys = pickedRows.map((row) => ({ site_id: row.siteid, workorder_id: row.workorderid }));
-                if (keys.length > 200) { setError('Chọn tối đa 200 WO cho một nháp nhóm.'); return; }
-                chooseBatch({ keys });
-              }}>{groupActionLabel}</button>
-            <button className={styles.ghost} onClick={() => setSelectedKeys([])}>Bỏ chọn</button>
-            {view === 'drafts' && !selectedBatchPlan && <span className={styles.muted}>Chọn WO thuộc cùng một nháp nhóm hoặc mở nháp đơn bằng cách bấm WO.</span>}
+        <span>{selectedKeys.length} WO đã chọn · gõ giá trị vào một dòng rồi bấm Ctrl+D để điền xuống các dòng đã chọn</span>
+        <button className={styles.ghost} onClick={() => setSelectedKeys([])}>Bỏ chọn</button>
+      </div>}
+      {grant?.capability === 'write' && draftedCount > 0 && <div className={styles.bulkBar} role="region" aria-label="Gửi WO có nháp lên Maximo">
+        <span>{draftedCount} WO có nháp chưa gửi</span>
+        <button className={styles.primary} disabled={busy || sending || inlineBusy || stagedKeys.length > 0} onClick={() => void sendAll()}>{sending ? 'Đang gom nháp…' : `Gửi ${draftedCount} WO lên Maximo`}</button>
+        {stagedKeys.length > 0 && <span>Lưu các thay đổi trong bảng trước khi gửi</span>}
+        {sendError && <span role="alert" className={styles.error}>{sendError}</span>}
       </div>}
       {grant?.capability === 'write' && (stagedKeys.length > 0 || inlineNotice || Object.keys(inlineErrors).length > 0) && <div className={styles.bulkBar} role="region" aria-label="Thay đổi trong bảng">
         {stagedKeys.length > 0 && <>
@@ -846,8 +761,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
               return <tr key={JSON.stringify([scope, row.siteid, row.workorderid])}>
               {grant.capability === 'write' && <td><input type="checkbox" aria-label={`Chọn ${row.wonum} · dòng ${index + 1}`} checked={selectedKeys.includes(rowKey(row))} onChange={(e) => setSelectedKeys((previous) => e.target.checked ? [...previous, rowKey(row)] : previous.filter((key) => key !== rowKey(row)))} /></td>}
               <td data-label="Work Order"><button className={styles.woLink} onClick={() => openRow(row)}>{row.wonum}</button><small>{row.worktype}</small>
-                {!!row.drafts?.length && <small className={styles.draftMarker}>{row.drafts.length > 1 ? plan ? `${plan.is_batch ? 'Nháp nhóm' : 'Nháp'} · ${row.drafts.length} nháp` : `${row.drafts.length} nháp · chọn để mở` :
-                  row.drafts[0].is_batch ? 'Nháp nhóm' : 'Nháp'}
+                {!!row.drafts?.length && <small className={styles.draftMarker}>{row.drafts.length > 1 ? plan ? `Nháp · ${row.drafts.length} nháp` : `${row.drafts.length} nháp · chọn để mở` :
+                  'Nháp'}
                   {plan?.baseline_changed && ' · Cần đối chiếu'}</small>}
               </td>
               <td className={styles.descriptionCell} data-label="Công việc">{row.description ?? '—'}<small>{row.location ?? 'Chưa có Tag Name'}</small></td>
@@ -897,6 +812,16 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
             </tr>; })}</tbody></table></div>
         </>}
       </>}
+      {rangeChange && <div className={styles.confirmOverlay}><section role="alertdialog" aria-modal="true" aria-labelledby={rangeTitleId} aria-describedby={rangeBodyId} className={styles.confirmDialog}
+        onKeyDown={(event) => { if (event.key === 'Escape' && !rangeBusy) setRangeChange(null); }}>
+        <h2 id={rangeTitleId}>Đổi khoảng ngày sẽ xóa nháp</h2>
+        <p id={rangeBodyId}>Đổi khoảng ngày sẽ bỏ nháp của {draftedCount} WO chưa upload. Các nháp này bị xóa khỏi hệ thống và không khôi phục được; Maximo giữ nguyên.</p>
+        {rangeError && <p role="alert" className={styles.error}>{rangeError}</p>}
+        <div className={styles.confirmActions}>
+          <button className={styles.ghost} autoFocus disabled={rangeBusy} onClick={() => setRangeChange(null)}>Hủy, giữ danh sách</button>
+          <button className={styles.danger} disabled={rangeBusy} onClick={() => void confirmRangeChange()}>{rangeBusy ? 'Đang xóa nháp…' : 'Xóa nháp và đổi ngày'}</button>
+        </div>
+      </section></div>}
     </>}</div>
   </div>;
 }

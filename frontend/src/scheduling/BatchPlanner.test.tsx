@@ -380,3 +380,45 @@ it('warns once about starts outside the shift and can keep them or move them all
   expect(getDateTime(screen.getByLabelText('WO-100 Scheduled Start'))).toBe('2026-10-06T06:30');
   expect(screen.getByLabelText('WO-100 Scheduled Finish')).toHaveValue('06/10/2026, 14:30');
 });
+
+// Send-only mode: the table assembled the group; the panel only summarizes it and uploads it.
+const sendRows = details.map((detail, index) => ({ ...detail, changes: index === 0 ? { estdur: '9', assignedtechname: 'OTHER' } : { estdur: '10' },
+  baseline_changed: false, changes_valid_now: true }));
+async function setupSend(notes: string[] = []) {
+  vi.mocked(openBatch).mockResolvedValue({ draft_id: 'group', version: 2, state: 'draft', items: sendRows });
+  render(<BatchPlanner {...props} sendOnly sendNotes={notes} selection={{ draftId: 'group' }}
+    connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
+  await screen.findByText('Đối chiếu nhóm với Maximo trước upload');
+}
+
+it('send-only mode shows a read-only summary and the upload section without any editing control', async () => {
+  await setupSend(['Bỏ khỏi nhóm WO-102 vì thay đổi đã trùng Maximo hoặc PIC không còn hợp lệ.']);
+  const panel = screen.getByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
+  expect(within(panel).getByRole('heading', { name: 'Gửi 2 WO lên Maximo' })).toBeVisible();
+  expect(within(panel).getByText('Onshore · TEST')).toBeVisible();
+  expect(within(panel).getByText(/Bỏ khỏi nhóm WO-102/)).toBeVisible();
+  const table = within(panel).getByRole('table', { name: 'Các WO sẽ gửi' });
+  expect(within(table).getAllByRole('row')).toHaveLength(3);
+  expect(within(table).getByRole('rowheader', { name: /WO-100/ })).toBeVisible();
+  expect(table).toHaveTextContent('OTHER');
+  expect(screen.getByText('Đối chiếu nhóm với Maximo trước upload')).toBeEnabled();
+  for (const absent of ['Áp dụng vào nháp', 'Undo', 'Xem trước thay đổi', 'Lưu nháp nhóm', 'Xóa nháp nhóm', 'Reset dòng']) {
+    expect(screen.queryByText(absent)).not.toBeInTheDocument();
+  }
+  expect(screen.queryByLabelText('WO-100 Est. Duration')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Vùng dữ liệu Excel')).not.toBeInTheDocument();
+  expect(within(table).queryAllByRole('textbox')).toHaveLength(0);
+  expect(saveBatch).not.toHaveBeenCalled();
+  expect(prepareBatch).not.toHaveBeenCalled();
+});
+
+it('send-only mode previews the persisted group against Maximo before upload', async () => {
+  await setupSend();
+  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'group', version: 2, preview_hash: 'c'.repeat(64),
+    send_enabled: false, gate: 'write_contract_unverified', items: sendRows.map((row) => ({ site_id: row.item.siteid, workorder_id: row.item.workorderid,
+      code: 'ready' as const, warnings: [], before: { estdur: '8' }, changes: { estdur: row.changes.estdur! } })) });
+  fireEvent.click(screen.getByText('Đối chiếu nhóm với Maximo trước upload'));
+  expect(await screen.findByText('Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.')).toBeInTheDocument();
+  expect(previewUpload).toHaveBeenCalledWith(expect.objectContaining({ draft_id: 'group', version: 2 }),
+    sendRows.map((row) => ({ site_id: row.item.siteid, workorder_id: row.item.workorderid })), expect.any(AbortSignal));
+});

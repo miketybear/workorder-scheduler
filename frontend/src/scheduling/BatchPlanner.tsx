@@ -18,6 +18,7 @@ export type BatchSelection = { keys: { site_id: string; workorder_id: string }[]
 const fields = ['schedstart', 'schedfinish', 'assignedtechname', 'estdur', 'targstartdate', 'targcompdate'] as const;
 const inputFields = ['schedstart', 'assignedtechname', 'estdur'] as const;
 const targetFields = ['targstartdate', 'targcompdate'] as const;
+const sendFields = ['estdur', 'schedstart', 'schedfinish', 'assignedtechname'] as const;
 const labels = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish', assignedtechname: 'Assigned PIC', estdur: 'Est. Duration',
   targstartdate: 'Target Start', targcompdate: 'Target Finish' };
 const pmScheduleChanged = (row: BatchRow) => row.baseline.worktype.toUpperCase() === 'PM' &&
@@ -26,7 +27,7 @@ const targetForbidden = (row: BatchRow) => ['PM', 'CFT'].includes(row.baseline.w
 
 const groupDefaultTime = (field: EditableField) => (field === 'schedstart' ? '06:30' : field === 'targcompdate' ? '23:59' : '00:00');
 
-export function BatchPlanner({ selection, scope, timezone, writable, suspended, active = true, refreshVersion = 0, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, connection }: {
+export function BatchPlanner({ selection, scope, timezone, writable, suspended, active = true, refreshVersion = 0, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, connection, sendOnly = false, sendNotes = [] }: {
   selection: BatchSelection; scope: Scope; timezone: string; writable: boolean; suspended: boolean;
   active?: boolean;
   connection?: UploadConnection;
@@ -35,6 +36,9 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>;
   onUploadRequestCreated?: (entry: UploadRecoveryEntry) => void;
   refreshVersion?: number;
+  // Send-only: a read-only summary plus the upload section, for a group that was assembled by the table.
+  sendOnly?: boolean;
+  sendNotes?: string[];
 }) {
   const [rows, setRows] = useState<BatchRow[]>([]);
   const [saved, setSaved] = useState<Saved | null>(null);
@@ -246,8 +250,33 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     } catch (cause) { if (!controller.signal.aborted) fail(cause); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
+  const uploadSection = saved && writable && <section className={styles.editorSection} aria-label="Upload nháp nhóm đã lưu">
+      <UploadPreviewControls draft={saved} selection={uploadSelection} connection={connection} connectionId={scope.connection_id}
+        timezone={timezone} context={uploadContext} onDenied={onDenied} active={active}
+        enabled={!blocked && !dirty && changed.length > 0 && !Object.values(problems).some(Boolean)}
+        previewLabel="Đối chiếu nhóm với Maximo trước upload"
+        buttonLabel={`Upload toàn bộ nhóm lên ${connection?.system === 'offshore' ? 'Offshore' : 'Onshore'} ${connection?.environment === 'production' ? 'production' : 'test'}`}
+        onUploadFinalized={onUploadFinalized} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
+        onWorkflowCreated={onUploadRequestCreated} uploadAll permitted={writable && !suspended && active} />
+    </section>;
+  const envChip = connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>;
+  if (sendOnly) return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy) onClose(); }} className={`${styles.sidePanel} ${styles.batchPanel}`} role="dialog" aria-label="Gửi nhóm WO lên Maximo" aria-modal="false">
+    <div className={styles.panelHeading}><h2>Gửi {rows.length || ''} WO lên Maximo</h2>{envChip}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng nhóm</button></div>
+    <p>{scope.discipline} · Các thay đổi dưới đây chỉ được gửi khi bạn bấm upload. Maximo chưa thay đổi.</p>
+    {sendNotes.length > 0 && <ul role="status">{sendNotes.map((note) => <li key={note}>{note}</li>)}</ul>}
+    {error && <p role="alert" className={styles.error}>{error}</p>}
+    {saved && Object.keys(issues).length > 0 && !uploadLocked && <p role="alert">Maximo hoặc nháp này vừa đổi ở nơi khác. Đóng bảng này, bấm Cập nhật rồi Gửi lại để đồng bộ.</p>}
+    {busy && <p role="status">Đang kiểm tra từng WO…</p>}
+    {uploadSection}
+    <div className={styles.tableWrap}><table className={styles.planningTable} aria-label="Các WO sẽ gửi"><thead><tr><th>WO</th>{sendFields.map((field) => <th key={field}>{labels[field]}</th>)}<th>Kiểm tra</th></tr></thead>
+      <tbody>{rows.map((row) => <tr key={rowKey(row.item)}><th scope="row">{row.item.wonum}<small>{row.item.description ?? '—'}</small></th>
+        {sendFields.map((field) => <td key={field} className={row.changes[field] !== undefined ? styles.modified : undefined}>{field === 'assignedtechname'
+          ? picLabel(row.changes[field] ?? row.baseline[field], row.pic_names) || '—'
+          : field === 'estdur' ? row.changes[field] ?? row.baseline[field] ?? '—' : displayDate(row.changes[field] ?? row.baseline[field] ?? null, timezone)}</td>)}
+        <td>{problems[rowKey(row.item)] && <span role="alert" className={styles.error}>{problems[rowKey(row.item)]}</span>}</td></tr>)}</tbody></table></div>
+  </section>;
   return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy) onClose(); }} className={`${styles.sidePanel} ${styles.batchPanel}`} role="dialog" aria-label="Lập lịch hàng loạt" aria-modal="false">
-    <div className={styles.panelHeading}><h2>Lập lịch {rows.length || ('keys' in selection ? selection.keys.length : '')} WO</h2>{connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng nhóm</button></div>
+    <div className={styles.panelHeading}><h2>Lập lịch {rows.length || ('keys' in selection ? selection.keys.length : '')} WO</h2>{envChip}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng nhóm</button></div>
     <p>{scope.discipline} · {saved ? 'Nháp đã lưu' : 'Chưa lưu nháp'}</p>
     <p>Scheduled Finish tự tính từ Scheduled Start + Est. Duration theo ca 06:30–18:30, tối đa 10,5 giờ/ngày.</p>
     {error && <p role="alert" className={styles.error}>{error}</p>}
@@ -279,15 +308,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     <div className={styles.batchToolbar}><button className={styles.ghost} disabled={blocked || !history.length} onClick={() => { const previous = history.at(-1); if (previous) { setRows(previous); setHistory(history.slice(0, -1)); setShowPreview(false); } }}>Undo</button>
       <span>{changed.length} / {rows.length} WO có thay đổi</span><button className={styles.tertiary} disabled={blocked || !changed.length} onClick={() => setShowPreview(true)}>Xem trước thay đổi</button>
       <button className={styles.primary} disabled={blocked || !dirty || !showPreview || Object.values(problems).some(Boolean)} onClick={() => void save()}>Lưu nháp nhóm</button></div>
-    {saved && writable && <section className={styles.editorSection} aria-label="Upload nháp nhóm đã lưu">
-      <UploadPreviewControls draft={saved} selection={uploadSelection} connection={connection} connectionId={scope.connection_id}
-        timezone={timezone} context={uploadContext} onDenied={onDenied} active={active}
-        enabled={!blocked && !dirty && changed.length > 0 && !Object.values(problems).some(Boolean)}
-        previewLabel="Đối chiếu nhóm với Maximo trước upload"
-        buttonLabel={`Upload toàn bộ nhóm lên ${connection?.system === 'offshore' ? 'Offshore' : 'Onshore'} ${connection?.environment === 'production' ? 'production' : 'test'}`}
-        onUploadFinalized={onUploadFinalized} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
-        onWorkflowCreated={onUploadRequestCreated} uploadAll permitted={writable && !suspended && active} />
-    </section>}
+    {uploadSection}
     <div className={styles.tableWrap}><table className={styles.planningTable}><thead><tr><th>Work Order / Công việc</th>{fields.map((field) => <th key={field}>{labels[field]}</th>)}<th>Kiểm tra</th></tr></thead>
       <tbody>{rows.map((row, index) => <Fragment key={rowKey(row.item)}><tr><th scope="row">{row.item.wonum}<small>{row.item.worktype} · {row.item.status}</small><small>{row.item.description ?? '—'}</small><small>{row.item.location ?? 'Chưa có Tag Name'}</small>
         <button className={styles.batchInfoToggle} aria-label={`Thông tin ${row.item.wonum}`} aria-expanded={expandedRow === rowKey(row.item)} aria-controls={`${infoId}-${index}`}
