@@ -12,6 +12,7 @@ from app.assignments.capacity import validate_capacity
 from app.assignments.incremental import metadata, receipt_metadata, revision
 from app.assignments.load import remote_load
 from app.assignments.models import Allocation, AssignmentEvent, AssignmentSubmission
+from app.assignments.plan_backfill import backfill_for_move, computed, requested
 from app.assignments.plan_uploads import (
     current_remote_scope,
     plan_items,
@@ -34,11 +35,20 @@ class MovePreview(BaseModel):
     target_person_id: UUID
     target_date: date
     mode: Literal["shift", "reallocate"]
+    backfill: bool = True
+
+
+class BackfillPlan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    plan_id: UUID
+    expected_version: int = Field(ge=1, strict=True)
+    segments: list[PlanSegment] = Field(min_length=1, max_length=366)
 
 
 class MoveRequest(MovePreview):
     request_id: UUID
     segments: list[PlanSegment] = Field(min_length=1, max_length=366)
+    backfill_plans: list[BackfillPlan] = Field(default_factory=list, max_length=100)
 
     @model_validator(mode="after")
     def unique_dates(self):
@@ -54,7 +64,7 @@ def conflict(message, mode):
     )
 
 
-async def proposal(request, db, plan, items, settings, body):
+async def proposal(request, db, plan, items, settings, body, backfill):
     from app.assignments.routes import key, require_resource_discipline, view
 
     if plan.version != body.expected_plan_version:
@@ -207,6 +217,9 @@ async def proposal(request, db, plan, items, settings, body):
             break
     if remaining:
         conflict("Not enough verified rota capacity within 366 days", body.mode)
+    followers, applications = await backfill_for_move(
+        request, db, settings, plan, items, anchor, local, segments, laborcode, backfill
+    )
     await verify_plan_source(request, settings, anchor)
     return {
         "plan_id": str(plan.id),
@@ -229,7 +242,65 @@ async def proposal(request, db, plan, items, settings, body):
         "old_items": [view(i) for i in items],
         "segments": segments,
         "capacity": capacities,
-    }
+        "backfill": followers,
+    }, applications
+
+
+def hashed_out(body):
+    """Keep receipt hashes of requests that predate backfill unchanged."""
+    excluded = {"backfill"}
+    return excluded | ({"backfill_plans"} if not getattr(body, "backfill_plans", None) else set())
+
+
+def apply_backfill(db, applications, person_id, cells):
+    """Rewrite follower rows like a day-segment edit; returns (plan, before view, row)."""
+    from app.assignments.routes import view
+
+    out = []
+    for app in applications:
+        plan, wanted = app["plan"], app["after"]
+        existing = {r.date: r for r in app["rows"]}
+        template = app["rows"][0]
+        cells.update((person_id, d) for d in existing)
+        cells.update((person_id, d) for d in wanted)
+        changes = []
+        for old_date, row in existing.items():
+            if old_date not in wanted:
+                changes.append((row, view(row)))
+                row.state = "released"
+                row.version += 1
+            elif row.minutes != wanted[old_date]:
+                changes.append((row, view(row)))
+                row.minutes = wanted[old_date]
+                row.version += 1
+        plan.version += 1
+        for new_date in sorted(set(wanted) - set(existing)):
+            day = app["days"][new_date]
+            row = Allocation(
+                pool_id=plan.pool_id,
+                connection_id=plan.connection_id,
+                site_id=template.site_id,
+                workorder_id=template.workorder_id,
+                discipline=template.discipline,
+                plan=plan,
+                person_id=person_id,
+                laborcode=day.laborcode,
+                craft=day.craft,
+                role=day.role,
+                date=new_date,
+                minutes=wanted[new_date],
+                task_workorder_id=template.task_workorder_id,
+                task_id=template.task_id,
+                task_description=template.task_description,
+                assignment_id=plan.assignment_id,
+                upstream_baseline=template.upstream_baseline,
+                sync_state="local",
+                state="reserved",
+            )
+            db.add(row)
+            changes.append((row, None))
+        out.extend((plan, before, row) for row, before in changes)
+    return out
 
 
 async def move(request, pool_id, plan_id, body, *, commit=False):
@@ -249,7 +320,7 @@ async def move(request, pool_id, plan_id, body, *, commit=False):
             {
                 "plan_move": str(plan_id),
                 "pool_id": str(pool_id),
-                "body": body.model_dump(mode="json"),
+                "body": body.model_dump(mode="json", exclude=hashed_out(body)),
             }
         )
         if commit:
@@ -268,17 +339,31 @@ async def move(request, pool_id, plan_id, body, *, commit=False):
                     write=True,
                 )
         plan, items = await plan_items(db, plan_id)
-        intent = await proposal(request, db, plan, items, settings, body)
+        # A commit recomputes backfill only when the client asked for the previewed plans.
+        intent, applications = await proposal(
+            request,
+            db,
+            plan,
+            items,
+            settings,
+            body,
+            bool(body.backfill_plans) if commit else body.backfill,
+        )
         await current_remote_scope(request, db, item, identity, settings, eligible=True)
         await recheck(request, db, item, identity, settings, write=True, csrf=True)
         if not commit:
             return intent
         if [s.model_dump(mode="json") for s in body.segments] != intent["segments"]:
             raise HTTPException(409, "Move preview changed; review a fresh preview before saving")
+        if requested(body.backfill_plans) != computed(intent["backfill"]):
+            raise HTTPException(
+                409, "Backfill changed since the preview; review a fresh preview before saving"
+            )
         previous_revision = await revision(db, pool_id, item.connection_id, item.discipline)
         old = intent["old_items"]
         cells = {(i.person_id, i.date) for i in items}
         template = items[0]
+        source_person_id = plan.person_id
         # The date uniqueness index covers reserved rows. Free the old dates in this
         # transaction before overlapping shifts restore the same row identities.
         for i in items:
@@ -320,7 +405,24 @@ async def move(request, pool_id, plan_id, body, *, commit=False):
             target.minutes = segment["minutes"]
             target.state = "reserved"
             cells.add((target.person_id, target.date))
+        backfilled = apply_backfill(db, applications, source_person_id, cells)
         await db.flush()
+        for plan_after, before, allocation in backfilled:
+            db.add(
+                AssignmentEvent(
+                    actor_id=identity.user_id,
+                    allocation_id=allocation.id,
+                    event="plan_backfill",
+                    details={
+                        "plan_id": str(plan_after.id),
+                        "moved_plan_id": str(plan_id),
+                        "before": before,
+                        "after": view(allocation),
+                        "plan_version": plan_after.version,
+                        "request_id": str(body.request_id),
+                    },
+                )
+            )
         for index, allocation in enumerate(changed):
             db.add(
                 AssignmentEvent(
@@ -342,6 +444,11 @@ async def move(request, pool_id, plan_id, body, *, commit=False):
             "plan_id": str(plan_id),
             "plan_version": plan.version,
             "items": [view(i) for i in changed],
+            "backfill_items": [view(a) for _, _, a in backfilled],
+            "backfill_plans": [
+                {"plan_id": str(a["plan"].id), "plan_version": a["plan"].version}
+                for a in applications
+            ],
         }
         result.update(
             await metadata(
@@ -352,7 +459,7 @@ async def move(request, pool_id, plan_id, body, *, commit=False):
                 item.discipline,
                 pool_id,
                 cells,
-                [i.id for i in changed],
+                [i.id for i in changed] + [a.id for _, _, a in backfilled],
                 previous_revision=previous_revision,
             )
         )
