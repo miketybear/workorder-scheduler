@@ -133,3 +133,13 @@ def test_daily_limit_is_capped_at_630(limit):
     changes, _ = compact([f("A", 10, (3, 630), (4, 630))], d(1), capacity(minutes=limit), zero())
     for rows in changes.values():
         assert all(m <= min(630, limit) for _, m in rows)
+
+
+def test_start_earlier_than_the_moved_plan_lets_followers_use_empty_early_days():
+    # The moved plan sat on day 10; with start on day 1 the chain moves up to the empty days.
+    late = [f("A", 10, (3, 630), (4, 100)), f("B", 20, (4, 530), (5, 300))]
+    assert compact(late, d(10), capacity(), zero()) == ({}, {})
+    changes, skipped = compact(late, d(1), capacity(), zero())
+    assert not skipped
+    assert changes["A"] == [(d(1), 630), (d(2), 100)]
+    assert changes["B"] == [(d(2), 530), (d(3), 300)]

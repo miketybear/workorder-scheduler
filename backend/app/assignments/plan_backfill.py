@@ -84,7 +84,17 @@ def _segments(rows):
 
 
 async def backfill_for_move(
-    request, db, settings, plan, items, anchor, local, new_segments, target_laborcode, enabled
+    request,
+    db,
+    settings,
+    plan,
+    items,
+    anchor,
+    local,
+    new_segments,
+    target_laborcode,
+    enabled,
+    fill_from=None,
 ):
     """Return (public, applications) for the source person's following plans of the same WO.
 
@@ -95,6 +105,9 @@ async def backfill_for_move(
     if not enabled:
         return empty, []
     start = min(i.date for i in items)
+    if fill_from is not None:
+        # The planner may have parked the plan late; let followers use earlier empty days.
+        start = min(start, fill_from)
     groups: dict = {}
     for row in local:
         p = row.plan
