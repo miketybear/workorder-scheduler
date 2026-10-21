@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { AssignmentError, deleteAssignment, getLatestPlanUploadBatch, getAssignmentRevision, getResourceTimeline, getWorkOrderTasks, lookupAssignmentRequest, lookupTaskAllocationRequest, lookupTaskPlanBatchRequest, lookupAssignmentPlanMoveRequest, lookupPlanSegmentsRequest, savePlanSegments, type PlanSegmentsInput, previewAssignmentPlanMove, moveAssignmentPlan, lookupAssignmentUploadSubmission, reconcileAssignmentUpload, saveAssignment, saveTaskAllocations, saveTaskPlanBatch, updateAssignment, uploadAssignment, type Assignment, type AssignmentInput, type AssignmentWorkOrder, type AffectedCapacityDay, type CapacityDay, type PlanningSummary, type ResourcePerson, type ResourceTimeline as TimelineData, type TaskAllocationInput, type TaskPlanBatchInput, type TaskPlanBatchResult, type WorkOrderTasks, type AssignmentUploadResult, type AssignmentPlanMovePreview, type AssignmentPlanMoveRequest, type AssignmentPlanMoveInput, type AssignmentPlanMoveResult } from '../api/assignments';
+import { AssignmentError, deleteAssignment, getLatestPlanUploadBatch, getAssignmentRevision, getResourceTimeline, getWorkOrderTasks, lookupAssignmentRequest, lookupTaskAllocationRequest, lookupTaskPlanBatchRequest, lookupAssignmentPlanMoveRequest, lookupPlanSegmentsRequest, savePlanSegments, type PlanSegmentsInput, lookupPlanReleaseRequest, releasePlan, type PlanReleaseInput, previewAssignmentPlanMove, moveAssignmentPlan, lookupAssignmentUploadSubmission, reconcileAssignmentUpload, saveAssignment, saveTaskAllocations, saveTaskPlanBatch, updateAssignment, uploadAssignment, type Assignment, type AssignmentInput, type AssignmentWorkOrder, type AffectedCapacityDay, type CapacityDay, type PlanningSummary, type ResourcePerson, type ResourceTimeline as TimelineData, type TaskAllocationInput, type TaskPlanBatchInput, type TaskPlanBatchResult, type WorkOrderTasks, type AssignmentUploadResult, type AssignmentPlanMovePreview, type AssignmentPlanMoveRequest, type AssignmentPlanMoveInput, type AssignmentPlanMoveResult } from '../api/assignments';
 import { startOfDay, zonedDateTime } from '../api/dates';
 import { getConnectionSettings } from '../api/settings';
 import { listResourcePools, type ResourcePool } from '../api/rotaImports';
@@ -337,7 +337,9 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
   const [dayHours,setDayHours]=useState<Record<string,string>>({});
   const [daysUnknown,setDaysUnknown]=useState<PlanSegmentsInput|null>(null);
   const [planMenu,setPlanMenu]=useState(false);
-  useEffect(()=>{setDayHours({});setDaysUnknown(null);setPlanMenu(false);},[planItem?.id,planItem?.plan_version]);
+  const [confirmRelease,setConfirmRelease]=useState(false);
+  const [releaseUnknown,setReleaseUnknown]=useState<PlanReleaseInput|null>(null);
+  useEffect(()=>{setDayHours({});setDaysUnknown(null);setPlanMenu(false);setConfirmRelease(false);setReleaseUnknown(null);},[planItem?.id,planItem?.plan_version]);
   const planDayMinutes=(day:Assignment)=>day.id in dayHours?parseHours(dayHours[day.id]):day.minutes;
   const planDaysTotal=planDaysOfItem.reduce((sum,day)=>sum+planDayMinutes(day),0);
   const planDaysChanged=planDaysOfItem.some(day=>planDayMinutes(day)!==day.minutes);
@@ -715,6 +717,39 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
     try{
       const receipt=await lookupPlanSegmentsRequest(pool.id,planItem.plan_id!,daysUnknown,new AbortController().signal);
       if(receipt)await finishPlanDays(receipt,before);else setError('Chưa tìm thấy biên nhận; yêu cầu chưa được ghi. Tải lại timeline rồi sửa lại nếu cần.');
+    }catch(reason){if(!clearWorkspaceAfterAuthorizationFailure(reason))setError(reason instanceof Error?reason.message:'Không đối soát được.');}
+    finally{setBusy(false);}
+  }
+  async function finishPlanRelease(result:AssignmentPlanMoveResult,before:Assignment[]){
+    await applyConfirmedMutation(result.items,before,result.affected_days,result.planning_summary,result.assignment_revision,result.allocation_updates,result.previous_assignment_revision,result.work_order);
+    setReleaseUnknown(null);setConfirmRelease(false);setProposal(null);setMessage('Kế hoạch đã được xóa; rota của các ngày đã được trả lại. Maximo chưa bị thay đổi.');
+  }
+  async function releaseWholePlan(){
+    if(!planItem||!pool||busy||releaseUnknown)return;
+    const before=planDaysOfItem;const input:PlanReleaseInput={request_id:newId(),expected_version:planItem.plan_version??0};
+    const context:MutationContext={principal,connectionId:pool.connection_id,discipline,poolId:pool.id,month};
+    setBusy(true);setError('');
+    try{
+      await verifyMutationContext(context);
+      await finishPlanRelease(await releasePlan(pool.id,planItem.plan_id!,input,new AbortController().signal),before);
+    }catch(reason){
+      if(reason instanceof AssignmentError&&([401,403,404,409,422].includes(reason.status)||reason.outcome==='not_sent')){
+        if(!clearWorkspaceAfterAuthorizationFailure(reason)){setConfirmRelease(false);setError(reason.message);}
+      }else{
+        try{
+          const receipt=await lookupPlanReleaseRequest(pool.id,planItem.plan_id!,input,new AbortController().signal);
+          if(receipt)await finishPlanRelease(receipt,before);
+          else{setReleaseUnknown(input);setError('Chưa xác nhận được kết quả xóa. Không gửi lại; bấm "Kiểm tra kết quả" để đối soát.');}
+        }catch{setReleaseUnknown(input);setError('Không đọc được biên nhận xóa. Không gửi lại; bấm "Kiểm tra kết quả" để đối soát.');}
+      }
+    }finally{setBusy(false);}
+  }
+  async function reconcilePlanRelease(){
+    if(!releaseUnknown||!planItem||!pool||busy)return;
+    const before=planDaysOfItem;setBusy(true);
+    try{
+      const receipt=await lookupPlanReleaseRequest(pool.id,planItem.plan_id!,releaseUnknown,new AbortController().signal);
+      if(receipt)await finishPlanRelease(receipt,before);else setError('Chưa tìm thấy biên nhận; yêu cầu xóa chưa được ghi. Tải lại timeline để kiểm tra.');
     }catch(reason){if(!clearWorkspaceAfterAuthorizationFailure(reason))setError(reason instanceof Error?reason.message:'Không đối soát được.');}
     finally{setBusy(false);}
   }
@@ -1176,7 +1211,7 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
             <button type="button" className={styles.iconButton} aria-label="Thao tác khác" aria-haspopup="menu" aria-expanded={planMenu} onClick={()=>setPlanMenu(open=>!open)}>⋯</button>
             {planMenu&&<div role="menu" className={styles.menuList}>
               {(planItem.plan_sync_state??planItem.sync_state??'local')==='local'&&<button type="button" role="menuitem" disabled={busy||!!pending||planUploadLocked} onClick={()=>{setPlanMenu(false);beginPlanMove(planItem,proposal.cell.person,proposal.cell.date,true);}}>Đổi người / ngày bắt đầu…</button>}
-              <button type="button" role="menuitem" data-danger disabled={!canWrite||!canEditItem(planItem)||planUploadLocked||busy} onClick={()=>{setPlanMenu(false);void submit('delete');}}>Xóa ngày {displayDate(planItem.date)}</button>
+              <button type="button" role="menuitem" data-danger disabled={!canWrite||!canEditItem(planItem)||planUploadLocked||busy||(planItem.plan_sync_state??planItem.sync_state??'local')!=='local'} onClick={()=>{setPlanMenu(false);setConfirmRelease(true);}}>Xóa cả kế hoạch…</button>
             </div>}
           </div>
         </header>
@@ -1199,6 +1234,10 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
         {planDaysChanged&&planDaysTotal!==(planItem.plan_total_minutes??planItem.minutes)&&<p role="alert">Tổng giờ các ngày phải bằng {displayHours(planItem.plan_total_minutes??planItem.minutes)} giờ của task (hiện {displayHours(planDaysTotal)} giờ). Để 0 để bỏ một ngày.</p>}
         {planDaysOfItem.some(day=>planDayMinutes(day)!==day.minutes&&planDayRoom(day)<0)&&<p role="alert">Có ngày vượt rota còn lại; giảm giờ ngày đó hoặc chuyển bớt sang ngày khác.</p>}
         {daysUnknown&&<div className={styles.planMore}><button type="button" disabled={busy} onClick={()=>void reconcilePlanDays()}>Kiểm tra kết quả</button></div>}
+        {(confirmRelease||releaseUnknown)&&<div role="alertdialog" aria-label="Xác nhận xóa cả kế hoạch" className={styles.releaseConfirm}>
+          <p><strong>Xóa cả kế hoạch này?</strong> {planDaysOfItem.length} ngày, {displayHours(planItem.plan_total_minutes??planItem.minutes)} giờ sẽ được trả lại rota của {roster.find(person=>person.person_id===planItem.person_id)?.name??'nhân lực'}. Maximo không bị thay đổi.</p>
+          <div>{releaseUnknown?<button type="button" disabled={busy} onClick={()=>void reconcilePlanRelease()}>Kiểm tra kết quả</button>:<><button type="button" disabled={busy} onClick={()=>setConfirmRelease(false)}>Giữ lại</button><button type="button" data-danger disabled={busy} onClick={()=>void releaseWholePlan()}>Xóa cả kế hoạch</button></>}</div>
+        </div>}
       </section>}
       {confirmedReadOnly&&confirmedPlanItem?<section className={styles.planPanel} aria-label="Chi tiết kế hoạch đã đồng bộ">
         <header className={styles.planHead} data-hue={hueOf(confirmedPlanItem.plan_id??confirmedPlanItem.workorder_id)}>

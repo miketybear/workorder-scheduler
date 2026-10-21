@@ -314,6 +314,22 @@ export async function savePlanSegments(poolId:string,planId:string,input:PlanSeg
 export async function lookupPlanSegmentsRequest(poolId:string,planId:string,input:PlanSegmentsInput,signal:AbortSignal):Promise<AssignmentPlanMoveResult|null>{
   try{return await json(`/assignment-submissions/${encodeURIComponent(input.request_id)}`,signal,undefined,value=>parsePlanSegmentsResult(value,poolId,planId,input));}catch(error){if(error instanceof AssignmentError&&error.status===404)return null;throw error;}
 }
+export type PlanReleaseInput={request_id:string;expected_version:number};
+function parsePlanReleaseResult(value:unknown,poolId:string,planId:string,input:PlanReleaseInput):AssignmentPlanMoveResult{
+  const body=record(value)&&record(value.result)?value.result:value;
+  if(!record(body)||body.request_id!==input.request_id||body.plan_id!==planId||![input.expected_version,input.expected_version+1].includes(Number(body.plan_version))||!Array.isArray(body.items)||!body.items.length)throw new Error('Biên nhận xóa kế hoạch không hợp lệ.');
+  const items=body.items.map(item=>parseAssignment(item));
+  if(items.some(item=>item.plan_id!==planId||item.pool_id!==poolId||item.state!=='released'))throw new Error('Kết quả xóa kế hoạch không khớp yêu cầu.');
+  return {request_id:input.request_id,plan_id:planId,plan_version:Number(body.plan_version),items,...mutationMetadata({...value as Record<string,unknown>,...body})};
+}
+/** Releases every day of a local plan in one transaction (rows are released, never hard-deleted). */
+export async function releasePlan(poolId:string,planId:string,input:PlanReleaseInput,signal:AbortSignal):Promise<AssignmentPlanMoveResult>{
+  if(!str(poolId)||!str(planId)||!uuid(input.request_id)||!Number.isInteger(input.expected_version)||input.expected_version<1)throw new Error('Yêu cầu xóa kế hoạch không hợp lệ.');
+  return json(`${planMovePath(poolId,planId)}/release`,signal,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)},value=>parsePlanReleaseResult(value,poolId,planId,input));
+}
+export async function lookupPlanReleaseRequest(poolId:string,planId:string,input:PlanReleaseInput,signal:AbortSignal):Promise<AssignmentPlanMoveResult|null>{
+  try{return await json(`/assignment-submissions/${encodeURIComponent(input.request_id)}`,signal,undefined,value=>parsePlanReleaseResult(value,poolId,planId,input));}catch(error){if(error instanceof AssignmentError&&error.status===404)return null;throw error;}
+}
 export async function previewAssignmentPlanMove(poolId:string,planId:string,input:AssignmentPlanMoveRequest,knownItems:Assignment[],signal:AbortSignal):Promise<AssignmentPlanMovePreview>{
   validatePlanMoveRequest(poolId,planId,input);
   return json(`${planMovePath(poolId,planId)}/move-preview`,signal,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)},value=>parsePlanMovePreview(value,poolId,planId,input,knownItems));

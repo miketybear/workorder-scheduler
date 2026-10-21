@@ -5,7 +5,7 @@ import { ResourceTimeline } from './ResourceTimeline';
 import { AssignmentError, type Assignment, type ResourceTimeline as Snapshot } from '../api/assignments';
 import { RetrievalError } from '../api/workOrders';
 
-const api = vi.hoisted(() => ({ settings: vi.fn(), auth: vi.fn(), pools: vi.fn(), timeline: vi.fn(), revision:vi.fn(), orders: vi.fn(), tasks:vi.fn(), save: vi.fn(), batch:vi.fn(), plan: vi.fn(), planReceipt: vi.fn(), planBatch: vi.fn(),planBatchReceipt:vi.fn(), planUploadPreview: vi.fn(), planUpload: vi.fn(), planUploadReceipt: vi.fn(), planUploadStatus: vi.fn(), planUploadReconcile: vi.fn(), planMovePreview:vi.fn(), planMove:vi.fn(), planMoveReceipt:vi.fn(), planSegments:vi.fn(), planSegmentsReceipt:vi.fn(), batchCreate: vi.fn(), batchLatest: vi.fn(), batchGet: vi.fn(), batchPrepare: vi.fn(), batchConfirm: vi.fn(), batchContinue: vi.fn(), batchSubmission: vi.fn(), update: vi.fn(), remove: vi.fn(), lookup: vi.fn(), upload:vi.fn(), uploadReceipt:vi.fn(), reconcile:vi.fn() }));
+const api = vi.hoisted(() => ({ settings: vi.fn(), auth: vi.fn(), pools: vi.fn(), timeline: vi.fn(), revision:vi.fn(), orders: vi.fn(), tasks:vi.fn(), save: vi.fn(), batch:vi.fn(), plan: vi.fn(), planReceipt: vi.fn(), planBatch: vi.fn(),planBatchReceipt:vi.fn(), planUploadPreview: vi.fn(), planUpload: vi.fn(), planUploadReceipt: vi.fn(), planUploadStatus: vi.fn(), planUploadReconcile: vi.fn(), planMovePreview:vi.fn(), planMove:vi.fn(), planMoveReceipt:vi.fn(), planSegments:vi.fn(), planSegmentsReceipt:vi.fn(), planRelease:vi.fn(), planReleaseReceipt:vi.fn(), batchCreate: vi.fn(), batchLatest: vi.fn(), batchGet: vi.fn(), batchPrepare: vi.fn(), batchConfirm: vi.fn(), batchContinue: vi.fn(), batchSubmission: vi.fn(), update: vi.fn(), remove: vi.fn(), lookup: vi.fn(), upload:vi.fn(), uploadReceipt:vi.fn(), reconcile:vi.fn() }));
 type TestTaskPlanPayload={request_id:string;tasks:Array<{task_workorder_id:string;task_id:number;assignment_id:string;total_minutes:number;segments:Array<{date:string;minutes:number}>}>};
 function planBatchResponse(input:TestTaskPlanPayload){return {request_id:input.request_id,plans:input.tasks.map((task,index)=>({plan_id:`plan-${index}`,...task,items:task.segments.map((segment,segmentIndex)=>({...item,id:`plan-${index}-${segmentIndex}`,...segment,task_workorder_id:task.task_workorder_id,task_id:task.task_id,assignment_id:task.assignment_id,plan_id:`plan-${index}`,plan_total_minutes:task.total_minutes,sync_state:'local'}))}))};}
 vi.mock('../api/settings', () => ({ getConnectionSettings: api.settings }));
@@ -13,7 +13,7 @@ vi.mock('../api/client', () => ({ getAuthSummary: api.auth }));
 vi.mock('../api/rotaImports', () => ({ listResourcePools: api.pools }));
 vi.mock('../api/assignments', async importOriginal => {
   const actual = await importOriginal<typeof import('../api/assignments')>();
-  return { ...actual, savePlanSegments: api.planSegments, lookupPlanSegmentsRequest: api.planSegmentsReceipt, getResourceTimeline: api.timeline,getAssignmentRevision:api.revision, getWorkOrderTasks:api.tasks, saveAssignment: api.save, saveTaskAllocations:api.batch, saveTaskPlan:api.plan,lookupTaskPlanRequest:api.planReceipt,saveTaskPlanBatch:api.planBatch,lookupTaskPlanBatchRequest:api.planBatchReceipt,previewAssignmentPlan:api.planUploadPreview,uploadAssignmentPlan:api.planUpload,lookupAssignmentPlanUpload:api.planUploadReceipt,getAssignmentPlanUploadStatus:api.planUploadStatus,reconcileAssignmentPlanUpload:api.planUploadReconcile,previewAssignmentPlanMove:api.planMovePreview,moveAssignmentPlan:api.planMove,lookupAssignmentPlanMoveRequest:api.planMoveReceipt,createPlanUploadBatch:api.batchCreate,getLatestPlanUploadBatch:api.batchLatest,getPlanUploadBatch:api.batchGet,prepareNextPlanUploadBatch:api.batchPrepare,confirmPlanUploadBatch:api.batchConfirm,continuePlanUploadBatch:api.batchContinue,lookupPlanUploadBatchSubmission:api.batchSubmission,updateAssignment: api.update, deleteAssignment: api.remove, lookupAssignmentRequest: api.lookup, lookupTaskAllocationRequest:api.lookup, uploadAssignment:api.upload,lookupAssignmentUploadSubmission:api.uploadReceipt,reconcileAssignmentUpload:api.reconcile };
+  return { ...actual, releasePlan: api.planRelease, lookupPlanReleaseRequest: api.planReleaseReceipt, savePlanSegments: api.planSegments, lookupPlanSegmentsRequest: api.planSegmentsReceipt, getResourceTimeline: api.timeline,getAssignmentRevision:api.revision, getWorkOrderTasks:api.tasks, saveAssignment: api.save, saveTaskAllocations:api.batch, saveTaskPlan:api.plan,lookupTaskPlanRequest:api.planReceipt,saveTaskPlanBatch:api.planBatch,lookupTaskPlanBatchRequest:api.planBatchReceipt,previewAssignmentPlan:api.planUploadPreview,uploadAssignmentPlan:api.planUpload,lookupAssignmentPlanUpload:api.planUploadReceipt,getAssignmentPlanUploadStatus:api.planUploadStatus,reconcileAssignmentPlanUpload:api.planUploadReconcile,previewAssignmentPlanMove:api.planMovePreview,moveAssignmentPlan:api.planMove,lookupAssignmentPlanMoveRequest:api.planMoveReceipt,createPlanUploadBatch:api.batchCreate,getLatestPlanUploadBatch:api.batchLatest,getPlanUploadBatch:api.batchGet,prepareNextPlanUploadBatch:api.batchPrepare,confirmPlanUploadBatch:api.batchConfirm,continuePlanUploadBatch:api.batchContinue,lookupPlanUploadBatchSubmission:api.batchSubmission,updateAssignment: api.update, deleteAssignment: api.remove, lookupAssignmentRequest: api.lookup, lookupTaskAllocationRequest:api.lookup, uploadAssignment:api.upload,lookupAssignmentUploadSubmission:api.uploadReceipt,reconcileAssignmentUpload:api.reconcile };
 });
 vi.mock('../api/workOrders', async importOriginal => {
   const actual=await importOriginal<typeof import('../api/workOrders')>();
@@ -515,6 +515,25 @@ describe('editing the day hours of a plan', () => {
     await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
+  it('deletes the whole plan only after an explicit confirmation', async () => {
+    const {first,second}=await open();
+    api.planRelease.mockImplementation(async (_pool:string,_plan:string,input:{request_id:string})=>({request_id:input.request_id,plan_id:'plan-hours',plan_version:2,items:[{...first,state:'released',version:2},{...second,state:'released',version:2}],assignment_revision:'r2',previous_assignment_revision:'r1'}));
+    fireEvent.click(screen.getByRole('button',{name:'Thao tác khác'}));
+    fireEvent.click(screen.getByRole('menuitem',{name:/^Xóa cả kế hoạch/}));
+    const confirm=screen.getByRole('alertdialog',{name:'Xác nhận xóa cả kế hoạch'});
+    expect(within(confirm).getByText(/2 ngày, 4 giờ/)).toBeInTheDocument();
+    expect(api.planRelease).not.toHaveBeenCalled();
+    fireEvent.click(within(confirm).getByRole('button',{name:'Giữ lại'}));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'Thao tác khác'}));
+    fireEvent.click(screen.getByRole('menuitem',{name:/^Xóa cả kế hoạch/}));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button',{name:'Xóa cả kế hoạch'}));
+    await waitFor(()=>expect(api.planRelease).toHaveBeenCalledTimes(1));
+    expect(api.planRelease.mock.calls[0][1]).toBe('plan-hours');
+    expect(api.planRelease.mock.calls[0][2]).toMatchObject({expected_version:1});
+    await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
   it('drops a day set to 0 and keeps the sum rule', async () => {
     await open();
     api.planSegments.mockResolvedValue(undefined);
@@ -541,7 +560,7 @@ it('treats a reloaded plan as one task: summary with its days, no per-day person
   expect(screen.queryByLabelText('Ngày phân công')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Thao tác khác'}));
   expect(screen.getByRole('menuitem',{name:/^Đổi người/})).toBeInTheDocument();
-  expect(screen.getByRole('menuitem',{name:/^Xóa ngày/})).toBeInTheDocument();
+  expect(screen.getByRole('menuitem',{name:/^Xóa cả kế hoạch/})).toBeInTheDocument();
   expect(screen.queryByRole('button',{name:/^Xem trước rồi gửi/})).not.toBeInTheDocument();
   expect(screen.queryByRole('heading',{name:/Gửi lên Maximo|Đồng bộ Maximo/})).not.toBeInTheDocument();
   expect(screen.queryByRole('button',{name:'Upload assignment lên Maximo'})).not.toBeInTheDocument();
