@@ -294,9 +294,9 @@ export async function prepareBatch(scope: Scope, keys: { site_id: string; workor
   });
 }
 
-export async function saveBatch(scope: Scope, items: BatchRow[], requestId: string, existing: Saved | null, signal: AbortSignal): Promise<Saved> {
+export async function saveBatch(scope: Scope, items: BatchRow[], requestId: string, existing: Saved | null, signal: AbortSignal, rebase = false): Promise<Saved> {
   return saved(await call(existing ? `/draft-batches/${encodeURIComponent(existing.draft_id)}` : '/draft-batches', signal,
-    existing ? 'PUT' : 'POST', { ...scope, request_id: requestId, ...(existing ? { version: existing.version } : {}),
+    existing ? 'PUT' : 'POST', { ...scope, request_id: requestId, ...(existing ? { version: existing.version, ...(rebase ? { rebase: true } : {}) } : {}),
       items: items.map((row) => ({ site_id: row.item.siteid, workorder_id: row.item.workorderid,
         baseline_token: row.baseline_token, changes: row.changes })) }));
 }

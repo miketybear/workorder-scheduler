@@ -44,6 +44,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [issues, setIssues] = useState<Record<string, string>>({});
+  const [rebase, setRebase] = useState(false);
   const [group, setGroup] = useState<Changes>({});
   const [keptStarts, setKeptStarts] = useState<string[]>([]);
   const [paste, setPaste] = useState('');
@@ -187,6 +188,36 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
       stage(next); setPaste('');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Dữ liệu dán không hợp lệ.'); }
   }
+  // Take the newest Maximo values and draft version as the base and keep each WO's typed changes on top of them.
+  async function adoptLatest() {
+    if (!saved || busy || suspended) return;
+    const controller = new AbortController(); pending.current = controller; setBusy(true); setError('');
+    try {
+      const latest = await openBatch(saved.draft_id, scope, controller.signal);
+      if (controller.signal.aborted) return;
+      const fresh = new Map(latest.items.map((row) => [rowKey(row.item), row]));
+      const dropped: string[] = []; const missing: Record<string, string> = {};
+      const next: BatchRow[] = [];
+      for (const row of rows) {
+        const base = fresh.get(rowKey(row.item));
+        if (!base) { next.push(row); missing[rowKey(row.item)] = 'WO không còn khả dụng; mở lại để kiểm tra.'; continue; }
+        const kept: Changes = {};
+        for (const field of editableFields) {
+          const value = row.changes[field];
+          if (value === undefined) continue;
+          if (value !== base.baseline[field] && !(field === 'assignedtechname' && !base.allowed_pics.includes(value))) kept[field] = value;
+        }
+        if (row.changes.change_target !== undefined && targetFields.some((field) => kept[field] !== undefined)) kept.change_target = row.changes.change_target;
+        if (!editableFields.some((field) => kept[field] !== undefined)) { dropped.push(row.item.wonum); continue; }
+        next.push({ ...base, changes: kept, baseline_changed: false, changes_valid_now: true });
+      }
+      if (!next.length) { setError('Mọi thay đổi trong nhóm đã trùng Maximo; không còn gì để lưu. Có thể xóa nháp nhóm.'); return; }
+      setRows(next); setSaved({ ...saved, version: latest.version, updated_at: latest.updated_at ?? saved.updated_at }); setIssues(missing);
+      setRebase(true); setCommitted('__refreshed__'); setHistory([]); setShowPreview(false); retry.current = null;
+      setNotice(`Đã cập nhật theo bản mới nhất.${dropped.length ? ` Bỏ khỏi nhóm ${dropped.join(', ')} vì thay đổi đã trùng Maximo.` : ''} Xem trước rồi bấm Lưu nháp nhóm; Maximo chưa thay đổi.`);
+    } catch (cause) { if (!controller.signal.aborted) fail(cause); }
+    finally { if (!controller.signal.aborted) setBusy(false); }
+  }
   async function save() {
     if (blocked || !dirty || !showPreview || Object.values(problems).some(Boolean)) return;
     const items = saved ? rows : changed;
@@ -194,12 +225,12 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
       setError('Nháp đã lưu phải giữ thay đổi của từng WO; dùng Undo hoặc tạo nhóm mới.'); return;
     }
     const controller = new AbortController(); pending.current = controller; setBusy(true); setError('');
-    const fingerprint = JSON.stringify([scope, items, saved?.version]);
+    const fingerprint = JSON.stringify([scope, items, saved?.version, rebase]);
     if (retry.current?.fingerprint !== fingerprint) retry.current = { fingerprint, id: crypto.randomUUID() };
     try {
-      const result = await saveBatch(scope, items, retry.current.id, saved, controller.signal);
+      const result = await saveBatch(scope, items, retry.current.id, saved, controller.signal, rebase);
       if (!controller.signal.aborted) {
-        setSaved(result); setRows(items); setCommitted(JSON.stringify(items.map((row) => row.changes)));
+        setSaved(result); setRebase(false); setRows(items); setCommitted(JSON.stringify(items.map((row) => row.changes)));
         setHistory([]); retry.current = null; setNotice(`Đã lưu nháp ${items.length} WO. Maximo chưa thay đổi.`);
         onDraftReady?.({ ...result, items });
       }
@@ -220,6 +251,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     <p>{scope.discipline} · {saved ? 'Nháp đã lưu' : 'Chưa lưu nháp'}</p>
     <p>Scheduled Finish tự tính từ Scheduled Start + Est. Duration theo ca 06:30–18:30, tối đa 10,5 giờ/ngày.</p>
     {error && <p role="alert" className={styles.error}>{error}</p>}
+    {saved && Object.keys(issues).length > 0 && !uploadLocked && <p role="alert">Maximo hoặc nháp này vừa đổi ở nơi khác. Phần bạn sửa vẫn được giữ.{' '}<button type="button" className={styles.ghost} disabled={busy} onClick={() => void adoptLatest()}>Cập nhật theo bản mới nhất</button></p>}
     {notice && <p role="status">{notice}</p>}
     {busy && <p role="status">Đang kiểm tra từng WO…</p>}
     {outsideRows.length > 0 && <div role="status" className={styles.shiftNotice}>

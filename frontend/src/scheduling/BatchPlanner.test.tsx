@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BatchPlanner } from './BatchPlanner';
 import { BatchError, deleteDraft, openBatch, prepareBatch, previewUpload, saveBatch, type Detail } from '../api/drafts';
@@ -312,6 +312,30 @@ it('reports a failed row and preserves the other proposed changes', async () => 
   await screen.findByText('WO đã thay đổi; mở lại để đối chiếu.');
   expect(screen.getByLabelText('WO-100 Est. Duration')).toHaveValue('9');
   expect(screen.getByText('Lưu nháp nhóm')).toBeDisabled();
+});
+
+it('refreshes a stale saved group in one click, keeps the typed changes and saves them with rebase', async () => {
+  vi.mocked(openBatch).mockResolvedValueOnce({ draft_id: 'group', version: 1, state: 'draft',
+    items: details.map((row) => ({ ...row, changes: { estdur: '9' } })) });
+  render(<BatchPlanner {...props} selection={{ draftId: 'group' }} />);
+  fireEvent.change(await screen.findByLabelText('WO-100 Est. Duration'), { target: { value: '10' } });
+  fireEvent.click(screen.getByText('Xem trước thay đổi'));
+  vi.mocked(saveBatch).mockRejectedValueOnce(new BatchError(409, [{ site_id: 'BD1', workorder_id: '100', code: 'baseline_changed' }]));
+  fireEvent.click(screen.getByText('Lưu nháp nhóm'));
+  const refresh = await screen.findByRole('button', { name: 'Cập nhật theo bản mới nhất' });
+  vi.mocked(openBatch).mockResolvedValueOnce({ draft_id: 'group', version: 2, state: 'draft',
+    items: details.map((row) => ({ ...row, baseline_token: 'c'.repeat(64), baseline_changed: true, changes: { estdur: '9' } })) });
+  vi.mocked(saveBatch).mockResolvedValueOnce({ draft_id: 'group', version: 3, state: 'draft' });
+  fireEvent.click(refresh);
+  await screen.findByText(/Đã cập nhật theo bản mới nhất/);
+  expect(screen.queryByRole('button', { name: 'Cập nhật theo bản mới nhất' })).not.toBeInTheDocument();
+  expect(screen.getByLabelText('WO-100 Est. Duration')).toHaveValue('10');
+  fireEvent.click(screen.getByText('Xem trước thay đổi'));
+  fireEvent.click(screen.getByText('Lưu nháp nhóm'));
+  await waitFor(() => expect(saveBatch).toHaveBeenCalledTimes(2));
+  const call = vi.mocked(saveBatch).mock.calls[1];
+  expect(call[3]).toMatchObject({ draft_id: 'group', version: 2 });
+  expect(call[5]).toBe(true);
 });
 
 it('serializes business time and rejects invalid and ambiguous calendar times', () => {
