@@ -154,15 +154,22 @@ Cập nhật: 2026-10-19.
       `plan_release` từng dòng, biên nhận, capacity các ngày được trả lại, kế hoạch đã gửi/chờ đối soát bị từ chối (409).
       Giao diện có hộp xác nhận nêu số ngày/giờ và "Maximo không bị thay đổi". 16 test Postgres, 7 test nhanh. Chưa chạy
       xóa thật trên DB dev.
-- [x] **Dồn task lấp chỗ trống khi kéo** (`assignments/plan_backfill.py` + `plan_moves.py`): khi chuyển một kế hoạch đi,
-      các kế hoạch local cùng WO của nhân sự cũ dồn lên từ ngày đầu của kế hoạch bị chuyển, theo thứ tự (ngày đầu, task),
-      tổng giờ giữ nguyên và không bao giờ kết thúc muộn hơn; ngày chưa xác minh tải bị bỏ qua. `move-preview` trả
-      `backfill {enabled, plans[before/after/finish], skipped}`; `move` nhận `backfill_plans`, tự tính lại và so sánh (lệch
-      thì 409 yêu cầu xem trước lại), áp dụng cùng giao dịch (sự kiện `plan_backfill`, một lần đổi revision) và trả
-      `backfill_items`. Giao diện: ô tick "Dồn các task khác cùng WO…" mặc định bật trong hộp thoại chuyển task, hiện từng
-      task đổi gì (ngày, giờ trước → sau, ngày kết thúc). Kiểm tra preview trên dữ liệu thật P13468596 (chuyển T10 sang
-      Nguyen Duy Minh): T20 01/10 0,5h → 10,5h, kết thúc 05/10 → 04/10, T30/T40/T50 dịch lên một ngày; chưa bấm xác nhận.
-      14 test đơn vị + 9 test Postgres; 751 test backend nhanh, 477 test frontend.
+- [x] **Dồn giờ theo ô khi kéo task đi** (`assignments/plan_backfill.py` + `plan_moves.py`): khi một kế hoạch rời một ô
+      (nhân sự, ngày), các kế hoạch nội bộ chưa gửi Maximo của cùng nhân sự còn nằm trong ô đó và còn ngày sau (bất kể WO)
+      nhận giờ trống của ô và nhả đúng số giờ đó từ các ngày cuối của chính nó; sau đó quy tắc lặp lại trên các ô vừa được
+      giải phóng (lan theo ô), chỉ kéo giờ về sớm hơn, tổng giờ giữ nguyên, không task nào kết thúc muộn hơn, task một ngày
+      không đổi, task bắt đầu sớm hơn được ưu tiên, ngày chưa xác minh tải bị bỏ qua. `move-preview` trả
+      `backfill {enabled, plans[before/after/finish], skipped}`; `move` nhận `backfill_plans`, tự tính lại và so sánh (lệch thì
+      409 yêu cầu xem trước lại), áp dụng cùng giao dịch (sự kiện `plan_backfill`, một lần đổi revision) và trả
+      `backfill_items`. Giao diện: ô tick "Để các task nhiều ngày còn lại của … lấp chỗ trống vừa trống ra" mặc định bật trong
+      hộp thoại chuyển task. Kiểm tra trên dữ liệu thật (WO H14309257, ô 01/11): T10 2h rời đi thì T20 8,5h → 10,5h ở 01/11 và
+      3,5h → 1,5h ở 02/11; T30 một ngày không đổi.
+- [x] **Chuyển task mặc định xếp lại**: hộp thoại chuyển task mở ở chế độ "xếp lại từ ngày thả theo capacity" (dùng ít ngày nhất),
+      ví dụ 3,5h + 6,5h sang ô còn 10,5h thành một ngày 10h; nút "Giữ nguyên giờ và độ lệch ngày" quay lại cách cũ.
+- [x] **Màu thanh task theo giai đoạn**: T10 xanh dương, T20 xanh lục, T30 cam đất, T40 tím, T50 hồng, T60 trở lên và task khác
+      màu xám (`taskHue`, `--task-0..5` trong `tokens.css`, có bản tối); chú giải trong dấu "?" của timeline.
+      Chưa xem lại độ tương phản ở chế độ tối trên màn hình.
+- [x] 752 test backend nhanh, 479 test frontend; lint, typecheck đạt.
 - Chưa làm với endpoint này: chưa chạy trên dữ liệu thật (chỉ kiểm thử trên DB test); chưa thêm ngày mới hay đổi người
   trong bảng giờ; không có test endpoint không cần Postgres.
 - Chưa làm: nét đứt qua ngày nghỉ chỉ có test đơn vị và đã được người dùng tạo thử; thông báo riêng cho lỗi 503;
