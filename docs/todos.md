@@ -170,6 +170,12 @@ Cập nhật: 2026-10-19.
       màu xám (`taskHue`, `--task-0..5` trong `tokens.css`, có bản tối); chú giải trong dấu "?" của timeline.
       Chưa xem lại độ tương phản ở chế độ tối trên màn hình.
 - [x] 752 test backend nhanh, 479 test frontend; lint, typecheck đạt.
+- [x] **Nháp WO không còn hiện số phiên bản**: đổi "Nháp v1/Nháp phiên bản 1" thành "Nháp đã lưu · thời điểm" và "Nháp · sửa lần cuối …".
+      Khóa phiên bản vẫn giữ ở backend để chặn ghi đè khi mở hai tab. Khi nháp vừa được lưu ở nơi khác hoặc Maximo đổi WO, editor và
+      nháp nhóm hiện nút "Cập nhật theo bản mới nhất / theo Maximo": lấy giá trị và phiên bản mới, giữ phần đã sửa, bỏ phần đã trùng
+      Maximo hoặc PIC không còn hợp lệ, rồi lưu bằng `rebase: true`. Backend: `PUT /drafts/{id}` và `PUT /draft-batches/{id}` nhận
+      `rebase` (chỉ cho nháp đã có, POST từ chối); baseline lưu được thay bằng baseline Maximo hiện tại, mọi kiểm tra khác giữ nguyên;
+      biên nhận ghi `rebased_from` (băm baseline cũ). Chưa có bảng audit riêng cho thao tác lưu nháp (cần migration nếu muốn).
 - Chưa làm với endpoint này: chưa chạy trên dữ liệu thật (chỉ kiểm thử trên DB test); chưa thêm ngày mới hay đổi người
   trong bảng giờ; không có test endpoint không cần Postgres.
 - Chưa làm: nét đứt qua ngày nghỉ chỉ có test đơn vị và đã được người dùng tạo thử; thông báo riêng cho lỗi 503;
