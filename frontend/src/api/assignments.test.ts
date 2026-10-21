@@ -289,7 +289,7 @@ it('previews and commits an exact, full-plan move and recovers its durable recei
   vi.stubGlobal('fetch',fetcher);
   const preview=await previewAssignmentPlanMove('pool','plan-1',input,[source],new AbortController().signal);
   expect(String(fetcher.mock.calls[0][0])).toBe('/api/resource-pools/pool/assignment-plans/plan-1/move-preview');
-  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual(input);
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({...input,backfill:true});
   expect(preview.old_items).toHaveLength(2);
   const request={...input,request_id:'00000000-0000-4000-8000-000000000011',segments:preview.segments};
   const moved=[{...source,person_id:'person-2',date:'2026-10-05',plan_version:5},{...source2,person_id:'person-2',date:'2026-10-06',plan_version:5}];

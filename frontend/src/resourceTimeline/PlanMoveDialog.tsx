@@ -11,12 +11,13 @@ type Props={
   preview:AssignmentPlanMovePreview|null;canReallocate:boolean;unknown:boolean;reconciling:boolean;
   onPersonChange:(value:string)=>void;onDateChange:(value:string)=>void;onReallocate:()=>void;
   onConfirm:()=>void;onReconcile:()=>void;onClose:()=>void;
+  backfillOn:boolean;onBackfillChange:(value:boolean)=>void;
 };
 const hours=(minutes:number)=>new Intl.NumberFormat('vi-VN',{maximumFractionDigits:2}).format(minutes/60);
 const dateLabel=(date:string)=>`${date.slice(8,10)}/${date.slice(5,7)}/${date.slice(0,4)}`;
 
 export function PlanMoveDialog(props:Props){
-  const {item,knownItems,people,visibleMonth,connectionLabel,workOrderLabel,targetPersonId,targetDate,requestId,loading,busy,error,preview,canReallocate,unknown,reconciling,onPersonChange,onDateChange,onReallocate,onConfirm,onReconcile,onClose}=props;
+  const {item,knownItems,people,visibleMonth,connectionLabel,workOrderLabel,targetPersonId,targetDate,requestId,loading,busy,error,preview,canReallocate,unknown,reconciling,onPersonChange,onDateChange,onReallocate,onConfirm,onReconcile,onClose,backfillOn,onBackfillChange}=props;
   const dialogRef=useRef<HTMLElement>(null);
   const latest=useRef(props);
   useEffect(()=>{latest.current=props;});
@@ -66,6 +67,12 @@ export function PlanMoveDialog(props:Props){
     {preview?.mode==='reallocate'?<p>Xếp lại từ {targetDate?dateLabel(targetDate):'ngày đã chọn'} theo capacity đã xác minh; ngày và giờ từng đoạn có thể thay đổi.</p>:<p>Ngày đang kéo: {dateLabel(item.date)} → {targetDate?dateLabel(targetDate):'—'}; các ngày còn lại {anchorOffsetDays>=0?'dịch thêm':'lùi'} {Math.abs(anchorOffsetDays)} ngày theo cùng độ lệch.</p>}
     <table className={styles.moveComparison} aria-label="Đối chiếu lịch trước và sau chuyển"><thead><tr><th>Ngày cũ</th><th>Giờ</th><th></th><th>Ngày mới</th><th>Giờ</th></tr></thead><tbody>{Array.from({length:Math.max(existing.length,preview?.segments.length??0)},(_,index)=>{const old=existing.slice().sort((a,b)=>a.date.localeCompare(b.date))[index];const next=preview?.segments.slice().sort((a,b)=>a.date.localeCompare(b.date))[index];return <tr key={`${old?.id??'none'}-${next?.date??'pending'}`}><td>{old?`${dateLabel(old.date)}${old.date.slice(0,7)!==visibleMonth?' *':''}`:'—'}</td><td>{old?`${hours(old.minutes)}h`:'—'}</td><td aria-hidden="true">→</td><td>{next?`${dateLabel(next.date)}${next.date.slice(0,7)!==visibleMonth?' *':''}`:'—'}</td><td>{next?`${hours(next.minutes)}h`:'—'}</td></tr>;})}</tbody></table>
     {preview&&<section className={styles.moveCapacity} aria-label="Capacity sau chuyển"><h3>{preview.mode==='reallocate'?'Phân bổ lại từ ngày chuyển đến':'Giữ nguyên giờ và độ lệch ngày'} · capacity theo ngày</h3>{preview.capacity.map(day=><p key={`${day.person_id}|${day.date}`}>{dateLabel(day.date)} · còn {hours(day.remaining_minutes)}h / đề xuất {hours(day.proposed_minutes)}h / sau chuyển {hours(day.remaining_after_minutes)}h{day.date.slice(0,7)!==visibleMonth?' · ngoài tháng đang xem':''}</p>)}</section>}
+    {preview?.backfill&&preview.backfill.plans.length>0&&<section className={styles.backfill} aria-label="Dồn lịch các task khác">
+      <label className={styles.backfillToggle}><input type="checkbox" checked={backfillOn} disabled={busy||unknown} onChange={event=>onBackfillChange(event.target.checked)} /> Dồn các task khác cùng WO của {people.find(person=>person.person_id===item.person_id)?.name??'nhân lực cũ'} lên lấp chỗ trống</label>
+      <ul>{preview.backfill.plans.map(plan=>{const dates=[...new Set([...plan.before,...plan.after].map(day=>day.date))].sort();const minutesOn=(list:Array<{date:string;minutes:number}>,date:string)=>list.find(day=>day.date===date)?.minutes??0;const changes=dates.filter(date=>minutesOn(plan.before,date)!==minutesOn(plan.after,date));return <li key={plan.plan_id} data-applied={backfillOn||undefined}><strong>Task {plan.task_id}</strong>{plan.task_description&&plan.task_description!==`T${plan.task_id}`?` · ${plan.task_description}`:''} · kết thúc {dateLabel(plan.finish_before)} → {dateLabel(plan.finish_after)}<small>{changes.map(date=>`${dateLabel(date).slice(0,5)}: ${hours(minutesOn(plan.before,date))}h → ${hours(minutesOn(plan.after,date))}h`).join(' · ')}</small></li>;})}</ul>
+      {preview.backfill.skipped.length>0&&<p role="status">Không dồn được: {preview.backfill.skipped.map(entry=>`Task ${entry.task_id} (${entry.reason==='load_unverified'?'tải chưa xác minh':'quá xa'})`).join(', ')}.</p>}
+      {!backfillOn&&<p role="status">Các task này giữ nguyên lịch; chỗ trống ở ngày cũ sẽ không được lấp.</p>}
+    </section>}
     {loading&&<p role="status">Đang kiểm tra preview và capacity…</p>}
     {error&&<p role="alert">{error}</p>}
     {canReallocate&&<p><button type="button" disabled={busy||unknown} onClick={onReallocate}>Phân bổ lại từ ngày thả</button> sẽ kiểm tra lại bằng preview riêng; giờ được dàn theo capacity khả dụng.</p>}

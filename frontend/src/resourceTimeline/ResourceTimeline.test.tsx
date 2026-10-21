@@ -1304,6 +1304,43 @@ it('moves a whole local plan from a cross-person drag and merges released segmen
   expect(api.update).not.toHaveBeenCalled();expect(api.planUpload).not.toHaveBeenCalled();
 });
 
+describe('backfill when a task plan is moved', () => {
+  const withBackfill=(f:ReturnType<typeof moveIntegrationFixture>)=>({...f.preview,backfill:{enabled:true,plans:[{plan_id:'follower-plan',plan_version:3,task_workorder_id:'tw-20',task_id:20,task_description:'Follow-up task',before:[{date:'2026-10-05',minutes:30},{date:'2026-10-06',minutes:600}],after:[{date:'2026-10-05',minutes:630}],finish_before:'2026-10-06',finish_after:'2026-10-05'}],skipped:[{plan_id:'other',task_id:30,reason:'load_unverified'}]}});
+  const start=async()=>{
+    const f=moveIntegrationFixture();
+    await loaded({...snapshot,rows:f.rows,items:[f.first,f.second],work_orders:[order]});
+    api.planMovePreview.mockResolvedValue(withBackfill(f));
+    api.planMove.mockImplementation(async(_pool:string,_plan:string,input:{request_id:string})=>f.reply(input.request_id,true));
+    fireEvent.click(screen.getAllByRole('button',{name:/Phân công Relocate inspection/})[0]);
+    fireEvent.click(await screen.findByRole('button',{name:'Thao tác khác'}));
+    fireEvent.click(screen.getByRole('menuitem',{name:/^Đổi người/}));
+    fireEvent.change(screen.getByLabelText('Nhân lực đích'),{target:{value:f.target.person_id}});
+    return screen.findByRole('region',{name:'Dồn lịch các task khác'});
+  };
+
+  it('shows what would move up, ticked by default, and sends it with the move', async () => {
+    const region=await start();
+    expect(within(region).getByRole('checkbox')).toBeChecked();
+    expect(region).toHaveTextContent('Task 20');
+    expect(region).toHaveTextContent('05/10/2026');
+    expect(region).toHaveTextContent('0,5h → 10,5h');
+    expect(region).toHaveTextContent('Task 30 (tải chưa xác minh)');
+    await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận chuyển'})).toBeEnabled());
+    fireEvent.click(screen.getByRole('button',{name:'Xác nhận chuyển'}));
+    await waitFor(()=>expect(api.planMove).toHaveBeenCalledOnce());
+    expect(api.planMove.mock.calls[0][2].backfill_plans).toEqual([{plan_id:'follower-plan',expected_version:3,segments:[{date:'2026-10-05',minutes:630}]}]);
+  });
+
+  it('leaves the other tasks alone when the box is unticked', async () => {
+    const region=await start();
+    fireEvent.click(within(region).getByRole('checkbox'));
+    await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận chuyển'})).toBeEnabled());
+    fireEvent.click(screen.getByRole('button',{name:'Xác nhận chuyển'}));
+    await waitFor(()=>expect(api.planMove).toHaveBeenCalledOnce());
+    expect(api.planMove.mock.calls[0][2].backfill_plans).toBeUndefined();
+  });
+});
+
 it('recovers a lost move response through the receipt without a second POST',async()=>{
   const f=moveIntegrationFixture();
   await loaded({...snapshot,rows:f.rows,items:[f.first,f.second],work_orders:[order]});

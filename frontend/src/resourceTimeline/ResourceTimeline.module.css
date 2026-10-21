@@ -440,3 +440,10 @@ button.iconButton { min-width: 32px; min-height: 28px; padding: 0 8px; border: 0
 .releaseConfirm p { margin: 0; }
 .releaseConfirm > div { display: flex; justify-content: flex-end; gap: 8px; }
 .releaseConfirm button[data-danger] { background: var(--danger-ink); border-color: var(--danger-ink); color: #ffffff; }
+
+.backfill { display: grid; gap: 8px; padding: 12px 14px; border-left: 4px solid var(--link); background: var(--accent-tint); }
+.backfill ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.backfill li small { display: block; color: var(--muted); }
+.backfill li:not([data-applied]) { opacity: .6; }
+.dialog .backfillToggle { display: flex; align-items: flex-start; gap: 8px; color: var(--ink); font-size: 14px; font-weight: 500; }
+.backfillToggle input { margin-top: 3px; }
