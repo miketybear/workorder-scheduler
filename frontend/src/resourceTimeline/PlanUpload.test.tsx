@@ -14,7 +14,7 @@ beforeEach(()=>{vi.clearAllMocks();api.preview.mockResolvedValue(preview);api.st
 it('keeps a sent plan locked after a lost response and a missing receipt without resending',async()=>{
   api.upload.mockRejectedValue(new TypeError('network lost'));api.lookup.mockResolvedValue(null);
   render(<PlanUpload {...props}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Xem trước đồng bộ'}));
+  fireEvent.click(screen.getByRole('button',{name:/^Xem trước rồi gửi/}));
   await screen.findByText(/1 ngày · tổng 1 giờ/);
   fireEvent.click(screen.getByRole('button',{name:'Gửi kế hoạch lên Maximo'}));
   await screen.findByText(/không gửi lại kế hoạch/);
@@ -38,7 +38,7 @@ it('rediscovers an unknown receipt when reopening a plan',async()=>{
 it('requires a fresh preview after its token expires',async()=>{
   api.preview.mockResolvedValue({...preview,expires_at:'2000-01-01T00:00:00Z'});
   render(<PlanUpload {...props}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Xem trước đồng bộ'}));
+  fireEvent.click(screen.getByRole('button',{name:/^Xem trước rồi gửi/}));
   await waitFor(()=>expect(api.preview).toHaveBeenCalled());
   expect(await screen.findByText(/Preview đã hết hạn/)).toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Gửi kế hoạch lên Maximo'})).toBeDisabled();
@@ -47,7 +47,7 @@ it('requires a fresh preview after its token expires',async()=>{
 it('shows the complete cross-month plan returned by server preview',async()=>{
   api.preview.mockResolvedValue({...preview,total_minutes:120,segments:[...preview.segments,{allocation_id:'a2',version:1,date:'2026-11-01',minutes:60,scheduled_start:'2026-11-01T06:30:00Z',scheduled_finish:'2026-11-01T07:30:00Z',remote_assignment_id:null}]});
   render(<PlanUpload {...props} items={[{...base,plan_total_minutes:120}]}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Xem trước đồng bộ'}));
+  fireEvent.click(screen.getByRole('button',{name:/^Xem trước rồi gửi/}));
   await screen.findByText(/2 ngày · tổng 2 giờ/);
   expect(screen.getByText(/01\/11\/2026/)).toBeInTheDocument();
 });

@@ -399,3 +399,18 @@ button.dayDelete:hover:not(:disabled) { background: none; }
 .planHead strong { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
 .planHead small { overflow: visible; text-overflow: clip; white-space: normal; }
 .syncDetails[hidden] { display: none; }
+
+.planPanel h3 { font-size: 13px; color: var(--ink); font-weight: 500; }
+.dayLegend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: -6px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 12px; }
+.dayLegend li { display: inline-flex; align-items: center; gap: 6px; }
+.dayLegend i { display: inline-block; width: 14px; height: 6px; border-radius: 3px; }
+.dayLegend i[data-kind="plan"] { background: var(--link); }
+.dayLegend i[data-kind="others"] { background: var(--border-strong); }
+.dayLegend i[data-kind="over"] { background: var(--danger-ink); }
+.planTotal { display: flex; justify-content: space-between; padding: 0 8px; }
+.syncStep { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.syncStep[hidden] { display: none; }
+.syncStep :global(.planUpload) { display: grid; gap: 10px; }
+.syncStep h3 { margin: 0; }
+.footNote { margin-right: auto; align-self: center; color: var(--muted); font-size: 13px; }
+button.dayDelete { margin-top: 4px; }
