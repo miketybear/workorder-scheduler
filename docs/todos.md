@@ -170,6 +170,15 @@ Cập nhật: 2026-10-19.
       màu xám (`taskHue`, `--task-0..5` trong `tokens.css`, có bản tối); chú giải trong dấu "?" của timeline.
       Chưa xem lại độ tương phản ở chế độ tối trên màn hình.
 - [x] 752 test backend nhanh, 479 test frontend; lint, typecheck đạt.
+- [x] **Sửa lịch thẳng trên bảng WO** (`scheduling/inlineEdit.ts`, `inlineSave.ts`, `InlineCells.tsx`, `WorkOrders.tsx`): các ô Lịch dự kiến
+      (Scheduled Start có lịch và gõ tay), Assigned PIC (chọn từ crew của discipline; crew đọc một lần khi con trỏ/tiêu điểm
+      vào bảng) và Duration là ô nhập trực tiếp; Scheduled Finish tự tính theo ca 06:30–18:30, cảnh báo giờ ngoài ca, dòng
+      sai (ví dụ start sau Target Finish, Duration không phải số) bị chặn lưu và ghi chú đỏ trên dòng. Ctrl+D điền giá trị
+      xuống các dòng đã tick. Thanh "N WO có thay đổi chưa lưu": "Lưu N nháp" cập nhật nháp có sẵn (đơn hoặc nhóm, dùng rebase
+      khi nền đã đổi) và tạo nháp mới (một nhóm nếu từ 2 WO) cho các dòng chưa có nháp; "Hủy thay đổi" bỏ phần chưa lưu. Không ghi
+      Maximo. WO có từ 2 nháp chưa chọn thì ô vẫn chỉ đọc. Kiểm tra thật: sửa Duration 25h + start 05/10 06:30 + PIC cho
+      P13431393 → finish 07/10 10:30, nháp lưu đúng trong DB, đã xóa nháp thử. Chưa làm: Tab/mũi tên đổi dòng theo kiểu bảng tính, bỏ tab
+      "Nháp của tôi" và cột Action, thanh áp dụng nhanh cho dòng đã tick, chip chọn nhanh, dán từ Excel vào bảng.
 - [x] **Nháp WO không còn hiện số phiên bản**: đổi "Nháp v1/Nháp phiên bản 1" thành "Nháp đã lưu · thời điểm" và "Nháp · sửa lần cuối …".
       Khóa phiên bản vẫn giữ ở backend để chặn ghi đè khi mở hai tab. Khi nháp vừa được lưu ở nơi khác hoặc Maximo đổi WO, editor và
       nháp nhóm hiện nút "Cập nhật theo bản mới nhất / theo Maximo": lấy giá trị và phiên bản mới, giữ phần đã sửa, bỏ phần đã trùng
