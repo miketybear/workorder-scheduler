@@ -53,25 +53,13 @@ CHAIN = [
     (40, "340", [(6, 180), (7, 420)]),
     (50, "350", [(7, 210), (8, 390)]),
 ]
-# The same chain already compacted to start on 10-03 (as left after earlier edits).
-LATE_CHAIN = [
-    (t, a, [(n + 2, m) for n, m in EXPECTED_ROWS])
-    for (t, a, _), EXPECTED_ROWS in zip(
-        CHAIN,
-        [
-            [(1, 630), (2, 630), (3, 630), (4, 510)],
-            [(4, 120), (5, 480)],
-            [(5, 150), (6, 450)],
-            [(6, 180), (7, 420)],
-        ],
-        strict=True,
-    )
-]
+# Cell rule: T20 takes the 600 freed hours of 10-01 from its tail; each emptied tail day is then
+# offered to the task that continues from it, cascading down the chain.
 EXPECTED = {
     20: [(1, 630), (2, 630), (3, 630), (4, 510)],
-    30: [(4, 120), (5, 480)],
-    40: [(5, 150), (6, 450)],
-    50: [(6, 180), (7, 420)],
+    30: [(5, 600)],
+    40: [(6, 600)],
+    50: [(7, 600)],
 }
 
 
@@ -99,10 +87,6 @@ async def rows_of(sessions, plan_id):
         "synced_follower",
         "replay",
         "other_wo_load",
-        "fill_from",
-        "fill_none",
-        "fill_tampered",
-        "fill_stale",
     ],
 )
 def test_move_backfills_followers_atomically(monkeypatch, mode):
@@ -117,9 +101,8 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
         AsyncMock(return_value=("MECH", "synthetic", False)),
     )
 
-    fill = mode.startswith("fill")
-    chain = LATE_CHAIN if fill else CHAIN
-    moved_day = 10 if fill else 1
+    chain = CHAIN
+    moved_day = 1
 
     async def scenario():
         async with concurrent_plan_database() as sessions:
@@ -236,7 +219,8 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
                     sync = "synced" if mode == "synced_follower" and task_id == 20 else "local"
                     followers[task_id] = make_plan(task_id, assignment, rows, sync=sync)[0]
                 if mode == "other_wo_load":
-                    make_plan(99, "399", [(2, 600)], workorder="555")
+                    # Another work order's multi-day task sharing the cell is used like any other.
+                    followers[5] = make_plan(5, "305", [(1, 30), (9, 300)], workorder="555")[0]
                 await db.flush()
                 moved_id = moved.id
                 follower_ids = {t: p.id for t, p in followers.items()}
@@ -277,8 +261,6 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
                 )
                 if mode == "preview_off":
                     body["backfill"] = False
-                if mode in {"fill_from", "fill_tampered", "fill_stale"}:
-                    body["fill_from"] = "2026-10-01"
                 preview = await client.post(url + "/move-preview", json=body, headers=headers)
                 assert preview.status_code == 200, preview.text
                 proposal = preview.json()
@@ -288,19 +270,15 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
                     assert await rows_of(sessions, follower_ids[20]) == chain[0][2]
                     return
                 assert shown["enabled"] is True and shown["skipped"] == []
-                if mode == "fill_none":
-                    # Without fill_from nothing starts before the parked day: old behaviour.
-                    assert shown["plans"] == []
-                    return
                 changing = {20, 30, 40, 50}
                 if mode == "synced_follower":
-                    # The synced T20 stays put and keeps occupying its days.
-                    changing = {30, 40, 50}
+                    # The synced T20 is the only task in the vacated cell and is left alone.
+                    changing = set()
                 elif mode == "other_wo_load":
-                    changing = {20}
+                    changing = {5, 20, 30, 40, 50}
                 by_task = {p["task_id"]: p for p in shown["plans"]}
                 assert set(by_task) == changing
-                if mode in {"backfill", "fill_from"}:
+                if mode == "backfill":
                     for task_id, plan_view in by_task.items():
                         assert plan_view["plan_id"] == str(follower_ids[task_id])
                         assert plan_view["plan_version"] == 1
@@ -311,17 +289,15 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
                             {"date": d(n).isoformat(), "minutes": m}
                             for n, m in next(c[2] for c in chain if c[0] == task_id)
                         ]
-                    assert by_task[20]["finish_before"] == ("2026-10-06" if fill else "2026-10-05")
+                    assert by_task[20]["finish_before"] == "2026-10-05"
                     assert by_task[20]["finish_after"] == "2026-10-04"
                     assert by_task[50]["task_description"] == "T50"
                     # Preview never writes.
                     assert await rows_of(sessions, follower_ids[20]) == chain[0][2]
                 if mode == "other_wo_load":
-                    # 600 of day 2 belongs to another WO: T20 gets 30 + 30 and shifts on.
-                    assert by_task[20]["after"][:2] == [
-                        {"date": d(1).isoformat(), "minutes": 630},
-                        {"date": d(2).isoformat(), "minutes": 30},
-                    ]
+                    # Free on 10-01 is 570: the lower task id (5) takes its 300 first, T20 the rest.
+                    assert by_task[5]["after"] == [{"date": d(1).isoformat(), "minutes": 330}]
+                    assert by_task[20]["after"][0] == {"date": d(1).isoformat(), "minutes": 300}
                 backfill_plans = [
                     {
                         "plan_id": p["plan_id"],
@@ -338,9 +314,9 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
                 }
                 if mode == "commit_without_backfill":
                     commit["backfill_plans"] = []
-                if mode in {"tampered", "fill_tampered"}:
+                if mode == "tampered":
                     commit["backfill_plans"][0]["segments"][0]["minutes"] -= 1
-                if mode in {"stale_follower", "fill_stale"}:
+                if mode == "stale_follower":
                     async with sessions.begin() as db:
                         (await db.get(AssignmentPlan, follower_ids[30])).version = 2
                 if mode == "rollback":
@@ -353,8 +329,6 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
                     "tampered",
                     "stale_follower",
                     "rollback",
-                    "fill_tampered",
-                    "fill_stale",
                 }:
                     assert response.status_code == 409, response.text
                     if mode != "rollback":
@@ -376,9 +350,10 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
                 result = response.json()
                 assert result["plan_version"] == 2
                 assert result["assignment_revision"] != result["previous_assignment_revision"]
-                if mode == "commit_without_backfill":
+                if mode in {"commit_without_backfill", "synced_follower"}:
                     assert result["backfill_items"] == [] and result["backfill_plans"] == []
-                    assert shown["plans"], "the preview offered backfill; the client declined"
+                    if mode == "commit_without_backfill":
+                        assert shown["plans"], "the preview offered backfill; the client declined"
                     for task_id, _, rows in chain:
                         assert await rows_of(sessions, follower_ids[task_id]) == rows
                     return
@@ -387,7 +362,7 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
                 }
                 assert all(p["plan_version"] == 2 for p in result["backfill_plans"])
                 assert all(i["person_id"] == str(original_id) for i in result["backfill_items"])
-                if mode in {"backfill", "fill_from"}:
+                if mode == "backfill":
                     for task_id, expected in EXPECTED.items():
                         assert await rows_of(sessions, follower_ids[task_id]) == expected
                 assert await rows_of(sessions, moved_id) == [(12, 600)]

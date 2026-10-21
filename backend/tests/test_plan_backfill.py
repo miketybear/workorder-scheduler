@@ -1,7 +1,5 @@
 from datetime import date, timedelta
 
-import pytest
-
 from app.assignments.plan_backfill import Follower, compact
 
 D0 = date(2026, 10, 1)
@@ -15,131 +13,147 @@ def f(name, task, *rows):
     return Follower(name, task, tuple((d(day), m) for day, m in rows))
 
 
-def capacity(days=12, minutes=630):
+def capacity(days=14, minutes=630):
     return {d(n): minutes for n in range(1, days + 1)}
 
 
-def zero(days=12):
+def zero(days=14):
     return {d(n): 0 for n in range(1, days + 1)}
 
 
-def chain():
-    return [
-        f("T20", 20, (1, 30), (2, 630), (3, 630), (4, 630), (5, 480)),
-        f("T30", 30, (5, 150), (6, 450)),
-        f("T40", 40, (6, 180), (7, 420)),
-        f("T50", 50, (7, 210), (8, 390)),
-    ]
+def rows(*pairs):
+    return [(d(n), m) for n, m in pairs]
 
 
-def test_chain_moves_up_when_the_first_task_leaves():
-    # T10 (600 on day 1) is gone, so only the followers load the source person.
-    changes, skipped = compact(chain(), d(1), capacity(), zero())
+def run(followers, vacated, cap=None, external=None):
+    return compact(
+        followers,
+        {d(n) for n in vacated},
+        capacity() if cap is None else cap,
+        zero() if external is None else external,
+    )
+
+
+def t20():
+    return f("T20", 20, (1, 30), (2, 630), (3, 630), (4, 630), (5, 480))
+
+
+def test_worked_example_cascades_by_cell():
+    # T10 (600 on day 1) has left. T20 takes the 600 freed hours from its tail, which frees
+    # day 5 for T30, which takes its day-6 hours.
+    t30 = f("T30", 30, (5, 150), (6, 450))
+    changes, skipped = run([t20(), t30], [1])
     assert not skipped
-    assert changes["T20"] == [(d(1), 630), (d(2), 630), (d(3), 630), (d(4), 510)]
-    assert changes["T30"] == [(d(4), 120), (d(5), 480)]
-    assert changes["T40"] == [(d(5), 150), (d(6), 450)]
-    assert changes["T50"] == [(d(6), 180), (d(7), 420)]
-    for name, rows in changes.items():
-        original = next(x for x in chain() if x.plan_id == name)
-        assert sum(m for _, m in rows) == sum(m for _, m in original.rows)
-        assert rows[-1][0] <= original.rows[-1][0]
+    assert changes["T20"] == rows((1, 630), (2, 630), (3, 630), (4, 510))
+    assert changes["T30"] == rows((5, 600))
 
 
-def test_no_day_exceeds_capacity_after_compaction():
-    changes, _ = compact(chain(), d(1), capacity(), zero())
-    totals = {}
-    for rows in changes.values():
-        for day, m in rows:
-            totals[day] = totals.get(day, 0) + m
-    assert max(totals.values()) <= 630
+def test_totals_preserved_never_later_and_within_capacity():
+    followers = [t20(), f("T30", 30, (5, 150), (6, 450)), f("T40", 40, (6, 180), (7, 420))]
+    changes, _ = run(followers, [1])
+    after = {x.plan_id: changes.get(x.plan_id, sorted(x.rows)) for x in followers}
+    per_day = {}
+    for x in followers:
+        assert sum(m for _, m in after[x.plan_id]) == sum(m for _, m in x.rows)
+        assert after[x.plan_id][-1][0] <= max(dd for dd, _ in x.rows)
+        for day, m in after[x.plan_id]:
+            per_day[day] = per_day.get(day, 0) + m
+    assert max(per_day.values()) <= 630
+    # T40 shares day 6 with nobody after T30 leaves, so it pulls its day-7 hours forward.
+    assert changes["T40"] == rows((6, 600))
 
 
-def test_nothing_changes_when_nothing_was_freed():
-    # The chain already fills every day it can: nothing earlier is free.
-    tight = [
-        f("A", 10, (1, 630), (2, 630)),
-        f("B", 20, (3, 630), (4, 100)),
-    ]
-    assert compact(tight, d(1), capacity(), zero()) == ({}, {})
+def test_two_multi_day_candidates_in_one_cell_earliest_start_first():
+    first = f("F", 10, (1, 100), (5, 200))
+    second = f("G", 90, (1, 100), (4, 500))
+    changes, _ = run([second, first], [1], external={**zero(), d(1): 100})
+    # Free on day 1 = 630 - 100 external - 200 = 330. F (lower task id) takes its 200 first,
+    # G gets the remaining 130.
+    assert changes["F"] == rows((1, 300))
+    assert changes["G"] == rows((1, 230), (4, 370))
 
 
-def test_follower_is_never_made_later_or_longer():
-    # Day 1 is full of other load; day 2 is the only room and it is the old finish.
-    one = [f("A", 10, (2, 300))]
-    changes, _ = compact(one, d(1), capacity(), {**zero(), d(1): 630})
-    assert changes == {}
-    # Capacity shrank so the plan no longer fits before its old finish: left untouched.
-    shrunk = [f("A", 10, (3, 600))]
-    cap = {**capacity(), d(1): 100, d(2): 100, d(3): 100}
-    assert compact(shrunk, d(1), cap, zero()) == ({}, {})
+def test_single_day_task_in_the_cell_is_untouched():
+    single = f("S", 5, (1, 100))
+    multi = f("M", 6, (1, 30), (3, 300))
+    changes, _ = run([single, multi], [1])
+    assert "S" not in changes
+    assert changes["M"] == rows((1, 330))
 
 
-def test_other_work_order_load_is_respected():
-    external = {**zero(), d(1): 600, d(2): 600}
-    changes, _ = compact([f("A", 10, (4, 300))], d(1), capacity(), external)
-    assert changes["A"] == [(d(1), 30), (d(2), 30), (d(3), 240)]
+def test_task_of_another_work_order_is_used_like_any_other():
+    # Followers carry no work-order identity: any plan of the person in the cell qualifies.
+    other = f("OTHER-WO", 10, (1, 30), (2, 300))
+    changes, _ = run([other], [1])
+    assert changes["OTHER-WO"] == rows((1, 330))
 
 
-def test_days_without_rota_capacity_are_never_used():
+def test_nothing_changes_without_free_capacity():
+    full = f("A", 10, (1, 630), (2, 100))
+    assert run([full], [1]) == ({}, {})
+    busy = f("B", 10, (1, 30), (2, 100))
+    assert run([busy], [1], external={**zero(), d(1): 600}) == ({}, {})
+
+
+def test_non_candidate_load_is_respected():
+    # 500 of day 1 belong to a synced plan or Maximo: only 100 are free.
+    changes, _ = run([f("A", 10, (1, 30), (3, 400))], [1], external={**zero(), d(1): 500})
+    assert changes["A"] == rows((1, 130), (3, 300))
+
+
+def test_days_without_rota_capacity_are_not_filled():
     cap = capacity()
-    del cap[d(2)]
-    cap[d(3)] = 0
-    changes, _ = compact([f("A", 10, (5, 630), (6, 370))], d(1), cap, zero())
-    assert changes["A"] == [(d(1), 630), (d(4), 370)]
+    cap[d(1)] = 0
+    assert run([f("A", 10, (1, 30), (3, 400))], [1], cap=cap) == ({}, {})
 
 
-def test_unverified_day_skips_the_follower_and_keeps_its_rows_in_the_picture():
-    external = {**zero(), d(1): None}
-    followers = [f("A", 10, (2, 600)), f("B", 20, (3, 600))]
-    changes, skipped = compact(followers, d(1), capacity(), external)
-    assert skipped == {"A": "load_unverified", "B": "load_unverified"}
-    assert changes == {}
-    # Only day 2 unverified: A needs day 1 only and moves; B must cross day 2 and is skipped.
-    changes, skipped = compact(followers, d(1), capacity(), {**zero(), d(2): None})
-    assert changes["A"] == [(d(1), 600)]
-    assert skipped == {"B": "load_unverified"}
+def test_unverified_load_skips_the_candidate_and_leaves_rows_alone():
+    a = f("A", 10, (1, 30), (3, 400))
+    assert run([a], [1], external={**zero(), d(1): None}) == ({}, {"A": "load_unverified"})
+    # Unverified on the tail day it would touch.
+    assert run([a], [1], external={**zero(), d(3): None}) == ({}, {"A": "load_unverified"})
+    assert run([a], [1], external={}) == ({}, {"A": "load_unverified"})
 
 
-def test_missing_external_load_for_a_working_day_is_unverified():
-    changes, skipped = compact([f("A", 10, (3, 100))], d(1), capacity(), {})
-    assert changes == {} and skipped == {"A": "load_unverified"}
+def test_unverified_candidate_still_counts_as_load_for_others():
+    skipped_one = f("A", 10, (1, 300), (2, 100))
+    other = f("B", 20, (1, 100), (4, 500))
+    changes, skipped = run([skipped_one, other], [1], external={**zero(), d(2): None})
+    # A needs nothing from day 2 itself but would cut it: skipped. B takes the remaining 230.
+    assert skipped == {"A": "load_unverified"}
+    assert changes["B"] == rows((1, 330), (4, 270))
 
 
-def test_rows_before_the_freed_start_stay_where_they_are():
-    changes, _ = compact([f("A", 10, (1, 100), (4, 200))], d(2), capacity(), zero())
-    assert changes["A"] == [(d(1), 100), (d(2), 200)]
+def test_cell_without_a_continuing_task_changes_nothing():
+    assert run([f("A", 10, (1, 30))], [1]) == ({}, {})
 
 
-def test_order_is_by_first_date_then_task_id_regardless_of_input_order():
-    a = f("A", 20, (3, 630))
-    b = f("B", 10, (3, 630))
-    forward, _ = compact([a, b], d(1), capacity(), zero())
-    backward, _ = compact([b, a], d(1), capacity(), zero())
-    assert forward == backward
-    # Same first date: the lower task id is processed first and gets the earliest day.
-    assert forward["B"] == [(d(1), 630)]
-    assert forward["A"] == [(d(2), 630)]
+def test_cascade_through_several_cells():
+    chain = [
+        f("A", 10, (2, 600), (3, 600)),
+        f("B", 20, (3, 30), (4, 600)),
+        f("C", 30, (4, 30), (5, 600)),
+    ]
+    changes, _ = run(chain, [1, 2])
+    # Day 2 (vacated or emptied) lets A pull day 3 forward only if it can: A is on day 2.
+    assert changes["A"] == rows((2, 630), (3, 570))
+    assert changes["B"] == rows((3, 60), (4, 570))
+    assert changes["C"] == rows((4, 60), (5, 570))
 
 
-def test_compaction_is_idempotent():
-    changes, _ = compact(chain(), d(1), capacity(), zero())
-    again = [Follower(n, int(n[1:]), tuple(rows)) for n, rows in changes.items()]
-    assert compact(again, d(1), capacity(), zero()) == ({}, {})
+def test_idempotent_and_deterministic():
+    followers = [t20(), f("T30", 30, (5, 150), (6, 450))]
+    first, _ = run(followers, [1])
+    again = [Follower(n, int(n[1:]), tuple(r)) for n, r in first.items()]
+    assert run(again, [1]) == ({}, {})
+    assert run(followers, [1]) == run(list(reversed(followers)), [1])
 
 
-@pytest.mark.parametrize("limit", [300, 630, 800])
-def test_daily_limit_is_capped_at_630(limit):
-    changes, _ = compact([f("A", 10, (3, 630), (4, 630))], d(1), capacity(minutes=limit), zero())
-    for rows in changes.values():
-        assert all(m <= min(630, limit) for _, m in rows)
-
-
-def test_start_earlier_than_the_moved_plan_lets_followers_use_empty_early_days():
-    # The moved plan sat on day 10; with start on day 1 the chain moves up to the empty days.
-    late = [f("A", 10, (3, 630), (4, 100)), f("B", 20, (4, 530), (5, 300))]
-    assert compact(late, d(10), capacity(), zero()) == ({}, {})
-    changes, skipped = compact(late, d(1), capacity(), zero())
-    assert not skipped
-    assert changes["A"] == [(d(1), 630), (d(2), 100)]
-    assert changes["B"] == [(d(2), 530), (d(3), 300)]
+def test_move_to_another_day_of_the_same_person_vacated_vs_reoccupied():
+    # The moved plan left day 1 but now occupies 570 of day 3 (external there). A pulls hours
+    # from day 5 and day 3; the day it vacates (3) is then offered to B, which sits there.
+    a = f("A", 10, (1, 30), (3, 30), (5, 300))
+    b = f("B", 20, (3, 30), (6, 300))
+    changes, _ = run([a, b], [1], external={**zero(), d(3): 570})
+    assert changes["A"] == rows((1, 360))
+    assert changes["B"] == rows((3, 60), (6, 270))

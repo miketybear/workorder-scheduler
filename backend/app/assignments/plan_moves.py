@@ -36,7 +36,6 @@ class MovePreview(BaseModel):
     target_date: date
     mode: Literal["shift", "reallocate"]
     backfill: bool = True
-    fill_from: date | None = None
 
 
 class BackfillPlan(BaseModel):
@@ -218,9 +217,6 @@ async def proposal(request, db, plan, items, settings, body, backfill):
             break
     if remaining:
         conflict("Not enough verified rota capacity within 366 days", body.mode)
-    first = min(i.date for i in items)
-    if body.fill_from is not None and (first - body.fill_from).days > 366:
-        raise HTTPException(422, "Backfill start must be within 366 days of the plan's first day")
     followers, applications = await backfill_for_move(
         request,
         db,
@@ -232,7 +228,6 @@ async def proposal(request, db, plan, items, settings, body, backfill):
         segments,
         laborcode,
         backfill,
-        body.fill_from,
     )
     await verify_plan_source(request, settings, anchor)
     return {
@@ -262,7 +257,7 @@ async def proposal(request, db, plan, items, settings, body, backfill):
 
 def hashed_out(body):
     """Keep receipt hashes of requests that predate backfill unchanged."""
-    excluded = {"backfill"} | ({"fill_from"} if body.fill_from is None else set())
+    excluded = {"backfill"}
     return excluded | ({"backfill_plans"} if not getattr(body, "backfill_plans", None) else set())
 
 

@@ -29,53 +29,63 @@ class Follower:
     rows: tuple[tuple[date, int], ...]
 
 
-def compact(followers, start, capacity, external):
-    """Return (changes, skipped) after greedily re-placing followers on days >= start.
+def compact(followers, vacated, capacity, external):
+    """Return (changes, skipped): plans pull hours into cells that were just freed.
+
+    For each vacated date d (ascending, re-queued as hours move away from later dates), the
+    free capacity of d goes to plans that already sit on d and continue after it, earliest
+    starting plan first. Each takes hours from its own latest days, so totals stay unchanged
+    and no plan ever finishes later.
 
     capacity: working-day limit per date (missing or <= 0 means no rota capacity).
-    external: minutes used by everything that is not a follower; None means the load for
-    that day is unverified. A missing working day is treated as unverified too (fail closed).
-    A follower changes only if the new placement differs and finishes no later than before.
+    external: minutes used by everything that is not one of the followers; None (or a missing
+    date) means the load is unverified and every candidate that would touch it is skipped.
     """
-    ordered = sorted(followers, key=lambda f: (min(d for d, _ in f.rows), f.task_id, f.plan_id))
-    used: dict[date, int] = {}
-    for f in ordered:
-        for d, m in f.rows:
-            used[d] = used.get(d, 0) + m
-    changes: dict[str, list[tuple[date, int]]] = {}
+    rows = {f.plan_id: dict(f.rows) for f in followers}
+    task = {f.plan_id: f.task_id for f in followers}
+    original = {f.plan_id: sorted(f.rows) for f in followers}
     skipped: dict[str, str] = {}
-    for f in ordered:
-        for d, m in f.rows:
-            used[d] -= m
-        fixed = [(d, m) for d, m in f.rows if d < start]
-        demand = sum(m for d, m in f.rows if d >= start)
-        finish = max(d for d, _ in f.rows)
-        placed: list[tuple[date, int]] = []
-        reason = None
-        day = start
-        while demand and day <= finish:
-            limit = min(DAY_LIMIT, capacity.get(day, 0))
-            if limit > 0:
-                load = external.get(day)
-                if load is None:
-                    reason = "load_unverified"
+    work = set(vacated)
+    for _ in range(100_000):  # hours only move earlier, so this bound is never reached
+        if not work:
+            break
+        d = min(work)
+        work.discard(d)
+        limit = min(DAY_LIMIT, capacity.get(d, 0))
+        if limit <= 0:
+            continue
+        order = sorted(
+            (p for p, r in rows.items() if d in r and any(x > d for x in r)),
+            key=lambda p: (min(rows[p]), task[p], p),
+        )
+        free = limit - (external.get(d) or 0) - sum(r.get(d, 0) for r in rows.values())
+        for p in order:
+            if free <= 0:
+                break
+            r = rows[p]
+            take = min(free, sum(m for x, m in r.items() if x > d))
+            cuts, left = [], take
+            for x in sorted((x for x in r if x > d), reverse=True):
+                cut = min(left, r[x])
+                cuts.append((x, cut))
+                left -= cut
+                if not left:
                     break
-                take = min(demand, limit - load - used.get(day, 0))
-                if take > 0:
-                    placed.append((day, take))
-                    demand -= take
-            day += timedelta(days=1)
-        if reason or demand:
-            placed = []
-            if reason:
-                skipped[f.plan_id] = reason
-        new = sorted(fixed + placed) if placed else None
-        if new is None or new == sorted(f.rows) or new[-1][0] > finish:
-            new = sorted(f.rows)
-        else:
-            changes[f.plan_id] = new
-        for d, m in new:
-            used[d] = used.get(d, 0) + m
+            if external.get(d) is None or any(external.get(x) is None for x, _ in cuts):
+                skipped[p] = "load_unverified"
+                continue
+            r[d] += take
+            for x, cut in cuts:
+                r[x] -= cut
+                if r[x] == 0:
+                    del r[x]
+                work.add(x)
+            free -= take
+    changes = {}
+    for p, r in rows.items():
+        if sorted(r.items()) != original[p]:
+            changes[p] = sorted(r.items())
+            skipped.pop(p, None)
     return changes, skipped
 
 
@@ -84,19 +94,9 @@ def _segments(rows):
 
 
 async def backfill_for_move(
-    request,
-    db,
-    settings,
-    plan,
-    items,
-    anchor,
-    local,
-    new_segments,
-    target_laborcode,
-    enabled,
-    fill_from=None,
+    request, db, settings, plan, items, anchor, local, new_segments, target_laborcode, enabled
 ):
-    """Return (public, applications) for the source person's following plans of the same WO.
+    """Return (public, applications) for plans of the source person sharing the vacated days.
 
     local: every reserved allocation of the connection except the moved plan's own rows.
     Applications are internal: {"plan", "rows", "after", "days"} with ORM objects.
@@ -104,20 +104,17 @@ async def backfill_for_move(
     empty = {"enabled": enabled, "plans": [], "skipped": []}
     if not enabled:
         return empty, []
-    start = min(i.date for i in items)
-    if fill_from is not None:
-        # The planner may have parked the plan late; let followers use earlier empty days.
-        start = min(start, fill_from)
+    vacated = {i.date for i in items}
+    start = min(vacated)
     groups: dict = {}
     for row in local:
         p = row.plan
         if (
             p is None
+            or row.person_id != plan.person_id
             or p.person_id != plan.person_id
             or p.pool_id != plan.pool_id
             or p.state != "reserved"
-            or row.workorder_id != anchor.workorder_id
-            or row.site_id != anchor.site_id
             or row.discipline != anchor.discipline
         ):
             continue
@@ -126,6 +123,7 @@ async def backfill_for_move(
     for pid, (p, rows) in groups.items():
         if (
             p.sync_state == "local"
+            and p.laborcode == plan.laborcode
             and all(
                 r.sync_state == "local"
                 and not r.remote_assignment_id
@@ -133,16 +131,18 @@ async def backfill_for_move(
                 and r.laborcode == p.laborcode
                 for r in rows
             )
-            and p.laborcode == plan.laborcode
         ):
             candidates[pid] = (p, sorted(rows, key=lambda r: r.date))
-    if not candidates:
-        return empty, []
     skipped = []
     for pid in list(candidates):
         p, rows = candidates[pid]
-        if (rows[-1].date - start).days >= HORIZON_DAYS:
-            skipped.append({"plan_id": str(pid), "task_id": rows[0].task_id, "reason": "horizon"})
+        if rows[-1].date < start:
+            del candidates[pid]  # entirely earlier: cannot take part, stays as load
+        elif (rows[-1].date - start).days >= HORIZON_DAYS:
+            if any(r.date in vacated for r in rows):
+                skipped.append(
+                    {"plan_id": str(pid), "task_id": rows[0].task_id, "reason": "horizon"}
+                )
             del candidates[pid]
     if not candidates:
         return {**empty, "skipped": skipped}, []
@@ -201,7 +201,7 @@ async def backfill_for_move(
         Follower(str(pid), rows[0].task_id or 0, tuple((r.date, r.minutes) for r in rows))
         for pid, (_, rows) in candidates.items()
     ]
-    changes, unverified = compact(followers, start, capacity, external)
+    changes, unverified = compact(followers, vacated, capacity, external)
     for pid, (_, rows) in candidates.items():
         if str(pid) in unverified:
             skipped.append(
