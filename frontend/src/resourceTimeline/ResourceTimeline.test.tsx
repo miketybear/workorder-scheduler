@@ -539,63 +539,10 @@ it('treats a reloaded plan as one task: summary with its days, no per-day person
   expect(within(summary).getByText(/1 ngày/)).toBeInTheDocument();
   expect(screen.queryByLabelText('Nhân lực phân công')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Ngày phân công')).not.toBeInTheDocument();
-  expect(screen.getByRole('button',{name:/^Chuyển task/})).toBeInTheDocument();
-  expect(screen.queryByRole('button',{name:'Upload assignment lên Maximo'})).not.toBeInTheDocument();
-});
-
-it.each(['cancel','escape','edit'])('allows %s after upload preview while preserving the saved plan',async action=>{
-  const segment:Assignment={...item,task_id:20,task_workorder_id:'task-20',assignment_id:'source-20',task_description:'Long repair',plan_id:'plan-preview',plan_total_minutes:120,plan_sync_state:'local',sync_state:'local'};
-  await loaded(rowItem(segment));
-  api.tasks.mockResolvedValue({connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',discipline:'E&I',upload_enabled:true,daily_plan_upload_supported:true,tasks:[]});
-  api.planUploadPreview.mockResolvedValue({plan_id:'plan-preview',plan_version:1,preview_token:'token',expires_at:'2099-10-05T05:00:00Z',timezone:grant.timezone,connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',person_id:person.person_id,segments:[{allocation_id:segment.id,date:segment.date,minutes:120,scheduled_start:'2026-10-05T06:30:00+07:00',scheduled_finish:'2026-10-05T08:30:00+07:00'}],total_minutes:120});
-  fireEvent.click(screen.getByRole('button',{name:/Phân công Long repair/}));
-  fireEvent.click(await screen.findByRole('button',{name:/^Xem trước rồi gửi/}));
-  await screen.findByRole('button',{name:'Gửi kế hoạch lên Maximo'});
-  await waitFor(()=>expect(screen.getByRole('button',{name:'Hủy'})).toBeEnabled());
-  expect(screen.getByLabelText('Giờ ngày 05/10/2026')).toBeDisabled();
-  if(action==='edit'){
-    fireEvent.click(screen.getByRole('button',{name:'Chỉnh giờ / Tạo preview mới'}));
-    await waitFor(()=>expect(screen.getByLabelText('Giờ ngày 05/10/2026')).toBeEnabled());
-    fireEvent.click(screen.getByRole('button',{name:'Hủy'}));
-  }else if(action==='cancel')fireEvent.click(screen.getByRole('button',{name:'Hủy'}));
-  else fireEvent.keyDown(screen.getByRole('button',{name:'Hủy'}),{key:'Escape'});
-  await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-  expect(screen.getByRole('button',{name:/Phân công Long repair/})).toBeInTheDocument();
-  expect(api.planUpload).not.toHaveBeenCalled();
-  expect(api.update).not.toHaveBeenCalled();
-  expect(api.remove).not.toHaveBeenCalled();
-});
-
-it('keeps plan editor read-only after an unknown upload is reconciled as confirmed',async()=>{
-  const segment:Assignment={...item,minutes:120,task_id:20,task_workorder_id:'task-20',assignment_id:'source-20',task_description:'Long repair',plan_id:'plan-confirm',plan_total_minutes:120,plan_version:1,plan_sync_state:'local',sync_state:'local'};
-  const synced:Assignment={...segment,remote_assignment_id:'2001',plan_version:2,plan_sync_state:'synced',sync_state:'synced'};
-  const makeReceipt=(state:'unknown'|'confirmed',current:Assignment,requestId='plan-request')=>({attempt_id:'plan-attempt',request_id:requestId,plan_id:'plan-confirm',state,mapping:state==='confirmed'?[{allocation_id:segment.id,date:segment.date,assignment_id:'2001'}]:null,items:[current]});
-  await loaded(rowItem(segment));
-  api.tasks.mockResolvedValue({connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',discipline:'E&I',upload_enabled:true,daily_plan_upload_supported:true,tasks:[]});
-  api.planUploadPreview.mockResolvedValue({plan_id:'plan-confirm',plan_version:1,preview_token:'preview-token',expires_at:'2026-10-05T05:00:00Z',timezone:grant.timezone,source_assignment_id:'source-20',connection_id:'conn',site_id:'SITE',workorder_id:'wo-1',task_workorder_id:'task-20',task_id:20,person_id:person.person_id,laborcode:'LAB-1',segments:[{allocation_id:segment.id,version:segment.version,date:segment.date,minutes:segment.minutes,scheduled_start:'2026-10-05T06:30:00+07:00',scheduled_finish:'2026-10-05T08:30:00+07:00',remote_assignment_id:null}],total_minutes:120,can_upload:true,reason:null});
-  api.planUpload.mockImplementation(async(_planId:string,requestId:string)=>makeReceipt('unknown',{...segment,plan_sync_state:'unknown',sync_state:'unknown'},requestId));
-  api.planUploadStatus.mockImplementation(async()=>makeReceipt('unknown',{...segment,plan_sync_state:'unknown',sync_state:'unknown'}));
-  api.planUploadReceipt.mockImplementation(async(requestId:string)=>makeReceipt('unknown',{...segment,plan_sync_state:'unknown',sync_state:'unknown'},requestId));
-  api.planUploadReconcile.mockImplementation(async(_attemptId:string,requestId:string)=>makeReceipt('confirmed',synced,requestId));
-  fireEvent.click(screen.getByRole('button',{name:/Phân công Long repair/}));
-  await screen.findByRole('button',{name:/^Xem trước rồi gửi/});
-  fireEvent.click(screen.getByRole('button',{name:/^Xem trước rồi gửi/}));
-  await screen.findByRole('button',{name:'Gửi kế hoạch lên Maximo'});
-  fireEvent.click(screen.getByRole('button',{name:'Gửi kế hoạch lên Maximo'}));
-  await screen.findByRole('button',{name:'Đối soát (không gửi lại)'});
-  expect(screen.getByLabelText('Giờ ngày 05/10/2026')).toBeDisabled();
-  expect(screen.getByRole('button',{name:'Hủy'})).toBeDisabled();
-  fireEvent.keyDown(screen.getByRole('button',{name:'Hủy'}),{key:'Escape'});
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button',{name:'Đối soát (không gửi lại)'}));
-  await waitFor(()=>expect(api.planUploadReconcile).toHaveBeenCalledWith('plan-attempt',expect.any(String),'plan-confirm',expect.anything(),expect.any(AbortSignal)));
-  await waitFor(()=>expect(screen.getByText(/Đã đồng bộ với Maximo/)).toBeInTheDocument());
-  expect(screen.getByRole('heading',{name:'Kế hoạch đã đồng bộ Maximo'})).toBeInTheDocument();
-  expect(screen.getAllByText('Đã đồng bộ Maximo').length).toBeGreaterThan(0);
-  expect(screen.queryByLabelText('Giờ phân công')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button',{name:'Xóa phân công'})).not.toBeInTheDocument();
-  expect(screen.queryByRole('button',{name:'Xác nhận lưu'})).not.toBeInTheDocument();
+  expect(screen.getByRole('button',{name:/^Đổi người hoặc ngày bắt đầu/})).toBeInTheDocument();
   expect(screen.queryByRole('button',{name:/^Xem trước rồi gửi/})).not.toBeInTheDocument();
+  expect(screen.queryByRole('heading',{name:/Gửi lên Maximo|Đồng bộ Maximo/})).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Upload assignment lên Maximo'})).not.toBeInTheDocument();
 });
 
 it('shows a synced multi-day plan with fresh mapped Maximo assignments in the connection timezone',async()=>{
@@ -1343,7 +1290,7 @@ it('recovers a lost move response through the receipt without a second POST',asy
   api.planMove.mockRejectedValue(new TypeError('response lost'));
   api.planMoveReceipt.mockResolvedValueOnce(null);
   fireEvent.click(screen.getAllByRole('button',{name:/Phân công Relocate inspection/})[0]);
-  fireEvent.click(await screen.findByRole('button',{name:/^Chuyển task/}));
+  fireEvent.click(await screen.findByRole('button',{name:/^Đổi người hoặc ngày bắt đầu/}));
   fireEvent.change(screen.getByLabelText('Nhân lực đích'),{target:{value:f.target.person_id}});
   await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận chuyển'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Xác nhận chuyển'}));

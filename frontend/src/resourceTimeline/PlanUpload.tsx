@@ -29,7 +29,7 @@ export function PlanUpload({items,supported,writable,timezone,taskLabel,personLa
   async function reconcile(){if(!requestId||!first||busy)return;setBusy(true);setError('');try{await verify();let receipt=await lookupAssignmentPlanUpload(requestId,planId,preview??undefined,new AbortController().signal);if(!receipt){setError('Chưa có biên nhận. Trạng thái vẫn chưa rõ; tiếp tục đối soát, không gửi lại.');return;}if(receipt.state==='unknown')receipt=await reconcileAssignmentPlanUpload(receipt.attempt_id,requestId,planId,preview??undefined,new AbortController().signal);accept(receipt,requestId);}catch(reason){setError(reason instanceof Error?reason.message:'Không thể đối soát an toàn.');}finally{setBusy(false);}}
   const mapped=result?.mapping?.length??0;
   return <section aria-label="Đồng bộ kế hoạch Maximo" className="planUpload">
-    <h3>③ Gửi lên Maximo</h3>
+    <h3>Đồng bộ Maximo</h3>
     {!confirmedReadOnly&&<p style={{margin:0}}>{connectionLabel&&<span style={{display:'inline-block',marginRight:8,padding:'1px 10px',borderRadius:12,background:'var(--accent-tint)',color:'var(--link)',fontSize:12}}>{connectionLabel}</span>}Sẽ gửi {sorted.length} ngày, tổng {hours(sorted.reduce((sum,item)=>sum+item.minutes,0))} giờ. Maximo chưa thay đổi cho tới khi bạn xác nhận ở bước xem trước.</p>}
     {blockedReason&&!confirmedReadOnly&&<p role="status">{blockedReason}</p>}
     {!supported&&!confirmedReadOnly&&<p>Đồng bộ kế hoạch theo ngày đang khóa: API chưa bật contract này.</p>}

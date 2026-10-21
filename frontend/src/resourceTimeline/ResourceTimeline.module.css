@@ -414,3 +414,8 @@ button.dayDelete:hover:not(:disabled) { background: none; }
 .syncStep h3 { margin: 0; }
 .footNote { margin-right: auto; align-self: center; color: var(--muted); font-size: 13px; }
 button.dayDelete { margin-top: 4px; }
+
+.planMore { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: center; }
+button.linkButton { min-height: 0; padding: 4px 0; border: 0; background: none; color: var(--link); font-size: 13px; text-decoration: underline; cursor: pointer; }
+button.linkButton:hover:not(:disabled) { background: none; }
+.planPanel h3 { margin-top: 2px; }
