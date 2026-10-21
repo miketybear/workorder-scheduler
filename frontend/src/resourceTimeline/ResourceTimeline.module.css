@@ -452,3 +452,9 @@ button.iconButton { min-width: 32px; min-height: 28px; padding: 0 8px; border: 0
 .legendTasks { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .legendTasks i { display: inline-block; width: 14px; height: 8px; margin-right: 5px; border-radius: 2px; background: var(--task-0); }
 .legendTasks i[data-hue="1"] { background: var(--task-1); } .legendTasks i[data-hue="2"] { background: var(--task-2); } .legendTasks i[data-hue="3"] { background: var(--task-3); } .legendTasks i[data-hue="4"] { background: var(--task-4); } .legendTasks i[data-hue="5"] { background: var(--task-5); }
+/* Role load cards: name and bar on one line, the figures below it, so the text is never truncated next to the header actions. */
+.roleDonut { display: grid; grid-template-columns: auto minmax(40px, 1fr); grid-template-areas: "head bar" "text text"; align-items: center; gap: 2px 10px; padding: 6px 12px; }
+.roleDonut .roleHeading { grid-area: head; }
+.roleDonut .roleBar { grid-area: bar; min-width: 0; }
+.roleDonut > div:last-child { grid-area: text; max-width: none; }
+.roleDonut > div:last-child small { white-space: normal; overflow: visible; text-overflow: clip; }
