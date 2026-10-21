@@ -16,7 +16,7 @@ import { restoreFocus } from './focusRestore';
 import { DateTimeInput, MonthInput } from '../components/DateTimeInput';
 import { picLabel } from '../scheduling/presentation';
 import type { PicSuggestion } from '../picSuggestion';
-import { localDate, computeLanes, dayNames, monthOf, addMonth, monthDates, addCalendarDays, calendarRange, displayHours, displayDate, formatMaximoDateTime, expectedFinish, parseHours, displayRole, capacityFor, scheduleRange, subMonth, suggestedPic, suggestTaskPlans, todayIn, woWarnings, type AssignedPerson, type ScheduleInfo, type WoWarnings } from './timelineHelpers';
+import { computeLanes, dayNames, monthOf, addMonth, monthDates, addCalendarDays, calendarRange, displayHours, displayDate, formatMaximoDateTime, expectedFinish, parseHours, displayRole, capacityFor, scheduleRange, subMonth, suggestedPic, suggestTaskPlans, todayIn, woWarnings, type AssignedPerson, type ScheduleInfo, type WoWarnings } from './timelineHelpers';
 import styles from './ResourceTimeline.module.css';
 
 type PointerDrag = { payload: string; label: string; startX: number; startY: number; moved: boolean; context: string };
@@ -304,18 +304,9 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
   const currentContext = JSON.stringify([activationEpoch.current, reload, pool?.id, pool?.connection_id, discipline, principal, month]);
   const shownPool = active && !checkingSession && poolRevision === reload ? pool : null;
   const shownTimeline = active && !checkingSession && snapshotContext === currentContext ? timeline : null;
-  // Followers may also use earlier empty days: fill from the work order's scheduled start, or from the first day of the shown month when the work order has no schedule (bounded so the server accepts it).
-  const fillFromOf=(item:Assignment)=>{
-    const order=timeline?.work_orders.find(candidate=>candidate.site_id===item.site_id&&candidate.workorder_id===item.workorder_id);
-    const scheduled=order?.schedstart&&pool?localDate(order.schedstart,pool.timezone):null;
-    const start=scheduled??(month?`${month}-01`:null);
-    if(!start||start>=item.date)return {};
-    const floor=new Date(Date.parse(`${item.date}T00:00:00Z`)-300*86_400_000).toISOString().slice(0,10);
-    return {fill_from:start<floor?floor:start};
-  };
   useEffect(()=>{
     if(!planMove||planMove.unknown||!pool||!timeline)return;
-    const request:AssignmentPlanMoveRequest={connection_id:pool.connection_id,discipline,expected_plan_version:planMove.item.plan_version??0,anchor_allocation_id:planMove.item.id,target_person_id:planMove.targetPersonId,target_date:planMove.targetDate,mode:planMove.mode,...fillFromOf(planMove.item)};
+    const request:AssignmentPlanMoveRequest={connection_id:pool.connection_id,discipline,expected_plan_version:planMove.item.plan_version??0,anchor_allocation_id:planMove.item.id,target_person_id:planMove.targetPersonId,target_date:planMove.targetDate,mode:planMove.mode};
     const context:MutationContext={principal,connectionId:pool.connection_id,discipline,poolId:pool.id,month};
     const controller=new AbortController();planMoveController.current?.abort();planMoveController.current=controller;
     const contextKey=[planMove.planId,planMove.item.id,planMove.targetPersonId,planMove.targetDate,planMove.mode,pool.id,pool.connection_id,discipline,principal,month,reload].join('|');
@@ -771,7 +762,7 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
   }
   async function submitPlanMove(){
     if(!planMove?.preview||!pool||busy||planMove.request)return;
-    const move=planMove;const preview=move.preview as AssignmentPlanMovePreview;const input:AssignmentPlanMoveInput={connection_id:pool.connection_id,discipline,expected_plan_version:preview.plan_version,anchor_allocation_id:move.item.id,target_person_id:move.targetPersonId,target_date:move.targetDate,mode:move.mode,...fillFromOf(move.item),request_id:newId(),segments:preview.segments,...(move.backfillOn&&preview.backfill?.plans.length?{backfill_plans:preview.backfill.plans.map(plan=>({plan_id:plan.plan_id,expected_version:plan.plan_version,segments:plan.after}))}:{})};
+    const move=planMove;const preview=move.preview as AssignmentPlanMovePreview;const input:AssignmentPlanMoveInput={connection_id:pool.connection_id,discipline,expected_plan_version:preview.plan_version,anchor_allocation_id:move.item.id,target_person_id:move.targetPersonId,target_date:move.targetDate,mode:move.mode,request_id:newId(),segments:preview.segments,...(move.backfillOn&&preview.backfill?.plans.length?{backfill_plans:preview.backfill.plans.map(plan=>({plan_id:plan.plan_id,expected_version:plan.plan_version,segments:plan.after}))}:{})};
     const context:MutationContext={principal,connectionId:pool.connection_id,discipline,poolId:pool.id,month};
     setBusy(true);setError('');setPlanMove(current=>current?{...current,request:input}:current);
     try{

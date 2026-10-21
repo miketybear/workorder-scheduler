@@ -1318,29 +1318,6 @@ describe('backfill when a task plan is moved', () => {
     return screen.findByRole('region',{name:'Dồn lịch các task khác'});
   };
 
-  it('asks the server to fill from the work order start so earlier empty days are used', async () => {
-    const f=moveIntegrationFixture();
-    const scheduled={...order,schedstart:'2026-10-01T06:30:00+07:00'};
-    await loaded({...snapshot,rows:f.rows,items:[f.first,f.second],work_orders:[scheduled]});
-    api.planMovePreview.mockResolvedValue(withBackfill(f));
-    api.planMove.mockImplementation(async (_pool:string,_plan:string,input:{request_id:string})=>f.reply(input.request_id,true));
-    fireEvent.click(screen.getAllByRole('button',{name:/Phân công Relocate inspection/})[0]);
-    fireEvent.click(await screen.findByRole('button',{name:'Thao tác khác'}));
-    fireEvent.click(screen.getByRole('menuitem',{name:/^Đổi người/}));
-    fireEvent.change(screen.getByLabelText('Nhân lực đích'),{target:{value:f.target.person_id}});
-    await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận chuyển'})).toBeEnabled());
-    expect(api.planMovePreview.mock.calls.at(-1)?.[2]).toMatchObject({fill_from:'2026-10-01'});
-    fireEvent.click(screen.getByRole('button',{name:'Xác nhận chuyển'}));
-    await waitFor(()=>expect(api.planMove).toHaveBeenCalledOnce());
-    expect(api.planMove.mock.calls[0][2]).toMatchObject({fill_from:'2026-10-01'});
-  });
-
-  it('falls back to the first day of the shown month when the work order has no schedule', async () => {
-    await start();
-    await waitFor(()=>expect(api.planMovePreview).toHaveBeenCalled());
-    expect(api.planMovePreview.mock.calls.at(-1)?.[2]).toMatchObject({fill_from:'2026-10-01'});
-  });
-
   it('shows what would move up, ticked by default, and sends it with the move', async () => {
     const region=await start();
     expect(within(region).getByRole('checkbox')).toBeChecked();
