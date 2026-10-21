@@ -425,3 +425,13 @@ button.linkButton:hover:not(:disabled) { background: none; }
 .actionsLeft button { white-space: nowrap; }
 .drawer .actions { flex-wrap: wrap; }
 .footNote { margin-right: 0; }
+
+.sectionHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sectionHead h3 { margin: 0; }
+.dirtyBadge { padding: 1px 10px; border-radius: 12px; background: var(--warning-bg); color: var(--warning-ink); font-size: 12px; }
+.moreMenu { position: relative; flex: none; }
+button.iconButton { min-width: 32px; min-height: 28px; padding: 0 8px; border: 0; background: transparent; color: var(--ink); font-size: 20px; line-height: 1; cursor: pointer; }
+.menuList { position: absolute; right: 0; top: 100%; z-index: 5; display: grid; min-width: 240px; padding: 4px; background: var(--layer); border: 1px solid var(--line); box-shadow: var(--shadow-overlay); }
+.menuList button { justify-content: flex-start; min-height: 36px; padding: 0 12px; border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+.menuList button:hover:not(:disabled) { background: var(--hover); }
+.menuList button[data-danger] { color: var(--danger-ink); }
