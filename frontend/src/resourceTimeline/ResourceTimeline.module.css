@@ -309,6 +309,7 @@
 .capacity { display: flex; align-items: center; justify-content: space-between; gap: 4px; height: 18px; margin-bottom: 4px; }
 .capacity small[data-alert] { display: inline-flex; color: var(--warning-ink); }
 .assignment { --task: var(--task-1); position: relative; z-index: 0; height: 26px; min-height: 0; margin: 3px 0; padding: 0 7px; border: 0; border-radius: 6px; background: var(--task); color: #ffffff; box-sizing: border-box; }
+.assignment[data-hue="0"], .bridge[data-hue="0"] { --task: var(--task-0); }
 .assignment[data-hue="2"], .bridge[data-hue="2"] { --task: var(--task-2); }
 .assignment[data-hue="3"], .bridge[data-hue="3"] { --task: var(--task-3); }
 .assignment[data-hue="4"], .bridge[data-hue="4"] { --task: var(--task-4); }
@@ -341,7 +342,7 @@
 /* Task-level drawer for a multi-day plan. */
 .planPanel { display: grid; gap: 14px; }
 .planHead { --task: var(--task-1); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 14px; border-left: 4px solid var(--task); background: var(--ground); }
-.planHead[data-hue="2"] { --task: var(--task-2); } .planHead[data-hue="3"] { --task: var(--task-3); } .planHead[data-hue="4"] { --task: var(--task-4); } .planHead[data-hue="5"] { --task: var(--task-5); } .planHead[data-hue="6"] { --task: var(--task-6); }
+.planHead[data-hue="0"] { --task: var(--task-0); } .planHead[data-hue="2"] { --task: var(--task-2); } .planHead[data-hue="3"] { --task: var(--task-3); } .planHead[data-hue="4"] { --task: var(--task-4); } .planHead[data-hue="5"] { --task: var(--task-5); } .planHead[data-hue="6"] { --task: var(--task-6); }
 .planHead strong { display: block; font-size: 15px; }
 .planHead small { display: block; margin-top: 2px; color: var(--muted); }
 .statusChip { flex: none; padding: 2px 10px; border-radius: 12px; background: var(--tag-neutral-bg); color: var(--tag-neutral-ink); font-size: 12px; white-space: nowrap; }
@@ -447,3 +448,7 @@ button.iconButton { min-width: 32px; min-height: 28px; padding: 0 8px; border: 0
 .backfill li:not([data-applied]) { opacity: .6; }
 .dialog .backfillToggle { display: flex; align-items: flex-start; gap: 8px; color: var(--ink); font-size: 14px; font-weight: 500; }
 .backfillToggle input { margin-top: 3px; }
+
+.legendTasks { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.legendTasks i { display: inline-block; width: 14px; height: 8px; margin-right: 5px; border-radius: 2px; background: var(--task-0); }
+.legendTasks i[data-hue="1"] { background: var(--task-1); } .legendTasks i[data-hue="2"] { background: var(--task-2); } .legendTasks i[data-hue="3"] { background: var(--task-3); } .legendTasks i[data-hue="4"] { background: var(--task-4); } .legendTasks i[data-hue="5"] { background: var(--task-5); }

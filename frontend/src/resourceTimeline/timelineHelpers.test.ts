@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeLanes, localDate, scheduleRange, suggestedPic, woWarnings } from './timelineHelpers';
+import { taskHue, computeLanes, localDate, scheduleRange, suggestedPic, woWarnings } from './timelineHelpers';
 
 const now = new Date('2026-10-19T03:00:00Z');
 
@@ -100,5 +100,12 @@ describe('computeLanes', () => {
     const open = computeLanes([item('a1', dates[0], 'A'), item('a2', dates[2], 'A')], dates, none);
     expect(open.bridges.size).toBe(0);
     expect(open.joined.has('A|p1|2026-10-06')).toBe(false);
+  });
+});
+
+describe('taskHue', () => {
+  it('gives each common task stage its own colour slot and everything else the grey slot', () => {
+    expect([10, 20, 30, 40, 50].map(taskHue)).toEqual([4, 2, 3, 1, 5]);
+    expect([60, 70, 5, null, undefined].map(taskHue)).toEqual([0, 0, 0, 0, 0]);
   });
 });

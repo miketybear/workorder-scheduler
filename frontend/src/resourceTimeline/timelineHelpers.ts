@@ -146,3 +146,6 @@ export function computeLanes(items: PlanItem[], dates: string[], isOff: (personI
   }
   return result;
 }
+
+/** Colour slot (1-6) for a task stage; 0 is the neutral grey for any other task number. */
+export const taskHue = (taskId: number | null | undefined): number => ({ 10: 4, 20: 2, 30: 3, 40: 1, 50: 5 } as Record<number, number>)[taskId ?? -1] ?? 0;

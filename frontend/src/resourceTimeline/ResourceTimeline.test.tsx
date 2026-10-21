@@ -123,6 +123,7 @@ it('joins adjacent days of one plan into a start/end bar and keeps the title onl
   await loaded({...snapshot,items:[first,last,alone],work_orders:[order]});
   const cards=screen.getAllByRole('button',{name:/^Phân công/});
   expect(cards.map(card=>card.getAttribute('data-segment')).sort()).toEqual(['end','single','start']);
+  expect(cards.filter(card=>card.getAttribute('data-segment')!=='single').map(card=>card.getAttribute('data-hue'))).toEqual(['2','2']);
   const end=cards.find(card=>card.getAttribute('data-segment')==='end')!;
   expect(end).toHaveTextContent(/^2h$/);
   expect(cards.find(card=>card.getAttribute('data-segment')==='start')).toHaveTextContent('T20 · WO-1 · 2h');
