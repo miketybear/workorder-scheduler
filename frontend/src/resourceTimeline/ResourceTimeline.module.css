@@ -369,3 +369,30 @@
 .dayRows .dayInput input { width: 68px; min-height: 32px; padding: 2px 8px; text-align: right; }
 .dayRows li { min-height: 44px; }
 .syncDetails h3 { display: none; }
+
+.nowrap { white-space: nowrap; }
+.planFacts { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr); }
+.planFacts dd small { color: var(--muted); font-weight: 400; }
+.planHead > div { min-width: 0; }
+.planHead strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dayRows li { grid-template-columns: 124px minmax(0, 1fr) 84px 64px; }
+.dayBar { display: flex; }
+.dayBar i { height: 100%; flex: none; }
+.dayBar i[data-kind="others"] { background: var(--border-strong); }
+.dayBar i[data-kind="plan"] { background: var(--link); }
+.dayBar[data-over] i[data-kind="plan"] { background: var(--danger-ink); }
+.dayRoom { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.dayRoom[data-over] { color: var(--danger-ink); font-weight: 500; }
+.planTools small { color: var(--muted); align-self: center; }
+button.dayDelete { justify-self: start; min-height: 0; padding: 4px 0; border: 0; background: none; color: var(--danger-ink); font-size: 13px; text-decoration: underline; cursor: pointer; }
+button.dayDelete:hover:not(:disabled) { background: none; }
+.statusChip[data-state="synced"] { background: var(--success-bg, var(--tag-green-bg)); color: var(--success-ink); }
+.syncedGrid { width: 100%; border-collapse: collapse; font-size: 13px; }
+.syncedGrid th, .syncedGrid td { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; font-weight: 400; vertical-align: top; }
+.syncedGrid thead th { color: var(--muted); font-size: 12px; font-weight: 500; }
+.syncedGrid td small { display: block; color: var(--muted); }
+.syncedGrid td:nth-child(3) { white-space: nowrap; }
+@media (max-width: 520px) { .dayRows li { grid-template-columns: minmax(0, 1fr) 84px; } .dayRoom { grid-column: 1 / -1; } .planFacts { grid-template-columns: minmax(0, 1fr); } }
+.planPanel { grid-template-columns: minmax(0, 1fr); }
+.planHead small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planFacts dd { overflow-wrap: anywhere; }
