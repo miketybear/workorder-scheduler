@@ -342,3 +342,12 @@
 .monthInput input[type="text"] { flex: 1 1 96px; min-width: 96px; }
 .monthInput .dateTimeError { position: absolute; top: 100%; left: 0; white-space: nowrap; }
 .dtMonths button { min-height: 36px; }
+
+/* Cells that can be edited in place keep to one line and a compact control height. */
+.compactTable td .dateTimeField { flex-wrap: nowrap; gap: 2px; }
+.compactTable td .dateTimeField input[type="text"] { flex: 0 0 148px; width: 148px; min-width: 0; min-height: 32px; padding: 2px 8px; font-size: 13px; }
+.compactTable td .dateTimeButton { min-height: 32px; min-width: 32px; padding: 0 6px; }
+.compactTable td select { min-height: 32px; width: 100%; max-width: 200px; padding: 2px 6px; font-size: 13px; }
+.compactTable td input[inputmode="decimal"] { width: 64px; min-height: 32px; padding: 2px 8px; text-align: right; font-size: 13px; }
+.compactTable td small[role="alert"] { display: block; max-width: 220px; }
+.compactTable td[data-invalid] { box-shadow: inset 3px 0 var(--error); }

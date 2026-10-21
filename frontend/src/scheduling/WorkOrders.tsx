@@ -17,6 +17,10 @@ import { activeGrant } from '../auth/activeGrant';
 import type { PicSuggestion } from '../picSuggestion';
 import { config } from '../config';
 import { equalField } from './editing';
+import { DurationInput, PicSelect, StartInput } from './InlineCells';
+import { problemOf, shown, stage, type Staged, type StagedField } from './inlineEdit';
+import { saveInlineEdits, type InlineRow } from './inlineSave';
+import { outsideShift } from './ShiftNotice';
 import { usePanelFocus } from './usePanelFocus';
 
 type Source = 'maximo' | 'drafts';
@@ -77,6 +81,12 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const [statusFilter, setStatusFilter] = useState('');
   const [planningFilter, setPlanningFilter] = useState('');
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  // Cell edits typed straight into the table; they become drafts only when the user saves them.
+  const [inline, setInline] = useState<Record<string, Staged>>({});
+  const [inlineBusy, setInlineBusy] = useState(false);
+  const [inlineErrors, setInlineErrors] = useState<Record<string, string>>({});
+  const [inlineNotice, setInlineNotice] = useState('');
+  const [crew, setCrew] = useState<{ scope: string; pics: string[]; names: Record<string, string> } | null>(null);
   const [batch, setBatch] = useState<BatchSelection | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -297,6 +307,59 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       (!query || [row.wonum, row.description, row.location].some((value) => value?.toLocaleLowerCase('vi').includes(query)))) ?? [];
   }, [rows, search, statusFilter, planningFilter, draftFilter, choices, view]);
 
+  // The PIC drop-down needs the crew of the scope; read it once, the first time the pointer or focus reaches the table.
+  const crewScope = JSON.stringify(editorScope);
+  const crewRequested = useRef('');
+  const loadCrew = useCallback(() => {
+    const first = rows?.[0];
+    if (grant?.capability !== 'write' || !first || crewRequested.current === crewScope) return;
+    crewRequested.current = crewScope;
+    getDetail({ ...editorScope, site_id: first.siteid, workorder_id: first.workorderid }, new AbortController().signal)
+      .then((detail) => setCrew({ scope: crewScope, pics: detail.allowed_pics, names: detail.pic_names ?? {} }))
+      .catch(() => { crewRequested.current = ''; });
+  }, [rows, grant?.capability, crewScope, editorScope]);
+  const rawByKey = useMemo(() => new Map((rows ?? []).map((row) => [rowKey(row), row])), [rows]);
+  const stagedKeys = Object.keys(inline).filter((key) => rawByKey.has(key));
+  const stagedList = stagedKeys.join('|');
+  const stagedProblems = useMemo(() => Object.fromEntries(stagedList.split('|').filter(Boolean).flatMap((key) => {
+    const raw = rawByKey.get(key);
+    if (!raw || !grant) return [];
+    const marker = chosenPlan(raw, choices[key]);
+    const problem = problemOf(raw, shown(raw, marker && !marker.baseline_changed ? marker.changes : {}, inline[key], grant.timezone).changes, crew?.scope === crewScope ? crew.pics : [inline[key].assignedtechname ?? '']);
+    return problem ? [[key, problem]] : [];
+  })), [stagedList, inline, rawByKey, choices, grant, crew, crewScope]);
+  function stageCell(key: string, field: StagedField, value: string, current: string | null) {
+    setInlineNotice(''); setInline((previous) => stage(previous, key, field, value, current));
+  }
+  async function saveInline() {
+    if (!grant || inlineBusy) return;
+    const controller = new AbortController();
+    const list: InlineRow[] = stagedKeys.flatMap((key) => { const order = rawByKey.get(key); return order ? [{ order, marker: chosenPlan(order, choices[key]), staged: inline[key] }] : []; });
+    setInlineBusy(true); setInlineErrors({}); setInlineNotice(''); setError('');
+    try {
+      const result = await saveInlineEdits(editorScope, grant.timezone, list, controller.signal);
+      result.notices.forEach(onDraftReady);
+      setInline((previous) => Object.fromEntries(Object.entries(previous).filter(([key]) => result.failed[key])));
+      setInlineErrors(result.failed);
+      const saved = list.length - Object.keys(result.failed).length;
+      if (saved > 0) setInlineNotice(`Đã lưu nháp cho ${saved} WO. Maximo chưa thay đổi.`);
+    } catch (cause) {
+      if (cause instanceof RetrievalError && [401, 403, 404].includes(cause.status)) onDenied();
+      else setError(cause instanceof Error ? cause.message : 'Không lưu được các thay đổi trong bảng.');
+    } finally { setInlineBusy(false); }
+  }
+  function fillDown(field: StagedField, key: string) {
+    if (!grant) return;
+    const source = rawByKey.get(key); if (!source) return;
+    const marker = chosenPlan(source, choices[key]);
+    const value = shown(source, marker && !marker.baseline_changed ? marker.changes : {}, inline[key] ?? {}, grant.timezone)[field];
+    if (!value) return;
+    setInlineNotice(''); setInline((previous) => selectedKeys.filter((target) => target !== key && rawByKey.has(target)).reduce((acc, target) => {
+      const order = rawByKey.get(target)!; const plan = chosenPlan(order, choices[target]);
+      return stage(acc, target, field, value, shown(order, plan && !plan.baseline_changed ? plan.changes : {}, {}, grant.timezone)[field]);
+    }, previous));
+  }
+
   const panelOpen = active && !checking && !!(selection || batch || chooser);
   const workspace = usePanelFocus(panelOpen, chooser ?? selection ?? batch);
 
@@ -342,7 +405,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     setUpdatedAt(null); setStale(false);
     selected.current = null;
     retrieved.current = null; setLoadedRange(null);
-    setBatch(null); setSelectedKeys([]); setPlanningFilter('');
+    setBatch(null); setSelectedKeys([]); setPlanningFilter(''); setInline({}); setInlineErrors({}); setInlineNotice('');
     planningPage.current = null; setView('maximo'); setOffset(0); setDraftFilter(''); setChoices({}); setChooser(null);
     setSelection(null); setRechecked(null); setNextOffset(null); dirty.current = false;
     pending.current?.abort();
@@ -762,9 +825,19 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
             <button className={styles.ghost} onClick={() => setSelectedKeys([])}>Bỏ chọn</button>
             {view === 'drafts' && !selectedBatchPlan && <span className={styles.muted}>Chọn WO thuộc cùng một nháp nhóm hoặc mở nháp đơn bằng cách bấm WO.</span>}
       </div>}
+      {grant?.capability === 'write' && (stagedKeys.length > 0 || inlineNotice || Object.keys(inlineErrors).length > 0) && <div className={styles.bulkBar} role="region" aria-label="Thay đổi trong bảng">
+        {stagedKeys.length > 0 && <>
+          <span>{stagedKeys.length} WO có thay đổi chưa lưu</span>
+          <button className={styles.primary} disabled={inlineBusy || Object.keys(stagedProblems).length > 0} onClick={() => void saveInline()}>{inlineBusy ? 'Đang lưu…' : `Lưu ${stagedKeys.length} nháp`}</button>
+          <button className={styles.ghost} disabled={inlineBusy} onClick={() => { setInline({}); setInlineErrors({}); }}>Hủy thay đổi</button>
+          {Object.keys(stagedProblems).length > 0 && <span role="alert" className={styles.error}>{Object.keys(stagedProblems).length} dòng chưa hợp lệ; xem ghi chú đỏ trên dòng.</span>}
+        </>}
+        {inlineNotice && <span role="status">{inlineNotice}</span>}
+        {Object.keys(inlineErrors).length > 0 && <span role="alert" className={styles.error}>{Object.keys(inlineErrors).length} dòng chưa lưu được; xem ghi chú đỏ trên dòng.</span>}
+      </div>}
       {rows !== null && <>
         {visibleRows.length > 0 && grant && <>
-          <div className={`${styles.tableWrap} ${styles.compactTable}${dense ? ` ${styles.denseTable}` : ''}`} tabIndex={0} role="region" aria-label="WO từ Maximo">
+          <div className={`${styles.tableWrap} ${styles.compactTable}${dense ? ` ${styles.denseTable}` : ''}`} tabIndex={0} role="region" aria-label="WO từ Maximo" onMouseEnter={loadCrew} onFocusCapture={loadCrew}>
           <table><thead><tr>{grant.capability === 'write' && <th scope="col"><input type="checkbox" aria-label={`Chọn tất cả ${visibleRows.length} WO trong kết quả lọc đã tải`} checked={!!visibleRows.length && visibleRows.every((row) => selectedKeys.includes(rowKey(row)))} onChange={(e) => setSelectedKeys(e.target.checked ? visibleRows.map(rowKey) : [])} /></th>}
             <th scope="col">Work Order / Type</th><th scope="col">Công việc / Tag Name</th><th scope="col">Status / Priority</th><th scope="col">Lịch dự kiến</th><th scope="col">Target Start / Finish</th><th scope="col">Assigned PIC</th><th scope="col">Duration (giờ)</th></tr></thead>
             <tbody>{visibleRows.map((row, index) => {
@@ -779,10 +852,48 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
               </td>
               <td className={styles.descriptionCell} data-label="Công việc">{row.description ?? '—'}<small>{row.location ?? 'Chưa có Tag Name'}</small></td>
               <td data-label="Status"><span className={styles.statusBadge} data-status={row.status}>{row.status}</span><small>{row.wopriority_description ?? '—'} ({row.wopriority ?? '—'})</small></td>
-              <td data-label="Lịch dự kiến" data-draft={changed(['schedstart', 'schedfinish'])}>{displayDate(row.schedstart, grant.timezone)}<small>→ {displayDate(row.schedfinish, grant.timezone)}</small>{changed(['schedstart', 'schedfinish']) && <small>Nháp</small>}</td>
-              <td data-label="Target" data-draft={changed(['targstartdate', 'targcompdate'])}>{displayDate(row.targstartdate, grant.timezone, false)}<small>→ {displayDate(row.targcompdate, grant.timezone, false)}</small>{changed(['targstartdate', 'targcompdate']) && <small>Nháp</small>}</td>
-              <td data-label="Assigned PIC" data-draft={changed(['assignedtechname'])}>{row.assignedtechname ?? 'Chưa phân công'}{changed(['assignedtechname']) && <small>Nháp</small>}</td>
-              <td data-label="Duration (giờ)" data-draft={changed(['estdur'])}>{row.estdur ?? '—'}{changed(['estdur']) && <small>Nháp</small>}</td>
+              {(() => {
+                const key = rowKey(row);
+                const raw = rawByKey.get(key) ?? row;
+                const writable = grant.capability === 'write';
+                const editable = writable && (!row.drafts || row.drafts.length <= 1 || !!choices[key]);
+                const stagedRow = inline[key] ?? {};
+                const marker = chosenPlan(raw, choices[key]);
+                const view = shown(raw, marker && !marker.baseline_changed ? marker.changes : {}, stagedRow, grant.timezone);
+                const touched = (...fields: StagedField[]) => fields.some((field) => stagedRow[field] !== undefined);
+                const problem = stagedProblems[key] ?? inlineErrors[key];
+                if (!editable) return <>
+                  <td data-label="Lịch dự kiến" data-draft={changed(['schedstart', 'schedfinish'])}>{displayDate(row.schedstart, grant.timezone)}<small>→ {displayDate(row.schedfinish, grant.timezone)}</small>{changed(['schedstart', 'schedfinish']) && <small>Nháp</small>}</td>
+                  <td data-label="Target" data-draft={changed(['targstartdate', 'targcompdate'])}>{displayDate(row.targstartdate, grant.timezone, false)}<small>→ {displayDate(row.targcompdate, grant.timezone, false)}</small>{changed(['targstartdate', 'targcompdate']) && <small>Nháp</small>}</td>
+                  <td data-label="Assigned PIC" data-draft={changed(['assignedtechname'])}>{row.assignedtechname ?? 'Chưa phân công'}{changed(['assignedtechname']) && <small>Nháp</small>}</td>
+                  <td data-label="Duration (giờ)" data-draft={changed(['estdur'])}>{row.estdur ?? '—'}{changed(['estdur']) && <small>Nháp</small>}</td>
+                </>;
+                const pending = (field: StagedField) => touched(field) ? ' (chưa lưu)' : '';
+                const onKey = (field: StagedField) => (event: React.KeyboardEvent) => {
+                  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') { event.preventDefault(); fillDown(field, key); }
+                };
+                return <>
+                  <td data-label="Lịch dự kiến" data-draft={touched('schedstart', 'estdur') || changed(['schedstart', 'schedfinish'])} data-invalid={!!problem || undefined} onKeyDown={onKey('schedstart')}>
+                    <StartInput label={`Sửa nhanh ${row.wonum} Scheduled Start${pending('schedstart')}`} value={view.schedstart} timezone={grant.timezone} disabled={inlineBusy}
+                      onChange={(aware) => stageCell(key, 'schedstart', aware, shown(raw, marker && !marker.baseline_changed ? marker.changes : {}, {}, grant.timezone).schedstart)} />
+                    <small>→ {displayDate(view.schedfinish, grant.timezone)}</small>
+                    {outsideShift(view.schedstart, grant.timezone) && touched('schedstart') && <small>Giờ bắt đầu ngoài ca 06:30–18:30</small>}
+                    {(touched('schedstart', 'estdur') || changed(['schedstart', 'schedfinish'])) && !problem && <small>Nháp</small>}
+                    {problem && <small role="alert" className={styles.error}>{problem}</small>}
+                  </td>
+                  <td data-label="Target" data-draft={changed(['targstartdate', 'targcompdate'])}>{displayDate(row.targstartdate, grant.timezone, false)}<small>→ {displayDate(row.targcompdate, grant.timezone, false)}</small>{changed(['targstartdate', 'targcompdate']) && <small>Nháp</small>}</td>
+                  <td data-label="Assigned PIC" data-draft={touched('assignedtechname') || changed(['assignedtechname'])} onKeyDown={onKey('assignedtechname')}>
+                    <PicSelect label={`Sửa nhanh ${row.wonum} Assigned PIC${pending('assignedtechname')}`} value={view.assignedtechname} pics={crew?.scope === crewScope ? crew.pics : []} names={crew?.names ?? {}} disabled={inlineBusy}
+                      onChange={(pic) => stageCell(key, 'assignedtechname', pic, shown(raw, marker && !marker.baseline_changed ? marker.changes : {}, {}, grant.timezone).assignedtechname)} />
+                    {(touched('assignedtechname') || changed(['assignedtechname'])) && <small>Nháp</small>}
+                  </td>
+                  <td data-label="Duration (giờ)" data-draft={touched('estdur') || changed(['estdur'])} onKeyDown={onKey('estdur')}>
+                    <DurationInput label={`Sửa nhanh ${row.wonum} Est. Duration${pending('estdur')}`} value={stagedRow.estdur ?? view.estdur ?? ''} disabled={inlineBusy}
+                      onChange={(hours) => stageCell(key, 'estdur', hours, shown(raw, marker && !marker.baseline_changed ? marker.changes : {}, {}, grant.timezone).estdur)} />
+                    {(touched('estdur') || changed(['estdur'])) && <small>Nháp</small>}
+                  </td>
+                </>;
+              })()}
             </tr>; })}</tbody></table></div>
         </>}
       </>}

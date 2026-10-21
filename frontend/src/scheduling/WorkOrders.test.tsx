@@ -161,7 +161,7 @@ it('does not overwrite a just-saved plan with an older table response from a con
   fireEvent.click(screen.getByText('Lưu nháp'));
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   await act(async () => finish([row]));
-  expect(screen.getByRole('cell', { name: '9Nháp' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration')).toHaveValue('9');
   expect(document.querySelector('[class*=draftMarker]')).toHaveTextContent(/^Nháp$/);
   expect(screen.getByRole('alert')).toHaveTextContent('Nháp đã thay đổi trong lúc tải');
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
@@ -509,7 +509,7 @@ it('keeps a saved draft reachable after closing without refreshing or deleting i
   await act(async () => fireEvent(window, new Event('focus')));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(document.querySelector('[class*=draftMarker]')).toHaveTextContent(/^Nháp$/);
-  expect(within(screen.getByRole('region', { name: 'WO từ Maximo' })).getByRole('cell', { name: '9Nháp' })).toHaveAttribute('data-draft', 'true');
+  expect(within(screen.getByRole('region', { name: 'WO từ Maximo' })).getByLabelText('Sửa nhanh WO-REAL Est. Duration').closest('td')).toHaveAttribute('data-draft', 'true');
   expect(screen.queryByRole('button', { name: 'Danh sách nháp' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
@@ -728,7 +728,7 @@ it('requires a choice for competing plans and preserves other plans when one is 
   fireEvent.click(screen.getByRole('button', { name: 'Xác nhận xóa nháp' }));
   await waitFor(() => expect(document.querySelector('[class*=draftMarker]')).toHaveTextContent(/^Nháp$/));
   expect(screen.queryByText('2 nháp · chọn để mở')).not.toBeInTheDocument();
-  expect(screen.getByRole('cell', { name: '9Nháp' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration')).toHaveValue('9');
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
 });
 
@@ -860,7 +860,7 @@ it('updates a hidden source snapshot after saving a newer draft version', async 
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   fireEvent.click(screen.getByRole('button', { name: 'WO đã tải' }));
   expect(document.querySelector('[class*=draftMarker]')).toHaveTextContent(/^Nháp$/);
-  expect(screen.getByRole('cell', { name: '11Nháp' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration')).toHaveValue('11');
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
 });
 
@@ -1372,4 +1372,78 @@ it('refuses a PIC suggestion made for another connection or discipline', async (
   expect(await screen.findByText(/thuộc kết nối hoặc discipline khác/)).toBeInTheDocument();
   expect(getDetail).not.toHaveBeenCalled();
   expect(handled).toHaveBeenCalledTimes(1);
+});
+
+// Inline cell editing: Scheduled Start, Assigned PIC and Duration are typed straight into the table and saved as drafts.
+async function inlineSetup(rows: WorkOrder[]) {
+  vi.mocked(retrieveWorkOrders).mockResolvedValue(rows);
+  vi.mocked(getDetail).mockResolvedValue(editorDetail);
+  await setup(false, 'two');
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  const region = await screen.findByRole('region', { name: 'WO từ Maximo' });
+  fireEvent.mouseEnter(region);
+  await waitFor(() => expect(getDetail).toHaveBeenCalledTimes(1));
+  return region;
+}
+const orderWith = (overrides: Partial<WorkOrder>) => ({ ...row, estdur: '8', ...overrides }) as WorkOrder;
+
+it('stages Duration and PIC typed in the row and saves them as one new draft without touching Maximo', async () => {
+  await inlineSetup([orderWith({})]);
+  fireEvent.change(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration'), { target: { value: '12' } });
+  await waitFor(() => expect(within(screen.getByLabelText('Sửa nhanh WO-REAL Assigned PIC')).getByRole('option', { name: 'TECH' })).toBeInTheDocument());
+  fireEvent.change(screen.getByLabelText('Sửa nhanh WO-REAL Assigned PIC'), { target: { value: 'TECH' } });
+  expect(screen.getByText('1 WO có thay đổi chưa lưu')).toBeInTheDocument();
+  vi.mocked(prepareBatch).mockResolvedValue([{ ...editorDetail, item: orderWith({}) }]);
+  vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'new', version: 1, state: 'draft' });
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu 1 nháp' }));
+  await screen.findByText('Đã lưu nháp cho 1 WO. Maximo chưa thay đổi.');
+  const call = vi.mocked(saveDraft).mock.calls[0];
+  expect(call[1]).toEqual({ estdur: '12', assignedtechname: 'TECH' });
+  expect(call[4]).toBeNull();
+  expect(screen.queryByText('1 WO có thay đổi chưa lưu')).not.toBeInTheDocument();
+});
+
+it('recomputes Scheduled Finish on the offshore shift as soon as a start is typed and flags a start past Target Finish', async () => {
+  await inlineSetup([orderWith({ targcompdate: '2026-12-31T23:00:00+07:00' }), orderWith({ workorderid: '101', wonum: 'WO-LATE' })]);
+  setDateTime(screen.getByLabelText('Sửa nhanh WO-REAL Scheduled Start'), '2026-10-05T06:30');
+  const cell = screen.getByLabelText('Sửa nhanh WO-REAL Scheduled Start (chưa lưu)').closest('td')!;
+  expect(cell).toHaveTextContent('05/10/2026, 14:30');
+  expect(cell).toHaveTextContent('Nháp');
+  setDateTime(screen.getByLabelText('Sửa nhanh WO-LATE Scheduled Start'), '2026-10-05T06:30');
+  const late = screen.getByLabelText('Sửa nhanh WO-LATE Scheduled Start (chưa lưu)').closest('td')!;
+  expect(within(late).getByRole('alert')).toHaveTextContent('Target Finish');
+  expect(screen.getByRole('button', { name: 'Lưu 2 nháp' })).toBeDisabled();
+});
+
+it('updates the existing draft of a row instead of creating another one', async () => {
+  await inlineSetup([orderWith({ drafts: [marker] })]);
+  fireEvent.change(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration'), { target: { value: '12' } });
+  vi.mocked(prepareBatch).mockResolvedValue([{ ...editorDetail, item: orderWith({}) }]);
+  vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'draft-one', version: 2, state: 'draft' });
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu 1 nháp' }));
+  await screen.findByText('Đã lưu nháp cho 1 WO. Maximo chưa thay đổi.');
+  const call = vi.mocked(saveDraft).mock.calls[0];
+  expect(call[1]).toEqual({ estdur: '12', assignedtechname: 'TECH' });
+  expect(call[4]).toMatchObject({ draft_id: 'draft-one', version: 1 });
+});
+
+it('fills a typed value down to the other ticked rows with Ctrl+D', async () => {
+  const second = orderWith({ workorderid: '101', wonum: 'WO-TWO' });
+  await inlineSetup([orderWith({}), second]);
+  fireEvent.click(screen.getByLabelText(/Chọn WO-REAL/)); fireEvent.click(screen.getByLabelText(/Chọn WO-TWO/));
+  const first = screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration');
+  fireEvent.change(first, { target: { value: '10' } });
+  fireEvent.keyDown(first, { key: 'd', ctrlKey: true });
+  expect(screen.getByLabelText('Sửa nhanh WO-TWO Est. Duration (chưa lưu)')).toHaveValue('10');
+  expect(screen.getByText('2 WO có thay đổi chưa lưu')).toBeInTheDocument();
+});
+
+it('blocks saving while a typed value is invalid and lets the user discard the edits', async () => {
+  await inlineSetup([orderWith({})]);
+  fireEvent.change(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration'), { target: { value: 'abc' } });
+  expect(screen.getByRole('button', { name: 'Lưu 1 nháp' })).toBeDisabled();
+  expect(screen.getAllByRole('alert').some((node) => /Duration phải là số/.test(node.textContent ?? ''))).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Hủy thay đổi' }));
+  expect(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration')).toHaveValue('8');
+  expect(saveDraft).not.toHaveBeenCalled();
 });
