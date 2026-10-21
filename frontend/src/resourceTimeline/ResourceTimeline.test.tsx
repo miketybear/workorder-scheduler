@@ -607,9 +607,9 @@ it('shows a synced multi-day plan with fresh mapped Maximo assignments in the co
   api.planUploadStatus.mockResolvedValue(receipt);
   fireEvent.click(screen.getAllByRole('button',{name:/Phân công Long repair/})[0]);
   const table=await screen.findByRole('table',{name:'Các ngày Maximo đã đồng bộ'});
-  await screen.findByText(/Đủ 2 phân đoạn cho tổng 3 giờ/);
+  await screen.findByText(/Đã khớp 2 ngày với Maximo · tổng 3 giờ/);
   expect(table).toHaveTextContent('05/10/2026');expect(table).toHaveTextContent('06/10/2026');
-  expect(table).toHaveTextContent('552349');expect(table).toHaveTextContent('2001472');
+  expect(table).not.toHaveTextContent('552349');expect(table).not.toHaveTextContent('2001472');
   expect(table).toHaveTextContent('06:30');expect(table).toHaveTextContent('08:00');
   expect(table).not.toHaveTextContent('07:00');expect(table).not.toHaveTextContent('08:30');
   expect(screen.getByText(/Long repair task/)).toBeInTheDocument();expect(screen.getByText(/LAB-20/)).toBeInTheDocument();

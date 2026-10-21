@@ -396,3 +396,6 @@ button.dayDelete:hover:not(:disabled) { background: none; }
 .planPanel { grid-template-columns: minmax(0, 1fr); }
 .planHead small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .planFacts dd { overflow-wrap: anywhere; }
+.planHead strong { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+.planHead small { overflow: visible; text-overflow: clip; white-space: normal; }
+.syncDetails[hidden] { display: none; }
