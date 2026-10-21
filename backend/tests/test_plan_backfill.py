@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from app.assignments.plan_backfill import Follower, compact
+from app.assignments.plan_backfill import Candidate, compact
 
 D0 = date(2026, 10, 1)
 
@@ -10,7 +10,7 @@ def d(n):
 
 
 def f(name, task, *rows):
-    return Follower(name, task, tuple((d(day), m) for day, m in rows))
+    return Candidate(name, task, tuple((d(day), m) for day, m in rows))
 
 
 def capacity(days=14, minutes=630):
@@ -82,7 +82,7 @@ def test_single_day_task_in_the_cell_is_untouched():
 
 
 def test_task_of_another_work_order_is_used_like_any_other():
-    # Followers carry no work-order identity: any plan of the person in the cell qualifies.
+    # Candidates carry no work-order identity: any plan of the person in the cell qualifies.
     other = f("OTHER-WO", 10, (1, 30), (2, 300))
     changes, _ = run([other], [1])
     assert changes["OTHER-WO"] == rows((1, 330))
@@ -144,7 +144,7 @@ def test_cascade_through_several_cells():
 def test_idempotent_and_deterministic():
     followers = [t20(), f("T30", 30, (5, 150), (6, 450))]
     first, _ = run(followers, [1])
-    again = [Follower(n, int(n[1:]), tuple(r)) for n, r in first.items()]
+    again = [Candidate(n, int(n[1:]), tuple(r)) for n, r in first.items()]
     assert run(again, [1]) == ({}, {})
     assert run(followers, [1]) == run(list(reversed(followers)), [1])
 

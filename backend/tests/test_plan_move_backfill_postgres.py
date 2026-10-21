@@ -1,4 +1,4 @@
-"""Moving a task plan away backfills the source person's following plans of the same WO."""
+"""Moving a task plan away lets tasks still in its vacated cells take the freed hours."""
 
 import asyncio
 from datetime import date, timedelta
@@ -53,8 +53,14 @@ CHAIN = [
     (40, "340", [(6, 180), (7, 420)]),
     (50, "350", [(7, 210), (8, 390)]),
 ]
+# T20 already sits on 10-01/10-02 when T10 vacates only 10-03: those earlier rows must stay.
+CHAIN_PARTIAL = [
+    (20, "320", [(1, 630), (2, 630), (3, 30), (4, 630), (5, 480)]),
+    *CHAIN[1:],
+]
+SAME_OUTCOME = {"backfill", "partial_before"}
 # Cell rule: T20 takes the 600 freed hours of 10-01 from its tail; each emptied tail day is then
-# offered to the task that continues from it, cascading down the chain.
+# offered to the task that continues from it, cascading from cell to cell.
 EXPECTED = {
     20: [(1, 630), (2, 630), (3, 630), (4, 510)],
     30: [(5, 600)],
@@ -87,6 +93,7 @@ async def rows_of(sessions, plan_id):
         "synced_follower",
         "replay",
         "other_wo_load",
+        "partial_before",
     ],
 )
 def test_move_backfills_followers_atomically(monkeypatch, mode):
@@ -101,8 +108,8 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
         AsyncMock(return_value=("MECH", "synthetic", False)),
     )
 
-    chain = CHAIN
-    moved_day = 1
+    chain = CHAIN_PARTIAL if mode == "partial_before" else CHAIN
+    moved_day = 3 if mode == "partial_before" else 1
 
     async def scenario():
         async with concurrent_plan_database() as sessions:
@@ -278,7 +285,7 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
                     changing = {5, 20, 30, 40, 50}
                 by_task = {p["task_id"]: p for p in shown["plans"]}
                 assert set(by_task) == changing
-                if mode == "backfill":
+                if mode in SAME_OUTCOME:
                     for task_id, plan_view in by_task.items():
                         assert plan_view["plan_id"] == str(follower_ids[task_id])
                         assert plan_view["plan_version"] == 1
@@ -362,7 +369,7 @@ def test_move_backfills_followers_atomically(monkeypatch, mode):
                 }
                 assert all(p["plan_version"] == 2 for p in result["backfill_plans"])
                 assert all(i["person_id"] == str(original_id) for i in result["backfill_items"])
-                if mode == "backfill":
+                if mode in SAME_OUTCOME:
                     for task_id, expected in EXPECTED.items():
                         assert await rows_of(sessions, follower_ids[task_id]) == expected
                 assert await rows_of(sessions, moved_id) == [(12, 600)]

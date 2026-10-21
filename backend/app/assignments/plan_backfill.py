@@ -1,8 +1,12 @@
-"""Close the gap a moved task plan leaves behind by pulling later same-WO plans forward.
+"""Cell-based backfill after a task plan leaves (or vacates) days of its person.
 
-compact() is pure. backfill_for_move() gathers the same facts plan moves and day-segment edits
-use (rota capacity, Maximo plus other local load) and returns both the public preview and the
-rows to apply, so the preview and the commit share one computation.
+A cell is one person on one day. Tasks still in a vacated cell that continue on later days
+take over its free hours and give the same hours back from their last days, so their totals
+stay unchanged and they finish earlier. The rule is work-order agnostic and repeats on the
+cells that were just emptied. compact() is pure. backfill_for_move() gathers the same facts
+plan moves and day-segment edits use (rota capacity, Maximo plus other local load) and
+returns both the public preview and the rows to apply, so preview and commit share one
+computation.
 """
 
 from dataclasses import dataclass
@@ -23,7 +27,7 @@ HORIZON_DAYS = 366
 
 
 @dataclass(frozen=True)
-class Follower:
+class Candidate:
     plan_id: str
     task_id: int
     rows: tuple[tuple[date, int], ...]
@@ -38,7 +42,7 @@ def compact(followers, vacated, capacity, external):
     and no plan ever finishes later.
 
     capacity: working-day limit per date (missing or <= 0 means no rota capacity).
-    external: minutes used by everything that is not one of the followers; None (or a missing
+    external: minutes used by everything that is not one of the candidates; None (or a missing
     date) means the load is unverified and every candidate that would touch it is skipped.
     """
     rows = {f.plan_id: dict(f.rows) for f in followers}
@@ -96,7 +100,7 @@ def _segments(rows):
 async def backfill_for_move(
     request, db, settings, plan, items, anchor, local, new_segments, target_laborcode, enabled
 ):
-    """Return (public, applications) for plans of the source person sharing the vacated days.
+    """Return (public, applications) for the source person's tasks sharing the vacated cells.
 
     local: every reserved allocation of the connection except the moved plan's own rows.
     Applications are internal: {"plan", "rows", "after", "days"} with ORM objects.
@@ -198,7 +202,7 @@ async def backfill_for_move(
         external[day] = effective_load(others, remote, plan.laborcode, day)["allocated_minutes"]
         day += timedelta(days=1)
     followers = [
-        Follower(str(pid), rows[0].task_id or 0, tuple((r.date, r.minutes) for r in rows))
+        Candidate(str(pid), rows[0].task_id or 0, tuple((r.date, r.minutes) for r in rows))
         for pid, (_, rows) in candidates.items()
     ]
     changes, unverified = compact(followers, vacated, capacity, external)
@@ -232,7 +236,8 @@ async def backfill_for_move(
                 "plan": p,
                 "rows": rows,
                 "after": dict(after),
-                "days": {d: day_rows[d] for d, _ in after},
+                # The cell rule never creates dates, so only existing rota days are ever read.
+                "days": {d: day_rows[d] for d, _ in after if d in day_rows},
             }
         )
     return {"enabled": True, "plans": plans, "skipped": skipped}, applications

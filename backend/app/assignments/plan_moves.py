@@ -262,7 +262,7 @@ def hashed_out(body):
 
 
 def apply_backfill(db, applications, person_id, cells):
-    """Rewrite follower rows like a day-segment edit; returns (plan, before view, row)."""
+    """Rewrite backfilled rows like a day-segment edit; returns (plan, before view, row)."""
     from app.assignments.routes import view
 
     out = []
