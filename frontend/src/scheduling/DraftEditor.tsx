@@ -20,11 +20,12 @@ const labels: Record<EditableField, string> = { schedstart: 'Scheduled Start', s
 const target = (field: EditableField) => field === 'targstartdate' || field === 'targcompdate';
 export type EditorSelection = { key: Identity } | { draftId: string };
 
-export function DraftEditor({ selection, scope, writable, suspended, active = true, verifiedDetail, pmRestoreOrigin = null, prefill = null, onPrefillConsumed, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, timezone, connection }: {
+export function DraftEditor({ selection, scope, writable, suspended, active = true, verifiedDetail, pmRestoreOrigin = null, prefill = null, onPrefillConsumed, seed = null, onSeedConsumed, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, timezone, connection }: {
   timezone: string;
   active?: boolean;
   connection?: UploadConnection;
   prefill?: { site_id: string; workorder_id: string; pic: string } | null; onPrefillConsumed?: () => void;
+  seed?: { site_id: string; workorder_id: string; changes: Changes } | null; onSeedConsumed?: () => void;
   verifiedDetail?: Detail | Restored | null; pmRestoreOrigin?: Baseline | null; selection: EditorSelection; scope: Scope; writable: boolean; suspended: boolean;
   onDirty: (dirty: boolean) => void; onDenied: () => void; onClose: () => void;
   onDraftReady?: (draft: DraftNotice) => void;
@@ -46,6 +47,8 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   // Read through refs so a changing callback identity never restarts the in-flight load.
   const prefillRef = useRef(prefill); const prefillConsumedRef = useRef(onPrefillConsumed);
   useEffect(() => { prefillRef.current = prefill; prefillConsumedRef.current = onPrefillConsumed; });
+  const seedRef = useRef(seed); const seedConsumedRef = useRef(onSeedConsumed);
+  useEffect(() => { seedRef.current = seed; seedConsumedRef.current = onSeedConsumed; });
   const [committed, setCommitted] = useState('{}');
   const panel = useRef<HTMLElement>(null);
   const pending = useRef<AbortController | null>(null);
@@ -97,8 +100,15 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
         setBlocked(value.baseline_changed || !value.changes_valid_now);
         onDraftReady?.({ ...value, items: [value] });
       }
+      // Values already staged or drafted in the table row win over what was loaded, so both views agree.
+      const carried = seedRef.current;
+      if (carried && carried.site_id === value.item.siteid && carried.workorder_id === value.item.workorderid) {
+        const existing = 'changes' in value ? value.changes : {};
+        setChanges({ ...existing, ...carried.changes });
+        seedConsumedRef.current?.();
+      }
       const wanted = prefillRef.current;
-      if (wanted && wanted.site_id === value.item.siteid && wanted.workorder_id === value.item.workorderid) {
+      if (wanted &&wanted.site_id === value.item.siteid && wanted.workorder_id === value.item.workorderid) {
         const existing = 'changes' in value ? value.changes : {};
         if (value.baseline.assignedtechname) setNotice(`WO đã có PIC ${value.baseline.assignedtechname}; không điền sẵn PIC gợi ý.`);
         else if (existing.assignedtechname !== undefined) setNotice('Nháp đã có PIC; không điền sẵn PIC gợi ý.');

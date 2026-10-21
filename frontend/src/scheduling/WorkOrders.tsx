@@ -5,7 +5,7 @@ import { getAuthSummary, loginUrl, type Session } from '../api/client';
 import { RetrievalError, retrieveWorkOrders, type WorkOrder, type WorkOrderFilter } from '../api/workOrders';
 import styles from '../App.module.css';
 import { DraftEditor, type EditorSelection } from './DraftEditor';
-import { continueUpload, deleteDraft, editableFields, getDetail, lookupUploadRequest, openDraft, reconcileUpload, type Baseline, type Detail, type DraftNotice,
+import { continueUpload, deleteDraft, editableFields, getDetail, lookupUploadRequest, openDraft, reconcileUpload, type Baseline, type Changes, type Detail, type DraftNotice,
   type Scope, type UploadRecoveryEntry, type UploadStatus, type UploadStatusItem, UploadRequestNotFoundError } from '../api/drafts';
 import type { FinalizedUpload } from './UploadPreviewPanel';
 import { currentMonthRange, startOfDay } from '../api/dates';
@@ -19,7 +19,7 @@ import type { PicSuggestion } from '../picSuggestion';
 import { config } from '../config';
 import { equalField } from './editing';
 import { DurationInput, PicSelect, StartInput } from './InlineCells';
-import { problemOf, shown, stage, type Staged, type StagedField } from './inlineEdit';
+import { deriveChanges, hasChanges, problemOf, shown, stage, type Staged, type StagedField } from './inlineEdit';
 import { saveInlineEdits, type InlineRow } from './inlineSave';
 import { outsideShift } from './ShiftNotice';
 import { usePanelFocus } from './usePanelFocus';
@@ -112,6 +112,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   }
   const autoRetrievedScope = useRef('');
   const [picPrefill, setPicPrefill] = useState<{ site_id: string; workorder_id: string; pic: string } | null>(null);
+  const [editorSeed, setEditorSeed] = useState<{ site_id: string; workorder_id: string; changes: Changes } | null>(null);
   const handledSuggestion = useRef(0);
   const editorScope = useMemo(() => ({ connection_id: grant?.connection_id ?? '', discipline: grant?.discipline ?? '' }), [grant]);
   const panelGuardToken = JSON.stringify([selection, batch]);
@@ -131,6 +132,18 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     else knownDrafts.current.set(draft.draft_id, { version: draft.version,
       members: draft.items.map((item) => JSON.stringify([item.item.siteid, item.item.workorderid])) });
     setRows((previous) => previous && updatePlans(previous, draft));
+    // A saved draft now carries these cell edits, so the table stops showing them as unsaved.
+    if (draft.items) setInline((previous) => {
+      let next = previous;
+      for (const item of draft.items ?? []) {
+        const key = rowKey(item.item); const staged = previous[key];
+        if (!staged) continue;
+        const kept = Object.fromEntries(Object.entries(staged).filter(([field, value]) =>
+          item.changes[field as StagedField] === undefined || !equalField(field as StagedField, value, item.changes[field as StagedField] ?? null)));
+        next = { ...next }; if (Object.keys(kept).length) next[key] = kept; else delete next[key];
+      }
+      return next;
+    });
     setChoices((previous) => Object.fromEntries([
       ...Object.entries(previous).filter(([, id]) => id !== draft.draft_id),
       ...draft.items?.map((item) => [rowKey(item.item), draft.draft_id]) ?? [],
@@ -440,10 +453,19 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     setSelection(null); setBatch(null); setChooser(null); setRechecked(null); dirty.current = false;
   }
   function filterChanged() { setSelectedKeys([]); }
+  // What the table shows for this row (group draft changes plus unsaved cell edits), handed to the single-WO editor.
+  function carryToEditor(row: WorkOrder, plan?: PlanningMarker) {
+    const key = rowKey(row); const staged = inline[key];
+    const groupChanges = plan?.is_batch && !plan.baseline_changed ? plan.changes : {};
+    if (!grant || (!staged && !Object.keys(groupChanges).length)) { setEditorSeed(null); return; }
+    const changes = deriveChanges(rawByKey.get(key) ?? row, groupChanges, staged ?? {}, grant.timezone);
+    setEditorSeed(hasChanges(changes) ? { site_id: row.siteid, workorder_id: row.workorderid, changes } : null);
+  }
   function openPlan(row: WorkOrder, plan: PlanningMarker) {
     if (!discard()) return;
     dirty.current = false;
     setChoices((previous) => ({ ...previous, [rowKey(row)]: plan.draft_id }));
+    carryToEditor(row, plan);
     // A group draft has no single-WO editor; its rows are edited in the table and sent together.
     if (plan.is_batch) choose({ key: { ...editorScope, site_id: row.siteid, workorder_id: row.workorderid } });
     else choose({ draftId: plan.draft_id });
@@ -454,7 +476,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       selected.current = null;
       setSelection(null); setBatch(null); setChooser(row); dirty.current = false;
     } else if (row.drafts?.length) openPlan(row, row.drafts[0]);
-    else choose({ key: { ...editorScope, site_id: row.siteid, workorder_id: row.workorderid } });
+    else { carryToEditor(row); choose({ key: { ...editorScope, site_id: row.siteid, workorder_id: row.workorderid } }); }
   }
   useEffect(() => {
     if (!active) return;
@@ -630,7 +652,6 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
 
   const activeFilterCount = [!!search.trim(), !!statusFilter, !!planningFilter, !!draftFilter].filter(Boolean).length;
   const draftedCount = rows?.filter((row) => row.drafts?.length).length ?? 0;
-  const draftsToDiscard = loadedDrafts().size;
 
   return <div ref={workspace} tabIndex={-1}>
     <h1 className={styles.srOnly}>Work Orders</h1>
@@ -686,6 +707,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         <button className={styles.tertiary} onClick={() => choose({ key: { ...editorScope, site_id: chooser.siteid, workorder_id: chooser.workorderid } })}>Xem Maximo / tạo nháp mới</button>
       </section>}
       {selection && grant && <DraftEditor key={editorGeneration} selection={selection} scope={editorScope} prefill={picPrefill} onPrefillConsumed={() => setPicPrefill(null)}
+        seed={editorSeed} onSeedConsumed={() => setEditorSeed(null)}
         timezone={grant.timezone} active={active}
         pmRestoreOrigin={'key' in selection && session?.user.id ? pmOrigins.get(JSON.stringify([session.user.id, editorScope.connection_id,
           editorScope.discipline, selection.key.site_id, selection.key.workorder_id])) ?? null : null}

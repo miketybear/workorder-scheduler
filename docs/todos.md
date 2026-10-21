@@ -123,6 +123,12 @@ Cập nhật: 2026-10-19.
       `BatchPlanner sendOnly` (bảng tóm tắt chỉ đọc + phần upload cũ). Giới hạn 200 WO mỗi lần gửi (vượt thì báo thu hẹp
       bằng bộ lọc, không lưu/xóa gì). Chưa kiểm tra thủ công trên trình duyệt với dữ liệu thật; 489 frontend test, lint,
       typecheck đạt.
+- [x] **Hộp thoại chi tiết nối với bảng chính** (frontend, 2026-10-21): bấm số WO giờ mang sang `DraftEditor` (prop `seed`) giá trị
+      đang hiện trên dòng: ô sửa trực tiếp chưa lưu, và với WO thuộc nháp nhóm là giá trị của nháp nhóm (trước đây mở bản Maximo
+      trống). Giá trị này hiện như thay đổi chưa lưu trong hộp thoại; dòng bảng giữ ô chưa lưu cho tới khi hộp thoại lưu nháp
+      (`onDraftReady` bỏ các ô trùng giá trị nháp vừa lưu). Lưu từ hộp thoại với WO thuộc nháp nhóm vẫn tạo nháp đơn, được gom lại
+      khi bấm "Gửi". Xóa biến `draftsToDiscard` thừa. Kiểm tra thủ công: Duration 7 trong bảng hiện 7 ở hộp thoại; 491 frontend test,
+      lint, typecheck đạt.
 - [x] **Lỗi 503 khi lưu nháp ("Không hoàn tất yêu cầu")**: role runtime thiếu quyền UPDATE cột `result` của
       `draft_submission` (biên nhận được chèn rỗng rồi cập nhật trong cùng transaction). Thêm
       `GRANT UPDATE (result)` vào `backend/sql/provision_roles.sql`, áp vào DB dev local bằng role owner, và

@@ -1169,6 +1169,22 @@ it('disables sending while table edits are unsaved', async () => {
   expect(button).toBeEnabled();
 });
 
+it('hands unsaved cell edits to the detail dialog and keeps them in the table until a draft is saved', async () => {
+  vi.mocked(getDetail).mockResolvedValue(editorDetail);
+  await inlineSetup([orderWith({})]);
+  fireEvent.change(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration'), { target: { value: '7' } });
+  fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
+  expect(await screen.findByLabelText('Est. Duration')).toHaveValue('7');
+  expect(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration (chưa lưu)')).toHaveValue('7');
+});
+
+it('opens a member of a group draft in the detail dialog with the group draft values', async () => {
+  vi.mocked(getDetail).mockResolvedValue(editorDetail);
+  await loadDrafted([orderWith({ drafts: [groupMarker] })]);
+  fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
+  expect(await screen.findByLabelText('Est. Duration')).toHaveValue('9');
+});
+
 it('opens the existing group draft untouched in the send-only panel', async () => {
   await loadDrafted([{ ...row, drafts: [groupMarker] }, { ...second, drafts: [groupMarker] }]);
   vi.mocked(openBatch).mockResolvedValue({ draft_id: 'group', version: 3, state: 'draft', items: [member(row), member(second)] });
