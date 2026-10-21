@@ -154,6 +154,8 @@ def snapshot_token(current):
 
 class DraftUpdate(DraftRequest):
     version: int = Field(gt=0, strict=True)
+    # Existing drafts only: adopt the current Maximo baseline and keep the submitted changes.
+    rebase: bool = False
 
 
 async def actor_after_io(request, db, identity):
@@ -165,7 +167,11 @@ async def actor_after_io(request, db, identity):
 
 
 async def submission(db, actor_id, payload, draft_id):
-    request_hash = digest({"draft_id": str(draft_id), "payload": payload.model_dump(mode="json")})
+    body = payload.model_dump(mode="json")
+    if not body.get("rebase"):
+        # Hash rebase only when set so receipts stored before the field existed still replay.
+        body.pop("rebase", None)
+    request_hash = digest({"draft_id": str(draft_id), "payload": body})
     # The unique insert waits for a concurrent transaction. Receipt and draft commit together.
     inserted = await db.scalar(
         insert(DraftSubmission)
@@ -216,6 +222,7 @@ async def persist(request, payload, draft_id=None):
             return receipt.result
         if snapshot_token(current) != payload.baseline_token:
             raise HTTPException(409, "Work order changed; reload before saving")
+        rebased = False
         try:
             if draft_id is None:
                 draft = await create_draft(db, actor.user_id, current, payload.changes)
@@ -223,10 +230,16 @@ async def persist(request, payload, draft_id=None):
                 if draft.version != payload.version:
                     raise HTTPException(409, "Draft changed; reopen before saving")
                 item = items[0]
-                if item.baseline != current.baseline.model_dump(mode="json"):
+                fresh = current.baseline.model_dump(mode="json")
+                rebased = payload.rebase and item.baseline != fresh
+                if item.baseline != fresh and not payload.rebase:
                     raise HTTPException(409, "Draft baseline changed; start a new draft")
                 if not build_changes(current.baseline, payload.changes, set(current.allowed_pics)):
                     raise ValueError("Empty changes")
+                if rebased:
+                    previous = digest(item.baseline)
+                    item.baseline = fresh
+                    item.upstream_revision = current.revision
                 item.changes = payload.changes.model_dump(mode="json", exclude_unset=True)
                 draft.version += 1
                 draft.updated_at = datetime.now(UTC)
@@ -236,6 +249,9 @@ async def persist(request, payload, draft_id=None):
                 "state": "draft",
                 "updated_at": draft.updated_at.isoformat(),
             }
+            if rebased:
+                # Draft saves have no audit table; the durable receipt records the refresh.
+                receipt.result["rebased_from"] = [previous]
             await db.flush()
         except ValueError:
             raise HTTPException(

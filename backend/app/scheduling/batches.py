@@ -16,6 +16,7 @@ from app.scheduling.drafts import WorkOrderKey, require_scope
 from app.scheduling.routes import (
     actor_after_io,
     checked_settings,
+    digest,
     owned_draft,
     restore_data,
     snapshot_token,
@@ -60,6 +61,8 @@ class BatchSave(BatchPrepare):
 
 class BatchUpdate(BatchSave):
     version: int = Field(gt=0, strict=True)
+    # Existing drafts only: adopt the current Maximo baselines and keep the submitted changes.
+    rebase: bool = False
 
 
 async def snapshots(request, payload, *, write=True, csrf=True, names=False):
@@ -179,6 +182,7 @@ async def persist_batch(request, payload, draft_id=None):
             await db.flush()
         elif draft.version != payload.version:
             raise HTTPException(409, "Draft changed; reopen before saving")
+        rebased = []
         for edit, (_, current) in zip(payload.items, results, strict=True):
             values = current.baseline.model_dump(mode="json")
             if draft_id is None:
@@ -195,7 +199,17 @@ async def persist_batch(request, payload, draft_id=None):
             else:
                 item = old[(edit.site_id, edit.workorder_id)]
                 if item.baseline != values:
-                    raise HTTPException(409, "Draft baseline changed; create a new draft")
+                    if not payload.rebase:
+                        raise HTTPException(409, "Draft baseline changed; create a new draft")
+                    rebased.append(
+                        {
+                            "site_id": edit.site_id,
+                            "workorder_id": edit.workorder_id,
+                            "digest": digest(item.baseline),
+                        }
+                    )
+                    item.baseline = values
+                    item.upstream_revision = current.revision
             item.changes = edit.changes.model_dump(mode="json", exclude_unset=True)
         if draft_id is not None:
             draft.version += 1
@@ -206,6 +220,9 @@ async def persist_batch(request, payload, draft_id=None):
             "state": "draft",
             "updated_at": draft.updated_at.isoformat(),
         }
+        if rebased:
+            # Draft saves have no audit table; the durable receipt records the refresh.
+            receipt.result["rebased_from"] = rebased
         await db.flush()
         return receipt.result
 
