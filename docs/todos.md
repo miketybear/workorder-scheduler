@@ -72,7 +72,7 @@ Cập nhật: 2026-10-19.
 
 ### C. Dọn dẹp
 
-- [ ] Xóa nhánh `ui/design-tokens` (local và remote) vì đã merge.
+- [x] Xóa nhánh `ui/design-tokens` (local và remote) vì đã merge — 2026-10-21.
 - [ ] Lần tải nguội (25–30 giây) chưa đo được vì cần xóa cache backend/Maximo.
 
 ## Ô ngày giờ 24 giờ và họ tên PIC — 2026-10-20
