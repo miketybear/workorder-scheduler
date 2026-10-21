@@ -419,3 +419,9 @@ button.dayDelete { margin-top: 4px; }
 button.linkButton { min-height: 0; padding: 4px 0; border: 0; background: none; color: var(--link); font-size: 13px; text-decoration: underline; cursor: pointer; }
 button.linkButton:hover:not(:disabled) { background: none; }
 .planPanel h3 { margin-top: 2px; }
+
+.actionsLeft { display: flex; gap: 8px; margin-right: auto; }
+.drawer .actions .actionsLeft button:last-child { background: var(--layer); color: var(--danger-ink); border-color: var(--danger-ink); }
+.actionsLeft button { white-space: nowrap; }
+.drawer .actions { flex-wrap: wrap; }
+.footNote { margin-right: 0; }

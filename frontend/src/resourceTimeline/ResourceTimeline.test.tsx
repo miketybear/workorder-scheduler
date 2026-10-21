@@ -501,7 +501,7 @@ describe('editing the day hours of a plan', () => {
   it('saves new hours for every day in one request once the total still matches the task', async () => {
     const {first,second}=await open();
     api.planSegments.mockImplementation(async (_pool:string,_plan:string,input:{request_id:string})=>({request_id:input.request_id,plan_id:'plan-hours',plan_version:2,items:[{...first,minutes:60,version:2},{...second,minutes:180,version:2}],assignment_revision:'r2',previous_assignment_revision:'r1'}));
-    const save=screen.getByRole('button',{name:'Lưu giờ các ngày'});
+    const save=screen.getByRole('button',{name:'Lưu thay đổi'});
     expect(save).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Giờ ngày 05/10/2026'),{target:{value:'1'}});
     expect(screen.getByRole('alert')).toHaveTextContent(/phải bằng 4 giờ/);
@@ -520,7 +520,7 @@ describe('editing the day hours of a plan', () => {
     api.planSegments.mockResolvedValue(undefined);
     fireEvent.change(screen.getByLabelText('Giờ ngày 05/10/2026'),{target:{value:'0'}});
     fireEvent.change(screen.getByLabelText('Giờ ngày 06/10/2026'),{target:{value:'4'}});
-    fireEvent.click(screen.getByRole('button',{name:'Lưu giờ các ngày'}));
+    fireEvent.click(screen.getByRole('button',{name:'Lưu thay đổi'}));
     await waitFor(()=>expect(api.planSegments).toHaveBeenCalled());
     expect(api.planSegments.mock.calls[0][2].segments).toEqual([{date:'2026-10-06',minutes:240}]);
   });
@@ -539,7 +539,7 @@ it('treats a reloaded plan as one task: summary with its days, no per-day person
   expect(within(summary).getByText(/1 ngày/)).toBeInTheDocument();
   expect(screen.queryByLabelText('Nhân lực phân công')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Ngày phân công')).not.toBeInTheDocument();
-  expect(screen.getByRole('button',{name:/^Đổi người hoặc ngày bắt đầu/})).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:/^Đổi người/})).toBeInTheDocument();
   expect(screen.queryByRole('button',{name:/^Xem trước rồi gửi/})).not.toBeInTheDocument();
   expect(screen.queryByRole('heading',{name:/Gửi lên Maximo|Đồng bộ Maximo/})).not.toBeInTheDocument();
   expect(screen.queryByRole('button',{name:'Upload assignment lên Maximo'})).not.toBeInTheDocument();
@@ -1290,7 +1290,7 @@ it('recovers a lost move response through the receipt without a second POST',asy
   api.planMove.mockRejectedValue(new TypeError('response lost'));
   api.planMoveReceipt.mockResolvedValueOnce(null);
   fireEvent.click(screen.getAllByRole('button',{name:/Phân công Relocate inspection/})[0]);
-  fireEvent.click(await screen.findByRole('button',{name:/^Đổi người hoặc ngày bắt đầu/}));
+  fireEvent.click(await screen.findByRole('button',{name:/^Đổi người/}));
   fireEvent.change(screen.getByLabelText('Nhân lực đích'),{target:{value:f.target.person_id}});
   await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận chuyển'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Xác nhận chuyển'}));
