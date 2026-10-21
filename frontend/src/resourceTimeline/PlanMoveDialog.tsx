@@ -9,7 +9,7 @@ type Props={
   connectionLabel:string;workOrderLabel?:string;
   targetPersonId:string;targetDate:string;requestId?:string;loading:boolean;busy:boolean;error:string;
   preview:AssignmentPlanMovePreview|null;canReallocate:boolean;unknown:boolean;reconciling:boolean;
-  onPersonChange:(value:string)=>void;onDateChange:(value:string)=>void;onReallocate:()=>void;
+  onPersonChange:(value:string)=>void;onDateChange:(value:string)=>void;onReallocate:()=>void;onShift:()=>void;
   onConfirm:()=>void;onReconcile:()=>void;onClose:()=>void;
   backfillOn:boolean;onBackfillChange:(value:boolean)=>void;
 };
@@ -17,7 +17,7 @@ const hours=(minutes:number)=>new Intl.NumberFormat('vi-VN',{maximumFractionDigi
 const dateLabel=(date:string)=>`${date.slice(8,10)}/${date.slice(5,7)}/${date.slice(0,4)}`;
 
 export function PlanMoveDialog(props:Props){
-  const {item,knownItems,people,visibleMonth,connectionLabel,workOrderLabel,targetPersonId,targetDate,requestId,loading,busy,error,preview,canReallocate,unknown,reconciling,onPersonChange,onDateChange,onReallocate,onConfirm,onReconcile,onClose,backfillOn,onBackfillChange}=props;
+  const {item,knownItems,people,visibleMonth,connectionLabel,workOrderLabel,targetPersonId,targetDate,requestId,loading,busy,error,preview,canReallocate,unknown,reconciling,onPersonChange,onDateChange,onReallocate,onShift,onConfirm,onReconcile,onClose,backfillOn,onBackfillChange}=props;
   const dialogRef=useRef<HTMLElement>(null);
   const latest=useRef(props);
   useEffect(()=>{latest.current=props;});
@@ -64,7 +64,7 @@ export function PlanMoveDialog(props:Props){
       <label>Nhân lực đích<select aria-label="Nhân lực đích" value={targetPersonId} disabled={busy||unknown} onChange={event=>onPersonChange(event.target.value)}>{people.map(person=><option key={person.person_id} value={person.person_id}>{person.name} · {person.laborcode}</option>)}</select></label>
       <div className={styles.field}><span>Ngày chuyển đến</span><DateTimeInput dateOnly label="Ngày chuyển đến" value={targetDate} disabled={busy||unknown} onChange={onDateChange}/></div>
     </div>
-    {preview?.mode==='reallocate'?<p>Xếp lại từ {targetDate?dateLabel(targetDate):'ngày đã chọn'} theo capacity đã xác minh; ngày và giờ từng đoạn có thể thay đổi.</p>:<p>Ngày đang kéo: {dateLabel(item.date)} → {targetDate?dateLabel(targetDate):'—'}; các ngày còn lại {anchorOffsetDays>=0?'dịch thêm':'lùi'} {Math.abs(anchorOffsetDays)} ngày theo cùng độ lệch.</p>}
+    {preview?.mode==='reallocate'?<p>Xếp lại từ {targetDate?dateLabel(targetDate):'ngày đã chọn'} theo capacity đã xác minh: dùng ít ngày nhất có thể, ngày và giờ từng đoạn có thể thay đổi. <button type="button" className={styles.linkButton} disabled={busy||unknown} onClick={onShift}>Giữ nguyên giờ và độ lệch ngày</button></p>:<p>Ngày đang kéo: {dateLabel(item.date)} → {targetDate?dateLabel(targetDate):'—'}; các ngày còn lại {anchorOffsetDays>=0?'dịch thêm':'lùi'} {Math.abs(anchorOffsetDays)} ngày theo cùng độ lệch.</p>}
     <table className={styles.moveComparison} aria-label="Đối chiếu lịch trước và sau chuyển"><thead><tr><th>Ngày cũ</th><th>Giờ</th><th></th><th>Ngày mới</th><th>Giờ</th></tr></thead><tbody>{Array.from({length:Math.max(existing.length,preview?.segments.length??0)},(_,index)=>{const old=existing.slice().sort((a,b)=>a.date.localeCompare(b.date))[index];const next=preview?.segments.slice().sort((a,b)=>a.date.localeCompare(b.date))[index];return <tr key={`${old?.id??'none'}-${next?.date??'pending'}`}><td>{old?`${dateLabel(old.date)}${old.date.slice(0,7)!==visibleMonth?' *':''}`:'—'}</td><td>{old?`${hours(old.minutes)}h`:'—'}</td><td aria-hidden="true">→</td><td>{next?`${dateLabel(next.date)}${next.date.slice(0,7)!==visibleMonth?' *':''}`:'—'}</td><td>{next?`${hours(next.minutes)}h`:'—'}</td></tr>;})}</tbody></table>
     {preview&&<section className={styles.moveCapacity} aria-label="Capacity sau chuyển"><h3>{preview.mode==='reallocate'?'Phân bổ lại từ ngày chuyển đến':'Giữ nguyên giờ và độ lệch ngày'} · capacity theo ngày</h3>{preview.capacity.map(day=><p key={`${day.person_id}|${day.date}`}>{dateLabel(day.date)} · còn {hours(day.remaining_minutes)}h / đề xuất {hours(day.proposed_minutes)}h / sau chuyển {hours(day.remaining_after_minutes)}h{day.date.slice(0,7)!==visibleMonth?' · ngoài tháng đang xem':''}</p>)}</section>}
     {preview?.backfill&&preview.backfill.plans.length>0&&<section className={styles.backfill} aria-label="Dồn lịch các task khác">

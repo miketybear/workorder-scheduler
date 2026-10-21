@@ -1283,7 +1283,6 @@ function moveIntegrationFixture(){
 it('moves a whole local plan from a cross-person drag and merges released segments and both capacities',async()=>{
   const f=moveIntegrationFixture();
   await loaded({...snapshot,rows:f.rows,items:[f.first,f.second],work_orders:[order]});
-  api.planMovePreview.mockRejectedValueOnce(new AssignmentError(409,'Ngày đích thiếu capacity',undefined,'plan_move_conflict'));
   api.planMovePreview.mockResolvedValueOnce({...f.preview,mode:'reallocate',segments:[{date:f.first.date,minutes:120}],capacity:[{...f.preview.capacity[0],proposed_minutes:120,remaining_after_minutes:510}]});
   api.planMove.mockImplementation(async(_pool:string,_plan:string,input:{request_id:string})=>f.reply(input.request_id,true));
   const source=screen.getAllByRole('button',{name:/Phân công Relocate inspection/})[0];
@@ -1291,8 +1290,8 @@ it('moves a whole local plan from a cross-person drag and merges released segmen
   await screen.findByRole('heading',{name:'Xem trước chuyển toàn task'});
   expect(screen.getByLabelText('Tháng timeline (nhập)')).toBeDisabled();
   expect(screen.getByRole('button',{name:'Làm mới timeline'})).toBeDisabled();
-  fireEvent.click(await screen.findByRole('button',{name:'Phân bổ lại từ ngày thả'}));
   await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận chuyển'})).toBeEnabled());
+  expect(api.planMovePreview.mock.calls[0][2]).toMatchObject({mode:'reallocate'});
   fireEvent.click(screen.getByRole('button',{name:'Xác nhận chuyển'}));
   await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   expect(api.planMove).toHaveBeenCalledOnce();
@@ -1302,6 +1301,22 @@ it('moves a whole local plan from a cross-person drag and merges released segmen
   expect(screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-05'}).closest('td')).toHaveTextContent('0 / 10,5h');
   expect(screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-06'}).closest('td')).toHaveTextContent('0 / 10,5h');
   expect(api.update).not.toHaveBeenCalled();expect(api.planUpload).not.toHaveBeenCalled();
+});
+
+it('re-packs the plan by default and can fall back to keeping hours and day offsets',async()=>{
+  const f=moveIntegrationFixture();
+  await loaded({...snapshot,rows:f.rows,items:[f.first,f.second],work_orders:[order]});
+  api.planMovePreview.mockResolvedValue({...f.preview,mode:'reallocate',segments:[{date:f.first.date,minutes:120}],capacity:[{...f.preview.capacity[0],proposed_minutes:120,remaining_after_minutes:510}]});
+  fireEvent.click(screen.getAllByRole('button',{name:/Phân công Relocate inspection/})[0]);
+  fireEvent.click(await screen.findByRole('button',{name:'Thao tác khác'}));
+  fireEvent.click(screen.getByRole('menuitem',{name:/^Đổi người/}));
+  fireEvent.change(screen.getByLabelText('Nhân lực đích'),{target:{value:f.target.person_id}});
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Xác nhận chuyển'})).toBeEnabled());
+  expect(api.planMovePreview.mock.calls[0][2]).toMatchObject({mode:'reallocate'});
+  api.planMovePreview.mockRejectedValueOnce(new AssignmentError(409,'Ngày đích thiếu capacity',undefined,'plan_move_conflict'));
+  fireEvent.click(screen.getByRole('button',{name:'Giữ nguyên giờ và độ lệch ngày'}));
+  await waitFor(()=>expect(api.planMovePreview.mock.calls.at(-1)?.[2]).toMatchObject({mode:'shift'}));
+  expect(await screen.findByRole('button',{name:'Phân bổ lại từ ngày thả'})).toBeInTheDocument();
 });
 
 describe('backfill when a task plan is moved', () => {
