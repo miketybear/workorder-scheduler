@@ -1335,6 +1335,12 @@ describe('backfill when a task plan is moved', () => {
     expect(api.planMove.mock.calls[0][2]).toMatchObject({fill_from:'2026-10-01'});
   });
 
+  it('falls back to the first day of the shown month when the work order has no schedule', async () => {
+    await start();
+    await waitFor(()=>expect(api.planMovePreview).toHaveBeenCalled());
+    expect(api.planMovePreview.mock.calls.at(-1)?.[2]).toMatchObject({fill_from:'2026-10-01'});
+  });
+
   it('shows what would move up, ticked by default, and sends it with the move', async () => {
     const region=await start();
     expect(within(region).getByRole('checkbox')).toBeChecked();

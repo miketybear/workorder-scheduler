@@ -304,10 +304,11 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
   const currentContext = JSON.stringify([activationEpoch.current, reload, pool?.id, pool?.connection_id, discipline, principal, month]);
   const shownPool = active && !checkingSession && poolRevision === reload ? pool : null;
   const shownTimeline = active && !checkingSession && snapshotContext === currentContext ? timeline : null;
-  // Followers may also use earlier empty days: start filling from the work order's scheduled start (bounded so the server accepts it).
+  // Followers may also use earlier empty days: fill from the work order's scheduled start, or from the first day of the shown month when the work order has no schedule (bounded so the server accepts it).
   const fillFromOf=(item:Assignment)=>{
     const order=timeline?.work_orders.find(candidate=>candidate.site_id===item.site_id&&candidate.workorder_id===item.workorder_id);
-    const start=order?.schedstart&&pool?localDate(order.schedstart,pool.timezone):null;
+    const scheduled=order?.schedstart&&pool?localDate(order.schedstart,pool.timezone):null;
+    const start=scheduled??(month?`${month}-01`:null);
     if(!start||start>=item.date)return {};
     const floor=new Date(Date.parse(`${item.date}T00:00:00Z`)-300*86_400_000).toISOString().slice(0,10);
     return {fill_from:start<floor?floor:start};
