@@ -129,6 +129,12 @@ Cập nhật: 2026-10-19.
       (`onDraftReady` bỏ các ô trùng giá trị nháp vừa lưu). Lưu từ hộp thoại với WO thuộc nháp nhóm vẫn tạo nháp đơn, được gom lại
       khi bấm "Gửi". Xóa biến `draftsToDiscard` thừa. Kiểm tra thủ công: Duration 7 trong bảng hiện 7 ở hộp thoại; 491 frontend test,
       lint, typecheck đạt.
+- [x] **Upload WO thật qua BDSCHED_WO (Onshore test, 2026-10-21)**: `write_enabled` chấp nhận `/oslc/os/BDSCHED_WO` khi khai báo rõ
+      `native_rowstamp_test` (các khóa môi trường/hệ thống/kết nối giữ nguyên); `canonical_resource` chấp nhận href khác hoa/thường
+      tên object. Probe chỉ-đọc WO P13462775: resource `/BDSCHED_WO/<id>`, rowstamp ổn định qua 2 lần, baseline khớp. Gửi thật 14 WO
+      (12 sửa Duration +1 giờ, 2 WO có lịch bắt đầu 02/10 từ nháp cũ) bằng "Gửi 14 WO": UI báo xác nhận 14 WO và đọc lại độc lập từ
+      Maximo khớp mọi giá trị. Dữ liệu test Maximo đã đổi (giá trị gốc 12 WO lưu trong ghi chú phiên); chưa thử xung đột rowstamp và
+      chưa chạy `probe_write_contract.py` (conflict/restore) trên BDSCHED_WO. 753 test backend nhanh, ruff đạt.
 - [x] **Lỗi 503 khi lưu nháp ("Không hoàn tất yêu cầu")**: role runtime thiếu quyền UPDATE cột `result` của
       `draft_submission` (biên nhận được chèn rỗng rồi cập nhật trong cùng transaction). Thêm
       `GRANT UPDATE (result)` vào `backend/sql/provision_roles.sql`, áp vào DB dev local bằng role owner, và

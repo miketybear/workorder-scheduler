@@ -155,7 +155,9 @@ def canonical_resource(href: str, settings: MaximoSettings) -> tuple[str, str, b
             or target.fragment
             or (target.scheme and (target.scheme not in {"http", "https"} or not target.hostname))
             or (not target.scheme and target.netloc)
-            or not target.path.startswith(base.path + "/")
+            # Maximo may advertise the object-structure name in another case (BDSCHED_WO);
+            # only that case is normalized, the configured path is what gets requested.
+            or not target.path.lower().startswith(base.path.lower() + "/")
         ):
             raise MaximoReadError("Unsafe resource identifier")
     except ValueError:
@@ -163,7 +165,9 @@ def canonical_resource(href: str, settings: MaximoSettings) -> tuple[str, str, b
     resource_id = target.path[len(base.path) + 1 :]
     if not re.fullmatch(r"[A-Za-z0-9_~-]{1,500}", resource_id):
         raise MaximoReadError("Invalid opaque resource identifier")
-    canonical = str(httpx.URL(settings.collection_url).copy_with(path=target.path))
+    canonical = str(
+        httpx.URL(settings.collection_url).copy_with(path=base.path + "/" + resource_id)
+    )
     origin_changed = bool(
         target.scheme and (target.scheme, target.netloc) != (base.scheme, base.netloc)
     )

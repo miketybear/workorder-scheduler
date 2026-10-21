@@ -11,7 +11,7 @@ from app.maximo.reader import MaximoReadError, next_page_url
 from app.maximo.sender import write_enabled
 
 
-def test_bdsched_structure_uses_same_configured_connection_without_old_write_contract():
+def test_bdsched_structure_uses_same_configured_connection_and_explicit_write_contract():
     identity = uuid4()
     settings = config(
         collection_url="https://maximo.invalid/maximo/oslc/os/BDSCHED_WO",
@@ -26,6 +26,17 @@ def test_bdsched_structure_uses_same_configured_connection_without_old_write_con
         environment="test",
     )
     assert configured_connection(app, connection) is settings
+    assert write_enabled(app, connection)
+    app.environment = "staging"
+    assert not write_enabled(app, connection)
+    app.environment = "test"
+    connection.environment = "production"
+    assert not write_enabled(app, connection)
+    connection.environment = "test"
+    connection.system = "offshore"
+    assert not write_enabled(app, connection)
+    connection.system = "onshore"
+    app.maximo[identity] = config(collection_url=settings.collection_url)
     assert not write_enabled(app, connection)
     connection.base_url = "https://other.invalid/maximo"
     with pytest.raises(HTTPException):
@@ -81,3 +92,16 @@ def test_explicit_paging_alias_is_canonicalized_without_changing_scope_or_transp
 def test_paging_aliases_reject_credentials_and_non_origins(origin):
     with pytest.raises(ValidationError):
         config(paging_origin_aliases=[origin])
+
+
+def test_bdsched_resource_href_with_other_object_case_resolves_on_configured_path():
+    from app.maximo.contract_probe import canonical_resource
+
+    settings = config(collection_url="https://maximo.invalid/maximo/oslc/os/BDSCHED_WO")
+    url, resource_id, changed = canonical_resource(
+        "https://public.invalid/maximo/oslc/os/bdsched_wo/_T1BBUVVF", settings
+    )
+    assert url == "https://maximo.invalid/maximo/oslc/os/BDSCHED_WO/_T1BBUVVF"
+    assert (resource_id, changed) == ("_T1BBUVVF", True)
+    with pytest.raises(MaximoReadError):
+        canonical_resource("https://maximo.invalid/maximo/oslc/os/oslcmxwodetail/_T1", settings)

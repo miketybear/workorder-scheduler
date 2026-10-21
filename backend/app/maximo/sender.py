@@ -20,12 +20,15 @@ from app.scheduling.changes import ScheduleChanges, build_changes
 from app.scheduling.drafts import CurrentWorkOrder, WorkOrderKey, require_scope
 from app.scheduling.upload_service import ConditionalConflict, UncertainWrite, WriteRejected
 
+WRITE_STRUCTURES = ("/oslc/os/oslcmxwodetail", "/oslc/os/BDSCHED_WO")
+
 
 def write_enabled(settings, connection):
     config = settings.maximo.get(connection.id)
+    # BDSCHED_WO is accepted only through the same explicit contract opt-in below.
     return bool(
         config
-        and config.collection_url.endswith("/oslc/os/oslcmxwodetail")
+        and config.collection_url.endswith(WRITE_STRUCTURES)
         and config.conditional_write_contract == "native_rowstamp_test"
         and settings.environment in {"development", "test"}
         and connection.enabled
