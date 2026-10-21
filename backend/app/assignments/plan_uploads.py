@@ -58,15 +58,18 @@ def enabled(request, settings, connection):
     )
 
 
-async def plan_items(db, plan_id):
+async def plan_items(db, plan_id, *, any_state=False):
+    """Reserved rows by default; any_state also returns released rows so a replay can find them."""
     plan = await db.get(AssignmentPlan, plan_id, populate_existing=True)
+    query = select(Allocation).where(Allocation.plan_id == plan_id)
+    if not any_state:
+        query = query.where(Allocation.state == "reserved")
     items = list(
         (
             await db.scalars(
-                select(Allocation)
-                .where(Allocation.plan_id == plan_id, Allocation.state == "reserved")
-                .order_by(Allocation.date, Allocation.id)
-                .execution_options(populate_existing=True)
+                query.order_by(Allocation.date, Allocation.id).execution_options(
+                    populate_existing=True
+                )
             )
         ).unique()
     )
@@ -92,12 +95,14 @@ def segment_set(plan, items):
     }
 
 
-async def scoped_plan(request, plan_id, *, write=False, csrf=False, eligible=False):
+async def scoped_plan(
+    request, plan_id, *, write=False, csrf=False, eligible=False, any_state=False
+):
     from app.assignments.routes import existing, key, read_scope
 
     async with request.app.state.sessions() as db:
         await resolve_session(db, request.cookies.get(SESSION_COOKIE))
-        _, items = await plan_items(db, plan_id)
+        _, items = await plan_items(db, plan_id, any_state=any_state)
     item = await existing(request, items[0].id)
     # Preview requires Planner but GET does not require CSRF.
     if write and not csrf:
