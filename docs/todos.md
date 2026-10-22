@@ -155,6 +155,11 @@ Cập nhật: 2026-10-19.
       xám `--task-0` (#7a7873 → #736f6a, 4,4 → 5,0). Code upload từng kế hoạch (`plan_uploads.py`, `PlanUpload.tsx`) KHÔNG xóa: vẫn là nền
       của upload hàng loạt và của tra cứu/đối soát kế hoạch đã gửi. Không làm "lưu hộp thoại vào nháp nhóm" (nháp đôi vô hại, gửi
       lấy bản mới nhất). Chưa xem bằng mắt ngăn kéo kế hoạch ở chế độ tối (ảnh chụp trễ khung).
+- [x] **Không còn nháp nhóm lúc chỉnh sửa (2026-10-22)**: `saveInlineEdits` lưu mỗi dòng mới thành MỘT nháp đơn riêng (song song tối đa 4,
+      mỗi dòng thành/bại độc lập), thay vì gộp thành nháp nhóm; nháp nhóm chỉ còn sinh ra khi bấm "Gửi N WO" (`consolidateDrafts`, đã
+      gom được nháp đơn). Nháp nhóm cũ đang tồn tại vẫn sửa được như trước. Backend không đổi. Kiểm tra trên Maximo test (không upload):
+      sửa 3 dòng → 3 nháp đơn (`is_batch=false`) → "Gửi 3 WO" gom thành 1 nháp nhóm và xóa 3 nháp đơn → dọn bằng "Xóa nháp và đổi
+      ngày"; 493 frontend test, lint, tsc đạt. Đánh đổi: lưu N dòng = N yêu cầu thay vì 1 (tối đa 200).
 - [x] **Lỗi 503 khi lưu nháp ("Không hoàn tất yêu cầu")**: role runtime thiếu quyền UPDATE cột `result` của
       `draft_submission` (biên nhận được chèn rỗng rồi cập nhật trong cùng transaction). Thêm
       `GRANT UPDATE (result)` vào `backend/sql/provision_roles.sql`, áp vào DB dev local bằng role owner, và

@@ -1065,6 +1065,21 @@ it('fills a typed value down to the other ticked rows with Ctrl+D', async () => 
   expect(screen.getByText('2 WO có thay đổi chưa lưu')).toBeInTheDocument();
 });
 
+it('saves several new rows as separate drafts, never as a group, and a failing row does not block the others', async () => {
+  const two = orderWith({ workorderid: '101', wonum: 'WO-TWO' });
+  await inlineSetup([orderWith({}), two]);
+  fireEvent.change(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration'), { target: { value: '12' } });
+  fireEvent.change(screen.getByLabelText('Sửa nhanh WO-TWO Est. Duration'), { target: { value: '11' } });
+  vi.mocked(prepareBatch).mockResolvedValue([{ ...editorDetail, item: orderWith({}) }, { ...editorDetail, item: two }]);
+  vi.mocked(saveDraft).mockResolvedValueOnce({ draft_id: 'a', version: 1, state: 'draft' }).mockRejectedValueOnce(new Error('Máy chủ lỗi'));
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu 2 nháp' }));
+  await screen.findByText('Đã lưu nháp cho 1 WO. Maximo chưa thay đổi.');
+  expect(saveDraft).toHaveBeenCalledTimes(2);
+  expect(saveBatch).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('Sửa nhanh WO-TWO Est. Duration (chưa lưu)')).toHaveValue('11');
+  expect(screen.getByText('1 WO có thay đổi chưa lưu')).toBeInTheDocument();
+});
+
 it('blocks saving while a typed value is invalid and lets the user discard the edits', async () => {
   await inlineSetup([orderWith({})]);
   fireEvent.change(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration'), { target: { value: 'abc' } });

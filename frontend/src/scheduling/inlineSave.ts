@@ -7,11 +7,11 @@ export type InlineRow = { order: WorkOrder; marker?: PlanningMarker; staged: Sta
 export type InlineResult = { notices: DraftNotice[]; failed: Record<string, string> };
 
 const message = (cause: unknown) => cause instanceof Error ? cause.message : 'Không lưu được.';
-const MAX_GROUP = 200;
+const SAVE_PARALLEL = 4;
 
 /**
  * Saves cell edits as drafts without ever touching Maximo: rows that already have a draft update that draft
- * (a group draft is rewritten as a whole), rows without one become a new draft (a group when there are several).
+ * (a group draft is rewritten as a whole), rows without one become a draft of their own.
  */
 export async function saveInlineEdits(scope: Scope, timeZone: string, rows: InlineRow[], signal: AbortSignal): Promise<InlineResult> {
   const notices: DraftNotice[] = []; const failed: Record<string, string> = {};
@@ -66,29 +66,25 @@ export async function saveInlineEdits(scope: Scope, timeZone: string, rows: Inli
     }
   }
 
-  const items: BatchRow[] = [];
+  // Every new row becomes its own draft; they are only merged into one group when the user sends them.
+  const fresh_rows: { key: string; detail: Detail; changes: Changes }[] = [];
   for (const row of created) {
     const key = rowKey(row.order); const detail = fresh.get(key);
     if (!detail) { failed[key] = 'WO không còn khả dụng.'; continue; }
     const changes = deriveChanges(detail.item, {}, row.staged, timeZone);
     const problem = check(detail, changes);
-    if (problem) failed[key] = problem; else items.push({ ...detail, changes });
+    if (problem) failed[key] = problem; else fresh_rows.push({ key, detail, changes });
   }
-  for (let start = 0; start < items.length; start += MAX_GROUP) {
-    const chunk = items.slice(start, start + MAX_GROUP);
-    try {
-      if (chunk.length === 1) {
-        const [only] = chunk;
-        const saved = await saveDraft(identity(only.item), only.changes, only.baseline_token, crypto.randomUUID(), null, signal);
-        notices.push({ ...saved, items: chunk });
-      } else {
-        const saved = await saveBatch(scope, chunk, crypto.randomUUID(), null, signal);
-        notices.push({ ...saved, items: chunk });
-      }
-    } catch (cause) {
-      const issues = cause instanceof BatchError ? new Map(cause.issues.map((issue) => [JSON.stringify([issue.site_id, issue.workorder_id]), issue.code])) : null;
-      for (const item of chunk) failed[rowKey(item.item)] = issues?.get(rowKey(item.item)) ? 'WO đã thay đổi; làm mới rồi thử lại.' : message(cause);
+  let next = 0;
+  const worker = async () => {
+    while (next < fresh_rows.length) {
+      const { key, detail, changes } = fresh_rows[next++];
+      try {
+        const saved = await saveDraft(identity(detail.item), changes, detail.baseline_token, crypto.randomUUID(), null, signal);
+        notices.push({ ...saved, items: [{ ...detail, changes }] });
+      } catch (cause) { failed[key] = message(cause); }
     }
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(SAVE_PARALLEL, fresh_rows.length) }, worker));
   return { notices, failed };
 }
