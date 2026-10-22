@@ -21,6 +21,7 @@ import { equalField } from './editing';
 import { DurationInput, PicSelect, StartInput } from './InlineCells';
 import { deriveChanges, hasChanges, problemOf, shown, stage, type Staged, type StagedField } from './inlineEdit';
 import { saveInlineEdits, type InlineRow } from './inlineSave';
+import { moveBetweenRows } from './tableNav';
 import { outsideShift } from './ShiftNotice';
 import { usePanelFocus } from './usePanelFocus';
 
@@ -762,7 +763,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         {visibleRows.length === 0 && <p>Không có WO khớp bộ lọc bảng. Xóa bộ lọc để xem lại dữ liệu đã tải.</p>}
       </>}
       {grant && visibleRows.length > 0 && grant.capability === 'write' && selectedKeys.length > 0 && <div className={styles.bulkBar} role="region" aria-label="Thao tác với WO đã chọn">
-        <span>{selectedKeys.length} WO đã chọn · gõ giá trị vào một dòng rồi bấm Ctrl+D để điền xuống các dòng đã chọn</span>
+        <span>{selectedKeys.length} WO đã chọn · nhập hoặc chọn giá trị ở một dòng rồi bấm Ctrl+D để điền xuống các dòng đã chọn</span>
         <button className={styles.ghost} onClick={() => setSelectedKeys([])}>Bỏ chọn</button>
       </div>}
       {grant?.capability === 'write' && draftedCount > 0 && <div className={styles.bulkBar} role="region" aria-label="Gửi WO có nháp lên Maximo">
@@ -783,7 +784,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       </div>}
       {rows !== null && <>
         {visibleRows.length > 0 && grant && <>
-          <div className={`${styles.tableWrap} ${styles.compactTable}${dense ? ` ${styles.denseTable}` : ''}`} tabIndex={0} role="region" aria-label="WO từ Maximo" onMouseEnter={loadCrew} onFocusCapture={loadCrew}>
+          <div className={`${styles.tableWrap} ${styles.compactTable}${dense ? ` ${styles.denseTable}` : ''}`} tabIndex={0} role="region" aria-label="WO từ Maximo" onMouseEnter={loadCrew} onFocusCapture={loadCrew} onKeyDown={(event) => { moveBetweenRows(event); }}>
           <table><thead><tr>{grant.capability === 'write' && <th scope="col"><input type="checkbox" aria-label={`Chọn tất cả ${visibleRows.length} WO trong kết quả lọc đã tải`} checked={!!visibleRows.length && visibleRows.every((row) => selectedKeys.includes(rowKey(row)))} onChange={(e) => setSelectedKeys(e.target.checked ? visibleRows.map(rowKey) : [])} /></th>}
             <th scope="col">Work Order / Type</th><th scope="col">Công việc / Tag Name</th><th scope="col">Status / Priority</th><th scope="col">Duration (giờ)</th><th scope="col">Lịch dự kiến</th><th scope="col">Target Start / Finish</th><th scope="col">Assigned PIC</th></tr></thead>
             <tbody>{visibleRows.map((row, index) => {
@@ -816,15 +817,15 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
                 </>;
                 const pending = (field: StagedField) => touched(field) ? ' (chưa lưu)' : '';
                 const onKey = (field: StagedField) => (event: React.KeyboardEvent) => {
-                  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') { event.preventDefault(); fillDown(field, key); }
+                  if ((event.ctrlKey || event.metaKey) && (event.code === 'KeyD' || event.key.toLowerCase() === 'd')) { event.preventDefault(); fillDown(field, key); }
                 };
                 return <>
-                  <td data-label="Duration (giờ)" data-draft={touched('estdur') || changed(['estdur'])} onKeyDown={onKey('estdur')}>
+                  <td data-nav="estdur" data-label="Duration (giờ)" data-draft={touched('estdur') || changed(['estdur'])} onKeyDown={onKey('estdur')}>
                     <DurationInput label={`Sửa nhanh ${row.wonum} Est. Duration${pending('estdur')}`} value={stagedRow.estdur ?? view.estdur ?? ''} disabled={inlineBusy}
                       onChange={(hours) => stageCell(key, 'estdur', hours, shown(raw, marker && !marker.baseline_changed ? marker.changes : {}, {}, grant.timezone).estdur)} />
                     {(touched('estdur') || changed(['estdur'])) && <small>Nháp</small>}
                   </td>
-                  <td data-label="Lịch dự kiến" data-draft={touched('schedstart', 'estdur') || changed(['schedstart', 'schedfinish'])} data-invalid={!!problem || undefined} onKeyDown={onKey('schedstart')}>
+                  <td data-nav="schedstart" data-label="Lịch dự kiến" data-draft={touched('schedstart', 'estdur') || changed(['schedstart', 'schedfinish'])} data-invalid={!!problem || undefined} onKeyDown={onKey('schedstart')}>
                     <StartInput label={`Sửa nhanh ${row.wonum} Scheduled Start${pending('schedstart')}`} value={view.schedstart} timezone={grant.timezone} disabled={inlineBusy}
                       onChange={(aware) => stageCell(key, 'schedstart', aware, shown(raw, marker && !marker.baseline_changed ? marker.changes : {}, {}, grant.timezone).schedstart)} />
                     <small>→ {displayDate(view.schedfinish, grant.timezone)}</small>
@@ -833,7 +834,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
                     {problem && <small role="alert" className={styles.error}>{problem}</small>}
                   </td>
                   <td data-label="Target" data-draft={changed(['targstartdate', 'targcompdate'])}>{displayDate(row.targstartdate, grant.timezone, false)}<small>→ {displayDate(row.targcompdate, grant.timezone, false)}</small>{changed(['targstartdate', 'targcompdate']) && <small>Nháp</small>}</td>
-                  <td data-label="Assigned PIC" data-draft={touched('assignedtechname') || changed(['assignedtechname'])} onKeyDown={onKey('assignedtechname')}>
+                  <td data-nav="pic" data-label="Assigned PIC" data-draft={touched('assignedtechname') || changed(['assignedtechname'])} onKeyDown={onKey('assignedtechname')}>
                     <PicSelect label={`Sửa nhanh ${row.wonum} Assigned PIC${pending('assignedtechname')}`} value={view.assignedtechname} pics={crew?.scope === crewScope ? crew.pics : []} names={crew?.names ?? {}} disabled={inlineBusy}
                       onChange={(pic) => stageCell(key, 'assignedtechname', pic, shown(raw, marker && !marker.baseline_changed ? marker.changes : {}, {}, grant.timezone).assignedtechname)} />
                     {(touched('assignedtechname') || changed(['assignedtechname'])) && <small>Nháp</small>}

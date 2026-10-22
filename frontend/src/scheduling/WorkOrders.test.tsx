@@ -1080,6 +1080,40 @@ it('saves several new rows as separate drafts, never as a group, and a failing r
   expect(screen.getByText('1 WO có thay đổi chưa lưu')).toBeInTheDocument();
 });
 
+it('moves between rows of the same column with Enter and the arrow keys, but leaves drop-down arrows alone', async () => {
+  await inlineSetup([orderWith({}), orderWith({ workorderid: '101', wonum: 'WO-TWO' }), orderWith({ workorderid: '102', wonum: 'WO-THREE' })]);
+  const duration = (wo: string) => screen.getByLabelText(new RegExp(`Sửa nhanh ${wo} Est. Duration`));
+  duration('WO-REAL').focus();
+  fireEvent.keyDown(duration('WO-REAL'), { key: 'Enter' });
+  expect(duration('WO-TWO')).toHaveFocus();
+  fireEvent.keyDown(duration('WO-TWO'), { key: 'ArrowDown' });
+  expect(duration('WO-THREE')).toHaveFocus();
+  fireEvent.keyDown(duration('WO-THREE'), { key: 'ArrowUp' });
+  expect(duration('WO-TWO')).toHaveFocus();
+  fireEvent.keyDown(duration('WO-TWO'), { key: 'Enter', shiftKey: true });
+  expect(duration('WO-REAL')).toHaveFocus();
+  // The first row has nowhere to go up to, so focus stays.
+  fireEvent.keyDown(duration('WO-REAL'), { key: 'ArrowUp' });
+  expect(duration('WO-REAL')).toHaveFocus();
+  const pic = (wo: string) => screen.getByLabelText(new RegExp(`Sửa nhanh ${wo} Assigned PIC`));
+  pic('WO-REAL').focus();
+  fireEvent.keyDown(pic('WO-REAL'), { key: 'ArrowDown' });
+  expect(pic('WO-REAL')).toHaveFocus();
+  fireEvent.keyDown(pic('WO-REAL'), { key: 'Enter' });
+  expect(pic('WO-TWO')).toHaveFocus();
+});
+
+it('fills a chosen PIC down to the ticked rows with Ctrl+D', async () => {
+  const two = orderWith({ workorderid: '101', wonum: 'WO-TWO' });
+  await inlineSetup([orderWith({}), two]);
+  await waitFor(() => expect(within(screen.getByLabelText('Sửa nhanh WO-REAL Assigned PIC')).getByRole('option', { name: 'TECH' })).toBeInTheDocument());
+  fireEvent.click(screen.getByLabelText(/Chọn WO-REAL/)); fireEvent.click(screen.getByLabelText(/Chọn WO-TWO/));
+  const first = screen.getByLabelText('Sửa nhanh WO-REAL Assigned PIC');
+  fireEvent.change(first, { target: { value: 'TECH' } });
+  fireEvent.keyDown(first, { key: 'd', code: 'KeyD', ctrlKey: true });
+  expect(screen.getByLabelText('Sửa nhanh WO-TWO Assigned PIC (chưa lưu)')).toHaveValue('TECH');
+});
+
 it('blocks saving while a typed value is invalid and lets the user discard the edits', async () => {
   await inlineSetup([orderWith({})]);
   fireEvent.change(screen.getByLabelText('Sửa nhanh WO-REAL Est. Duration'), { target: { value: 'abc' } });

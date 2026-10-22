@@ -160,6 +160,12 @@ Cập nhật: 2026-10-19.
       gom được nháp đơn). Nháp nhóm cũ đang tồn tại vẫn sửa được như trước. Backend không đổi. Kiểm tra trên Maximo test (không upload):
       sửa 3 dòng → 3 nháp đơn (`is_batch=false`) → "Gửi 3 WO" gom thành 1 nháp nhóm và xóa 3 nháp đơn → dọn bằng "Xóa nháp và đổi
       ngày"; 493 frontend test, lint, tsc đạt. Đánh đổi: lưu N dòng = N yêu cầu thay vì 1 (tối đa 200).
+- [x] **Điều hướng bằng phím trong bảng WO + Ctrl+D cho PIC (2026-10-23)**: Enter / Shift+Enter, và mũi tên xuống/lên ở ô Duration và Lịch,
+      chuyển con trỏ sang cùng cột của dòng kế/trước có ô sửa được (`scheduling/tableNav.ts`, `data-nav` trên ô); ô PIC giữ mũi tên
+      để chọn giá trị, chỉ Enter chuyển dòng; không xử lý phím trong lịch chọn ngày (popup). Ctrl+D nhận thêm `event.code === 'KeyD'`
+      (bàn phím/IME không cho `key = d`); lời nhắc ghi "nhập hoặc chọn giá trị". Không tái hiện được lỗi Ctrl+D ở cột PIC trên trình
+      duyệt tích hợp (chọn PIC bằng bàn phím và bằng chuột rồi Ctrl+D đều điền xuống đúng); nếu vẫn lỗi trên Chrome/Edge thật cần biết
+      trình duyệt và thao tác chính xác. 495 frontend test, lint, tsc đạt; thử phím thật trên trình duyệt.
 - [x] **Lỗi 503 khi lưu nháp ("Không hoàn tất yêu cầu")**: role runtime thiếu quyền UPDATE cột `result` của
       `draft_submission` (biên nhận được chèn rỗng rồi cập nhật trong cùng transaction). Thêm
       `GRANT UPDATE (result)` vào `backend/sql/provision_roles.sql`, áp vào DB dev local bằng role owner, và
