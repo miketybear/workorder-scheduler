@@ -1131,7 +1131,7 @@ it('deletes each distinct draft once, in order, then opens the date fields witho
 it('lets the user back out of an opened date range without losing the table', async () => {
   await loadDrafted([{ ...row }]);
   fireEvent.click(screen.getByRole('button', { name: 'Đổi khoảng ngày' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Hủy, giữ khoảng ngày hiện tại' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Hủy' }));
   expect(screen.getByRole('button', { name: 'Đổi khoảng ngày' })).toBeVisible();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
 });

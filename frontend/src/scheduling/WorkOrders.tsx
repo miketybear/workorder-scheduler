@@ -702,7 +702,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         <div className={styles.dateRange}><span>Target Finish trước</span><DateTimeInput dateOnly label="Target Finish trước" value={end}
           onChange={(value) => changeDate(value, 'end')} /></div>
         <button className={styles.primary} disabled={!grant || busy || !start || !end}>{busy ? 'Đang lấy WO…' : 'Retrieve WO'}</button>
-        {rows !== null && loadedRange && <button type="button" className={styles.ghost} onClick={() => setRangeExpanded(false)}>Hủy, giữ khoảng ngày hiện tại</button>}
+        {rows !== null && loadedRange && <button type="button" className={`${styles.ghost} ${styles.cancelRange}`} onClick={() => setRangeExpanded(false)}>Hủy</button>}
       </form>
       </section>}
       {grant && rows === null && !busy && <p>Chưa Retrieve WO cho khoảng ngày này. Chọn ngày và bấm Retrieve WO để tải bảng.</p>}
