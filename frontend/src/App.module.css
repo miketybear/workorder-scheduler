@@ -259,8 +259,14 @@
   .mainNav a { flex: 1; justify-content: center; white-space: nowrap; min-height: 44px; }
   .menuPanel { position: fixed; top: 48px; left: 8px; right: 8px; min-width: 0; }
 }
-/* Phones: WO rows become labelled cards instead of a 980px-wide table. */
-@media (max-width: 640px) {
+/* Narrow desktops and tablets keep the table but drop the read-only Target column so Assigned PIC stays on screen. */
+@media (min-width: 841px) and (max-width: 1100px) {
+  .compactTable table { min-width: 800px; }
+  .compactTable th:nth-child(7), .compactTable td:nth-child(7) { display: none; }
+  .compactTable .descriptionCell { min-width: 180px; max-width: 240px; }
+}
+/* Phones and portrait tablets: WO rows become labelled cards instead of a wide table. */
+@media (max-width: 840px) {
   .compactTable { max-height: none; }
   .compactTable table, .compactTable tbody { display: block; min-width: 0; }
   .compactTable thead { display: block; }

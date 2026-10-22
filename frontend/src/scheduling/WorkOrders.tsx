@@ -301,6 +301,10 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       .then((detail) => setCrew({ scope: crewScope, pics: detail.allowed_pics, names: detail.pic_names ?? {} }))
       .catch(() => { crewRequested.current = ''; });
   }, [rows, grant?.capability, crewScope, editorScope]);
+  // Touch screens never hover and a disabled drop-down cannot take focus, so load the crew as soon as rows are shown.
+  useEffect(() => {
+    if (active && window.matchMedia?.('(hover: none)').matches) loadCrew();
+  }, [active, loadCrew]);
   const rawByKey = useMemo(() => new Map((rows ?? []).map((row) => [rowKey(row), row])), [rows]);
   const stagedKeys = Object.keys(inline).filter((key) => rawByKey.has(key));
   const stagedList = stagedKeys.join('|');

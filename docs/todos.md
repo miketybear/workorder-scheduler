@@ -136,6 +136,13 @@ Cập nhật: 2026-10-19.
       Maximo khớp mọi giá trị. Dữ liệu test Maximo đã đổi (giá trị gốc 12 WO lưu trong ghi chú phiên); thử xung đột: `probe_write_contract.py --diagnostic-only
       --token-source rowstamp_candidate` trên WO P13462775 (CM): ghi với rowstamp sai trả 412 BMXAA8229W, đối tượng WORKORDER, WO không
       đổi, đúng ánh xạ `ConditionalConflict`. Chưa chạy lượt ghi dương + khôi phục của probe trên BDSCHED_WO. 753 test backend nhanh, ruff đạt.
+- [x] **Nghiệm thu màn hình nhỏ và mobile (2026-10-22)**: kiểm tra 1024, 768 và 375px trên /work-orders, /resource-timeline, /rota, /.
+      Lỗi tìm thấy và đã sửa: (1) ≤1100px bảng WO tràn ngang 128px và cột Assigned PIC nằm ngoài màn hình: nay ẩn cột Target
+      (chỉ đọc, vẫn xem được trong hộp thoại) ở 841–1100px, vừa khít không cuộn ngang; (2) 768px vẫn là bảng cuộn ngang: ngưỡng thẻ
+      dọc nâng từ 640 lên 840px; (3) danh sách PIC chỉ nạp khi di chuột/focus vào bảng nên trên cảm ứng ô PIC xám mãi
+      (ô disabled không nhận chạm): thiết bị `(hover: none)` nạp ngay khi có dòng, đã thấy 26 PIC ở 375px. Hộp thoại chi tiết vừa
+      màn 375px; timeline mobile chỉ còn thống kê; không tràn ngang trang nào ở 768 và 375. 491 frontend test, lint, tsc đạt.
+      Chưa thử trên thiết bị cảm ứng thật.
 - [x] **Lỗi 503 khi lưu nháp ("Không hoàn tất yêu cầu")**: role runtime thiếu quyền UPDATE cột `result` của
       `draft_submission` (biên nhận được chèn rỗng rồi cập nhật trong cùng transaction). Thêm
       `GRANT UPDATE (result)` vào `backend/sql/provision_roles.sql`, áp vào DB dev local bằng role owner, và
