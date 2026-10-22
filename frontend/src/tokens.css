@@ -54,7 +54,7 @@
 }
 :root[data-theme="g100"] {
   color-scheme: dark;
-  --task-0: #7a7873; --task-1: #6b62d1; --task-2: #1b8467; --task-3: #b34a27; --task-4: #2574c0; --task-5: #b04570; --task-6: #9a6212;
+  --task-0: #736f6a; --task-1: #6b62d1; --task-2: #1b8467; --task-3: #b34a27; --task-4: #2574c0; --task-5: #b04570; --task-6: #9a6212;
   --ground: #161616;
   --layer: #262626;
   --surface: #393939;

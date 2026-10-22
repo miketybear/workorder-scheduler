@@ -147,6 +147,14 @@ Cập nhật: 2026-10-19.
       đổi khoảng ngày" TRƯỚC khi ô ngày mở ("Bỏ thay đổi, giữ nháp" / "Xóa nháp và đổi ngày"); xác nhận xóa tuần tự rồi mở ô ngày,
       đổi ngày sau đó không hỏi lại. Form ngày có thêm "Hủy, giữ khoảng ngày hiện tại" khi bảng còn dữ liệu. Giữ cảnh báo cũ nếu
       nháp phát sinh lúc ô ngày đang mở. Đã xem trên trình duyệt; 493 frontend test, lint, tsc đạt.
+- [x] **Nghiệm thu ghi + khôi phục trên BDSCHED_WO và dọn dẹp (2026-10-22)**: `probe_write_contract.py --token-source
+      rowstamp_body_candidate` trên WO P13462775: wrong_token 412, candidate_support_noop 204, fresh_token 204, stale_token 412,
+      same_token lần 1 204 / lần 2 412 (BMXAA8229W, WORKORDER), restore 204 => `verified: true, restored: true`; Duration đọc lại 6,5 như
+      trước. Kiểu `rowstamp_candidate` (không phải body) bị từ chối 412 ở lượt support; sender thật dùng `_rowstamp` trong body nên
+      không ảnh hưởng. Không còn nháp nào trong bảng. Chế độ tối: mọi màu thanh task đạt tương phản chữ trắng ≥4,5:1 sau khi đậm màu
+      xám `--task-0` (#7a7873 → #736f6a, 4,4 → 5,0). Code upload từng kế hoạch (`plan_uploads.py`, `PlanUpload.tsx`) KHÔNG xóa: vẫn là nền
+      của upload hàng loạt và của tra cứu/đối soát kế hoạch đã gửi. Không làm "lưu hộp thoại vào nháp nhóm" (nháp đôi vô hại, gửi
+      lấy bản mới nhất). Chưa xem bằng mắt ngăn kéo kế hoạch ở chế độ tối (ảnh chụp trễ khung).
 - [x] **Lỗi 503 khi lưu nháp ("Không hoàn tất yêu cầu")**: role runtime thiếu quyền UPDATE cột `result` của
       `draft_submission` (biên nhận được chèn rỗng rồi cập nhật trong cùng transaction). Thêm
       `GRANT UPDATE (result)` vào `backend/sql/provision_roles.sql`, áp vào DB dev local bằng role owner, và
