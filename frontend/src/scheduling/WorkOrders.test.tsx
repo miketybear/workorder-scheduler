@@ -1085,25 +1085,26 @@ async function loadDrafted(rows: WorkOrder[], connection = 'two') {
   await screen.findByRole('button', { name: rows[0].wonum });
 }
 
-it('keeps the declined date change and the open editor when unsaved edits are not discarded', async () => {
+it('keeps the range and the open editor when unsaved edits are not discarded', async () => {
   await editWorkOrder();
   vi.spyOn(window, 'confirm').mockReturnValue(false);
   fireEvent.click(screen.getByRole('button', { name: 'Đổi khoảng ngày' }));
-  setDate(screen.getByLabelText('Target Finish từ'), '2026-08-01');
-  expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
+  expect(screen.getByRole('button', { name: 'Đổi khoảng ngày' })).toBeVisible();
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
 });
 
-it('asks before a range change discards drafts and keeps everything when cancelled', async () => {
+it('warns that drafts are lost before the date fields open and keeps everything when cancelled', async () => {
   await loadDrafted([{ ...row, drafts: [marker] }, { ...second, drafts: [otherMarker] }, { ...row, workorderid: '102', wonum: 'WO-PLAIN' }]);
   fireEvent.click(screen.getByRole('button', { name: 'Đổi khoảng ngày' }));
-  setDate(screen.getByLabelText('Target Finish từ'), '2026-08-01');
   const dialog = screen.getByRole('alertdialog');
+  expect(dialog).toHaveTextContent('mất nháp');
   expect(dialog).toHaveTextContent('nháp của 2 WO chưa upload');
+  expect(screen.getByLabelText('Target Finish từ').closest('form')).not.toBeVisible();
   expect(within(dialog).getByRole('button', { name: 'Xóa nháp và đổi ngày' })).toBeInTheDocument();
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Hủy, giữ danh sách' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Bỏ thay đổi, giữ nháp' }));
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Target Finish từ').closest('form')).not.toBeVisible();
   expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
   expect(screen.getByRole('button', { name: 'WO-PLAIN' })).toBeVisible();
   expect(document.querySelectorAll('[class*=draftMarker]')).toHaveLength(2);
@@ -1111,26 +1112,34 @@ it('asks before a range change discards drafts and keeps everything when cancell
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
 });
 
-it('deletes each distinct draft once, in order, then applies the new range', async () => {
+it('deletes each distinct draft once, in order, then opens the date fields without another warning', async () => {
   await loadDrafted([{ ...row, drafts: [{ ...marker, is_batch: true }] }, { ...second, drafts: [{ ...marker, is_batch: true }, otherMarker] }]);
   vi.mocked(deleteDraft).mockResolvedValue();
   fireEvent.click(screen.getByRole('button', { name: 'Đổi khoảng ngày' }));
-  setDate(screen.getByLabelText('Target Finish từ'), '2026-08-01');
   expect(screen.getByRole('alertdialog')).toHaveTextContent('nháp của 2 WO chưa upload');
   fireEvent.click(screen.getByRole('button', { name: 'Xóa nháp và đổi ngày' }));
-  await screen.findByText(/Chưa Retrieve WO cho khoảng ngày này/);
+  await waitFor(() => expect(screen.getByLabelText('Target Finish từ').closest('form')).toBeVisible());
   expect(vi.mocked(deleteDraft).mock.calls.map(([draft]) => draft)).toEqual([
     { draft_id: 'draft-one', version: 1, state: 'draft' }, { draft_id: 'draft-two', version: 4, state: 'draft' }]);
-  expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-08-01');
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
+  setDate(screen.getByLabelText('Target Finish từ'), '2026-08-01');
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  await screen.findByText(/Chưa Retrieve WO cho khoảng ngày này/);
+  expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-08-01');
+});
+
+it('lets the user back out of an opened date range without losing the table', async () => {
+  await loadDrafted([{ ...row }]);
+  fireEvent.click(screen.getByRole('button', { name: 'Đổi khoảng ngày' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Hủy, giữ khoảng ngày hiện tại' }));
+  expect(screen.getByRole('button', { name: 'Đổi khoảng ngày' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
 });
 
 it('keeps the dialog open and the range unchanged when a draft cannot be deleted', async () => {
   await loadDrafted([{ ...row, drafts: [marker] }, { ...second, drafts: [otherMarker] }]);
   vi.mocked(deleteDraft).mockResolvedValueOnce().mockRejectedValueOnce(new RetrievalError(500, 'Máy chủ lỗi'));
   fireEvent.click(screen.getByRole('button', { name: 'Đổi khoảng ngày' }));
-  setDate(screen.getByLabelText('Target Finish từ'), '2026-08-01');
   fireEvent.click(screen.getByRole('button', { name: 'Xóa nháp và đổi ngày' }));
   const dialog = await screen.findByRole('alertdialog');
   await waitFor(() => expect(within(dialog).getByRole('alert')).toHaveTextContent('Máy chủ lỗi'));

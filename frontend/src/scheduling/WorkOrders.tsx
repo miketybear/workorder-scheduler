@@ -78,7 +78,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
   // Changing the date range while WOs still have drafts asks first; this holds the pending change.
-  const [rangeChange, setRangeChange] = useState<{ value: string; field: 'start' | 'end' } | null>(null);
+  const [rangeChange, setRangeChange] = useState<{ value: string; field: 'start' | 'end' } | { open: true } | null>(null);
   const [rangeBusy, setRangeBusy] = useState(false);
   const [rangeError, setRangeError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -426,7 +426,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         await deleteDraft({ draft_id, version, state: 'draft' }, controller.signal);
         onDraftReady({ draft_id, version, state: 'draft', items: null });
       }
-      applyDate(rangeChange.value, rangeChange.field);
+      if ('open' in rangeChange) setRangeExpanded(true); else applyDate(rangeChange.value, rangeChange.field);
       setRangeChange(null);
     } catch (cause) {
       if (cause instanceof RetrievalError && [401, 403].includes(cause.status)) { setRangeChange(null); onDenied(); }
@@ -687,7 +687,11 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       {grant && <section className={styles.retrievePanel} aria-label="Lấy dữ liệu WO">
       {rows !== null && loadedRange && !rangeExpanded && <div className={styles.retrieveSummary}>
         <span>Đã tải: {displayDate(loadedRange.target_from, grant.timezone, false)} → trước {displayDate(loadedRange.target_before, grant.timezone, false)}</span>
-        <button className={styles.tertiary} onClick={() => setRangeExpanded(true)}>Đổi khoảng ngày</button>
+        <button className={styles.tertiary} onClick={() => {
+          // Drafts are deleted with the old range, so say so before the date fields even open.
+          if (!discard()) return;
+          if (draftedCount > 0) { setRangeError(''); setRangeChange({ open: true }); } else setRangeExpanded(true);
+        }}>Đổi khoảng ngày</button>
       </div>}
       <div className={styles.retrieveHeading} hidden={rows !== null && !!loadedRange && !rangeExpanded}>
         <strong>Lấy dữ liệu WO</strong>
@@ -698,6 +702,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         <div className={styles.dateRange}><span>Target Finish trước</span><DateTimeInput dateOnly label="Target Finish trước" value={end}
           onChange={(value) => changeDate(value, 'end')} /></div>
         <button className={styles.primary} disabled={!grant || busy || !start || !end}>{busy ? 'Đang lấy WO…' : 'Retrieve WO'}</button>
+        {rows !== null && loadedRange && <button type="button" className={styles.ghost} onClick={() => setRangeExpanded(false)}>Hủy, giữ khoảng ngày hiện tại</button>}
       </form>
       </section>}
       {grant && rows === null && !busy && <p>Chưa Retrieve WO cho khoảng ngày này. Chọn ngày và bấm Retrieve WO để tải bảng.</p>}
@@ -840,11 +845,11 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       </>}
       {rangeChange && <div className={styles.confirmOverlay}><section role="alertdialog" aria-modal="true" aria-labelledby={rangeTitleId} aria-describedby={rangeBodyId} className={styles.confirmDialog}
         onKeyDown={(event) => { if (event.key === 'Escape' && !rangeBusy) setRangeChange(null); }}>
-        <h2 id={rangeTitleId}>Đổi khoảng ngày sẽ xóa nháp</h2>
+        <h2 id={rangeTitleId}>Bạn sẽ mất nháp nếu đổi khoảng ngày</h2>
         <p id={rangeBodyId}>Đổi khoảng ngày sẽ bỏ nháp của {draftedCount} WO chưa upload. Các nháp này bị xóa khỏi hệ thống và không khôi phục được; Maximo giữ nguyên.</p>
         {rangeError && <p role="alert" className={styles.error}>{rangeError}</p>}
         <div className={styles.confirmActions}>
-          <button className={styles.ghost} autoFocus disabled={rangeBusy} onClick={() => setRangeChange(null)}>Hủy, giữ danh sách</button>
+          <button className={styles.ghost} autoFocus disabled={rangeBusy} onClick={() => setRangeChange(null)}>Bỏ thay đổi, giữ nháp</button>
           <button className={styles.danger} disabled={rangeBusy} onClick={() => void confirmRangeChange()}>{rangeBusy ? 'Đang xóa nháp…' : 'Xóa nháp và đổi ngày'}</button>
         </div>
       </section></div>}

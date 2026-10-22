@@ -143,6 +143,10 @@ Cập nhật: 2026-10-19.
       (ô disabled không nhận chạm): thiết bị `(hover: none)` nạp ngay khi có dòng, đã thấy 26 PIC ở 375px. Hộp thoại chi tiết vừa
       màn 375px; timeline mobile chỉ còn thống kê; không tràn ngang trang nào ở 768 và 375. 491 frontend test, lint, tsc đạt.
       Chưa thử trên thiết bị cảm ứng thật.
+- [x] **Cảnh báo mất nháp ngay khi bấm "Đổi khoảng ngày" (2026-10-22)**: có WO có nháp thì bấm nút mở hộp thoại "Bạn sẽ mất nháp nếu
+      đổi khoảng ngày" TRƯỚC khi ô ngày mở ("Bỏ thay đổi, giữ nháp" / "Xóa nháp và đổi ngày"); xác nhận xóa tuần tự rồi mở ô ngày,
+      đổi ngày sau đó không hỏi lại. Form ngày có thêm "Hủy, giữ khoảng ngày hiện tại" khi bảng còn dữ liệu. Giữ cảnh báo cũ nếu
+      nháp phát sinh lúc ô ngày đang mở. Đã xem trên trình duyệt; 493 frontend test, lint, tsc đạt.
 - [x] **Lỗi 503 khi lưu nháp ("Không hoàn tất yêu cầu")**: role runtime thiếu quyền UPDATE cột `result` của
       `draft_submission` (biên nhận được chèn rỗng rồi cập nhật trong cùng transaction). Thêm
       `GRANT UPDATE (result)` vào `backend/sql/provision_roles.sql`, áp vào DB dev local bằng role owner, và
