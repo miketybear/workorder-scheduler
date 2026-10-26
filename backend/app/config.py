@@ -54,6 +54,47 @@ class EntraSettings(BaseModel):
         return value
 
 
+class WorkflowRouteAccount(BaseModel):
+    """Shared Maximo position account that owns a discipline's BD_WO supervisor assignments."""
+
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    personid: str = Field(pattern=r"^[A-Z0-9_]{1,30}$")
+    api_key: SecretStr
+
+    @field_validator("api_key")
+    @classmethod
+    def required_key(cls, value: SecretStr) -> SecretStr:
+        raw = value.get_secret_value()
+        if not raw.strip() or any(ord(char) < 33 or ord(char) > 126 for char in raw):
+            raise ValueError("A nonempty API key is required")
+        return value
+
+
+class WorkflowRouteSettings(BaseModel):
+    """Verified BD_WO route contract for one connection; any drift in Maximo locks the feature."""
+
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    process: str = Field(default="BD_WO", pattern=r"^[A-Z0-9_]{1,30}$")
+    # None resolves the single active revision of the process at runtime; a number pins it.
+    revision: int | None = Field(default=None, ge=1, le=100000)
+    # Supervisor input node -> action id of "Route to Tech PIC for execution" at that node.
+    nodes: dict[int, int] = Field(default_factory=lambda: {20: 427, 40: 437}, min_length=1)
+    assignment_node: int = Field(default=34, ge=1)
+    option_text: str = Field(
+        default="Route to Tech PIC for execution", min_length=1, max_length=100
+    )
+    object_structure: Literal["MXAPIWFASSIGNMENT"] = "MXAPIWFASSIGNMENT"
+    # Planners in this group may become SUPNAME of a work order that has none.
+    supervisor_group: str = Field(default="ALLSUPN", pattern=r"^[A-Za-z0-9_& -]{1,50}$")
+
+    @field_validator("nodes")
+    @classmethod
+    def positive_nodes(cls, values: dict[int, int]) -> dict[int, int]:
+        if any(node < 1 or action < 1 for node, action in values.items()):
+            raise ValueError("Route nodes and action ids must be positive")
+        return values
+
+
 class MaximoSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
     collection_url: str
@@ -74,6 +115,18 @@ class MaximoSettings(BaseModel):
     assignment_daily_write_contract: Literal["native_daily_assignment_rowstamp_test"] | None = None
     task_load_contract: Literal["bdsched_assignment_test"] | None = None
     paging_origin_aliases: list[str] = Field(default_factory=list, max_length=3)
+    # Keyed by server-derived discipline; used only for BD_WO route actions, never for reads/fields.
+    workflow_route_accounts: dict[str, WorkflowRouteAccount] = Field(default_factory=dict)
+    workflow_route: WorkflowRouteSettings = Field(default_factory=WorkflowRouteSettings)
+
+    @field_validator("workflow_route_accounts")
+    @classmethod
+    def safe_route_disciplines(cls, values: dict[str, WorkflowRouteAccount]):
+        import re
+
+        if any(not re.fullmatch(r"[A-Za-z0-9_& -]{1,50}", code) for code in values):
+            raise ValueError("Invalid route account discipline code")
+        return values
 
     @field_validator("paging_origin_aliases")
     @classmethod
@@ -195,6 +248,7 @@ class Settings(BaseSettings):
             connection.conditional_write_contract is not None
             or connection.assignment_write_contract is not None
             or connection.assignment_daily_write_contract is not None
+            or bool(connection.workflow_route_accounts)
             for connection in self.maximo.values()
         ):
             raise ValueError("Verified conditional write contract is TEST-only")

@@ -87,7 +87,7 @@ def test_pm_cft_transport_rejects_protected_payload_or_changed_authority(case, w
             changes = (
                 {"targstartdate": "2026-10-10T00:00:00+07:00"}
                 if case == "target"
-                else {"assignedtechname": None}
+                else {"assignedto": None}
                 if case == "clear"
                 else {"estdur": "3"}
             )
@@ -202,5 +202,42 @@ def test_native_response_classification_never_proves_child_or_unexpected_success
             with pytest.raises(expected):
                 await transport.write(key, "100", {"estdur": "3"})
             assert "private" not in str(transport.outcome)
+
+    asyncio.run(main())
+
+
+def test_sender_posts_assignedto_with_the_pic_and_refuses_the_old_field_name():
+    async def main():
+        posts = []
+
+        def handler(request):
+            if request.method == "POST":
+                posts.append(request)
+                return httpx.Response(204)
+            return httpx.Response(
+                200,
+                json={
+                    "member": [{"persongroup": "CREW", "persongroupteam": [{"respparty": "PIC1"}]}]
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            key = WorkOrderKey(uuid4(), "TEST", "100")
+            transport = NativeTestTransport(None, uuid4(), key.connection_id, "E&I", client)
+
+            async def authorize():
+                return config(crew_groups={"E&I": "CREW"})
+
+            transport.authorize = authorize
+            transport.evidence[key] = evidence().model_copy(update={"rowstamp_candidate": "100"})
+            transport.attempt_id = uuid4()
+            with pytest.raises(WriteRejected):
+                await transport.write(key, "100", {"assignedtechname": "PIC1"})
+            assert posts == []
+            await transport.write(key, "100", {"assignedto": "PIC1"})
+        import json
+
+        assert json.loads(posts[0].content) == {"assignedto": "PIC1", "_rowstamp": "100"}
+        assert "assignedtechname" not in posts[0].content.decode()
 
     asyncio.run(main())

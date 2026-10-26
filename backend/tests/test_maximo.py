@@ -36,7 +36,7 @@ def record(**overrides):
         "parent": None,
         "wolo10": 25,
         "lochierarchy": {"systemid": "SYS"},
-        "assignedtechname": "TEST-PIC",
+        "assignedto": "TEST-PIC",
         "estdur": 8,
         **overrides,
     }

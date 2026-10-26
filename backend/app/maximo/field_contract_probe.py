@@ -25,7 +25,7 @@ def recovery_payload(original, current, pics):
     fields = (
         "schedstart",
         "schedfinish",
-        "assignedtechname",
+        "assignedto",
         "estdur",
         "targstartdate",
         "targcompdate",
@@ -42,7 +42,7 @@ def recovery_payload(original, current, pics):
     result = {}
     for group, intent in (
         ({"schedstart", "schedfinish"}, False),
-        ({"assignedtechname"}, False),
+        ({"assignedto"}, False),
         ({"estdur"}, False),
         ({"targstartdate", "targcompdate"}, True),
     ):
@@ -82,7 +82,7 @@ def field_payload(baseline, values, pics, *, target_intent=False, original=None)
     """Normal validation plus exact TEST original PIC/schedule restoration exceptions."""
     null_fields = {field for field, value in values.items() if value is None}
     if null_fields:
-        permitted = set(values) in ({"assignedtechname"}, {"schedstart", "schedfinish"})
+        permitted = set(values) in ({"assignedto"}, {"schedstart", "schedfinish"})
         if (
             not permitted
             or original is None
@@ -93,11 +93,11 @@ def field_payload(baseline, values, pics, *, target_intent=False, original=None)
             raise MaximoReadError("Only exact original null PIC or schedule pair may be restored")
         return dict(values)
     if (
-        set(values) == {"assignedtechname"}
+        set(values) == {"assignedto"}
         and original is not None
         and original.worktype == baseline.worktype
-        and values["assignedtechname"] == original.assignedtechname
-        and original.assignedtechname is not None
+        and values["assignedto"] == original.assignedto
+        and original.assignedto is not None
     ):
         # Exact original only, never a new outside-crew assignment. The immutable
         # plan and original-PIC no-op protect this operator restoration exception.
@@ -359,7 +359,7 @@ class FieldContractProbe(WriteContractProbe):
         if any(getattr(base, field) is None for field in targets):
             raise MaximoReadError("Field probe requires exact original target dates")
         pics = await self.crew()
-        selected = next((pic for pic in sorted(pics) if pic != base.assignedtechname), None)
+        selected = next((pic for pic in sorted(pics) if pic != base.assignedto), None)
         if selected is None:
             raise MaximoReadError("No distinct permitted crew PIC")
         offset = timedelta(hours=1, minutes=7, seconds=13)
@@ -378,7 +378,7 @@ class FieldContractProbe(WriteContractProbe):
         cases = [
             ("fractional_duration", {"estdur": base.estdur + Decimal("0.25")}, False),
             ("schedule_dates", dates, False),
-            ("crew_pic", {"assignedtechname": selected}, False),
+            ("crew_pic", {"assignedto": selected}, False),
         ]
         if self.operator_worktype not in {"PM", "CFT"}:
             cases.append(
@@ -393,10 +393,10 @@ class FieldContractProbe(WriteContractProbe):
             ("field_wrong_token", {"estdur": duration_value(base.estdur)}),
             ("field_current_noop", {"estdur": duration_value(base.estdur)}),
         ]
-        if base.assignedtechname is None:
-            plan.append(("original_null_pic_noop", {"assignedtechname": None}))
-        elif base.assignedtechname not in pics:
-            plan.append(("original_pic_noop", {"assignedtechname": base.assignedtechname}))
+        if base.assignedto is None:
+            plan.append(("original_null_pic_noop", {"assignedto": None}))
+        elif base.assignedto not in pics:
+            plan.append(("original_pic_noop", {"assignedto": base.assignedto}))
         if base.schedstart is None:
             plan.append(("original_null_schedule_noop", {field: None for field in schedule}))
         for label, values, intent in cases:
@@ -465,14 +465,14 @@ class FieldContractProbe(WriteContractProbe):
                 current, {"estdur": original.baseline.estdur}, "field_current_noop"
             )
             # Establish null acceptance while still null, before setting a PIC that needs clearing.
-            if original.baseline.assignedtechname is None:
+            if original.baseline.assignedto is None:
                 current, _ = await self.change(
-                    current, {"assignedtechname": None}, "original_null_pic_noop"
+                    current, {"assignedto": None}, "original_null_pic_noop"
                 )
             elif any(label == "original_pic_noop" for label, _ in self.field_plan):
                 current, _ = await self.change(
                     current,
-                    {"assignedtechname": original.baseline.assignedtechname},
+                    {"assignedto": original.baseline.assignedto},
                     "original_pic_noop",
                 )
             if original.baseline.schedstart is None:

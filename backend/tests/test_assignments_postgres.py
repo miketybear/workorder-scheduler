@@ -207,11 +207,11 @@ def test_assignment_api_lifecycle_capacity_scope_and_replacement(monkeypatch, le
                 by_site = {w["site_id"]: w for w in timeline.json()["work_orders"]}
                 assert by_site["TEST"]["schedstart"] == "2026-10-01T08:00:00+07:00"
                 assert by_site["TEST"]["schedfinish"] == "2026-10-01T17:00:00+07:00"
-                assert by_site["TEST"]["assignedtechname"] == "TEST-PIC"
+                assert by_site["TEST"]["assignedto"] == "TEST-PIC"
                 # Missing schedule values pass through as null.
                 assert by_site["OTHER"]["schedstart"] is None
                 assert by_site["OTHER"]["schedfinish"] is None
-                assert by_site["OTHER"]["assignedtechname"] == "TEST-PIC"
+                assert by_site["OTHER"]["assignedto"] == "TEST-PIC"
                 assert all(row["craft"] == "MECH" for row in timeline.json()["rows"])
                 assert (
                     await client.get(timeline_url, params={**timeline_params, "discipline": "DECK"})

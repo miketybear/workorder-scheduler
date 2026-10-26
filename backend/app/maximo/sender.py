@@ -143,7 +143,7 @@ class NativeTestTransport:
         if not changes or set(changes) - {
             "schedstart",
             "schedfinish",
-            "assignedtechname",
+            "assignedto",
             "estdur",
             "targstartdate",
             "targcompdate",
@@ -177,12 +177,32 @@ class NativeTestTransport:
             await self.authorize()
         except (HTTPException, MaximoReadError):
             raise WriteRejected() from None
+        await self._post(config, evidence.resource_id, {**payload, "_rowstamp": revision})
+
+    async def write_supname(self, resource_id, revision, supname):
+        """Workflow-route flow only: set an empty SUPNAME, conditional on the rowstamp that was
+        read together with the empty value. No other field can pass through this method."""
+        if (
+            self.attempt_id is None
+            or not re.fullmatch(r"[1-9][0-9]{0,29}", str(revision))
+            or not re.fullmatch(r"[A-Z0-9_]{1,30}", str(supname))
+            or not re.fullmatch(r"[A-Za-z0-9_~-]{1,500}", str(resource_id))
+        ):
+            raise WriteRejected()
+        self.outcome = None
+        try:
+            config = await self.authorize()
+        except (HTTPException, MaximoReadError):
+            raise WriteRejected() from None
+        await self._post(config, resource_id, {"supname": supname, "_rowstamp": str(revision)})
+
+    async def _post(self, config, resource_id, body):
         try:
             async with self.client.stream(
                 "POST",
-                config.collection_url + "/" + evidence.resource_id,
+                config.collection_url + "/" + resource_id,
                 params={"lean": "1"},
-                json={**payload, "_rowstamp": revision},
+                json=body,
                 headers={
                     "apikey": config.api_key.get_secret_value(),
                     "Accept": "application/json",

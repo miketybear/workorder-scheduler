@@ -112,7 +112,7 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                 transport=httpx.ASGITransport(app=app), base_url="https://test.example"
             ) as client:
                 client.cookies.set(SESSION_COOKIE, token)
-                changes = {"estdur": "9", "assignedtechname": "BAD" if case == "pic" else "TECH"}
+                changes = {"estdur": "9", "assignedto": "BAD" if case == "pic" else "TECH"}
                 if case == "pm":
                     changes.update(change_target=True, targcompdate="2026-10-02T00:00:00+07:00")
                 if case == "unknown-field":

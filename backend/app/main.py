@@ -24,8 +24,11 @@ from app.rota.routes import router as rota_router
 from app.scheduling.batches import router as batches_router
 from app.scheduling.routes import router as scheduling_router
 from app.scheduling.upload_routes import router as uploads_router
+from app.workflow_route.credentials import CredentialStore, LoginLimiter
+from app.workflow_route.routes import router as workflow_route_router
+from app.workflow_route.service import ContractCache
 
-SCHEMA_REVISION = "0016_plan_upload_batches"
+SCHEMA_REVISION = "0017_workflow_route_attempt"
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -65,6 +68,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         settings.work_order_snapshot_max_rows,
         settings.work_order_snapshot_max_bytes,
     )
+    # Position-account sessions live only in this process's memory.
+    app.state.workflow_route_credentials = CredentialStore()
+    app.state.workflow_route_limiter = LoginLimiter()
+    app.state.workflow_route_contract = ContractCache()
+    app.state.workflow_route_locks = {}
     app.include_router(entra_router)
     app.include_router(planner_router)
     app.include_router(settings_router)
@@ -76,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(rota_router)
     app.include_router(rota_activation_router)
     app.include_router(assignments_router)
+    app.include_router(workflow_route_router)
 
     @app.middleware("http")
     async def prevent_resource_caching(request: Request, call_next):

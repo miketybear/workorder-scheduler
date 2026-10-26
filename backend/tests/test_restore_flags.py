@@ -12,7 +12,7 @@ def test_restored_draft_reports_upstream_change_and_removed_pic():
         site_id="TEST",
         workorder_id="100",
         baseline=old,
-        changes={"estdur": "9", "assignedtechname": "REMOVED"},
+        changes={"estdur": "9", "assignedto": "REMOVED"},
     )
     current = CurrentWorkOrder(
         WorkOrderKey(uuid4(), "TEST", "100"),

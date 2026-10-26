@@ -158,6 +158,8 @@ async def logout(request: Request):
         identity = await resolve_session(db, token)
         verify_csrf(identity, request.headers.get("X-CSRF-Token"))
         await db.execute(delete(LoginSession).where(LoginSession.token_hash == identity.token_hash))
+    # Position-account credentials never outlive the login session they were entered in.
+    request.app.state.workflow_route_credentials.drop_session(identity.token_hash)
     response = Response(status_code=204, headers={"Cache-Control": "no-store"})
     for name in (SESSION_COOKIE, CSRF_COOKIE):
         response.delete_cookie(

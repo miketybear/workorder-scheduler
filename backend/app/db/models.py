@@ -249,3 +249,52 @@ class AuditEvent(Base):
     # Restricted structured data, never raw upstream responses or credentials.
     details: Mapped[dict] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WorkflowRouteAttempt(Base):
+    """Durable intent and outcome of one BD_WO route, written before Maximo is called."""
+
+    __tablename__ = "workflow_route_attempt"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('pending','sending','confirmed','failed','stranded','unknown','rejected')",
+            name="ck_route_state",
+        ),
+        CheckConstraint("length(trim(site_id)) > 0", name="ck_route_site"),
+        # One request may route several WOs; the identity within a request is the WO.
+        UniqueConstraint(
+            "request_id", "connection_id", "site_id", "workorder_id", name="uq_route_request_wo"
+        ),
+        Index(
+            "uq_active_route_wo",
+            "connection_id",
+            "site_id",
+            "workorder_id",
+            unique=True,
+            postgresql_where=text("state IN ('pending','sending')"),
+        ),
+        Index("ix_route_actor_request", "actor_user_id", "request_id"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    request_id: Mapped[uuid.UUID]
+    actor_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id", ondelete="RESTRICT"))
+    connection_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("maximo_connection.id", ondelete="RESTRICT")
+    )
+    site_id: Mapped[str] = mapped_column(String(50))
+    workorder_id: Mapped[str] = mapped_column(String(100))
+    wonum: Mapped[str | None] = mapped_column(String(100))
+    discipline: Mapped[str] = mapped_column(String(50))
+    process: Mapped[str] = mapped_column(String(30))
+    revision: Mapped[int] = mapped_column(Integer)
+    node_id: Mapped[int | None] = mapped_column(Integer)
+    wfassignment_id_before: Mapped[str | None] = mapped_column(String(40))
+    chosen_action_id: Mapped[int | None] = mapped_column(Integer)
+    state: Mapped[str] = mapped_column(String(20), default="pending")
+    error_code: Mapped[str | None] = mapped_column(String(60))
+    wfassignment_id_after: Mapped[str | None] = mapped_column(String(40))
+    assigncode_after: Mapped[str | None] = mapped_column(String(50))
+    # Allowlisted codes and ids only; never credentials, headers or raw upstream bodies.
+    evidence: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -315,7 +315,7 @@ class WriteContractProbe:
         if not payload or set(payload) - {
             "schedstart",
             "schedfinish",
-            "assignedtechname",
+            "assignedto",
             "estdur",
             "targstartdate",
             "targcompdate",

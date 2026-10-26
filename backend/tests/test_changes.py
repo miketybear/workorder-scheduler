@@ -51,7 +51,7 @@ def test_partial_edit_validated_against_existing_finish(baseline):
 
 def test_pic_membership_and_target_intent(baseline):
     with pytest.raises(ValueError, match="crew"):
-        build_changes(baseline, ScheduleChanges(assignedtechname="OTHER"), {"DEMO"})
+        build_changes(baseline, ScheduleChanges(assignedto="OTHER"), {"DEMO"})
     with pytest.raises(ValueError, match="intent"):
         build_changes(baseline, ScheduleChanges(targcompdate="2026-10-01T17:00:00+07:00"), set())
 
@@ -61,3 +61,12 @@ def test_only_changed_fields_sent_and_offsets_preserved(baseline):
         baseline, ScheduleChanges(estdur=8, schedfinish="2026-09-25T18:00:00+07:00"), set()
     )
     assert result == {"schedfinish": datetime.fromisoformat("2026-09-25T18:00:00+07:00")}
+
+
+def test_old_pic_field_name_is_rejected_like_any_unknown_field():
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        ScheduleChanges.model_validate({"assignedtechname": "DEMO"})
+    assert ScheduleChanges.model_validate({"assignedto": "DEMO"}).assignedto == "DEMO"
+    assert "assignedtechname" not in WorkOrderBaseline.model_fields

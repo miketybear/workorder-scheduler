@@ -99,7 +99,7 @@ def test_pm_duration_classification_and_pinned_finalization(case, expected):
                 }.get(case, Decimal(21))
                 actual = fake.current.baseline.model_copy(update={"estdur": duration})
                 if case == "other-field":
-                    actual = actual.model_copy(update={"assignedtechname": "UNEXPECTED"})
+                    actual = actual.model_copy(update={"assignedto": "UNEXPECTED"})
                 fake.current = replace(fake.current, baseline=actual)
                 if case == "timeout":
                     raise UncertainWrite()

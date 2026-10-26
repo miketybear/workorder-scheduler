@@ -145,7 +145,7 @@ def test_batch_atomic_validation_and_lifecycle(case):
                     for key, item in zip(keys, prepared.json()["items"], strict=True)
                 ]
                 if case == "pic":
-                    edits[1]["changes"]["assignedtechname"] = "BAD"
+                    edits[1]["changes"]["assignedto"] = "BAD"
                 if case == "dates":
                     edits[1]["changes"].update(
                         schedstart="2026-10-02T10:00:00+07:00",
@@ -267,7 +267,7 @@ def test_monthly_batch_persistence_and_atomic_failure(count, fault):
                                     wonum=f"MONTH-{identifier - 999}",
                                     bdpocdiscipline="MECH",
                                     worktype="PM" if identifier % 10 == 0 else "CM",
-                                    assignedtechname="TECH",
+                                    assignedto="TECH",
                                     schedstart=None,
                                     schedfinish=None,
                                     estdur=10
@@ -301,7 +301,7 @@ def test_monthly_batch_persistence_and_atomic_failure(count, fault):
                     "schedstart": "2026-10-09T08:00:00+07:00",
                     "schedfinish": "2026-10-09T17:30:00+07:00",
                     "estdur": "9.5",
-                    "assignedtechname": "OTHER",
+                    "assignedto": "OTHER",
                 }
                 edits = [
                     {
@@ -313,7 +313,7 @@ def test_monthly_batch_persistence_and_atomic_failure(count, fault):
                 ]
                 edits[-1]["changes"].update(estdur="2.25", schedfinish="2026-10-09T10:15:00+07:00")
                 if fault == "pic":
-                    edits[-1]["changes"]["assignedtechname"] = "INVALID"
+                    edits[-1]["changes"]["assignedto"] = "INVALID"
                 payload = {**scope, "items": edits, "request_id": str(uuid4())}
                 saving = True
                 created = await client.post("/api/draft-batches", json=payload, headers=headers)
@@ -344,7 +344,7 @@ def test_monthly_batch_persistence_and_atomic_failure(count, fault):
                 for edit in edits:
                     assert by_id[edit["workorder_id"]]["changes"] == edit["changes"]
                 update = {**copy.deepcopy(payload), "version": 1, "request_id": str(uuid4())}
-                update["items"][0]["changes"]["assignedtechname"] = "TECH"
+                update["items"][0]["changes"]["assignedto"] = "TECH"
                 updated = await client.put(url, json=update, headers=headers)
                 assert updated.status_code == 200 and updated.json()["version"] == 2, updated.text
                 assert (

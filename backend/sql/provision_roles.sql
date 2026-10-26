@@ -91,4 +91,9 @@ GRANT UPDATE (state) ON assignment_upload TO :"runtime_role";
 -- Bootstrap audit inserts and app_user.is_admin changes belong to trusted operators only.
 -- No business retention DELETE permission for submissions, uploads or audit history.
 GRANT INSERT, UPDATE ON assignment_planning_snapshot TO :"runtime_role";
+-- Route audit rows are inserted before Maximo is called; only outcome columns change afterwards.
+GRANT INSERT ON workflow_route_attempt TO :"runtime_role";
+GRANT UPDATE (wonum, node_id, wfassignment_id_before, chosen_action_id, state, error_code,
+    wfassignment_id_after, assigncode_after, evidence, updated_at)
+    ON workflow_route_attempt TO :"runtime_role";
 COMMIT;

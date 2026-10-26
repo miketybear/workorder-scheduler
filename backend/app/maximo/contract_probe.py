@@ -28,7 +28,7 @@ from app.scheduling.changes import WorkOrderBaseline
 
 PROBE_SELECT = (
     "href,orgid,siteid,workorderid,wonum,bdpocdiscipline,worktype,status,istask,parent,"
-    "schedstart,schedfinish,assignedtechname,estdur,targstartdate,targcompdate,_rowstamp"
+    "schedstart,schedfinish,assignedto,estdur,targstartdate,targcompdate,_rowstamp"
 )
 ETagStatus = Literal["missing", "weak", "invalid", "strong", "numeric_candidate"]
 ProbeWorktype = Literal["CM", "PM", "CFT", "REC", "OVERHAUL", "MoD", "General", "Routine"]

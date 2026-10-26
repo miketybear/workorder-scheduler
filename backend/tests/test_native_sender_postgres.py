@@ -43,7 +43,7 @@ def test_native_api_target_rule_groups_require_intent_and_forbid_pm_cft(
                 bdpocdiscipline="MECH",
                 worktype=worktype,
                 estdur=2,
-                assignedtechname=None,
+                assignedto=None,
                 href="https://maximo.invalid/maximo/oslc/os/oslcmxwodetail/_TEST100",
                 _rowstamp="100",
                 targstartdate="2026-10-01T00:00:00+07:00",
@@ -204,7 +204,7 @@ def test_verified_test_sender_native_condition_durable_intent_receipt_and_recove
                     wonum=f"WO{i}",
                     bdpocdiscipline="MECH",
                     estdur=2,
-                    assignedtechname=None,
+                    assignedto=None,
                     href=f"https://maximo.invalid/maximo/oslc/os/oslcmxwodetail/_TEST{i}",
                     _rowstamp="100",
                 )
@@ -233,9 +233,7 @@ def test_verified_test_sender_native_condition_durable_intent_receipt_and_recove
                     frozenset({"VALID"}),
                 )
                 proposal = (
-                    ScheduleChanges(
-                        schedstart="2026-10-30T07:37:13+07:00", assignedtechname="VALID"
-                    )
+                    ScheduleChanges(schedstart="2026-10-30T07:37:13+07:00", assignedto="VALID")
                     if mode == "pm_pic"
                     else ScheduleChanges(schedstart="2026-10-30T07:37:13+07:00", estdur=26)
                     if mode == "pm_explicit"
@@ -277,7 +275,7 @@ def test_verified_test_sender_native_condition_durable_intent_receipt_and_recove
                     assert (
                         set(payload)
                         == (
-                            {"schedstart", "assignedtechname", "_rowstamp"}
+                            {"schedstart", "assignedto", "_rowstamp"}
                             if mode == "pm_pic"
                             else {"schedstart", "estdur", "_rowstamp"}
                             if mode == "pm_explicit"

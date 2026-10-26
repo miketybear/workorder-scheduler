@@ -86,7 +86,7 @@ WO revision/ETag and uploads remain pending. See ../docs/person-access.md and ..
   Follow only upstream links that remain within the configured trusted connection.
 - Read actual field metadata/nullability and preserve record identity across systems/sites.
 - POST with x-method-override: PATCH is the existing VBA behavior; confirm support on test.
-- Only allow schedstart, schedfinish, assignedtechname, estdur and explicitly requested
+- Only allow schedstart, schedfinish, assignedto (the PIC), estdur and explicitly requested
   targstartdate/targcompdate. Do not send status, discipline or arbitrary browser-supplied fields.
 - Reject target updates for PM/CFT on the server even if the UI is bypassed.
 - Validate dates, required values and nonnegative duration; verify PIC membership against the

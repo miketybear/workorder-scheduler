@@ -195,7 +195,7 @@ def run(data):
                         parent=None,
                         targcompdate="2026-09-30T23:59:59+07:00",
                         estdur=8,
-                        assignedtechname="TECH",
+                        assignedto="TECH",
                     )
                     for i in ids
                 ]

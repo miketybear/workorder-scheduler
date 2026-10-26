@@ -175,6 +175,7 @@ def test_provisioned_runtime_has_dml_but_no_ddl_admin_or_audit_mutation():
                 ("assignment_plan_upload", ("SELECT", "INSERT")),
                 ("assignment_plan_upload_batch", ("SELECT", "INSERT")),
                 ("assignment_plan_upload_batch_item", ("SELECT", "INSERT")),
+                ("workflow_route_attempt", ("SELECT", "INSERT")),
             ):
                 for privilege in privileges:
                     assert db.execute(
@@ -189,7 +190,19 @@ def test_provisioned_runtime_has_dml_but_no_ddl_admin_or_audit_mutation():
                     "SELECT has_column_privilege(current_user, 'assignment_plan', %s, 'UPDATE')",
                     (column,),
                 ).fetchone() == (True,)
+            for column in ("state", "error_code", "evidence", "node_id", "wonum"):
+                assert db.execute(
+                    "SELECT has_column_privilege(current_user, "
+                    "'workflow_route_attempt', %s, 'UPDATE')",
+                    (column,),
+                ).fetchone() == (True,)
             denied = [
+                "UPDATE workflow_route_attempt SET request_id=gen_random_uuid()",
+                "UPDATE workflow_route_attempt SET actor_user_id=gen_random_uuid()",
+                "UPDATE workflow_route_attempt SET connection_id=gen_random_uuid()",
+                "UPDATE workflow_route_attempt SET workorder_id='1'",
+                "DELETE FROM workflow_route_attempt",
+                "TRUNCATE workflow_route_attempt",
                 "UPDATE assignment_plan SET demand_minutes=1",
                 "UPDATE assignment_plan SET assignment_id='changed'",
                 "UPDATE assignment_plan SET actor_id=gen_random_uuid()",

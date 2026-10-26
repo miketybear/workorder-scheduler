@@ -167,7 +167,7 @@ def test_preflight_changes_never_send(case):
             current = snapshot(connections[0])
             if case in {"no-token", "wildcard"}:
                 current = replace(current, revision=None if case == "no-token" else "*")
-            changes = ScheduleChanges(assignedtechname="PIC") if case == "pic" else None
+            changes = ScheduleChanges(assignedto="PIC") if case == "pic" else None
             _, _, _, _, item_id, fake = await batch_for(sessions, user, current, changes=changes)
             if case == "baseline":
                 fake.current = replace(

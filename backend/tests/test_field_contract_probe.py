@@ -52,7 +52,7 @@ def run_case(mode="normal", worktype="CM", null_schedule=False, original_pic=Non
             if mode == "original_pic_rejected" and label == "original_pic_noop":
                 return httpx.Response(400)
             if mode == "unrelated" and label == "fractional_duration":
-                fields["assignedtechname"] = "VALID"
+                fields["assignedto"] = "VALID"
             if mode == "timeout" and "schedstart" in fields:
                 raise httpx.ReadTimeout("private")
             if mode == "round" and fields.get("estdur") == 2.25:
@@ -62,7 +62,7 @@ def run_case(mode="normal", worktype="CM", null_schedule=False, original_pic=Non
             if mode == "null_schedule_recalc" and label == "original_null_schedule_noop":
                 fields["estdur"] = 21
             if mode == "schedule_unrelated" and label == "schedule_dates":
-                fields["assignedtechname"] = "VALID"
+                fields["assignedto"] = "VALID"
             if (
                 mode == "schedule_duration_restore_mismatch"
                 and label == "schedule_duration_restore"
@@ -84,7 +84,7 @@ def run_case(mode="normal", worktype="CM", null_schedule=False, original_pic=Non
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             probe = FakeFieldProbe(client)
             probe.operator_worktype = worktype
-            updates = {"worktype": worktype, "assignedtechname": original_pic}
+            updates = {"worktype": worktype, "assignedto": original_pic}
             if null_schedule:
                 updates.update(schedstart=None, schedfinish=None)
             probe.current = probe.current.model_copy(
@@ -118,9 +118,9 @@ def run_case(mode="normal", worktype="CM", null_schedule=False, original_pic=Non
                 )
                 if worktype == "CM" and not null_schedule and original_pic is None:
                     assert len(sent) == 12
-                    assert sent[2]["assignedtechname"] is None
-                    assert sent[8]["assignedtechname"] == "VALID"
-                    assert sent[9]["assignedtechname"] is None
+                    assert sent[2]["assignedto"] is None
+                    assert sent[8]["assignedto"] == "VALID"
+                    assert sent[9]["assignedto"] is None
             return probe, sent
 
     return asyncio.run(main())
@@ -164,7 +164,7 @@ def test_typed_field_plan_exact_restore_and_forbidden_target_omission(worktype, 
     probe, sent = run_case(worktype=worktype, null_schedule=null_schedule)
     assert probe.states == ["confirmed"]
     assert probe.current.baseline.worktype == worktype
-    assert probe.current.baseline.assignedtechname is None
+    assert probe.current.baseline.assignedto is None
     if worktype in {"PM", "CFT"}:
         assert not any({"targstartdate", "targcompdate"} & payload.keys() for payload in sent)
     if null_schedule:
@@ -175,9 +175,9 @@ def test_typed_field_plan_exact_restore_and_forbidden_target_omission(worktype, 
 
 def test_original_outside_crew_pic_noop_then_exact_original_restore_only():
     probe, sent = run_case(worktype="MoD", null_schedule=True, original_pic="SONNA")
-    assert sent[2]["assignedtechname"] == "SONNA"
-    assert probe.current.baseline.assignedtechname == "SONNA"
-    assert sum(payload.get("assignedtechname") == "SONNA" for payload in sent) == 2
+    assert sent[2]["assignedto"] == "SONNA"
+    assert probe.current.baseline.assignedto == "SONNA"
+    assert sum(payload.get("assignedto") == "SONNA" for payload in sent) == 2
 
 
 @pytest.mark.parametrize(
@@ -204,11 +204,11 @@ def test_null_restore_cannot_clear_nonnull_partial_schedule_or_targets():
     ):
         with pytest.raises(MaximoReadError):
             field_payload(original, payload, {"VALID"}, original=original)
-    nonnull = original.model_copy(update={"assignedtechname": "ORIGINAL"})
+    nonnull = original.model_copy(update={"assignedto": "ORIGINAL"})
     with pytest.raises(MaximoReadError):
-        field_payload(nonnull, {"assignedtechname": None}, {"VALID"}, original=nonnull)
+        field_payload(nonnull, {"assignedto": None}, {"VALID"}, original=nonnull)
     with pytest.raises(ValueError, match="PIC"):
-        field_payload(nonnull, {"assignedtechname": "ARBITRARY"}, {"VALID"}, original=nonnull)
+        field_payload(nonnull, {"assignedto": "ARBITRARY"}, {"VALID"}, original=nonnull)
 
 
 def test_field_mode_without_exact_immutable_plan_denies_before_outbound():
@@ -336,8 +336,8 @@ def test_recovery_null_schedule_includes_exact_original_duration_and_no_targets(
 @pytest.mark.parametrize(
     "payload",
     [
-        {"assignedtechname": "VALID"},
-        {"assignedtechname": None},
+        {"assignedto": "VALID"},
+        {"assignedto": None},
         {"schedstart": None, "schedfinish": None},
         {"schedstart": "2026-10-01T00:00:00+07:00"},
     ],
@@ -359,9 +359,9 @@ def test_field_proof_records_normalization_restores_each_case_and_stops_unknown(
     if mode == "timeout":
         assert len(sent) == 6
     if mode == "null_rejected":
-        assert len(sent) == 3 and not any(p.get("assignedtechname") for p in sent)
+        assert len(sent) == 3 and not any(p.get("assignedto") for p in sent)
     if mode == "unrelated":
-        assert len(sent) == 4 and probe.current.baseline.assignedtechname == "VALID"
+        assert len(sent) == 4 and probe.current.baseline.assignedto == "VALID"
     if mode == "round":
         readback = next(
             details
@@ -389,11 +389,11 @@ def test_target_intent_denied_before_any_field_send_for_pm_cft(worktype):
 def test_field_boundary_denies_unscoped_pic_target_without_intent_and_null_without_original():
     baseline = evidence().baseline
     with pytest.raises(ValueError, match="PIC"):
-        field_payload(baseline, {"assignedtechname": "OUTSIDE"}, {"VALID"})
+        field_payload(baseline, {"assignedto": "OUTSIDE"}, {"VALID"})
     with pytest.raises(ValueError, match="explicit intent"):
         field_payload(baseline, {"targstartdate": "2026-10-01T18:06:00+07:00"}, set())
     with pytest.raises(MaximoReadError, match="original null"):
-        field_payload(baseline, {"assignedtechname": None}, set())
+        field_payload(baseline, {"assignedto": None}, set())
     with pytest.raises(ValueError):
         field_payload(baseline, {"schedstart": "2026-10-01T18:06:00"}, set())
     with pytest.raises(ValueError):

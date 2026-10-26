@@ -35,7 +35,7 @@ class WorkOrder(BaseModel):
     wopriority: int | None = None
     wopriority_description: str | None = None
     lead: str | None = None
-    assignedtechname: str | None = None
+    assignedto: str | None = None
     estdur: Decimal | None = Field(default=None, ge=0)
     targstartdate: AwareDatetime | None = None
     targcompdate: AwareDatetime
@@ -53,7 +53,7 @@ class WorkOrder(BaseModel):
 SELECT = (
     "siteid,workorderid,wonum,bdpocdiscipline,description,worktype,wolo10,location,"
     "lochierarchy{systemid},schedstart,schedfinish,actstart,actfinish,status,"
-    "wopriority,wopriority_description,lead,assignedtechname,estdur,targstartdate,"
+    "wopriority,wopriority_description,lead,assignedto,estdur,targstartdate,"
     "targcompdate,istask,parent"
 )
 

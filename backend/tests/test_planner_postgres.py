@@ -112,7 +112,7 @@ def test_person_planner_draft_api(case):
                     **key,
                     "baseline_token": detail.json()["baseline_token"],
                     "request_id": str(uuid4()),
-                    "changes": {"estdur": "9", "assignedtechname": "TECH"},
+                    "changes": {"estdur": "9", "assignedto": "TECH"},
                 }
                 if case in {"pm", "cft"}:
                     payload["changes"].update(

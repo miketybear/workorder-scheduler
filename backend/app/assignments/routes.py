@@ -556,7 +556,7 @@ async def assignment_timeline(
                     and order.parent in (None, ""),
                     # Same JSON serialisation as the scoped WO list (pydantic mode="json").
                     **order.model_dump(
-                        mode="json", include={"schedstart", "schedfinish", "assignedtechname"}
+                        mode="json", include={"schedstart", "schedfinish", "assignedto"}
                     ),
                 }
             )

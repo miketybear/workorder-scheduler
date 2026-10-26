@@ -90,7 +90,7 @@ async def retrieve_snapshot(
         )
         # One small extra read covers the crew and this WO's current PIC.
         pic_names = (
-            await read_pic_names(client, settings, {*pics, order.assignedtechname}) if names else {}
+            await read_pic_names(client, settings, {*pics, order.assignedto}) if names else {}
         )
     await checked_settings(request, key, discipline, write=write, csrf=csrf)
     return identity, order, current_snapshot(key, order, pics, pic_names)

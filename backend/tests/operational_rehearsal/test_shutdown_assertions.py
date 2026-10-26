@@ -59,7 +59,7 @@ def test_incorrect_restored_submission_rejected(mutation):
     elif mutation == "change":
         restored["items"][0]["changes"]["estdur"] = "10"
     elif mutation == "extra_change":
-        restored["items"][0]["changes"]["assignedtechname"] = "OTHER"
+        restored["items"][0]["changes"]["assignedto"] = "OTHER"
     else:
         restored["items"].pop()
     with pytest.raises(ValueError):

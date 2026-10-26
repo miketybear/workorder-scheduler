@@ -292,7 +292,7 @@ def test_scoped_reconciliation_only_releases_exact_original_with_no_remote_write
                 wonum="W100",
                 bdpocdiscipline="MECH",
                 estdur=2.25 if modified else 2,
-                assignedtechname=None,
+                assignedto=None,
             )
 
             def handler(request):

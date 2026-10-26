@@ -43,7 +43,7 @@ def prepared(snapshot, proposal=None):
     [
         ("estdur", "-1"),
         ("status", "COMP"),
-        ("assignedtechname", "BAD"),
+        ("assignedto", "BAD"),
         ("estdur", None),
     ],
 )

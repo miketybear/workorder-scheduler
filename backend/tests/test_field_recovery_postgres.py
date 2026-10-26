@@ -168,7 +168,7 @@ def test_scoped_recovery_is_one_audited_exact_original_request_or_no_send(mode):
                 if mode.startswith("phase_") and not is_duration:
                     baseline = original.baseline.model_copy(update={"estdur": Decimal("21")})
                     if mode == "phase_unrelated":
-                        baseline = baseline.model_copy(update={"assignedtechname": "VALID"})
+                        baseline = baseline.model_copy(update={"assignedto": "VALID"})
                     current = original.model_copy(
                         update={"rowstamp_candidate": "103", "baseline": baseline}
                     )

@@ -289,7 +289,7 @@ def test_batch_draft_rebase_lifecycle():
             )
             assert stale.status_code == 409
             # A failure on any item rejects the whole save.
-            bad_pic = {"100": {"estdur": "9"}, "101": {"estdur": "11", "assignedtechname": "BAD"}}
+            bad_pic = {"100": {"estdur": "9"}, "101": {"estdur": "11", "assignedto": "BAD"}}
             for bad, code in (
                 ({"100": {"estdur": "9"}, "101": {"estdur": "10"}}, "empty_changes"),
                 (bad_pic, "invalid_changes"),
