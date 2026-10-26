@@ -6,7 +6,7 @@ import { displayDate } from './presentation';
 import styles from '../App.module.css';
 
 const labels: Record<typeof editableFields[number], string> = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish',
-  assignedtechname: 'Assigned PIC', estdur: 'Est. Duration', targstartdate: 'Target Start', targcompdate: 'Target Finish' };
+  assignedto: 'Assigned PIC', estdur: 'Est. Duration', targstartdate: 'Target Start', targcompdate: 'Target Finish' };
 const stateLabels = { pending: 'Chờ xử lý', sending: 'Đang gửi', confirmed: 'Đã xác nhận', failed: 'Thất bại', conflict: 'Xung đột', unknown: 'Chưa xác định' } as const;
 export type UploadConnection = { label: string; system: 'onshore' | 'offshore'; environment: 'test' | 'production' };
 export type FinalizedUpload = { draft_id: string; version: number; items: { site_id: string; workorder_id: string; restore_source: { before: Baseline } | null }[] };
@@ -256,7 +256,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
         <div className={styles.tableWrap}><table><thead><tr><th>WO</th><th>Trường</th><th>Maximo hiện tại</th><th>Giá trị nháp</th><th>Kết quả</th></tr></thead>
           <tbody>{currentPreview.items.flatMap((item) => [...(Object.keys(item.changes).length ? Object.keys(item.changes).map((rawField) => {
             const field = rawField as typeof editableFields[number];
-            const date = field !== 'assignedtechname' && field !== 'estdur';
+            const date = field !== 'assignedto' && field !== 'estdur';
             return <tr key={`${item.site_id}:${item.workorder_id}:${field}`}><td>{wonum(item)}</td><th>{labels[field]}</th>
               <td>{date ? displayDate(item.before[field] ?? null, timezone) : item.before[field] ?? '—'}</td>
               <td>{date ? displayDate(item.changes[field] ?? null, timezone) : item.changes[field] ?? '—'}</td>

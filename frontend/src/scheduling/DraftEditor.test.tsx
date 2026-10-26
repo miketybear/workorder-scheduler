@@ -11,7 +11,7 @@ afterEach(() => { vi.resetAllMocks(); vi.restoreAllMocks(); });
 const scope = { connection_id: 'one', discipline: 'MECH' };
 const selection = { key: { ...scope, site_id: 'TEST', workorder_id: '100' } };
 const baseline = { worktype: 'CM', schedstart: '2026-09-30T08:00:00+07:00', schedfinish: '2026-09-30T16:00:00+07:00',
-  assignedtechname: 'TECH', estdur: '8', targstartdate: '2026-09-01T00:00:00+07:00', targcompdate: '2026-11-30T23:59:00+07:00' };
+  assignedto: 'TECH', estdur: '8', targstartdate: '2026-09-01T00:00:00+07:00', targcompdate: '2026-11-30T23:59:00+07:00' };
 const detail: Detail = { baseline, baseline_token: 'a'.repeat(64), allowed_pics: ['TECH', 'OTHER'], item: {
   ...Object.fromEntries(columns.map(([field]) => [field, null])), ...baseline, siteid: 'TEST', workorderid: '100',
   wonum: 'WO-100', status: 'APPR', bdpocdiscipline: 'MECH', wopriority: 0,
@@ -492,7 +492,7 @@ it('treats equivalent timezone offsets and numeric duration formatting as the or
   expect(screen.queryByRole('alert', { name: /PIC, Target/ })).not.toBeInTheDocument();
 });
 
-const noPicDetail: Detail = { ...detail, baseline: { ...baseline, assignedtechname: null }, item: { ...detail.item, assignedtechname: null } as WorkOrder };
+const noPicDetail: Detail = { ...detail, baseline: { ...baseline, assignedto: null }, item: { ...detail.item, assignedto: null } as WorkOrder };
 const suggestion = { site_id: 'TEST', workorder_id: '100', pic: 'OTHER' };
 
 it('pre-fills a suggested PIC as an unsaved change and never saves it by itself', async () => {
@@ -564,7 +564,7 @@ it('shows the PIC code with the person name but keeps the code as the value that
   expect(screen.getByRole('table')).toHaveTextContent('OTHER — Le Thi Other');
   fireEvent.click(screen.getByText('Lưu nháp'));
   await waitFor(() => expect(saveDraft).toHaveBeenCalled());
-  expect(vi.mocked(saveDraft).mock.calls[0][1]).toEqual({ assignedtechname: 'OTHER' });
+  expect(vi.mocked(saveDraft).mock.calls[0][1]).toEqual({ assignedto: 'OTHER' });
 });
 
 it('falls back to the bare code when no name is known', async () => {

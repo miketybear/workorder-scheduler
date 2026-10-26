@@ -11,7 +11,7 @@ export const columns = [
   ['description', 'Description'], ['worktype', 'Work Type'], ['location', 'Tag Name'],
   ['systemid', 'System ID'], ['schedstart', 'Scheduled Start'], ['schedfinish', 'Scheduled Finish'],
   ['actstart', 'Actual Start'], ['actfinish', 'Actual Finish'], ['status', 'Status'],
-  ['wopriority_description', 'Priority'], ['lead', 'Onshore PIC'], ['assignedtechname', 'Assigned PIC'],
+  ['wopriority_description', 'Priority'], ['lead', 'Onshore PIC'], ['assignedto', 'Assigned PIC'],
   ['estdur', 'Est. Duration'], ['targstartdate', 'Target Start'], ['targcompdate', 'Target Finish'],
   ['workorderid', 'WOID'],
 ] as const;
@@ -121,7 +121,7 @@ export function parsePlanningMarkers(raw: unknown): PlanningMarker[] {
       !Number.isInteger(item.version) || Number(item.version) < 1 || typeof item.is_batch !== 'boolean' ||
       typeof item.baseline_changed !== 'boolean' || typeof item.updated_at !== 'string' || !isAwareDate(item.updated_at) || !isRecord(item.changes) ||
       !Object.entries(item.changes).every(([key, value]) => key === 'change_target' ? typeof value === 'boolean' :
-        ['schedstart', 'schedfinish', 'assignedtechname', 'estdur', 'targstartdate', 'targcompdate'].includes(key) && typeof value === 'string')) {
+        ['schedstart', 'schedfinish', 'assignedto', 'estdur', 'targstartdate', 'targcompdate'].includes(key) && typeof value === 'string')) {
       throw new Error('Phản hồi kế hoạch không hợp lệ.');
     }
     ids.add(item.draft_id);

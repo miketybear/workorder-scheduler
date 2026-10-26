@@ -16,7 +16,7 @@ import type { FinalizedUpload } from './UploadPreviewPanel';
 import type { UploadRecoveryEntry } from '../api/drafts';
 
 const labels: Record<EditableField, string> = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish',
-  assignedtechname: 'Assigned PIC', estdur: 'Est. Duration', targstartdate: 'Target Start', targcompdate: 'Target Finish' };
+  assignedto: 'Assigned PIC', estdur: 'Est. Duration', targstartdate: 'Target Start', targcompdate: 'Target Finish' };
 const target = (field: EditableField) => field === 'targstartdate' || field === 'targcompdate';
 export type EditorSelection = { key: Identity } | { draftId: string };
 
@@ -57,7 +57,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   const names = { ...detail?.pic_names, ...verifiedDetail?.pic_names };
   const versionChanged = !!saved && !!verifiedDetail && 'version' in verifiedDetail &&
     typeof verifiedDetail.version === 'number' && verifiedDetail.version > saved.version;
-  const blocked = restoreBlocked || versionChanged || (!!detail && !!verifiedDetail && verifiedDetail.baseline_token !== detail.baseline_token) || (!!changes.assignedtechname && !pics.includes(changes.assignedtechname));
+  const blocked = restoreBlocked || versionChanged || (!!detail && !!verifiedDetail && verifiedDetail.baseline_token !== detail.baseline_token) || (!!changes.assignedto && !pics.includes(changes.assignedto));
   const changed = editableFields.filter((field) => changes[field] !== undefined && changes[field] !== detail?.baseline[field]);
   const unsaved = JSON.stringify(changes) !== committed;
   const pmScheduleChanged = !!detail && detail.baseline.worktype.toUpperCase() === 'PM' &&
@@ -65,7 +65,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   const sameField = (field: EditableField, current: string | null, original: string | null) =>
     current === null || original === null ? current === original : equalField(field, current, original);
   const originSafe = !!detail && !!pmRestoreOrigin && detail.baseline.worktype === 'PM' && pmRestoreOrigin.worktype === 'PM' &&
-    (['assignedtechname', 'targstartdate', 'targcompdate'] as const).every((field) => sameField(field, detail.baseline[field], pmRestoreOrigin[field]));
+    (['assignedto', 'targstartdate', 'targcompdate'] as const).every((field) => sameField(field, detail.baseline[field], pmRestoreOrigin[field]));
   const originalDatesValid = !!pmRestoreOrigin?.schedstart && !!pmRestoreOrigin.schedfinish &&
     isAwareDate(pmRestoreOrigin.schedstart) && isAwareDate(pmRestoreOrigin.schedfinish) &&
     Date.parse(pmRestoreOrigin.schedfinish) >= Date.parse(pmRestoreOrigin.schedstart);
@@ -110,10 +110,10 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
       const wanted = prefillRef.current;
       if (wanted &&wanted.site_id === value.item.siteid && wanted.workorder_id === value.item.workorderid) {
         const existing = 'changes' in value ? value.changes : {};
-        if (value.baseline.assignedtechname) setNotice(`WO đã có PIC ${value.baseline.assignedtechname}; không điền sẵn PIC gợi ý.`);
-        else if (existing.assignedtechname !== undefined) setNotice('Nháp đã có PIC; không điền sẵn PIC gợi ý.');
+        if (value.baseline.assignedto) setNotice(`WO đã có PIC ${value.baseline.assignedto}; không điền sẵn PIC gợi ý.`);
+        else if (existing.assignedto !== undefined) setNotice('Nháp đã có PIC; không điền sẵn PIC gợi ý.');
         else if (!value.allowed_pics.includes(wanted.pic)) setNotice(`${wanted.pic} không nằm trong danh sách PIC hợp lệ của discipline này.`);
-        else { setChanges({ ...existing, assignedtechname: wanted.pic }); setNotice(`Đã điền sẵn PIC ${wanted.pic} (chưa lưu). Xem lại rồi bấm Lưu nháp; Maximo chưa thay đổi.`); }
+        else { setChanges({ ...existing, assignedto: wanted.pic }); setNotice(`Đã điền sẵn PIC ${wanted.pic} (chưa lưu). Xem lại rồi bấm Lưu nháp; Maximo chưa thay đổi.`); }
         prefillConsumedRef.current?.();
       }
     }).catch((cause: unknown) => {
@@ -145,7 +145,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
     for (const field of editableFields) {
       const value = changes[field];
       if (value === undefined) continue;
-      if (value === latest.baseline[field] || (field === 'assignedtechname' && !latest.allowed_pics.includes(value))) dropped.push(labels[field]);
+      if (value === latest.baseline[field] || (field === 'assignedto' && !latest.allowed_pics.includes(value))) dropped.push(labels[field]);
       else kept[field] = value;
     }
     if (changes.change_target !== undefined && Object.keys(kept).some((field) => target(field as EditableField))) kept.change_target = changes.change_target;
@@ -205,10 +205,10 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
       </div>;
     }
     return <label key={field} className={className}>
-      {labels[field]}{field === 'schedfinish' ? <><input aria-label={labels[field]} readOnly value={displayDate(changes.schedfinish ?? detail.baseline.schedfinish, timezone)} /><small>Tự tính theo ca 06:30–18:30, tối đa 10,5 giờ/ngày.</small></> : field === 'assignedtechname' ? <select value={changes[field] ?? detail.baseline[field] ?? ''} onChange={(e) => change(field, e.target.value)}>
+      {labels[field]}{field === 'schedfinish' ? <><input aria-label={labels[field]} readOnly value={displayDate(changes.schedfinish ?? detail.baseline.schedfinish, timezone)} /><small>Tự tính theo ca 06:30–18:30, tối đa 10,5 giờ/ngày.</small></> : field === 'assignedto' ? <select value={changes[field] ?? detail.baseline[field] ?? ''} onChange={(e) => change(field, e.target.value)}>
         <option value={detail.baseline[field] ?? ''}>{picLabel(detail.baseline[field], names) || 'Chọn PIC'}</option>
-        {changes.assignedtechname && changes.assignedtechname !== detail.baseline.assignedtechname && !pics.includes(changes.assignedtechname) &&
-          <option value={changes.assignedtechname}>{picLabel(changes.assignedtechname, names)} (không còn trong crew)</option>}
+        {changes.assignedto && changes.assignedto !== detail.baseline.assignedto && !pics.includes(changes.assignedto) &&
+          <option value={changes.assignedto}>{picLabel(changes.assignedto, names)} (không còn trong crew)</option>}
         {pics.filter((pic) => pic !== detail.baseline[field]).map((pic) => <option key={pic} value={pic}>{picLabel(pic, names)}</option>)}
       </select> : <input type="text" inputMode="decimal"
         value={changes[field] ?? detail.baseline[field] ?? ''} onChange={(e) => change(field, e.target.value)} />}
@@ -226,7 +226,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
       {detail && <>
         {validation() && <p role="alert" className={styles.error}>{validation()}</p>}
         {blocked && <div role="alert"><p>{versionChanged ? 'Nháp này vừa được lưu ở nơi khác. Phần bạn đang sửa vẫn được giữ.' :
-          (!!changes.assignedtechname && !pics.includes(changes.assignedtechname)) && !restoreBlocked && verifiedDetail?.baseline_token === detail?.baseline_token
+          (!!changes.assignedto && !pics.includes(changes.assignedto)) && !restoreBlocked && verifiedDetail?.baseline_token === detail?.baseline_token
             ? 'PIC đã chọn không còn nằm trong danh sách hợp lệ. Phần bạn đang sửa vẫn được giữ.'
             : 'Maximo vừa đổi dữ liệu của WO này. Phần bạn đang sửa vẫn được giữ để đối chiếu.'}</p>
           <button type="button" className={styles.ghost} disabled={busy} onClick={adoptLatest}>{versionChanged ? 'Cập nhật theo bản mới nhất' : 'Cập nhật theo Maximo'}</button></div>}
@@ -277,9 +277,9 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
               {pmScheduleChanged && <p role="status">Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.</p>}
               <div className={styles.tableWrap}><table aria-label="Thay đổi trước / sau"><thead><tr><th>Trường</th><th>Maximo khi tạo nháp</th><th>Nháp</th>{blocked && <th>Maximo hiện tại</th>}</tr></thead>
                 <tbody>{changed.map((field) => <tr key={field}><th>{labels[field]}</th>
-                  <td>{field === 'assignedtechname' ? picLabel(detail.baseline[field], names) || '—' : field === 'estdur' ? detail.baseline[field] ?? '—' : displayDate(detail.baseline[field], timezone)}</td>
-                  <td>{field === 'assignedtechname' ? picLabel(changes[field], names) : field === 'estdur' ? changes[field] : displayDate(changes[field] ?? null, timezone)}</td>
-                  {blocked && <td>{field === 'assignedtechname' || field === 'estdur' ? (verifiedDetail ?? detail).item[field] ?? '—' : displayDate((verifiedDetail ?? detail).item[field], timezone)}</td>}</tr>)}</tbody></table></div>
+                  <td>{field === 'assignedto' ? picLabel(detail.baseline[field], names) || '—' : field === 'estdur' ? detail.baseline[field] ?? '—' : displayDate(detail.baseline[field], timezone)}</td>
+                  <td>{field === 'assignedto' ? picLabel(changes[field], names) : field === 'estdur' ? changes[field] : displayDate(changes[field] ?? null, timezone)}</td>
+                  {blocked && <td>{field === 'assignedto' || field === 'estdur' ? (verifiedDetail ?? detail).item[field] ?? '—' : displayDate((verifiedDetail ?? detail).item[field], timezone)}</td>}</tr>)}</tbody></table></div>
             </section>}
             {saved && writable && <section className={styles.editorSection} aria-label="Upload nháp đã lưu">
               <UploadPreviewControls draft={saved} selection={uploadSelection} connection={connection} connectionId={scope.connection_id}

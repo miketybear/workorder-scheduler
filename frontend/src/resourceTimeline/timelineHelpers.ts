@@ -76,7 +76,7 @@ export function woWarnings(info: ScheduleInfo | undefined, assigned: AssignedPer
   const outsideDates = start && finish
     ? [...new Set(assigned.map(person => person.date).filter(date => date < start || date > finish))].sort()
     : [];
-  // assignedtechname is a PERSON code and equals the labor code, so compare codes, never display names.
+  // assignedto is a PERSON code and equals the labor code, so compare codes, never display names.
   const picNotAssigned = !!info.pic && !assigned.some(person => samePerson(person.laborcode, info.pic ?? ''));
   return { outsideDates, picNotAssigned };
 }

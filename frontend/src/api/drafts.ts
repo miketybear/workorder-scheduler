@@ -2,7 +2,7 @@ import { config } from '../config';
 import { isRecord, parseWorkOrder, RetrievalError, type WorkOrder } from './workOrders';
 import { isAwareDate } from './dates';
 
-export const editableFields = ['schedstart', 'schedfinish', 'assignedtechname', 'estdur', 'targstartdate', 'targcompdate'] as const;
+export const editableFields = ['schedstart', 'schedfinish', 'assignedto', 'estdur', 'targstartdate', 'targcompdate'] as const;
 export type EditableField = typeof editableFields[number];
 export type Baseline = Record<EditableField, string | null> & { worktype: string };
 export type Changes = Partial<Record<EditableField, string>> & { change_target?: boolean };
@@ -161,7 +161,7 @@ export async function previewUpload(draft: Saved, items: { site_id: string; work
   const raw = await call(`/drafts/${encodeURIComponent(draft.draft_id)}/upload-preview`, signal, 'POST', { version: draft.version, items });
   const validValues = (value: unknown) => isRecord(value) && Object.entries(value).every(([field, item]) => {
     if (!editableFields.includes(field as EditableField) || !(item === null || typeof item === 'string')) return false;
-    if (item === null || field === 'assignedtechname') return true;
+    if (item === null || field === 'assignedto') return true;
     if (field === 'estdur') return /^\+?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(item) && Number.isFinite(Number(item)) && Number(item) >= 0;
     return isAwareDate(item);
   });
@@ -178,7 +178,7 @@ export async function previewUpload(draft: Saved, items: { site_id: string; work
         !validValues(item.before) || !isRecord(item.changes) ||
         !Object.entries(item.changes).every(([field, value]) => {
           if (!editableFields.includes(field as EditableField) || typeof value !== 'string') return false;
-          if (field === 'assignedtechname') return true;
+          if (field === 'assignedto') return true;
           if (field === 'estdur') return /^\+?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value) && Number.isFinite(Number(value)) && Number(value) >= 0;
           return isAwareDate(value);
         })) return invalid();
@@ -254,7 +254,7 @@ function parseUploadStatus(raw: unknown, expected: { batchId: string | null; dra
           (original.estdur !== null && (!/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(String(original.estdur)) ||
             !Number.isFinite(Number(original.estdur)) || Number(original.estdur) < 0 || Number(original.estdur) > 100000)) ||
           !['targstartdate', 'targcompdate'].every((field) => original[field] === null || (typeof original[field] === 'string' && isAwareDate(original[field]))) ||
-          !(original.assignedtechname === null || typeof original.assignedtechname === 'string') ||
+          !(original.assignedto === null || typeof original.assignedto === 'string') ||
           item.state !== 'confirmed') return invalid();
       restoreSource = { before: original as Baseline };
     } else if (!('restore_source' in item)) return invalid();

@@ -9,7 +9,7 @@ export function equalField(field: EditableField, value: string, original: string
     const normalize = (number: string) => number.replace(/^0+(?=\d)/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
     return normalize(value) === normalize(original);
   }
-  return field !== 'estdur' && field !== 'assignedtechname' && isAwareDate(value) && isAwareDate(original) && Date.parse(value) === Date.parse(original);
+  return field !== 'estdur' && field !== 'assignedto' && isAwareDate(value) && isAwareDate(original) && Date.parse(value) === Date.parse(original);
 }
 
 export function changedValue(changes: Changes, baseline: Baseline, field: EditableField, value: string): Changes {
@@ -36,7 +36,7 @@ export function validateChanges(baseline: Baseline, changes: Changes, pics: stri
     if (!value.trim()) return 'Chưa hỗ trợ xóa giá trị. Dùng Reset để bỏ thay đổi.';
     if (field === 'estdur') {
       if (!/^\d+(\.\d+)?$/.test(value) || !Number.isFinite(Number(value))) return 'Duration phải là số không âm.';
-    } else if (field === 'assignedtechname') {
+    } else if (field === 'assignedto') {
       if (!pics.includes(value)) return 'Chọn PIC thuộc crew được cấp.';
     } else if (!isAwareDate(value)) return 'Ngày giờ phải hợp lệ và có timezone.';
   }

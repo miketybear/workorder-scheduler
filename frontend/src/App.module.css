@@ -351,3 +351,43 @@
 .compactTable td input[inputmode="decimal"] { width: 64px; min-height: 32px; padding: 2px 8px; text-align: right; font-size: 13px; }
 .compactTable td small[role="alert"] { display: block; max-width: 220px; }
 .compactTable td[data-invalid] { box-shadow: inset 3px 0 var(--error); }
+
+/* Route to PIC: Action column, readiness cues and the route dialog. */
+.routeDialog { width: min(720px, 100%); max-height: 90vh; overflow: auto; }
+.routeIntro { color: var(--muted); }
+.routeList { margin: 4px 0 0; padding-left: 20px; }
+.routeLogin { display: grid; gap: 12px; }
+.routeLogin label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
+.routeTable { width: 100%; border-collapse: collapse; }
+.routeTable th, .routeTable td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+.routeTable tbody tr[data-tone="good"] { background: var(--success-bg); color: var(--success-ink); }
+.routeTable tbody tr[data-tone="warn"] { background: var(--warning-bg); color: var(--warning-ink); }
+.routeTable tbody tr[data-tone="bad"] { background: var(--danger-bg); color: var(--danger-ink); font-weight: 600; }
+.routeCell { position: relative; display: grid; justify-items: start; gap: 4px; }
+.routeIconButton { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 32px; min-height: 32px; padding: 0 6px; border: 1px solid var(--line); border-radius: var(--radius); background: transparent; color: var(--muted); font-size: 13px; cursor: default; }
+.routeIconReady { border-color: var(--link); background: var(--link); color: #fff; cursor: pointer; }
+.routeIconReady:hover { background: var(--link); filter: brightness(0.9); }
+.routeIconButton:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.routeStatusIcon { border-color: transparent; background: transparent; }
+.routeDone { color: var(--success-ink); }
+.routeStranded { color: var(--danger-ink); }
+.routeAttention { color: var(--warning-ink); }
+.routeDot { position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--layer); }
+.routeDot[data-tone="ready"] { background: var(--success-border); }
+.routeDot[data-tone="attention"] { background: var(--warning-border); }
+.routeLabel { display: none; }
+.routeInline { display: none; color: var(--muted); }
+.routeTip { position: fixed; z-index: 60; box-sizing: border-box; max-width: 240px; padding: 8px 12px; border-radius: var(--radius); background: var(--ink); color: var(--layer); font-size: 12px; line-height: 16px; box-shadow: var(--shadow-overlay); pointer-events: none; }
+@media (max-width: 840px) { .routeIconButton { padding: 0 12px; } .routeLabel { display: inline; } .routeInline { display: block; max-width: none; } .routeTip { display: none; } }
+.compactTable tr[data-route="ready"] > td:last-child { box-shadow: inset 3px 0 var(--success-border); }
+.routeWrites { color: var(--link); font-weight: 600; }
+.routeProgress { color: var(--muted); font-size: 12px; }
+.routeChips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.routeChip { min-height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--layer); color: var(--ink); font-size: 12px; cursor: pointer; }
+.routeChip strong { margin-left: 4px; }
+.routeChip:hover { background: var(--hover); }
+.routeChip[aria-pressed="true"] { border-color: var(--link); background: var(--accent-tint); color: var(--accent-deep); }
+.routeChip[data-category="ready"] { border-color: var(--success-border); }
+.routeChip[data-category="stranded"] { border-color: var(--danger-border); color: var(--danger-ink); }
+.routeChip[data-category="unknown"] { border-color: var(--warning-border); color: var(--warning-ink); }
+@media (pointer: coarse) { .routeChip { min-height: 36px; } }

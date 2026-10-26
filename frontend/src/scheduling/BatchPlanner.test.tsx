@@ -13,7 +13,7 @@ const details: Detail[] = ['100', '101'].map((id) => ({
   item: { ...Object.fromEntries(columns.map(([key]) => [key, null])), siteid: 'BD1', workorderid: id,
     wonum: `WO-${id}`, systemid: 'MT1-61-INSTR-AIR-SYS', status: 'APPR', worktype: 'CM', bdpocdiscipline: 'MECH' } as WorkOrder,
   baseline_token: 'a'.repeat(64), allowed_pics: ['TECH', 'OTHER'], baseline: {
-    worktype: 'CM', schedstart: null, schedfinish: null, assignedtechname: 'TECH', estdur: '8', targstartdate: null, targcompdate: null,
+    worktype: 'CM', schedstart: null, schedfinish: null, assignedto: 'TECH', estdur: '8', targstartdate: null, targcompdate: null,
   },
 }));
 const props = { scope, selection: { keys: details.map(({ item }) => ({ site_id: item.siteid, workorder_id: item.workorderid })) },
@@ -382,7 +382,7 @@ it('warns once about starts outside the shift and can keep them or move them all
 });
 
 // Send-only mode: the table assembled the group; the panel only summarizes it and uploads it.
-const sendRows = details.map((detail, index) => ({ ...detail, changes: index === 0 ? { estdur: '9', assignedtechname: 'OTHER' } : { estdur: '10' },
+const sendRows = details.map((detail, index) => ({ ...detail, changes: index === 0 ? { estdur: '9', assignedto: 'OTHER' } : { estdur: '10' },
   baseline_changed: false, changes_valid_now: true }));
 async function setupSend(notes: string[] = []) {
   vi.mocked(openBatch).mockResolvedValue({ draft_id: 'group', version: 2, state: 'draft', items: sendRows });

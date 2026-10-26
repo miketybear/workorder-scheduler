@@ -7,7 +7,7 @@ export type AffectedCapacityDay = CapacityDay & { pool_id:string; person_id:stri
 export type ResourcePerson = { person_id: string; name: string; craft: string; role: string; laborcode: string; days: CapacityDay[] };
 export type Assignment = { id: string; pool_id: string; connection_id: string; site_id: string; workorder_id: string; discipline: string; person_id: string; date: string; minutes: number; version: number; state: 'reserved' | 'released'; task_workorder_id?: string | null; task_id?: number | null; assignment_id?: string | null; task_description?: string | null; plan_id?: string | null; plan_total_minutes?: number | null; remote_assignment_id?:string|null; plan_version?:number|null; plan_sync_state?:'local'|'unknown'|'synced'|null; upstream_baseline?: Record<string, unknown> | null; sync_state?: string; affected_days?:AffectedCapacityDay[]; allocation_updates?:Assignment[]; planning_summary?:PlanningSummary; assignment_revision?:string; previous_assignment_revision?:string; work_order?:AssignmentWorkOrder };
 export type AssignmentSnapshot = { pool_id: string; pool_version: number; rows: ResourcePerson[]; items: Assignment[]; assignment_revision?:string };
-export type AssignmentWorkOrder = { connection_id: string; site_id: string; workorder_id: string; wonum: string; description: string|null; status: string; eligible: boolean; schedstart?: string|null; schedfinish?: string|null; assignedtechname?: string|null };
+export type AssignmentWorkOrder = { connection_id: string; site_id: string; workorder_id: string; wonum: string; description: string|null; status: string; eligible: boolean; schedstart?: string|null; schedfinish?: string|null; assignedto?: string|null };
 export type PlannedLabor = { craft: string; labor_hours: number; quantity: number };
 export type WorkOrderTaskAssignment = { assignment_id: string; task_id: number; laborcode: string | null; craft: string; scheduledate: string | null; labor_hours: number | null; status: string; revision: string | null };
 export type WorkOrderTask = { task_workorder_id: string; task_id: number; description: string; planned_labor: PlannedLabor[]; assignments: WorkOrderTaskAssignment[]; has_out_of_scope_demand?: boolean };
@@ -188,7 +188,7 @@ export async function getResourceTimeline(poolId: string, scope: Omit<Assignment
     const work_orders = value.work_orders.map((raw): AssignmentWorkOrder => {
       if (!record(raw) || !['connection_id','site_id','workorder_id','wonum','status'].every(key => str(raw[key])) ||
           !(raw.description === null || typeof raw.description === 'string') || typeof raw.eligible !== 'boolean' ||
-          !['schedstart','schedfinish','assignedtechname'].every(key => raw[key] === undefined || raw[key] === null || typeof raw[key] === 'string')) throw new Error('WO trong Resource timeline không hợp lệ.');
+          !['schedstart','schedfinish','assignedto'].every(key => raw[key] === undefined || raw[key] === null || typeof raw[key] === 'string')) throw new Error('WO trong Resource timeline không hợp lệ.');
       return raw as unknown as AssignmentWorkOrder;
     });
     if (new Set(work_orders.map(item => `${item.site_id}:${item.workorder_id}`)).size !== work_orders.length ||

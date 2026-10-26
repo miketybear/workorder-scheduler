@@ -25,7 +25,7 @@ const row = { ...Object.fromEntries(columns.map(([field]) => [field, null])),
   status: 'APPR', worktype: 'CM', targcompdate: '2026-09-30T23:00:00+07:00', wopriority: 0,
 } as WorkOrder;
 const editorDetail = { item: row, baseline_token: 'a'.repeat(64), allowed_pics: ['TECH'],
-  baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedtechname: null, estdur: '8',
+  baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedto: null, estdur: '8',
     targstartdate: null, targcompdate: row.targcompdate } };
 
 it('collapses only a successfully retrieved range and opens date controls without reloading rows', async () => {
@@ -81,7 +81,7 @@ it('defaults filters to hidden and toggles beside refresh without losing filters
 
 it('keeps the first PM origin when a finalized recovery receipt carries an intermediate baseline', () => {
   const original = { worktype: 'PM', schedstart: '2026-10-01T00:00:00+07:00', schedfinish: '2026-10-02T00:00:00+07:00',
-    assignedtechname: 'PIC', estdur: '25', targstartdate: '2026-09-01T00:00:00+07:00', targcompdate: null };
+    assignedto: 'PIC', estdur: '25', targstartdate: '2026-09-01T00:00:00+07:00', targcompdate: null };
   const intermediate = { ...original, schedstart: '2026-10-03T00:00:00+07:00', schedfinish: '2026-10-04T00:00:00+07:00', estdur: '21' };
   const key = JSON.stringify(['user', 'one', 'MECH', 'SITE-A', '100']);
   const first = new Map([[key, original]]);
@@ -417,7 +417,7 @@ it('protects edits on scope and filter changes and preserves them across unchang
   await setup(false, 'two');
   vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
   vi.mocked(getDetail).mockResolvedValue({ item: row, baseline_token: 'a'.repeat(64), allowed_pics: ['TECH'],
-    baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedtechname: null, estdur: '8',
+    baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedto: null, estdur: '8',
       targstartdate: null, targcompdate: row.targcompdate } });
   fireEvent.click(screen.getByText('Retrieve WO'));
   fireEvent.click(await screen.findByText('WO-REAL'));
@@ -507,7 +507,7 @@ it('rechecks once when returning from a hidden tab followed by window focus', as
 });
 
 const marker = { draft_id: 'draft-one', version: 1, is_batch: false, updated_at: '2026-10-06T09:00:00+07:00',
-  baseline_changed: false, changes: { estdur: '9', assignedtechname: 'TECH' } };
+  baseline_changed: false, changes: { estdur: '9', assignedto: 'TECH' } };
 
 async function openSavedDraft() {
   await setup(false, 'two');
@@ -805,7 +805,7 @@ it('keeps the first PM origin through date restoration, offers a duration-only s
   const originRow = { ...row, worktype: 'PM', schedstart: '2026-09-30T08:00:00+07:00', schedfinish: '2026-09-30T16:00:00+07:00',
     estdur: '8', targstartdate: '2026-09-01T08:00:00+07:00', targcompdate: '2026-10-01T08:00:00+07:00' };
   const original = { ...editorDetail, item: originRow, baseline: { worktype: 'PM', schedstart: originRow.schedstart, schedfinish: originRow.schedfinish,
-    assignedtechname: null, estdur: '8', targstartdate: originRow.targstartdate, targcompdate: originRow.targcompdate } };
+    assignedto: null, estdur: '8', targstartdate: originRow.targstartdate, targcompdate: originRow.targcompdate } };
   const shiftedRow = { ...originRow, schedstart: '2026-09-30T09:00:00+07:00', schedfinish: '2026-09-30T17:00:00+07:00', estdur: '6' };
   const shifted = { ...original, item: shiftedRow, baseline: { ...original.baseline, schedstart: shiftedRow.schedstart,
     schedfinish: shiftedRow.schedfinish, estdur: '6' } };
@@ -976,7 +976,7 @@ it('does not retry automatically after a failed first load', async () => {
 });
 
 const picDetail = { item: row, baseline_token: 'a'.repeat(64), allowed_pics: ['TECH'],
-  baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedtechname: null, estdur: '8', targstartdate: null, targcompdate: row.targcompdate } };
+  baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedto: null, estdur: '8', targstartdate: null, targcompdate: row.targcompdate } };
 const suggestion = { id: 1, connection_id: 'two', discipline: 'MECH', site_id: 'SITE-A', workorder_id: '100', pic: 'TECH' };
 
 it('opens the suggested WO with the PIC pre-filled and unsaved, and reports the suggestion as handled', async () => {
@@ -1025,7 +1025,7 @@ it('stages Duration and PIC typed in the row and saves them as one new draft wit
   fireEvent.click(screen.getByRole('button', { name: 'Lưu 1 nháp' }));
   await screen.findByText('Đã lưu nháp cho 1 WO. Maximo chưa thay đổi.');
   const call = vi.mocked(saveDraft).mock.calls[0];
-  expect(call[1]).toEqual({ estdur: '12', assignedtechname: 'TECH' });
+  expect(call[1]).toEqual({ estdur: '12', assignedto: 'TECH' });
   expect(call[4]).toBeNull();
   expect(screen.queryByText('1 WO có thay đổi chưa lưu')).not.toBeInTheDocument();
 });
@@ -1050,7 +1050,7 @@ it('updates the existing draft of a row instead of creating another one', async 
   fireEvent.click(screen.getByRole('button', { name: 'Lưu 1 nháp' }));
   await screen.findByText('Đã lưu nháp cho 1 WO. Maximo chưa thay đổi.');
   const call = vi.mocked(saveDraft).mock.calls[0];
-  expect(call[1]).toEqual({ estdur: '12', assignedtechname: 'TECH' });
+  expect(call[1]).toEqual({ estdur: '12', assignedto: 'TECH' });
   expect(call[4]).toMatchObject({ draft_id: 'draft-one', version: 1 });
 });
 
@@ -1112,6 +1112,64 @@ it('fills a chosen PIC down to the ticked rows with Ctrl+D', async () => {
   fireEvent.change(first, { target: { value: 'TECH' } });
   fireEvent.keyDown(first, { key: 'd', code: 'KeyD', ctrlKey: true });
   expect(screen.getByLabelText('Sửa nhanh WO-TWO Assigned PIC (chưa lưu)')).toHaveValue('TECH');
+});
+
+// Route to PIC: the Action column, readiness cues and the filter, with the route API stubbed at the HTTP layer.
+const routable = (id: string, wonum: string) => orderWith({ workorderid: id, wonum, status: 'SCHED', schedstart: '2026-10-26T06:30:00+07:00',
+  schedfinish: '2026-10-26T13:00:00+07:00', assignedto: 'TECH' });
+function stubRouteApi(canRoute = true, readyIds: string[] = []) {
+  vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-wos-csrf=token');
+  const fetcher = vi.fn(async (url: string, init?: { body?: string }) => {
+    const respond = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+    if (url.includes('/workflow/route/status')) return respond({ enabled: canRoute, can_route: canRoute, personid: canRoute ? 'ENISUP' : null, session: { active: true, expires_at: null } });
+    if (url.includes('/workflow/route/preview')) {
+      const items = (JSON.parse(init?.body ?? '{}') as { items: { site_id: string; workorder_id: string }[] }).items;
+      return respond({ contract: { ok: true, problem: null }, items: items.map((item) => readyIds.includes(item.workorder_id)
+        ? { ...item, wonum: null, ready: true, code: 'ready', node_id: 40, wfassignment_id: '1', assigned_to: 'TECH', supervisor: { current: 'VINHDN', will_set: null } }
+        : { ...item, wonum: null, ready: false, code: 'missing_assignee', node_id: null, wfassignment_id: null, assigned_to: null, supervisor: null }) });
+    }
+    return new Response('{}', { status: 404 });
+  });
+  vi.stubGlobal('fetch', fetcher);
+  return fetcher;
+}
+
+it('adds an Action column that marks WOs ready to route, greys the rest with the reason, and filters on readiness', async () => {
+  const fetcher = stubRouteApi(true, ['101']);
+  await inlineSetup([routable('100', 'WO-NOPIC'), routable('101', 'WO-READY'), orderWith({ workorderid: '102', wonum: 'WO-DRAFT', status: 'SCHED', drafts: [marker] })]);
+  expect(await screen.findByRole('columnheader', { name: 'Action' })).toBeInTheDocument();
+  const readyButton = await screen.findByRole('button', { name: 'Route WO-READY đến PIC' });
+  await waitFor(() => expect(readyButton).not.toHaveAttribute('aria-disabled'));
+  expect(within(readyButton.closest('td')!).getByText('Sẵn sàng route đến TECH')).toBeInTheDocument();
+  expect(readyButton.closest('tr')).toHaveAttribute('data-route', 'ready');
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Route WO-NOPIC đến PIC' })).toHaveAttribute('aria-disabled', 'true'));
+  expect(within(screen.getByRole('button', { name: 'Route WO-NOPIC đến PIC' }).closest('td')!).getByText('Thiếu PIC hoặc ngày giao')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Route WO-DRAFT đến PIC' })).toHaveAttribute('aria-disabled', 'true');
+  expect(within(screen.getByRole('button', { name: 'Route WO-DRAFT đến PIC' }).closest('td')!).getByText('Còn nháp chưa gửi lên Maximo')).toBeInTheDocument();
+  expect(screen.getByText(/1 WO sẵn sàng route\./)).toBeInTheDocument();
+  // The draft row is ruled out locally, so only the two rows with the schedule and PIC reach the server.
+  const asked = fetcher.mock.calls.filter(([url]) => String(url).includes('/preview')).flatMap(([, init]) => (JSON.parse(String(init?.body)) as { items: { workorder_id: string }[] }).items.map((item) => item.workorder_id));
+  expect(asked.sort()).toEqual(['100', '101']);
+  const chips = within(screen.getByRole('group', { name: 'Tổng hợp theo khả năng route' }));
+  expect(chips.getByRole('button', { name: /Sẵn sàng route 1/ })).toHaveAttribute('aria-pressed', 'false');
+  expect(chips.getByRole('button', { name: /Còn nháp 1/ })).toBeInTheDocument();
+  expect(chips.getByRole('button', { name: /Thiếu PIC\/ngày giao 1/ })).toBeInTheDocument();
+  fireEvent.click(chips.getByRole('button', { name: /Sẵn sàng route 1/ }));
+  expect(chips.getByRole('button', { name: /Sẵn sàng route 1/ })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByText(/Hiển thị 1 \/ 3 WO/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'WO-NOPIC' })).not.toBeInTheDocument();
+  fireEvent.click(chips.getByRole('button', { name: /Sẵn sàng route 1/ }));
+  expect(screen.getByText(/Hiển thị 3 \/ 3 WO/)).toBeInTheDocument();
+  vi.unstubAllGlobals();
+});
+
+it('does not show the Action column when the account cannot route', async () => {
+  stubRouteApi(false);
+  await inlineSetup([routable('101', 'WO-READY')]);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'WO-READY' })).toBeVisible());
+  expect(screen.queryByRole('columnheader', { name: 'Action' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Route / })).not.toBeInTheDocument();
+  vi.unstubAllGlobals();
 });
 
 it('blocks saving while a typed value is invalid and lets the user discard the edits', async () => {

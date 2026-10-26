@@ -16,7 +16,7 @@ function monthlyRows(count: number): Detail[] {
     } as WorkOrder,
     baseline_token: 'a'.repeat(64), allowed_pics: ['TECH', 'OTHER'], baseline: {
       worktype: index % 10 === 0 ? 'PM' : 'CM', schedstart: null, schedfinish: null,
-      assignedtechname: 'TECH', estdur: '8', targstartdate: null, targcompdate: null,
+      assignedto: 'TECH', estdur: '8', targstartdate: null, targcompdate: null,
     },
   }));
 }
@@ -72,7 +72,7 @@ it.each([100, 200])('edits, pastes, previews, saves and restores a %i-WO monthly
   const saved = vi.mocked(saveBatch).mock.calls[0][1];
   expect(saved).toHaveLength(count);
   expect(saved.map(({ item }) => [item.siteid, item.workorderid])).toEqual(rows.map(({ item }) => [item.siteid, item.workorderid]));
-  expect(saved[0].changes).toEqual({ schedstart: '2026-10-09T08:00:00+07:00', schedfinish: '2026-10-09T10:30:00.000Z', assignedtechname: 'OTHER', estdur: '9.5' });
+  expect(saved[0].changes).toEqual({ schedstart: '2026-10-09T08:00:00+07:00', schedfinish: '2026-10-09T10:30:00.000Z', assignedto: 'OTHER', estdur: '9.5' });
   expect(saved.at(-1)?.changes.estdur).toBe('2.25');
   await vi.waitFor(() => expect(callbacks.onDirty).toHaveBeenLastCalledWith(false));
   view.unmount();

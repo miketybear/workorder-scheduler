@@ -34,7 +34,7 @@ const person = { person_id: 'person-1', name: 'Nguyen A', craft: 'E&I', role: 'T
 ] };
 const order = { connection_id: 'conn', site_id: 'SITE', workorder_id: 'wo-1', wonum: 'WO-1', description: 'Pump repair', status: 'WAPPR', eligible: true };
 const workOrder = { siteid: 'SITE', wonum: 'WO-1', workorderid: 'wo-1', description: 'Pump repair', status: 'WAPPR', worktype: 'CM', targcompdate: '2026-10-31', wopriority: 2,
-  wolo10: '0', bdpocdiscipline: 'E&I', location: 'P-1', systemid: 'SYS', schedstart: null, schedfinish: null, actstart: null, actfinish: null, wopriority_description: '2', lead: null, assignedtechname: null, estdur: '4', targstartdate: null } as unknown as import('../api/workOrders').WorkOrder;
+  wolo10: '0', bdpocdiscipline: 'E&I', location: 'P-1', systemid: 'SYS', schedstart: null, schedfinish: null, actstart: null, actfinish: null, wopriority_description: '2', lead: null, assignedto: null, estdur: '4', targstartdate: null } as unknown as import('../api/workOrders').WorkOrder;
 const item: Assignment = { id: 'a-1', pool_id: pool.id, connection_id: 'conn', site_id: 'SITE', workorder_id: 'wo-1', discipline: 'E&I', person_id: person.person_id, date: '2026-10-05', minutes: 120, version: 1, state: 'reserved' };
 const snapshot: Snapshot = { pool_id: pool.id, pool_version: 2, rows: [person], items: [], work_orders: [], assignment_revision:'r1' };
 class TestIntersectionObserver {
@@ -782,7 +782,7 @@ it('requires saving changed hours before uploading the persisted task',async()=>
 });
 
 it('shows the PIC and schedule range on backlog cards, or says they are missing',async()=>{
-  const withPic={...workOrder,wonum:'WO-PIC',workorderid:'wo-pic',assignedtechname:'HAIDQ',schedstart:'2026-10-04T15:06:00+07:00',schedfinish:'2026-10-31T15:06:00+07:00'} as unknown as typeof workOrder;
+  const withPic={...workOrder,wonum:'WO-PIC',workorderid:'wo-pic',assignedto:'HAIDQ',schedstart:'2026-10-04T15:06:00+07:00',schedfinish:'2026-10-31T15:06:00+07:00'} as unknown as typeof workOrder;
   await loaded(snapshot,[withPic,workOrder]);
   expect(screen.getByText('PIC HAIDQ · 04/10 → 31/10')).toBeInTheDocument();
   expect(screen.getByText('Chưa có PIC · Chưa có lịch')).toBeInTheDocument();
@@ -790,7 +790,7 @@ it('shows the PIC and schedule range on backlog cards, or says they are missing'
 });
 
 it('warns, without blocking, when assignments fall outside the WO schedule or the PIC is not assigned',async()=>{
-  const wo={...workOrder,assignedtechname:'NAMTX',schedstart:'2026-10-06T08:00:00+07:00',schedfinish:'2026-10-10T17:00:00+07:00'} as unknown as typeof workOrder;
+  const wo={...workOrder,assignedto:'NAMTX',schedstart:'2026-10-06T08:00:00+07:00',schedfinish:'2026-10-10T17:00:00+07:00'} as unknown as typeof workOrder;
   await loaded({...snapshot,items:[item],work_orders:[order]},[wo]);
   expect(screen.getByText(/1 ngày phân công ngoài lịch WO · PIC chưa nằm trong người được giao/)).toBeInTheDocument();
   expect(screen.getByRole('button',{name:/Trạng thái: .*Cảnh báo: ngày này nằm ngoài lịch WO/})).toBeEnabled();
@@ -805,7 +805,7 @@ it('suggests the first assigned person as PIC for a WO without PIC and hands it 
 });
 
 it('does not offer a PIC suggestion when the WO already has one or nobody is assigned',async()=>{
-  const withPic={...workOrder,assignedtechname:'LAB-1'} as unknown as typeof workOrder;
+  const withPic={...workOrder,assignedto:'LAB-1'} as unknown as typeof workOrder;
   await loaded({...snapshot,items:[item],work_orders:[order]},[withPic],{onSuggestPic:vi.fn()});
   expect(screen.queryByRole('button',{name:/làm PIC/})).not.toBeInTheDocument();
 });

@@ -15,11 +15,11 @@ import { UploadPreviewControls, type FinalizedUpload, type UploadConnection } fr
 import type { UploadRecoveryEntry } from '../api/drafts';
 
 export type BatchSelection = { keys: { site_id: string; workorder_id: string }[] } | { draftId: string };
-const fields = ['schedstart', 'schedfinish', 'assignedtechname', 'estdur', 'targstartdate', 'targcompdate'] as const;
-const inputFields = ['schedstart', 'assignedtechname', 'estdur'] as const;
+const fields = ['schedstart', 'schedfinish', 'assignedto', 'estdur', 'targstartdate', 'targcompdate'] as const;
+const inputFields = ['schedstart', 'assignedto', 'estdur'] as const;
 const targetFields = ['targstartdate', 'targcompdate'] as const;
-const sendFields = ['estdur', 'schedstart', 'schedfinish', 'assignedtechname'] as const;
-const labels = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish', assignedtechname: 'Assigned PIC', estdur: 'Est. Duration',
+const sendFields = ['estdur', 'schedstart', 'schedfinish', 'assignedto'] as const;
+const labels = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish', assignedto: 'Assigned PIC', estdur: 'Est. Duration',
   targstartdate: 'Target Start', targcompdate: 'Target Finish' };
 const pmScheduleChanged = (row: BatchRow) => row.baseline.worktype.toUpperCase() === 'PM' &&
   (['schedstart', 'schedfinish'] as const).some((field) => (row.changes[field] ?? row.baseline[field]) !== row.baseline[field]);
@@ -209,7 +209,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
         for (const field of editableFields) {
           const value = row.changes[field];
           if (value === undefined) continue;
-          if (value !== base.baseline[field] && !(field === 'assignedtechname' && !base.allowed_pics.includes(value))) kept[field] = value;
+          if (value !== base.baseline[field] && !(field === 'assignedto' && !base.allowed_pics.includes(value))) kept[field] = value;
         }
         if (row.changes.change_target !== undefined && targetFields.some((field) => kept[field] !== undefined)) kept.change_target = row.changes.change_target;
         if (!editableFields.some((field) => kept[field] !== undefined)) { dropped.push(row.item.wonum); continue; }
@@ -270,7 +270,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     {uploadSection}
     <div className={styles.tableWrap}><table className={styles.planningTable} aria-label="Các WO sẽ gửi"><thead><tr><th>WO</th>{sendFields.map((field) => <th key={field}>{labels[field]}</th>)}<th>Kiểm tra</th></tr></thead>
       <tbody>{rows.map((row) => <tr key={rowKey(row.item)}><th scope="row">{row.item.wonum}<small>{row.item.description ?? '—'}</small></th>
-        {sendFields.map((field) => <td key={field} className={row.changes[field] !== undefined ? styles.modified : undefined}>{field === 'assignedtechname'
+        {sendFields.map((field) => <td key={field} className={row.changes[field] !== undefined ? styles.modified : undefined}>{field === 'assignedto'
           ? picLabel(row.changes[field] ?? row.baseline[field], row.pic_names) || '—'
           : field === 'estdur' ? row.changes[field] ?? row.baseline[field] ?? '—' : displayDate(row.changes[field] ?? row.baseline[field] ?? null, timezone)}</td>)}
         <td>{problems[rowKey(row.item)] && <span role="alert" className={styles.error}>{problems[rowKey(row.item)]}</span>}</td></tr>)}</tbody></table></div>
@@ -293,7 +293,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     <fieldset disabled={blocked} className={styles.groupFields}><legend>Áp dụng cho nhóm · trường không chọn giữ nguyên</legend>
       {inputFields.map((field) => <label key={field}><input type="checkbox" aria-label={labels[field]} checked={group[field] !== undefined}
         onChange={(event) => setGroup((previous) => { const next = { ...previous }; if (event.target.checked) next[field] = ''; else delete next[field]; return next; })} />{labels[field]}
-        {group[field] !== undefined && (field === 'assignedtechname' ? <select aria-label={`Nhóm ${labels[field]}`} value={group[field]}
+        {group[field] !== undefined && (field === 'assignedto' ? <select aria-label={`Nhóm ${labels[field]}`} value={group[field]}
           onChange={(e) => setGroup((previous) => ({ ...previous, [field]: e.target.value }))}><option value="">Chọn PIC</option>{pics.map((pic) => <option key={pic} value={pic}>{picLabel(pic, groupNames)}</option>)}</select>
           : field === 'estdur' ? <input aria-label={`Nhóm ${labels[field]}`} type="text" inputMode="decimal" value={group[field]}
             onChange={(e) => { setGroup((previous) => ({ ...previous, [field]: e.target.value })); setError(''); }} />
@@ -320,7 +320,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
           const isTarget = targetFields.includes(field as typeof targetFields[number]);
           return <td key={field} className={row.changes[field] !== undefined ? styles.modified : undefined}>
             {field === 'schedfinish' ? <input aria-label={`${row.item.wonum} ${labels[field]}`} readOnly value={displayDate(value || null, timezone)} /> :
-              field === 'assignedtechname' ? <select aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked} value={value} onChange={(e) => edit(index, field, e.target.value)}>
+              field === 'assignedto' ? <select aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked} value={value} onChange={(e) => edit(index, field, e.target.value)}>
                 <option value={row.baseline[field] ?? ''}>{picLabel(row.baseline[field], row.pic_names) || 'Chưa có PIC'}</option>{row.allowed_pics.filter((pic) => pic !== row.baseline[field]).map((pic) => <option key={pic} value={pic}>{picLabel(pic, row.pic_names)}</option>)}</select> :
                 field === 'estdur' ? <input aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked} type="text" inputMode="decimal" value={value}
                   onChange={(e) => edit(index, field, e.target.value)} />

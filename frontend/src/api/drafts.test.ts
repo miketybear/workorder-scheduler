@@ -5,7 +5,7 @@ import { columns } from './workOrders';
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const key = { connection_id: 'one', discipline: 'MECH', site_id: 'SITE', workorder_id: '100' };
 const baseline: Baseline = { worktype: 'CM', schedstart: null, schedfinish: null,
-  assignedtechname: null, estdur: '8', targstartdate: null, targcompdate: '2026-10-01T00:00:00+07:00' };
+  assignedto: null, estdur: '8', targstartdate: null, targcompdate: '2026-10-01T00:00:00+07:00' };
 const item = { ...Object.fromEntries(columns.map(([field]) => [field, null])), ...baseline,
   siteid: 'SITE', workorderid: '100', wonum: 'WO', bdpocdiscipline: 'MECH', status: 'APPR', wopriority: null };
 const detail = { connection_id: 'one', item, baseline, baseline_token: 'a'.repeat(64), allowed_pics: ['TECH'] };
@@ -121,7 +121,7 @@ it('accepts only confirmed PM restoration evidence with a complete valid origina
   const draft = { draft_id: 'draft', version: 3, state: 'draft' as const };
   const selected = [{ site_id: 'SITE', workorder_id: '100' }];
   const before = { worktype: 'PM', schedstart: '2026-10-01T00:00:00Z', schedfinish: '2026-10-02T00:00:00Z',
-    assignedtechname: null, estdur: '25', targstartdate: '2026-09-01T00:00:00Z', targcompdate: '2026-10-01T00:00:00Z' };
+    assignedto: null, estdur: '25', targstartdate: '2026-09-01T00:00:00Z', targcompdate: '2026-10-01T00:00:00Z' };
   const item = { item_id: 'item', connection_id: 'one', site_id: 'SITE', workorder_id: '100', state: 'confirmed', updated_at: '2026-10-08T00:00:00Z',
     source: { draft_id: 'draft', draft_version: 3, member_id: 'member' }, duration_result: null, restore_source: { before } };
   const status = { batch_id: 'batch', source_finalized: true, counts: { confirmed: 1 }, items: [item] };

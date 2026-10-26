@@ -13,7 +13,7 @@ const order = (id: string, drafts: PlanningMarker[]) => ({ ...Object.fromEntries
 const marker = (id: string, over: Partial<PlanningMarker> = {}): PlanningMarker => ({ draft_id: id, version: 1, is_batch: false,
   updated_at: '2026-10-06T09:00:00+07:00', baseline_changed: false, changes: { estdur: '9' }, ...over });
 const detail = (id: string): Detail => ({ item: order(id, []), baseline_token: 'a'.repeat(64), allowed_pics: ['TECH'],
-  baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedtechname: null, estdur: '8', targstartdate: null, targcompdate: null } });
+  baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedto: null, estdur: '8', targstartdate: null, targcompdate: null } });
 const member = (id: string, changes: BatchRow['changes'] = { estdur: '9' }): BatchRow => ({ ...detail(id), changes, baseline_changed: false, changes_valid_now: true });
 const saved = { draft_id: 'merged', version: 1, state: 'draft' as const };
 
@@ -79,14 +79,14 @@ it('lets the most recently updated draft win for a WO that is in several drafts'
 it('drops fields that now equal Maximo or whose PIC is no longer allowed and reports emptied WOs', async () => {
   prepared();
   const rows = [
-    order('1', [marker('a', { changes: { estdur: '8', assignedtechname: 'GONE' } })]),
-    order('2', [marker('b', { changes: { estdur: '9', assignedtechname: 'GONE' } })]),
-    order('3', [marker('c', { changes: { estdur: '10', assignedtechname: 'TECH' } })]),
+    order('1', [marker('a', { changes: { estdur: '8', assignedto: 'GONE' } })]),
+    order('2', [marker('b', { changes: { estdur: '9', assignedto: 'GONE' } })]),
+    order('3', [marker('c', { changes: { estdur: '10', assignedto: 'TECH' } })]),
   ];
   const result = await consolidateDrafts(scope, rows, signal);
   expect(result.dropped).toEqual(['WO-1']);
   const items = vi.mocked(saveBatch).mock.calls[0][1];
-  expect(items.map((row) => [row.item.workorderid, row.changes])).toEqual([['2', { estdur: '9' }], ['3', { estdur: '10', assignedtechname: 'TECH' }]]);
+  expect(items.map((row) => [row.item.workorderid, row.changes])).toEqual([['2', { estdur: '9' }], ['3', { estdur: '10', assignedto: 'TECH' }]]);
   // The emptied WO's old draft is merged away as well.
   expect(deleteDraft).toHaveBeenCalledTimes(3);
 });

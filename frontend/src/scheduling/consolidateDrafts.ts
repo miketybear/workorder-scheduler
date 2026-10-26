@@ -17,7 +17,7 @@ function stillNeeded(row: Pick<BatchRow, 'baseline' | 'allowed_pics'>, changes: 
   for (const field of editableFields) {
     const value = changes[field];
     if (value === undefined || equalField(field, value, row.baseline[field])) continue;
-    if (field === 'assignedtechname' && !row.allowed_pics.includes(value)) continue;
+    if (field === 'assignedto' && !row.allowed_pics.includes(value)) continue;
     kept[field] = value;
   }
   if (!editableFields.some((field) => kept[field] !== undefined)) return null;

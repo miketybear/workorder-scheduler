@@ -3,11 +3,11 @@ import type { WorkOrder } from '../api/workOrders';
 import { equalField, scheduledChange, validateChanges } from './editing';
 
 /** Values typed straight into the table cells; Scheduled Finish is always derived, never staged. */
-export type Staged = { schedstart?: string; assignedtechname?: string; estdur?: string };
+export type Staged = { schedstart?: string; assignedto?: string; estdur?: string };
 export type StagedField = keyof Staged;
 
 export const baselineOf = (order: WorkOrder): Baseline => ({
-  schedstart: order.schedstart, schedfinish: order.schedfinish, assignedtechname: order.assignedtechname, estdur: order.estdur,
+  schedstart: order.schedstart, schedfinish: order.schedfinish, assignedto: order.assignedto, estdur: order.estdur,
   targstartdate: order.targstartdate, targcompdate: order.targcompdate, worktype: order.worktype,
 });
 
@@ -17,19 +17,19 @@ export function deriveChanges(order: WorkOrder, draft: Changes, staged: Staged, 
   let changes: Changes = { ...draft };
   if (staged.estdur !== undefined) changes = scheduledChange(changes, baseline, 'estdur', staged.estdur, timeZone);
   if (staged.schedstart !== undefined) changes = scheduledChange(changes, baseline, 'schedstart', staged.schedstart, timeZone);
-  if (staged.assignedtechname !== undefined) changes = scheduledChange(changes, baseline, 'assignedtechname', staged.assignedtechname, timeZone);
+  if (staged.assignedto !== undefined) changes = scheduledChange(changes, baseline, 'assignedto', staged.assignedto, timeZone);
   return changes;
 }
 
 export const hasChanges = (changes: Changes): boolean =>
-  (['schedstart', 'schedfinish', 'assignedtechname', 'estdur', 'targstartdate', 'targcompdate'] as const).some((field) => changes[field] !== undefined);
+  (['schedstart', 'schedfinish', 'assignedto', 'estdur', 'targstartdate', 'targcompdate'] as const).some((field) => changes[field] !== undefined);
 
 /** What the row shows once the draft and the staged edits are applied. */
 export function shown(order: WorkOrder, draft: Changes, staged: Staged, timeZone: string) {
   const changes = deriveChanges(order, draft, staged, timeZone);
   return {
     schedstart: changes.schedstart ?? order.schedstart, schedfinish: changes.schedfinish ?? order.schedfinish,
-    assignedtechname: changes.assignedtechname ?? order.assignedtechname, estdur: changes.estdur ?? order.estdur, changes,
+    assignedto: changes.assignedto ?? order.assignedto, estdur: changes.estdur ?? order.estdur, changes,
   };
 }
 

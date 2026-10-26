@@ -4,7 +4,7 @@ import { scheduledChange, validateChanges } from './editing';
 
 const tz = 'Asia/Ho_Chi_Minh';
 const baseline: Baseline = { worktype: 'CM', schedstart: null, schedfinish: null, estdur: '10.5',
-  assignedtechname: null, targstartdate: null, targcompdate: null };
+  assignedto: null, targstartdate: null, targcompdate: null };
 
 it('derives fractional-hour duration and recalculates when duration changes', () => {
   const start = scheduledChange({}, baseline, 'schedstart', '2026-10-05T08:00:00+07:00', tz);
@@ -33,7 +33,7 @@ it('asks to update Target Finish when the working-day finish passes it', () => {
 
 it('requires duration when scheduling and does not rewrite unrelated existing dates', () => {
   const scheduled = { ...baseline, schedstart: '2026-10-05T08:00:00+07:00', schedfinish: '2026-10-31T08:00:00+07:00' };
-  expect(scheduledChange({}, scheduled, 'assignedtechname', 'TECH', tz)).toEqual({ assignedtechname: 'TECH' });
+  expect(scheduledChange({}, scheduled, 'assignedto', 'TECH', tz)).toEqual({ assignedto: 'TECH' });
   expect(validateChanges({ ...baseline, estdur: null }, { schedstart: '2026-10-05T08:00:00+07:00' }, []))
     .toContain('Nhập Est. Duration');
   const bad = scheduledChange({}, baseline, 'schedstart', '2026-10-05T08:00:00+07:00', tz);
