@@ -93,7 +93,7 @@ xem before/after → upload dòng được chọn → xem kết quả.
 |---|---|---|
 | schedstart | Scheduled Start | Kiểm tra ngày giờ và quan hệ start/finish |
 | schedfinish | Scheduled Finish | Không trước start |
-| assignedtechname | Assigned PIC | Kiểm tra danh sách crew hợp lệ |
+| assignedto | Assigned PIC | Kiểm tra danh sách crew hợp lệ |
 | estdur | Estimated Duration | Số không âm; xác nhận đơn vị/độ chính xác trên test |
 | targstartdate | Target Start | Chỉ gửi khi người dùng chọn đổi target; cấm PM/CFT |
 | targcompdate | Target Finish | Cùng quy tắc target; kiểm tra thứ tự ngày |

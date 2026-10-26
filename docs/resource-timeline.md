@@ -46,7 +46,7 @@ xử lý source tổng thể nhưng timeline vẫn áp quyền WO/craft của t�
 discipline, date_from và date_before (exclusive), tối đa31ngày. Trả rows theo
 người/ngày, tải/phút còn lại, phân công trong scope và metadata WO tương ứng
 (mỗi `work_orders[]` có thêm `schedstart`, `schedfinish` — ISO-8601 kèm offset
-hoặc null, cùng định dạng `/api/work-orders` — và `assignedtechname` hoặc null).
+hoặc null, cùng định dạng `/api/work-orders` — và `assignedto` hoặc null).
 Giới hạn kiểm tra tối đa200WO đã được phân công mỗi snapshot; không trả một
 phần kết quả thành công nếu chưa xác minh scope hiện tại từ Maximo.
 

@@ -84,7 +84,7 @@ xác minh expose đúng các trường. Dùng lean JSON và explicit oslc.select
 | Status | status, giữ nguyên mã |
 | Priority | wopriority_description và wopriority |
 | Onshore PIC | lead |
-| Assigned PIC | assignedtechname |
+| Assigned PIC | assignedto |
 | Est. Duration | estdur |
 | Target Start / Finish | targstartdate / targcompdate |
 | WOID | workorderid, chuẩn hóa chuỗi |

@@ -167,8 +167,16 @@ Additional domain modules in component instructions remain planned.
 - Treat each configured Maximo connection independently. Record identity includes connection,
   site and workorder ID; never key records or caches by WONUM alone.
 - Recheck current WO discipline and access immediately before writing.
-- Allowed changes: schedstart, schedfinish, assignedtechname, estdur; targstartdate and
+- Allowed changes: schedstart, schedfinish, assignedto (the PIC; assignedtechname is no longer used), estdur; targstartdate and
   targcompdate only with explicit target-change intent and never for PM or CFT.
+- One workflow action is allowed besides field edits: routing a WO to its Tech PIC through BD_WO
+  ("Route to Tech PIC for execution"), by a Planner with write access, only for a WO whose schedule
+  and PIC are already in Maximo, and only while the workflow definition matches the verified contract
+  (see docs/workflow-route-design.md). It writes no WO field except the supervisor name the workflow requires,
+  and only when it is empty (SUPNAME, from the signed-in Planner's own PERSON record); the PIC (assignedto) and
+  its date must already be in Maximo. It never starts a workflow or
+  completes an interaction node. The position-account password is used only for the Maximo session,
+  is held in server memory for the Entra session and is never stored, logged or audited.
 - Maximo owns authoritative WO state. A saved draft is not an uploaded change.
 - Each outbound mutation requires a durable audit intent attributed to an authenticated user.
   Report partial success, conflicts and unknown outcomes honestly; never blindly retry writes.

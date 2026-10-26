@@ -65,7 +65,7 @@ local; kéo chuột native còn cần xác nhận vì IAB automation không phá
   cùng ledger người/ngày; không cần xin xác nhận lại cho từng lần planner chọn.
 - V1 là phân bổ nội bộ theo người × ngày × WO. Giữ khả năng ghi actual assignment
   ở adapter riêng, khóa cho đến khi có contract/quyền/UAT. Không dùng
-  `assignedtechname` để giả lập ASSIGNMENT.
+  `assignedto` (trước đây `assignedtechname`) để giả lập ASSIGNMENT.
 - Tháng là cửa sổ xem, không phải ranh giới sở hữu reservation. Một người/ngày
   chỉ có một budget dùng chung cho các plan đang có hiệu lực.
 

@@ -75,6 +75,66 @@ Cập nhật: 2026-10-19.
 - [x] Xóa nhánh `ui/design-tokens` (local và remote) vì đã merge — 2026-10-21.
 - [ ] Lần tải nguội (25–30 giây) chưa đo được vì cần xóa cache backend/Maximo.
 
+### D. Route WO đến Tech PIC qua workflow BD_WO (khảo sát 2026-10-19)
+
+- [x] Khảo sát chỉ đọc trên Onshore test: BD_WO rev 27, đường node 20 → INPUT 101 (action 427)
+      → kiểm tra status/lịch/`ASSIGNEDTO` → node 34 TECH. Bằng chứng và hợp đồng đề xuất ở
+      [maximo-workflow-route.md](maximo-workflow-route.md). Chưa ghi workflow, chưa có code.
+- [ ] **D1 (cần chủ dự án):** duyệt route là loại ghi mới ngoài sáu trường. Tài khoản thực hiện đã
+      chọn hướng ở D5.
+- [ ] **D2:** thử trên một WO test: ghi `assignedtechname` qua ứng dụng có tự điền
+      `ASSIGNEDTO`/`ASSIGNEDDATE` không.
+- [x] **D3 (2026-10-23):** route thử qua REST thành công trên P13461222 (việc ACTIVE mới ở node 34 cho VIETLV) sau
+      khi chủ dự án bỏ điều kiện `:&APPNAME&='PLUSGWO'` ở node 34 (rev 27). Trước đó 2 WO (P13457863, H14323938) bị mất
+      việc vì điều kiện này; **cần admin khởi động lại workflow cho 2 WO đó**. Object structure phải là `MXAPIWFASSIGNMENT`
+      (không phải `BDWF_ASGN`), ghi bằng phiên `maxauth` (API key không giữ phiên). Chi tiết ở maximo-workflow-route.md.
+- [ ] **D9:** thiết kế tính năng route trong ứng dụng đã viết ở [workflow-route-design.md](workflow-route-design.md);
+      chờ chủ dự án duyệt mục 9 rồi mới triển khai (migration quyền route + audit, dịch vụ backend, panel nhập tài khoản).
+- [ ] **D10:** xử lý 2 WO dở dang trên test (P13457863, H14323938): admin khởi động lại workflow BD_WO.
+- [x] 2026-10-19: khảo sát nhánh PM SCHED (chỉ đọc): node 68 → 40 → INPUT 106 action 437. Trong
+      200 PM SCHED ở BD1: 25 đã ở node 34, 22 chờ ở node 40, 153 chưa từng khởi động workflow.
+      Action `DIVESTDUR` sửa estdur WO con bằng SQL trực tiếp. Chi tiết ở maximo-workflow-route.md.
+- [x] **D4 (một phần):** 2026-10-22 chủ dự án xác nhận chỉ WO cha có workflow; mẫu 200 PM SCHED
+      khớp (52/52 WO cha có workflow ACTIVE, 148/148 WO con không có). Còn hỏi: DIVESTDUR (Draft) có chạy
+      không. Việc này không chặn route vì ứng dụng không tự khởi động workflow.
+- [x] 2026-10-22: ánh xạ tài khoản route theo discipline từ 928 WO cha mở ở BD1: E&I `ENISUP`, MECH
+      `MECHSUP`, PROD `FIELDPRODSUP`, RES `RES`, DECK `DECKFMHSE`. Đề xuất dùng API key của tài khoản
+      position lưu ở server, không làm màn hình nhập mật khẩu Maximo.
+- [ ] **D5 (cần IT):** cấp API key test cho 5 tài khoản position trên Onshore test; chủ dự án duyệt
+      quyền "route" riêng cho Planner. 2026-10-23: đã có key ENISUP test; còn MECHSUP, FIELDPRODSUP,
+      RES, DECKFMHSE.
+- [x] 2026-10-23: thêm cấu hình `workflow_route_accounts` theo discipline trong `MaximoSettings`
+      (personid + API key `SecretStr`, TEST-only, chưa có code dùng). 4 test cấu hình mới (ghép biến
+      môi trường, ẩn key, từ chối staging, từ chối giá trị không an toàn); backend 758 passed,
+      513 skipped; Ruff đạt. Mẫu dòng cấu hình ở `.env.example`.
+- [x] 2026-10-23: kiểm tra chỉ đọc bằng key ENISUP test. `whoami` = ENISUP; đọc WO P13467327 kèm
+      `rel.wfassignment` thấy việc 1645243 ACTIVE ở node 20. `GET mxapiwfassignment` bị chặn với
+      BMXAA0024E (READ không được phép trên WFASSIGNMENT).
+- [x] **D7:** 2026-10-23 chủ dự án chỉ định object structure `BDWF_ASGN`. ENISUP đọc được:
+      440 việc ACTIVE (BD_WO rev 27: 248 ở node 40, 111 ở node 20); việc 1645243 có action 426 → INPUT
+      101. Link trong phản hồi dùng host `maximo.biendongpoc.vn` và phải đổi về host test trước khi gọi.
+- [x] **D8:** chủ dự án quyết định 2026-10-23 không xoay key ENISUP test. (Ban đầu: xoay key ENISUP test. Một lệnh khảo sát ngày 2026-10-23 đã gửi key
+      tới `maximo.biendongpoc.vn` (bị từ chối, BMXAA9549E). Host đó là một Maximo khác; việc xác nhận nó là hệ thống nào vẫn mở.)
+- [x] **Thay `assignedtechname` bằng `ASSIGNEDTO` (2026-10-26):** `ASSIGNEDTO` là trường PIC duy nhất trong ứng dụng; `assignedtechname` bỏ hoàn toàn
+      (đọc, ghi, nháp, xem trước upload, route, timeline, phân công; yêu cầu/nháp còn tên cũ bị từ chối 422, không có alias; không cần migration).
+      Admin Maximo đã sửa domain table nên tài khoản tích hợp ghi được `ASSIGNEDTO` và `ASSIGNEDDATE` tự điền. Route bỏ bước ghi `ASSIGNEDTO`:
+      WO sẵn sàng khi `assignedto` và `assigneddate` đã có; chỉ còn ghi `SUPNAME` khi trống. Nghiệm thu đầu cuối trên P13468983 (CM): đặt PIC LAMTH trong bảng
+      → lưu nháp → Gửi bằng tài khoản tích hợp (đọc lại: `assignedto` LAMTH, `assigneddate` có) → Route từ giao diện (Supervisor TRUNGNT giữ nguyên) → SCHED,
+      việc node 34 ACTIVE cho LAMTH, dòng bảng tự làm mới (SCHED, "Đã route · LAMTH"). Backend 875 test, frontend 518 test; ruff/lint/tsc đạt. Tài liệu hiện hành đã đổi
+      (AGENTS.md, backend/AGENTS.md, architecture, maximo-reader, maximo-write-contract, resource-timeline, workflow-route-api); mục lịch sử giữ nguyên.
+- [x] **D6 + nghiệm thu route trong ứng dụng (2026-10-26, Onshore test, E&I):** tài khoản tích hợp ghi `ASSIGNEDTO` bị Maximo bỏ qua im lặng
+      (204 nhưng không đổi, thử trên BDSCHED_WO/mxapiwodetail/oslcmxwodetail/mxwodetail); cùng lệnh bằng `maxauth` của ENISUP
+      (tên đăng nhập chữ thường `enisup`) ghi được và `ASSIGNEDDATE` tự điền. Ứng dụng nay ghi `ASSIGNEDTO` = PIC trong `assignedtechname`
+      (khi trống) bằng phiên ENISUP trước khi route, rồi `SUPNAME` (khi trống), rồi `completeAssignment` + chọn 427. Route từ giao diện thành công
+      cho 3 WO, đọc lại Maximo khớp: **P13470381** (CM, `SUPNAME` trống → NHATNH, việc node 34 cho DUNGLV), **P13469691** (PM, `SUPNAME` trống →
+      NHATNH, `ASSIGNEDTO` NGOCNH ghi bởi ứng dụng, node 34 NGOCNH), **P13457667** (General, `SUPNAME` VINHDN giữ nguyên, `ASSIGNEDTO` THANGTD, node 34
+      THANGTD). Cả ba SCHED, memo "Route by Nhat Nguyen Hoang via Work Order Scheduler". Backend 883 test, frontend 515 test, lint/ruff/tsc đạt.
+      Mở: mobile chưa nghiệm thu; 2 WO dở dang cũ (P13457863, H14323938) cần admin; ghi PIC khi upload vẫn là `assignedtechname` (chỉ route mới ghi `ASSIGNEDTO`).
+- [ ] (cũ) **D6:** chủ dự án xác nhận ngày 2026-10-23 PIC phải ghi vào `ASSIGNEDTO` (role `WO ASS` dùng
+      trường này). Sender hiện ghi `assignedtechname`. Cần thử ghi `ASSIGNEDTO` trên một WO test, đọc
+      lại `ASSIGNEDDATE`/`assignedtechname` rồi khôi phục; sau đó đổi sender, reader và danh sách
+      trường được phép trong AGENTS.md.
+
 ## Ô ngày giờ 24 giờ và họ tên PIC — 2026-10-20
 
 - [x] Ô ngày giờ trong cửa sổ lập lịch (Scheduled Start, Target Start/Finish; ô nhóm và từng dòng ở editor nhóm)

@@ -317,7 +317,7 @@ Maximo 7.6.1.3 của Onshore/Offshore hỗ trợ cùng hợp đồng.
 | Dates | Offset/timezone, precision, giờ mặc định, DST nếu có; schedfinish tính giờ liên tục hay ca (đổi sang ca 06:30–18:30, 10,5 giờ/ngày từ 2026-10-20; Maximo test chưa thử nhận Finish nhiều ngày); write/read-back normalization | Onshore timezone Asia/Ho_Chi_Minh; giờ liên tục ở UI |
 | Null/clear | Missing nghĩa không đổi; null/empty/date/PIC clear được chấp nhận hay từ chối riêng từng field | Explicit clear bị từ chối hiện tại |
 | PIC/duration | Membership/group, giới hạn tên PIC, estdur đơn vị/min/max/scale/rounding và kiểu JSON | PIC E&I GET qua; write bounds/rounding chưa chốt |
-| Allowlist/target | schedstart/schedfinish/assignedtechname/estdur; targstartdate/targcompdate chỉ khi explicit intent, cấm PM/CFT; không status/discipline/arbitrary fields | Backend nháp đã validate; remote chưa thử |
+| Allowlist/target | schedstart/schedfinish/assignedto/estdur (assignedtechname bỏ từ 2026-10-26); targstartdate/targcompdate chỉ khi explicit intent, cấm PM/CFT; không status/discipline/arbitrary fields | Backend nháp đã validate; remote chưa thử |
 | Response/errors | Success code/body, validation/auth/conflict codes, redacted errors; read-back/timeout | Live204 và412 BMXAA8229W, readback/restore qua; timeout remote chưa thử |
 
 ## Giao thức thử conditional update
