@@ -96,6 +96,20 @@ it('sends a versioned CSRF-protected upload preview and rejects injected fields 
   await expect(previewUpload(draft, [{ site_id: 'SITE', workorder_id: '100' }], new AbortController().signal)).rejects.toThrow();
 });
 
+it.each([{ missing: ['schedule'] }, { missing: ['pic'] }, { missing: ['schedule', 'pic'] }])('parses incomplete schedule preview $missing', async ({ missing }) => {
+  vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-wos-csrf=csrf-value');
+  const draft = { draft_id: 'draft', version: 3, state: 'draft' as const };
+  const selected = [{ site_id: 'SITE', workorder_id: '100' }];
+  const item = { site_id: 'SITE', workorder_id: '100', code: 'incomplete_schedule', missing, warnings: [], before: {}, changes: {} };
+  respond({ draft_id: 'draft', version: 3, preview_hash: 'b'.repeat(64), send_enabled: true, gate: null, items: [item] });
+  expect(await previewUpload(draft, selected, new AbortController().signal)).toMatchObject({
+    items: [{ code: 'incomplete_schedule', missing }],
+  });
+  respond({ draft_id: 'draft', version: 3, preview_hash: 'b'.repeat(64), send_enabled: true, gate: null,
+    items: [{ ...item, missing: ['other'] }] });
+  await expect(previewUpload(draft, selected, new AbortController().signal)).rejects.toThrow();
+});
+
 it('submits only the verified preview with CSRF and validates scoped item status', async () => {
   vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-wos-csrf=csrf-value');
   const draft = { draft_id: 'draft', version: 3, state: 'draft' as const };

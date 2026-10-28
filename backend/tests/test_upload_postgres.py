@@ -9,8 +9,10 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from test_maximo import config, record
-from test_postgres import database, seed, snapshot
+from test_maximo import config
+from test_maximo import record as unscheduled_record
+from test_postgres import database, seed
+from test_postgres import snapshot as unscheduled_snapshot
 from test_upload_service import key, run
 
 from app.audit.uploads import recover_stale_sends
@@ -43,6 +45,30 @@ from app.scheduling.upload_service import (
 )
 
 pytestmark = pytest.mark.integration
+
+
+def snapshot(connection):
+    original = unscheduled_snapshot(connection)
+    return replace(
+        original,
+        baseline=original.baseline.model_copy(
+            update={
+                "schedstart": datetime.fromisoformat("2026-10-08T00:00:00+07:00"),
+                "schedfinish": datetime.fromisoformat("2026-10-08T08:00:00+07:00"),
+                "assignedto": "BASELINE-PIC",
+            }
+        ),
+    )
+
+
+def record(**overrides):
+    return unscheduled_record(
+        **{
+            "schedstart": "2026-10-08T00:00:00+07:00",
+            "schedfinish": "2026-10-08T08:00:00+07:00",
+            **overrides,
+        }
+    )
 
 
 class FakeTransport:
@@ -641,6 +667,7 @@ def test_readback_normalizes_offset_and_decimal():
                 baseline=WorkOrderBaseline(
                     worktype="CM",
                     estdur="8.00",
+                    assignedto="BASELINE-PIC",
                     schedstart="2026-10-08T00:00:00+07:00",
                     schedfinish="2026-10-08T08:00:00+07:00",
                 ),
@@ -655,6 +682,7 @@ def test_readback_normalizes_offset_and_decimal():
                     baseline=WorkOrderBaseline(
                         worktype="CM",
                         estdur="9.000",
+                        assignedto="BASELINE-PIC",
                         schedstart="2026-10-07T17:00:00Z",
                         schedfinish="2026-10-08T01:00:00Z",
                     ),
@@ -662,5 +690,39 @@ def test_readback_normalizes_offset_and_decimal():
 
             fake.write = write
             assert await send_pending(sessions, user.id, item_id, fake.read, fake) == "confirmed"
+
+    run(scenario())
+
+
+@pytest.mark.parametrize("field", ["schedstart", "schedfinish", "assignedto"])
+def test_legacy_pending_incomplete_upload_is_rechecked_and_never_written(field):
+    async def scenario():
+        async with database() as sessions:
+            user, _, connections = await seed(sessions)
+            complete = snapshot(connections[0])
+            current = replace(complete, baseline=complete.baseline.model_copy(update={field: None}))
+            async with sessions.begin() as db:
+                draft = await create_draft(db, user.id, current, ScheduleChanges(estdur=9))
+            fake = FakeTransport(current)
+            async with sessions.begin() as db:
+                prepared = await prepare_upload(db, user.id, draft.id, 1, [key(current)], fake.read)
+            assert prepared.items[0].code == "incomplete_schedule"
+            # Reproduce a durable pending intent created before completeness was required.
+            legacy = replace(
+                prepared, items=(replace(prepared.items[0], code="ready", changes={"estdur": "9"}),)
+            )
+            batch_id = await create_upload(sessions, user.id, uuid4(), legacy, legacy.preview_hash)
+            async with sessions() as db:
+                item_id = await db.scalar(
+                    select(UploadItem.id).where(UploadItem.batch_id == batch_id)
+                )
+            assert await send_pending(sessions, user.id, item_id, fake.read, fake) == "failed"
+            assert fake.calls == []
+            async with sessions() as db:
+                assert not await db.scalar(
+                    select(AuditEvent.id).where(
+                        AuditEvent.upload_item_id == item_id, AuditEvent.event == "intent"
+                    )
+                )
 
     run(scenario())

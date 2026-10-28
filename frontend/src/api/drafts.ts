@@ -16,7 +16,8 @@ export type DraftNotice = Saved & { items: BatchRow[] | null };
 export type BatchRow = Detail & { changes: Changes; baseline_changed?: boolean; changes_valid_now?: boolean };
 export type BatchRestored = Saved & { items: BatchRow[] };
 export type UploadPreviewWarning = 'pm_duration_recalculation';
-export type UploadPreviewItem = { site_id: string; workorder_id: string; code: 'ready' | 'conflict' | 'invalid_changes' | 'empty_changes'; before: Partial<Record<EditableField, string | null>>; changes: Partial<Record<EditableField, string>>; warnings: UploadPreviewWarning[] };
+export type UploadMissing = 'schedule' | 'pic';
+export type UploadPreviewItem = { site_id: string; workorder_id: string; code: 'ready' | 'conflict' | 'invalid_changes' | 'empty_changes' | 'incomplete_schedule'; missing?: UploadMissing[]; before: Partial<Record<EditableField, string | null>>; changes: Partial<Record<EditableField, string>>; warnings: UploadPreviewWarning[] };
 export type UploadPreview = { draft_id: string; version: number; preview_hash: string; send_enabled: boolean; gate: 'write_contract_unverified' | null; items: UploadPreviewItem[] };
 export type UploadState = 'pending' | 'sending' | 'confirmed' | 'failed' | 'conflict' | 'unknown';
 export type DurationResult = { code: 'pm_duration_recalculated' | 'pm_duration_mismatch'; expected: string | null; actual: string | null };
@@ -176,7 +177,11 @@ export async function previewUpload(draft: Saved, items: { site_id: string; work
   const seen = new Set<string>();
   for (const item of raw.items) {
     if (!isRecord(item) || typeof item.site_id !== 'string' || typeof item.workorder_id !== 'string' ||
-        !['ready', 'conflict', 'invalid_changes', 'empty_changes'].includes(String(item.code)) ||
+        !['ready', 'conflict', 'invalid_changes', 'empty_changes', 'incomplete_schedule'].includes(String(item.code)) ||
+        (item.missing !== undefined && (!Array.isArray(item.missing) || !item.missing.length ||
+          !item.missing.every((entry) => entry === 'schedule' || entry === 'pic') || new Set(item.missing).size !== item.missing.length)) ||
+        (item.code === 'incomplete_schedule' && item.missing === undefined) ||
+        (item.code !== 'incomplete_schedule' && item.missing !== undefined) ||
         !Array.isArray(item.warnings) || !item.warnings.every((warning) => warning === 'pm_duration_recalculation') ||
         !validValues(item.before) || !isRecord(item.changes) ||
         !Object.entries(item.changes).every(([field, value]) => {

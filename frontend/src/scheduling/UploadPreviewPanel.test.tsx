@@ -334,3 +334,30 @@ it('blocks the Upload button and counts the WOs to fix when one has a conflict',
   expect(screen.getByText('Upload chưa khả dụng')).toBeDisabled();
   expect(screen.queryByText(baseProps.buttonLabel)).not.toBeInTheDocument();
 });
+
+it.each([
+  { missing: ['schedule'] as ('schedule' | 'pic')[], label: 'Thiếu lịch' },
+  { missing: ['pic'] as ('schedule' | 'pic')[], label: 'Thiếu PIC' },
+  { missing: ['schedule', 'pic'] as ('schedule' | 'pic')[], label: 'Thiếu lịch và PIC' },
+])('blocks a $label upload for both single and group drafts and explains the fix', async ({ missing, label }) => {
+  const incomplete: UploadPreview['items'][number] = { site_id: 'BD1', workorder_id: '1', code: 'incomplete_schedule', missing,
+    before: {}, changes: {}, warnings: [] };
+  const complete: UploadPreview['items'][number] = { site_id: 'BD1', workorder_id: '2', code: 'ready',
+    before: { estdur: '8' }, changes: { estdur: '9' }, warnings: [] };
+  const groupItems = [incomplete, complete];
+  vi.mocked(previewUpload).mockResolvedValue({ ...preview, send_enabled: true, items: groupItems });
+  const view = render(<UploadPreviewControls {...baseProps} selection={wonumFor(groupItems)} />);
+  fireEvent.click(screen.getByText('Đối chiếu nhóm'));
+  expect(await screen.findByText((_, element) => element?.tagName === 'TD' && element.textContent?.includes(label) === true)).toHaveTextContent(label);
+  expect(screen.getByText(/Hoàn tất lịch\/PIC hoặc xóa WO khỏi nhóm trước khi upload/)).toBeInTheDocument();
+  expect(screen.getByText('Upload chưa khả dụng')).toBeDisabled();
+  expect(submitUpload).not.toHaveBeenCalled();
+
+  view.unmount();
+  vi.mocked(previewUpload).mockResolvedValue({ ...preview, send_enabled: true, items: [incomplete] });
+  render(<UploadPreviewControls {...baseProps} selection={wonumFor([incomplete])} uploadAll={false} previewLabel="Đối chiếu upload" />);
+  fireEvent.click(screen.getByText('Đối chiếu upload'));
+  expect(await screen.findByText((_, element) => element?.tagName === 'TD' && element.textContent?.includes(label) === true)).toHaveTextContent(label);
+  expect(screen.getByText('Upload chưa khả dụng')).toBeDisabled();
+  expect(submitUpload).not.toHaveBeenCalled();
+});

@@ -19,7 +19,13 @@ def current():
         "WO100",
         "MECH",
         "v1",
-        WorkOrderBaseline(worktype="CM", estdur=8),
+        WorkOrderBaseline(
+            worktype="CM",
+            estdur=8,
+            assignedto="BASELINE-PIC",
+            schedstart="2026-10-08T00:00:00+07:00",
+            schedfinish="2026-10-08T08:00:00+07:00",
+        ),
         frozenset({"TECH"}),
     )
 
@@ -54,7 +60,9 @@ def test_saved_changes_are_validated_again(field, value):
 
 @pytest.mark.parametrize("worktype", ["PM", "CFT"])
 def test_targets_remain_restricted(worktype):
-    snapshot = replace(current(), baseline=WorkOrderBaseline(worktype=worktype, estdur=8))
+    snapshot = replace(
+        current(), baseline=current().baseline.model_copy(update={"worktype": worktype})
+    )
     proposal = {
         "change_target": True,
         "targstartdate": "2026-10-08T00:00:00+07:00",
@@ -112,3 +120,36 @@ def run(coroutine):
 
 def key(snapshot):
     return BatchKey(site_id=snapshot.key.site_id, workorder_id=snapshot.key.workorder_id)
+
+
+@pytest.mark.parametrize(
+    "updates,proposal,missing",
+    [
+        ({"schedstart": None}, {"estdur": "9"}, ("schedule",)),
+        ({"schedfinish": None}, {"estdur": "9"}, ("schedule",)),
+        ({"assignedto": None}, {"estdur": "9"}, ("pic",)),
+        ({"assignedto": "  "}, {"estdur": "9"}, ("pic",)),
+        ({"schedstart": None, "assignedto": None}, {"estdur": "9"}, ("schedule", "pic")),
+        ({}, {"schedstart": None}, ("schedule",)),
+        ({}, {"schedfinish": None}, ("schedule",)),
+        ({}, {"assignedto": None}, ("pic",)),
+    ],
+)
+def test_upload_requires_merged_complete_schedule_and_pic(updates, proposal, missing):
+    from app.scheduling.upload_service import missing_schedule
+
+    original = current()
+    snapshot = replace(original, baseline=original.baseline.model_copy(update=updates))
+    item = prepared(snapshot, proposal)
+    assert validate_current(item, snapshot) == ("incomplete_schedule", {})
+    assert missing_schedule(item.before, item.proposal) == missing
+
+
+def test_draft_can_complete_an_incomplete_current_work_order_for_upload():
+    snapshot = replace(current(), baseline=WorkOrderBaseline(worktype="CM", estdur=8))
+    proposal = {
+        "schedstart": "2026-10-08T00:00:00+07:00",
+        "schedfinish": "2026-10-08T08:00:00+07:00",
+        "assignedto": "TECH",
+    }
+    assert validate_current(prepared(snapshot, proposal), snapshot) == ("ready", proposal)

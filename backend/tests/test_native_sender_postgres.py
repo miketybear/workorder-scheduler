@@ -43,7 +43,9 @@ def test_native_api_target_rule_groups_require_intent_and_forbid_pm_cft(
                 bdpocdiscipline="MECH",
                 worktype=worktype,
                 estdur=2,
-                assignedto=None,
+                assignedto="BASELINE-PIC",
+                schedstart="2026-10-30T06:30:00+07:00",
+                schedfinish="2026-10-31T17:30:00+07:00",
                 href="https://maximo.invalid/maximo/oslc/os/oslcmxwodetail/_TEST100",
                 _rowstamp="100",
                 targstartdate="2026-10-01T00:00:00+07:00",
@@ -204,7 +206,9 @@ def test_verified_test_sender_native_condition_durable_intent_receipt_and_recove
                     wonum=f"WO{i}",
                     bdpocdiscipline="MECH",
                     estdur=2,
-                    assignedto=None,
+                    assignedto="BASELINE-PIC",
+                    schedstart="2026-10-30T06:30:00+07:00",
+                    schedfinish="2026-10-31T17:30:00+07:00",
                     href=f"https://maximo.invalid/maximo/oslc/os/oslcmxwodetail/_TEST{i}",
                     _rowstamp="100",
                 )
@@ -550,5 +554,174 @@ def test_verified_test_sender_native_condition_durable_intent_receipt_and_recove
                         and source.details["revision"] == "100"
                         for source in sources
                     )
+
+    asyncio.run(main(), loop_factory=asyncio.SelectorEventLoop)
+
+
+@pytest.mark.parametrize("group", [False, True], ids=["single", "group"])
+@pytest.mark.parametrize(
+    "case,missing",
+    [
+        ("missing_start", ["schedule"]),
+        ("missing_finish", ["schedule"]),
+        ("missing_pic", ["pic"]),
+        ("missing_both", ["schedule", "pic"]),
+        ("complete", []),
+        ("completed_by_draft", []),
+        ("cleared_start", ["schedule"]),
+        ("cleared_finish", ["schedule"]),
+        ("cleared_pic", ["pic"]),
+    ],
+)
+def test_single_and_group_upload_require_complete_merged_schedule_and_pic(group, case, missing):
+    async def main():
+        async with setup() as (sessions, settings, user, connection):
+            settings.maximo[connection.id].conditional_write_contract = "native_rowstamp_test"
+            raws = {
+                str(i): record(
+                    workorderid=i,
+                    wonum=f"WO{i}",
+                    bdpocdiscipline="MECH",
+                    estdur=2,
+                    assignedto="VALID",
+                    schedstart="2026-10-30T06:30:00+07:00",
+                    schedfinish="2026-10-31T17:30:00+07:00",
+                    href=f"https://maximo.invalid/maximo/oslc/os/oslcmxwodetail/_TEST{i}",
+                    _rowstamp="100",
+                )
+                for i in range(100, 102 if group else 101)
+            }
+            first = raws["100"]
+            if case in {"missing_start", "missing_both", "completed_by_draft"}:
+                first["schedstart"] = None
+            if case in {"missing_finish", "completed_by_draft"}:
+                first["schedfinish"] = None
+            if case in {"missing_pic", "missing_both", "completed_by_draft"}:
+                first["assignedto"] = None
+            writes = []
+
+            def upstream(request):
+                if request.method == "POST":
+                    number = request.url.path.rsplit("_TEST", 1)[1]
+                    writes.append(number)
+                    raws[number].update({**json.loads(request.content), "_rowstamp": "101"})
+                    return httpx.Response(204)
+                if request.url.path.endswith("mxperson"):
+                    return httpx.Response(
+                        200, json={"member": [{"personid": "probe", "ct_discipline": "MECH"}]}
+                    )
+                if request.url.path.endswith("mxpersongroup"):
+                    return httpx.Response(
+                        200,
+                        json={
+                            "member": [
+                                {"persongroup": "CREW", "persongroupteam": [{"respparty": "VALID"}]}
+                            ]
+                        },
+                    )
+                if "_TEST" in request.url.path:
+                    return httpx.Response(200, json=raws[request.url.path.rsplit("_TEST", 1)[1]])
+                where = request.url.params.get("oslc.where", "")
+                return httpx.Response(
+                    200,
+                    json={
+                        "member": [
+                            raw for number, raw in raws.items() if f"workorderid={number}" in where
+                        ]
+                    },
+                )
+
+            async with sessions.begin() as db:
+                token, csrf = await issue_session(db, user)
+            app = create_app(settings)
+            app.state.sessions = sessions
+            app.state.maximo_client_factory = lambda: httpx.AsyncClient(
+                transport=httpx.MockTransport(upstream)
+            )
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="https://test.example"
+            ) as client:
+                client.cookies.set(SESSION_COOKIE, token)
+                headers = {"X-CSRF-Token": csrf}
+                edits = []
+                for number, raw in raws.items():
+                    current = current_snapshot(
+                        WorkOrderKey(connection.id, "TEST", number),
+                        WorkOrder.model_validate(raw),
+                        frozenset({"VALID"}),
+                    )
+                    changes = {"estdur": "3"}
+                    if number == "100" and case == "completed_by_draft":
+                        changes.update(
+                            schedstart="2026-10-30T06:30:00+07:00",
+                            schedfinish="2026-10-31T17:30:00+07:00",
+                            assignedto="VALID",
+                        )
+                    edits.append(
+                        {
+                            "site_id": "TEST",
+                            "workorder_id": number,
+                            "baseline_token": snapshot_token(current),
+                            "changes": changes,
+                        }
+                    )
+                body = {
+                    "connection_id": str(connection.id),
+                    "discipline": "MECH",
+                    "request_id": str(uuid4()),
+                }
+                body.update({"items": edits} if group else edits[0])
+                saved = await client.post(
+                    "/api/draft-batches" if group else "/api/drafts", json=body, headers=headers
+                )
+                assert saved.status_code == 201, saved.text
+                draft_id = saved.json()["draft_id"]
+                if case.startswith("cleared_"):
+                    field = {
+                        "cleared_start": "schedstart",
+                        "cleared_finish": "schedfinish",
+                        "cleared_pic": "assignedto",
+                    }[case]
+                    # Current saves reject clears; old persisted proposals must fail closed too.
+                    async with sessions.begin() as db:
+                        member = await db.scalar(
+                            select(DraftItem).where(
+                                DraftItem.draft_id == UUID(draft_id),
+                                DraftItem.workorder_id == "100",
+                            )
+                        )
+                        member.changes = {"estdur": "3", field: None}
+                selection = {
+                    "version": 1,
+                    "items": [{"site_id": "TEST", "workorder_id": number} for number in raws],
+                }
+                preview = await client.post(
+                    f"/api/drafts/{draft_id}/upload-preview", json=selection, headers=headers
+                )
+                assert preview.status_code == 200, preview.text
+                items = preview.json()["items"]
+                assert items[0]["code"] == ("incomplete_schedule" if missing else "ready")
+                if missing:
+                    assert items[0]["missing"] == missing
+                if group:
+                    assert items[1]["code"] == "ready"
+                sent = await client.post(
+                    f"/api/drafts/{draft_id}/uploads",
+                    json={
+                        **selection,
+                        "request_id": str(uuid4()),
+                        "preview_hash": preview.json()["preview_hash"],
+                    },
+                    headers=headers,
+                )
+                if missing:
+                    assert sent.status_code == 409, sent.text
+                    assert writes == []
+                    async with sessions() as db:
+                        assert not (await db.scalars(select(UploadItem))).all()
+                else:
+                    assert sent.status_code == 200, sent.text
+                    assert sent.json()["counts"] == {"confirmed": len(raws)}
+                    assert sorted(writes) == sorted(raws)
 
     asyncio.run(main(), loop_factory=asyncio.SelectorEventLoop)
