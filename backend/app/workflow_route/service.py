@@ -148,8 +148,11 @@ async def evaluate(ctx: RouteContext, key: WorkOrderKey) -> Evaluation:
         order = await read_route_order(client, ctx.config, key, ctx.discipline)
     if order is None:
         return Evaluation("out_of_scope")
-    if await ctx.ledger.unsynced(ctx.actor_id, key.connection_id, key.site_id, key.workorder_id):
-        return Evaluation("not_synced", order)
+    sync_code = await ctx.ledger.unsynced(
+        ctx.actor_id, key.connection_id, key.site_id, key.workorder_id
+    )
+    if sync_code is not None:
+        return Evaluation(sync_code, order)
     if order.parent or order.istask:
         return Evaluation("is_child", order)
     if order.status not in ROUTABLE_STATUSES:

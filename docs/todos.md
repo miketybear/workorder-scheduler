@@ -2,6 +2,17 @@
 
 Cập nhật: 2026-10-28.
 
+## Tách upload chưa đối soát và nháp chưa gửi; báo đúng 409 — 2026-10-28
+
+- [x] Backend ưu tiên `upload_pending` cho upload `pending`/`sending`/`unknown` của bất kỳ người dùng nào trên đúng connection/site/WO; `not_synced` chỉ còn là nháp chưa gửi của người dùng hiện tại. Cả hai chặn route. Có test unit/DB cho nháp, upload, cả hai, actor, scope và trạng thái kết thúc.
+- [x] Frontend thêm lý do "Đang có lần upload chưa đối soát — mở Gửi WO để kiểm tra kết quả", chip hành động "Upload chưa xong" ở nhóm cần chú ý; WO chỉ có upload không tính vào "Còn nháp". "Chưa có nháp" vẫn dựa trên nháp thực tế. `RoutePanel` dùng chung `reasonText` nên nhận mã mới; khi có quyền route, dòng nháp cũng hỏi server để upload được ưu tiên. Fingerprint kiểm tra route dùng giá trị Maximo gốc, không dùng đề xuất nháp đang hiển thị; khi không có quyền route, `localRouteCode` chỉ suy ra nháp từ marker thực tế.
+- [x] Submit 409 giữ nháp, xóa yêu cầu recovery đã đăng ký và báo "Upload bị từ chối — Maximo chưa thay đổi: <lý do>" với ánh xạ tiếng Việt cho unresolved upload/preview changed/draft changed; cho đối chiếu mới. Lỗi mạng/timeout/5xx giữ recovery.
+- [x] Rà soát trước ghi: preflight/create upload từ chối trước `execute_batch`/`transport.write`. Phát hiện chốt audit intent trong status/finalization có thể ném 409 sau ghi; `submission_result` chuyển 409 sau khi batch tồn tại sang 503 để không kết luận sai. 409 trả từ POST sau sửa chỉ còn là từ chối trước thực thi của yêu cầu đó; không khẳng định kết quả upload cũ.
+- [x] Backend: Ruff check/format check đạt (151 file); suite offline **891 passed, 553 deselected**, 3 warning; bộ DB yêu cầu trên PostgreSQL `127.0.0.1:55432` **169 passed**. Không sửa `validate_current` hoặc bảng preview; không migration, dependency mới, commit hay gọi Maximo thật.
+- [x] Frontend cuối: typecheck/lint đạt; `npm test` **603/603 passed, 47/47 file**. Lượt đầu **598 passed / 3 failed**: hai test mới (thông báo 409 bị ẩn, chip chưa chờ phản hồi) và timeout ResourceTimeline. Chạy lại năm file liên quan với `--maxWorkers=1`: **245 passed / 2 failed**, ResourceTimeline qua; hai lỗi còn lại phát hiện fingerprint Maximo/nháp không khớp ở dòng nháp. Sau khi sửa fingerprint và assertion số lần preview, bộ đầy đủ cuối đạt như trên. Lượt thử targeted trong sandbox của agent không khởi chạy vì `spawn EPERM`; main dùng quyền thực thi bổ sung cho các lượt kiểm chứng. Backend uv cũng cần quyền đọc cache ngoài sandbox. Không có test Maximo thật.
+- [x] `git diff --check` đạt; liên kết tương đối trong hai tài liệu tồn tại, không có template placeholder. Đã rà soát diff tích hợp, gồm parsing mã route, nhãn/chip, upload-only/cả nháp và upload, ánh xạ 409 và recovery khi lỗi mạng.
+- Giới hạn: chưa nghiệm thu trình duyệt thật; chỉ mock Maximo và PostgreSQL test. Tiếp theo: nghiệm thu UI bằng dữ liệu giả cho 409 và lỗi mạng.
+
 ## Upload yêu cầu đủ lịch và PIC — 2026-10-28
 
 - [x] Backend kiểm tra `schedstart`, `schedfinish`, `assignedto` sau khi ghép nháp với Maximo hiện tại trong `validate_current`, dùng chung cho preview và kiểm tra cuối trước gửi. WO thiếu dữ liệu trả `incomplete_schedule` kèm `missing: ["schedule"]`, `["pic"]` hoặc cả hai; bất kỳ WO chưa sẵn sàng chặn upload cả nhóm. Nháp chưa hoàn chỉnh vẫn lưu theo validation hiện có; không đổi quy tắc route-to-Tech-PIC.
@@ -28,7 +39,7 @@ Cập nhật: 2026-10-28.
       đã sửa cho các lần sau; audit là append-only nên giữ nguyên.
 - [x] **P13431393 về giá trị gốc (2026-10-28):** upload qua app (start 02/10/2026 06:30, finish 30/10/2026 12:30, PIC trống) `confirmed`.
       Lô `811de4df` (P13465570, tạo 10:53) đối soát chỉ đọc → `confirmed`; không còn upload pending/sending/unknown.
-- [ ] **UI báo sai khi upload bị 409:** màn hình hiện "Chưa xác định được kết quả" dù yêu cầu bị từ chối và Maximo không đổi
+- [x] **UI báo sai khi upload bị 409 (đã sửa 2026-10-28, xem mục đầu):** trước đây màn hình hiện "Chưa xác định được kết quả" dù yêu cầu bị từ chối và Maximo không đổi
       (ít gặp hơn sau thay đổi trên, vẫn cần sửa).
 - [ ] **Chưa kiểm chứng (agy báo):** Ctrl+D điền xuống thiếu cột nếu chưa Enter ô đang sửa (`WorkOrders.tsx`).
 

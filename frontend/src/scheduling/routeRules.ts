@@ -31,6 +31,7 @@ export const REASON_TEXT: Record<string, string> = {
   ready: 'Sẵn sàng route',
   out_of_scope: 'Không thuộc phạm vi của bạn',
   not_synced: 'Còn nháp chưa gửi lên Maximo',
+  upload_pending: 'Đang có lần upload chưa đối soát — mở Gửi WO để kiểm tra kết quả',
   supervisor_missing: 'Thiếu Supervisor (SUPNAME) và bạn không thuộc ALLSUPN',
   is_child: 'WO con, không route',
   status_not_routable: 'Status chưa route được',
@@ -48,7 +49,7 @@ export const REASON_TEXT: Record<string, string> = {
 };
 
 /** Reasons that are not a plain "not yet": someone has to look (amber dot instead of grey). */
-export const ATTENTION_CODES: ReadonlySet<string> = new Set(['contract_changed', 'check_failed', 'multiple_assignments', 'supervisor_missing', 'route_in_progress']);
+export const ATTENTION_CODES: ReadonlySet<string> = new Set(['contract_changed', 'check_failed', 'multiple_assignments', 'supervisor_missing', 'route_in_progress', 'upload_pending']);
 
 export const reasonText = (code: string): string => REASON_TEXT[code] ?? 'Chưa route được';
 
@@ -119,6 +120,7 @@ export function routeCategory(outcome: RouteResultItem | undefined, info: RouteI
 const CHIP_TEXT: Record<string, string> = {
   ready: 'Sẵn sàng route', done: 'Đã route', stranded: 'Mất việc', unknown: 'Chưa rõ kết quả', checking: 'Đang kiểm tra',
   not_synced: 'Còn nháp', missing_schedule: 'Thiếu lịch', missing_assignee: 'Thiếu PIC/ngày giao', status_not_routable: 'Status chưa route được',
+  upload_pending: 'Upload chưa xong',
   no_active_assignment: 'Không có việc chờ', no_workflow: 'Chưa có workflow', supervisor_missing: 'Thiếu Supervisor', is_child: 'WO con',
 };
 export const chipText = (category: string): string => CHIP_TEXT[category] ?? reasonText(category);
@@ -130,7 +132,7 @@ const UNCHIPPED: ReadonlySet<string> = new Set(['no_active_assignment', 'no_work
 export function routeChips(categories: string[]): { category: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const category of categories) if (!UNCHIPPED.has(category)) counts.set(category, (counts.get(category) ?? 0) + 1);
-  const rank = (category: string) => ['ready', 'done', 'stranded', 'unknown', 'checking'].indexOf(category);
+  const rank = (category: string) => ['ready', 'upload_pending', 'contract_changed', 'check_failed', 'multiple_assignments', 'supervisor_missing', 'route_in_progress', 'done', 'stranded', 'unknown', 'checking'].indexOf(category);
   return [...counts].map(([category, count]) => ({ category, count })).sort((a, b) => {
     const ra = rank(a.category); const rb = rank(b.category);
     if (ra !== rb) return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb);

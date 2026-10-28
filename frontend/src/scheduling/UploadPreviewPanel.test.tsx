@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { continueUpload, getUploadStatus, previewUpload, reconcileUpload, submitUpload, type Saved, type UploadPreview, type UploadStatus } from '../api/drafts';
+import { continueUpload, getUploadStatus, previewUpload, reconcileUpload, submitUpload, UploadRejectedError, type Saved, type UploadPreview, type UploadStatus } from '../api/drafts';
 import { UploadPreviewControls } from './UploadPreviewPanel';
 
 vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), previewUpload: vi.fn(), submitUpload: vi.fn(), continueUpload: vi.fn(), getUploadStatus: vi.fn(), reconcileUpload: vi.fn() }));
@@ -19,6 +19,37 @@ function receipt(confirmed: number, finalized = false): UploadStatus {
 }
 const baseProps = { draft, selection, connectionId: 'conn', timezone: 'Asia/Ho_Chi_Minh', context: 'batch-v2',
   onDenied: vi.fn(), enabled: true, buttonLabel: 'Upload toàn bộ nhóm lên Onshore test', previewLabel: 'Đối chiếu nhóm', discipline: 'MECH', uploadAll: true };
+
+it('treats a 409 as a definite rejection, keeps the draft, and allows a fresh preview without recovery', async () => {
+  const onWorkflowRejected = vi.fn();
+  vi.mocked(previewUpload).mockResolvedValue(preview);
+  vi.mocked(submitUpload).mockRejectedValueOnce(new UploadRejectedError('Work order already has an unresolved upload'));
+  render(<UploadPreviewControls {...baseProps} onWorkflowRejected={onWorkflowRejected} />);
+  fireEvent.click(screen.getByText(baseProps.previewLabel));
+  await screen.findByRole('table');
+  fireEvent.click(screen.getByText(baseProps.buttonLabel));
+  await screen.findByText('Upload bị từ chối — Maximo chưa thay đổi: WO đang có lần upload chưa đối soát');
+  expect(onWorkflowRejected).toHaveBeenCalledWith(expect.any(String));
+  expect(screen.queryByText('Kết quả yêu cầu chưa xác định; dữ liệu nháp được giữ nguyên.')).not.toBeInTheDocument();
+  expect(screen.queryByText('Lấy kết quả yêu cầu trước')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText('Ẩn đối chiếu'));
+  expect(screen.getByText(baseProps.previewLabel)).toBeEnabled();
+  fireEvent.click(screen.getByText(baseProps.previewLabel));
+  await waitFor(() => expect(previewUpload).toHaveBeenCalledTimes(3));
+  expect(submitUpload).toHaveBeenCalledTimes(1);
+});
+
+it('keeps receipt recovery after a network error during submit', async () => {
+  vi.mocked(previewUpload).mockResolvedValue(preview);
+  vi.mocked(submitUpload).mockRejectedValueOnce(new TypeError('network lost'));
+  render(<UploadPreviewControls {...baseProps} />);
+  fireEvent.click(screen.getByText(baseProps.previewLabel));
+  await screen.findByRole('table');
+  fireEvent.click(screen.getByText(baseProps.buttonLabel));
+  await screen.findByText('Chưa xác định được kết quả. Kiểm tra kết quả yêu cầu trước khi tiếp tục; hệ thống sẽ giữ nguyên yêu cầu hiện tại.');
+  expect(screen.getByText('Kết quả yêu cầu chưa xác định; dữ liệu nháp được giữ nguyên.')).toBeInTheDocument();
+  expect(screen.getByText('Lấy kết quả yêu cầu trước')).toBeEnabled();
+});
 
 it('shows an in-flight upload without claiming Maximo is unchanged or the result is unknown', async () => {
   vi.mocked(previewUpload).mockResolvedValue(preview);

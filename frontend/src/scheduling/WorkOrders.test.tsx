@@ -1227,14 +1227,18 @@ it('fills a chosen PIC down to the ticked rows with Ctrl+D', async () => {
 // Route to PIC: the Action column, readiness cues and the filter, with the route API stubbed at the HTTP layer.
 const routable = (id: string, wonum: string) => orderWith({ workorderid: id, wonum, status: 'SCHED', schedstart: '2026-10-26T06:30:00+07:00',
   schedfinish: '2026-10-26T13:00:00+07:00', assignedto: 'TECH' });
-function stubRouteApi(canRoute = true, readyIds: string[] = []) {
+function stubRouteApi(canRoute = true, readyIds: string[] = [], uploadPendingIds: string[] = [], blockedCodes: Record<string, string> = {}) {
   vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-wos-csrf=token');
   const fetcher = vi.fn(async (url: string, init?: { body?: string }) => {
     const respond = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
     if (url.includes('/workflow/route/status')) return respond({ enabled: canRoute, can_route: canRoute, personid: canRoute ? 'ENISUP' : null, session: { active: true, expires_at: null } });
     if (url.includes('/workflow/route/preview')) {
       const items = (JSON.parse(init?.body ?? '{}') as { items: { site_id: string; workorder_id: string }[] }).items;
-      return respond({ contract: { ok: true, problem: null }, items: items.map((item) => readyIds.includes(item.workorder_id)
+      return respond({ contract: { ok: true, problem: null }, items: items.map((item) => blockedCodes[item.workorder_id]
+        ? { ...item, wonum: null, ready: false, code: blockedCodes[item.workorder_id], node_id: null, wfassignment_id: null, assigned_to: null, supervisor: null }
+        : uploadPendingIds.includes(item.workorder_id)
+        ? { ...item, wonum: null, ready: false, code: 'upload_pending', node_id: null, wfassignment_id: null, assigned_to: null, supervisor: null }
+        : readyIds.includes(item.workorder_id)
         ? { ...item, wonum: null, ready: true, code: 'ready', node_id: 40, wfassignment_id: '1', assigned_to: 'TECH', supervisor: { current: 'VINHDN', will_set: null } }
         : { ...item, wonum: null, ready: false, code: 'missing_assignee', node_id: null, wfassignment_id: null, assigned_to: null, supervisor: null }) });
     }
@@ -1244,8 +1248,32 @@ function stubRouteApi(canRoute = true, readyIds: string[] = []) {
   return fetcher;
 }
 
+it('shows unresolved upload as an actionable chip and keeps it out of the draft count', async () => {
+  stubRouteApi(true, [], ['100']);
+  await inlineSetup([routable('100', 'WO-UPLOAD')]);
+  await screen.findByRole('button', { name: 'Upload chưa xong 1' });
+  const chips = await screen.findByRole('group', { name: 'Lọc WO đã tải' });
+  expect(within(chips).getByRole('button', { name: 'Upload chưa xong 1' })).toBeInTheDocument();
+  expect(within(chips).getByRole('button', { name: 'Chưa có nháp 1' })).toBeInTheDocument();
+  expect(within(chips).queryByRole('button', { name: /^Còn nháp/ })).not.toBeInTheDocument();
+  fireEvent.click(within(chips).getByRole('button', { name: 'Upload chưa xong 1' }));
+  expect(screen.getByRole('button', { name: 'WO-UPLOAD' })).toBeVisible();
+});
+
+it('lets an unresolved upload take precedence over a draft marker without claiming the WO has no draft', async () => {
+  stubRouteApi(true, [], ['102']);
+  await inlineSetup([orderWith({ workorderid: '102', wonum: 'WO-DRAFT-UPLOAD', status: 'SCHED', drafts: [marker] })]);
+  const uploadChip = await screen.findByRole('button', { name: 'Upload chưa xong 1' });
+  const chips = screen.getByRole('group', { name: 'Lọc WO đã tải' });
+  expect(uploadChip).toBeInTheDocument();
+  expect(within(chips).queryByRole('button', { name: /^Còn nháp/ })).not.toBeInTheDocument();
+  expect(within(chips).getByRole('button', { name: 'Chưa có nháp 0' })).toBeInTheDocument();
+  fireEvent.click(uploadChip);
+  expect(screen.getByRole('button', { name: 'WO-DRAFT-UPLOAD' })).toBeVisible();
+});
+
 it('adds an Action column that marks WOs ready to route, greys the rest with the reason, and filters on readiness', async () => {
-  const fetcher = stubRouteApi(true, ['101']);
+  const fetcher = stubRouteApi(true, ['101'], [], { '102': 'not_synced' });
   await inlineSetup([routable('100', 'WO-NOPIC'), routable('101', 'WO-READY'), orderWith({ workorderid: '102', wonum: 'WO-DRAFT', status: 'SCHED', drafts: [marker] })]);
   expect(await screen.findByRole('columnheader', { name: 'Action' })).toBeInTheDocument();
   const readyButton = await screen.findByRole('button', { name: 'Route WO-READY đến PIC' });
@@ -1257,9 +1285,9 @@ it('adds an Action column that marks WOs ready to route, greys the rest with the
   expect(screen.getByRole('button', { name: 'Route WO-DRAFT đến PIC' })).toHaveAttribute('aria-disabled', 'true');
   expect(within(screen.getByRole('button', { name: 'Route WO-DRAFT đến PIC' }).closest('td')!).getByText('Còn nháp chưa gửi lên Maximo')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Sẵn sàng route 1' })).toBeInTheDocument();
-  // The draft row is ruled out locally, so only the two rows with the schedule and PIC reach the server.
+  // The server checks draft rows too, so an unresolved upload can take precedence over not_synced.
   const asked = fetcher.mock.calls.filter(([url]) => String(url).includes('/preview')).flatMap(([, init]) => (JSON.parse(String(init?.body)) as { items: { workorder_id: string }[] }).items.map((item) => item.workorder_id));
-  expect(asked.sort()).toEqual(['100', '101']);
+  expect(asked.sort()).toEqual(['100', '101', '102']);
   const chips = within(screen.getByRole('group', { name: 'Lọc WO đã tải' }));
   expect(chips.getByRole('button', { name: /Sẵn sàng route 1/ })).toHaveAttribute('aria-pressed', 'false');
   expect(chips.getByRole('button', { name: /Còn nháp 1/ })).toBeInTheDocument();

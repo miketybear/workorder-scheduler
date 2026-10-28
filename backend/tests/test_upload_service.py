@@ -1,11 +1,13 @@
 import asyncio
 from dataclasses import replace
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
+from app.scheduling import upload_routes
 from app.scheduling.batches import BatchKey
 from app.scheduling.changes import WorkOrderBaseline
 from app.scheduling.drafts import CurrentWorkOrder, WorkOrderKey
@@ -156,3 +158,80 @@ def test_draft_can_complete_an_incomplete_current_work_order_for_upload():
         "assignedto": "TECH",
     }
     assert validate_current(prepared(snapshot, proposal), snapshot) == ("ready", proposal)
+
+
+@pytest.mark.parametrize("failure_phase", ["execute", "status", "existing_receipt"])
+def test_submit_never_reports_409_after_a_batch_may_have_written(monkeypatch, failure_phase):
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(sessions=object())))
+    draft_id, actor_id, batch_id = uuid4(), uuid4(), uuid4()
+    payload = UploadSubmit(
+        version=1,
+        items=[BatchKey(site_id="TEST", workorder_id="100")],
+        request_id=uuid4(),
+        preview_hash="a" * 64,
+    )
+    calls = []
+
+    async def existing(*args):
+        return batch_id if failure_phase == "existing_receipt" else None
+
+    async def preview(*args, **kwargs):
+        return {"preview_hash": payload.preview_hash, "send_enabled": True}, object(), actor_id
+
+    async def create(*args, **kwargs):
+        return batch_id, True
+
+    async def execute(*args):
+        calls.append("write")
+        if failure_phase == "execute":
+            raise HTTPException(409, "Upload intent changed")
+
+    async def status(*args):
+        calls.append("status")
+        raise HTTPException(409, "Upload intent changed")
+
+    monkeypatch.setattr(upload_routes, "existing_receipt", existing)
+    monkeypatch.setattr(upload_routes, "preview_data", preview)
+    monkeypatch.setattr(upload_routes, "create_upload", create)
+    monkeypatch.setattr(upload_routes, "execute_batch", execute)
+    monkeypatch.setattr(upload_routes, "status", status)
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(upload_routes.submit(request, draft_id, payload))
+    assert caught.value.status_code == 503
+    assert (
+        calls
+        == {
+            "execute": ["write"],
+            "status": ["write", "status"],
+            "existing_receipt": ["status"],
+        }[failure_phase]
+    )
+
+
+def test_submit_preflight_409_remains_a_definite_rejection(monkeypatch):
+    payload = UploadSubmit(
+        version=1,
+        items=[BatchKey(site_id="TEST", workorder_id="100")],
+        request_id=uuid4(),
+        preview_hash="a" * 64,
+    )
+
+    async def existing(*args):
+        return None
+
+    async def preview(*args, **kwargs):
+        raise HTTPException(409, "Draft changed; reopen before uploading")
+
+    async def unexpected(*args, **kwargs):
+        pytest.fail("A rejected submission must not create or execute an upload")
+
+    monkeypatch.setattr(upload_routes, "existing_receipt", existing)
+    monkeypatch.setattr(upload_routes, "preview_data", preview)
+    monkeypatch.setattr(upload_routes, "create_upload", unexpected)
+    monkeypatch.setattr(upload_routes, "execute_batch", unexpected)
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(upload_routes.submit(object(), uuid4(), payload))
+    assert (caught.value.status_code, caught.value.detail) == (
+        409,
+        "Draft changed; reopen before uploading",
+    )

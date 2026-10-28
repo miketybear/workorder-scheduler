@@ -13,7 +13,15 @@ from test_postgres import database, seed
 
 from app.auth.sessions import SESSION_COOKIE, issue_session
 from app.config import integration_settings
-from app.db.models import AccessGrant, MaximoConnection, WorkflowRouteAttempt
+from app.db.models import (
+    AccessGrant,
+    Draft,
+    DraftItem,
+    MaximoConnection,
+    UploadBatch,
+    UploadItem,
+    WorkflowRouteAttempt,
+)
 from app.main import create_app
 from app.workflow_route.credentials import LoginLimiter
 from app.workflow_route.ledger import PostgresLedger, RequestIdReused, RouteBusy
@@ -352,5 +360,82 @@ def test_ledger_enforces_the_work_order_lock_and_request_idempotency():
             rows = await ledger.for_request(user.id, first.request_id)
             assert [(r.state, r.node_id, r.error_code) for r in rows] == [("unknown", 40, "x")]
             assert await ledger.for_request(uuid4(), first.request_id) == []
+
+    run(scenario())
+
+
+@pytest.mark.parametrize(
+    "has_draft,upload_state,expected",
+    [
+        (False, None, "ready"),
+        (True, None, "not_synced"),
+        *[
+            (draft, state, "upload_pending")
+            for draft in (False, True)
+            for state in ("pending", "sending", "unknown")
+        ],
+        *[(False, state, "ready") for state in ("confirmed", "failed", "conflict")],
+    ],
+)
+def test_preview_and_route_distinguish_draft_from_unresolved_upload(
+    has_draft, upload_state, expected
+):
+    async def scenario():
+        async with environment() as env:
+            async with env.sessions.begin() as db:
+                if has_draft:
+                    draft = Draft(owner_id=env.user.id, connection_id=env.connection_id)
+                    db.add(draft)
+                    await db.flush()
+                    db.add(
+                        DraftItem(
+                            draft_id=draft.id,
+                            site_id="TEST",
+                            workorder_id="100",
+                            wonum="PM-100",
+                            discipline="E&I",
+                            baseline={},
+                            changes={},
+                        )
+                    )
+                if upload_state:
+                    batch = UploadBatch(
+                        actor_id=env.user.id, idempotency_key=uuid4(), request_hash="a" * 64
+                    )
+                    db.add(batch)
+                    await db.flush()
+                    db.add(
+                        UploadItem(
+                            batch_id=batch.id,
+                            connection_id=env.connection_id,
+                            site_id="TEST",
+                            workorder_id="100",
+                            wonum="PM-100",
+                            discipline="E&I",
+                            before={},
+                            changes={},
+                            state=upload_state,
+                        )
+                    )
+            ledger = PostgresLedger(env.sessions)
+            code = await ledger.unsynced(env.user.id, env.connection_id, "TEST", "100")
+            assert code == (None if expected == "ready" else expected)
+            # Only the actor's own draft blocks, but unresolved uploads block every actor.
+            other_code = await ledger.unsynced(uuid4(), env.connection_id, "TEST", "100")
+            assert other_code == ("upload_pending" if expected == "upload_pending" else None)
+            assert await ledger.unsynced(env.user.id, env.connection_id, "OTHER", "100") is None
+            assert await ledger.unsynced(env.user.id, uuid4(), "TEST", "100") is None
+            assert await ledger.unsynced(env.user.id, env.connection_id, "TEST", "101") is None
+            response = await env.post("/route/preview", env.preview_body())
+            assert response.status_code == 200, response.text
+            item = response.json()["items"][0]
+            assert (item["code"], item["ready"]) == (expected, expected == "ready")
+            if expected != "ready":
+                await env.login()
+                blocked = await env.post("/route", env.route_body())
+                assert blocked.status_code == 200, blocked.text
+                result = blocked.json()["items"][0]
+                assert (result["state"], result["code"]) == ("rejected", expected)
+                assert env.fake.writes == []
 
     run(scenario())

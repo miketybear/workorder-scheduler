@@ -216,7 +216,7 @@ async def existing_receipt(request, draft_id, payload):
 async def submit(request: Request, draft_id: UUID, payload: UploadSubmit):
     batch_id = await existing_receipt(request, draft_id, payload)
     if batch_id is not None:
-        return await status(request, Response(), batch_id)
+        return await submission_result(request, batch_id)
     try:
         data, prepared, actor_id = await preview_data(
             request, draft_id, payload, return_prepared=True
@@ -227,11 +227,11 @@ async def submit(request: Request, draft_id: UUID, payload: UploadSubmit):
         receipt = await existing_receipt(request, draft_id, payload)
         if receipt is None:
             raise
-        return await status(request, Response(), receipt)
+        return await submission_result(request, receipt)
     if data["preview_hash"] != payload.preview_hash:
         receipt = await existing_receipt(request, draft_id, payload)
         if receipt is not None:
-            return await status(request, Response(), receipt)
+            return await submission_result(request, receipt)
         raise HTTPException(409, "Preview changed; preview again")
     if not data["send_enabled"]:
         raise HTTPException(409, {"code": "write_contract_unverified", "send_enabled": False})
@@ -243,9 +243,21 @@ async def submit(request: Request, draft_id: UUID, payload: UploadSubmit):
         payload.preview_hash,
         return_created=True,
     )
-    if created:
-        await execute_batch(request, actor_id, batch_id)
-    return await status(request, Response(), batch_id)
+    return await submission_result(request, batch_id, actor_id=actor_id if created else None)
+
+
+async def submission_result(request, batch_id, *, actor_id=None):
+    """After a durable batch exists, an error cannot prove that Maximo is unchanged."""
+    try:
+        if actor_id is not None:
+            await execute_batch(request, actor_id, batch_id)
+        return await status(request, Response(), batch_id)
+    except HTTPException as error:
+        if error.status_code != 409:
+            raise
+        # Status/finalization guards can detect inconsistent intent after earlier writes.
+        # Reserve submit's 409 response for rejections before any batch can be executed.
+        raise HTTPException(503, "Upload result unavailable; check the upload receipt") from error
 
 
 @router.get("/uploads/by-request/{request_id}")

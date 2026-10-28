@@ -31,6 +31,18 @@ export type UploadStatus = { batch_id: string; counts: Partial<Record<UploadStat
 export type UploadRecoveryEntry = { request_id: string; draft_id: string; version: number; preview_hash: string;
   connection_id: string; discipline: string; items: { site_id: string; workorder_id: string }[] };
 export class UploadRequestNotFoundError extends Error {}
+export class UploadRejectedError extends RetrievalError {
+  constructor(public readonly backendDetail: string) {
+    super(409, uploadRejectionReason(backendDetail));
+  }
+}
+
+function uploadRejectionReason(detail: string): string {
+  if (/unresolved[_ ]upload/i.test(detail)) return 'WO đang có lần upload chưa đối soát';
+  if (/preview[_ ]changed/i.test(detail)) return 'Dữ liệu đã đổi, hãy đối chiếu lại';
+  if (/draft[_ ]changed/i.test(detail)) return 'Nháp đã đổi, hãy mở lại';
+  return detail;
+}
 export type BatchIssue = { site_id: string; workorder_id: string; code: string };
 export class BatchError extends RetrievalError {
   constructor(status: number, public readonly issues: BatchIssue[]) { super(status, 'Chưa lưu WO nào. Kiểm tra các dòng có lỗi.'); }
@@ -47,6 +59,13 @@ async function call(path: string, signal: AbortSignal, method = 'GET', body?: un
   const response = await fetch(`${config.apiBase}${path}`, { signal, method, headers,
     body: body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin', cache: 'no-store' });
   if (!response.ok) {
+    if (path.match(/^\/drafts\/[^/]+\/uploads$/) && response.status === 409) {
+      const raw: unknown = await response.json().catch(() => null);
+      const detail = isRecord(raw) && typeof raw.detail === 'string' ? raw.detail :
+        isRecord(raw) && isRecord(raw.detail) && typeof raw.detail.message === 'string' ? raw.detail.message :
+        isRecord(raw) && isRecord(raw.detail) && typeof raw.detail.code === 'string' ? raw.detail.code : '';
+      throw new UploadRejectedError(detail || 'Yêu cầu upload không được chấp nhận.');
+    }
     if (path.startsWith('/uploads/by-request/') && response.status === 404) {
       const raw: unknown = await response.json().catch(() => null);
       if (isRecord(raw) && isRecord(raw.detail) && raw.detail.code === 'receipt_not_found') {
