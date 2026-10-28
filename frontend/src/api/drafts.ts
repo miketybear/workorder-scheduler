@@ -20,8 +20,11 @@ export type UploadPreviewItem = { site_id: string; workorder_id: string; code: '
 export type UploadPreview = { draft_id: string; version: number; preview_hash: string; send_enabled: boolean; gate: 'write_contract_unverified' | null; items: UploadPreviewItem[] };
 export type UploadState = 'pending' | 'sending' | 'confirmed' | 'failed' | 'conflict' | 'unknown';
 export type DurationResult = { code: 'pm_duration_recalculated' | 'pm_duration_mismatch'; expected: string | null; actual: string | null };
+/** Fields Maximo holds differently from what was sent; only on a failed item. */
+export type ReadbackMismatch = { field: string; expected: string | null; actual: string | null }[];
 export type UploadStatusItem = { item_id: string; connection_id: string; site_id: string; workorder_id: string; state: UploadState; updated_at: string;
   source: { draft_id: string; draft_version: number; member_id: string } | null; duration_result: DurationResult | null;
+  readback_mismatch?: ReadbackMismatch | null;
   restore_source: { before: Baseline } | null };
 export type UploadStatus = { batch_id: string; counts: Partial<Record<UploadState, number>>; items: UploadStatusItem[]; source_finalized: boolean };
 export type UploadRecoveryEntry = { request_id: string; draft_id: string; version: number; preview_hash: string;
@@ -265,8 +268,16 @@ function parseUploadStatus(raw: unknown, expected: { batchId: string | null; dra
       if (!isRecord(result) || !['pm_duration_recalculated', 'pm_duration_mismatch'].includes(String(result.code)) ||
           !validDuration(result.expected) || !validDuration(result.actual) ||
           (result.code === 'pm_duration_recalculated' && (item.state !== 'confirmed' || result.actual === null)) ||
-          (result.code === 'pm_duration_mismatch' && item.state !== 'unknown')) return invalid();
+          (result.code === 'pm_duration_mismatch' && item.state !== 'failed')) return invalid();
       durationResult = { code: result.code as DurationResult['code'], expected: result.expected as string | null, actual: result.actual as string | null };
+    }
+    let readbackMismatch: ReadbackMismatch | null = null;
+    if (item.readback_mismatch !== null && item.readback_mismatch !== undefined) {
+      const fields = item.readback_mismatch;
+      const text = (value: unknown) => value === null || typeof value === 'string';
+      if (item.state !== 'failed' || !Array.isArray(fields) || !fields.every((entry) => isRecord(entry) &&
+          typeof entry.field === 'string' && text(entry.expected) && text(entry.actual))) return invalid();
+      readbackMismatch = fields.map((entry) => ({ field: entry.field, expected: entry.expected, actual: entry.actual }));
     }
     if (!selected.has(key) || seen.has(key) || item.connection_id !== expected.connectionId || !isRecord(source) ||
         source.draft_id !== expected.draft.draft_id || source.draft_version !== expected.draft.version ||
@@ -274,7 +285,7 @@ function parseUploadStatus(raw: unknown, expected: { batchId: string | null; dra
     seen.add(key);
     parsed.push({ item_id: item.item_id, connection_id: item.connection_id, site_id: item.site_id, workorder_id: item.workorder_id,
       state: item.state as UploadState, updated_at: item.updated_at, source: { draft_id: source.draft_id,
-        draft_version: Number(source.draft_version), member_id: source.member_id }, duration_result: durationResult, restore_source: restoreSource });
+        draft_version: Number(source.draft_version), member_id: source.member_id }, duration_result: durationResult, readback_mismatch: readbackMismatch, restore_source: restoreSource });
   }
   const actualCounts: Partial<Record<UploadState, number>> = {};
   for (const item of parsed) actualCounts[item.state] = (actualCounts[item.state] ?? 0) + 1;

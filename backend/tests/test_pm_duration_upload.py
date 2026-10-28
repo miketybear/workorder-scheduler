@@ -52,17 +52,17 @@ def test_preview_warning_requires_ready_pm_actual_schedule_change():
     "case,expected",
     [
         ("derived", "confirmed"),
-        ("explicit", "unknown"),
+        ("explicit", "failed"),
         ("explicit-noop", "confirmed"),
-        ("timeout", "unknown"),
-        ("other-field", "unknown"),
-        ("CM", "unknown"),
-        ("CFT", "unknown"),
-        ("REC", "unknown"),
-        ("negative", "unknown"),
-        ("too-large", "unknown"),
-        ("null", "unknown"),
-        ("bad-status", "unknown"),
+        ("timeout", "failed"),
+        ("other-field", "failed"),
+        ("CM", "failed"),
+        ("CFT", "failed"),
+        ("REC", "failed"),
+        ("negative", "failed"),
+        ("too-large", "failed"),
+        ("null", "failed"),
+        ("bad-status", "failed"),
     ],
 )
 def test_pm_duration_classification_and_pinned_finalization(case, expected):
@@ -106,7 +106,9 @@ def test_pm_duration_classification_and_pinned_finalization(case, expected):
                 fake.outcome = {"status": 201 if case == "bad-status" else 204}
 
             fake.write = write
-            assert await send_pending(sessions, user.id, item_id, fake.read, fake) == expected
+            # Only an uncertain write is unknown; reading Maximo afterwards always settles it.
+            sent = "unknown" if case == "timeout" else expected
+            assert await send_pending(sessions, user.id, item_id, fake.read, fake) == sent
             assert len(fake.calls) == 1
             assert await reconcile_unknown(sessions, user.id, item_id, fake.read) == expected
             assert await send_pending(sessions, user.id, item_id, fake.read, fake) == expected
@@ -136,7 +138,15 @@ def test_pm_duration_classification_and_pinned_finalization(case, expected):
                     if case in {"negative", "too-large", "null"}:
                         assert event.details["actual"] is None
                 item = await db.get(UploadItem, item_id)
-                assert (item.state in {"pending", "sending", "unknown"}) == (expected == "unknown")
+                # Neither outcome keeps the WO reserved.
+                assert item.state == expected
+                mismatch = await db.scalar(
+                    select(AuditEvent).where(
+                        AuditEvent.upload_item_id == item_id,
+                        AuditEvent.event == "readback_mismatch",
+                    )
+                )
+                assert (mismatch is not None) == (expected == "failed")
             if expected == "confirmed":
                 pinned = fake.current
                 fake.current = replace(
@@ -152,6 +162,7 @@ def test_pm_duration_classification_and_pinned_finalization(case, expected):
                 async with sessions() as db:
                     assert await db.get(Draft, draft.id) is not None
                 if case == "explicit":
+                    # Failed is terminal: a later matching read does not revive the item.
                     fake.current = replace(
                         fake.current,
                         baseline=WorkOrderBaseline.model_validate(
@@ -162,18 +173,8 @@ def test_pm_duration_classification_and_pinned_finalization(case, expected):
                         ),
                     )
                     assert (
-                        await reconcile_unknown(sessions, user.id, item_id, fake.read)
-                        == "confirmed"
+                        await reconcile_unknown(sessions, user.id, item_id, fake.read) == "failed"
                     )
-                    assert await finalize_confirmed(sessions, user.id, batch_id, fake.read)
-                    async with sessions() as db:
-                        historical = await db.scalar(
-                            select(AuditEvent).where(
-                                AuditEvent.upload_item_id == item_id,
-                                AuditEvent.event == "pm_duration_result",
-                            )
-                        )
-                        assert historical.details["code"] == "pm_duration_mismatch"
                     async with sessions.begin() as db:
                         (
                             await db.get(MaximoConnection, connections[0].id)
@@ -197,7 +198,11 @@ def test_pm_duration_classification_and_pinned_finalization(case, expected):
                         client.cookies.set(SESSION_COOKIE, token)
                         response = await client.get(f"/api/uploads/{batch_id}")
                         assert response.status_code == 200, response.text
-                        assert response.json()["items"][0]["duration_result"] is None
-                        assert response.json()["source_finalized"] is True
+                        shown = response.json()["items"][0]
+                        assert shown["state"] == "failed"
+                        assert shown["duration_result"]["code"] == "pm_duration_mismatch"
+                        assert shown["readback_mismatch"] == [
+                            {"field": "estdur", "expected": "26", "actual": "21"}
+                        ]
 
     run(scenario())

@@ -194,25 +194,27 @@ it('warns on PM schedule preview and shows the confirmed Maximo duration after u
   expect(screen.getByText('Đã xác nhận')).toBeInTheDocument();
 });
 
-it('keeps an unknown PM duration mismatch unconfirmed and preserves the draft for explicit reconciliation', async () => {
+it('reports a readback mismatch as failed with the Maximo values and keeps the draft', async () => {
   vi.mocked(openDraft).mockResolvedValue({ ...detail, item: { ...detail.item, worktype: 'PM' }, baseline: { ...detail.baseline, worktype: 'PM',
     schedstart: '2026-10-01T08:00:00+07:00', schedfinish: '2026-10-01T16:00:00+07:00' },
     draft_id: 'saved', version: 4, state: 'draft', changes: { schedstart: '2026-10-01T09:00:00+07:00' }, baseline_changed: false, changes_valid_now: true });
   vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'saved', version: 4, preview_hash: 'a'.repeat(64), send_enabled: true, gate: null,
     items: [{ site_id: 'TEST', workorder_id: '100', code: 'ready', warnings: ['pm_duration_recalculation'],
       before: { schedstart: '2026-10-01T08:00:00+07:00' }, changes: { schedstart: '2026-10-01T09:00:00+07:00' } }] });
-  vi.mocked(submitUpload).mockResolvedValue({ batch_id: 'batch', source_finalized: false, counts: { unknown: 1 }, items: [{
-    item_id: 'upload', connection_id: 'one', site_id: 'TEST', workorder_id: '100', state: 'unknown', updated_at: '2026-10-08T00:00:00Z',
-    source: { draft_id: 'saved', draft_version: 4, member_id: 'member' }, duration_result: { code: 'pm_duration_mismatch', expected: '25', actual: '21' }, restore_source: null,
+  vi.mocked(submitUpload).mockResolvedValue({ batch_id: 'batch', source_finalized: false, counts: { failed: 1 }, items: [{
+    item_id: 'upload', connection_id: 'one', site_id: 'TEST', workorder_id: '100', state: 'failed', updated_at: '2026-10-08T00:00:00Z',
+    source: { draft_id: 'saved', draft_version: 4, member_id: 'member' }, duration_result: { code: 'pm_duration_mismatch', expected: '25', actual: '21' },
+    readback_mismatch: [{ field: 'estdur', expected: '25', actual: '21' }], restore_source: null,
   }] });
   render(<DraftEditor {...props} selection={{ draftId: 'saved' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
   const duration = await screen.findByLabelText('Est. Duration');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
   expect(await screen.findByText('Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.')).toBeInTheDocument();
   fireEvent.click(screen.getByText('Upload lên Onshore test'));
-  expect(await screen.findByText('Chưa xác nhận: Duration thực tế 21 giờ, dự kiến 25 giờ. Nháp được giữ lại; hãy đối chiếu trước khi xử lý tiếp.')).toBeInTheDocument();
+  expect(await screen.findByText('Maximo giữ khác giá trị đã gửi: Est. Duration 21 (gửi 25). WO đã được mở khóa; nháp giữ nguyên, kiểm tra rồi upload lại nếu cần.')).toBeInTheDocument();
   expect(duration).toHaveValue('8');
-  expect(screen.getByText('Chưa xác định')).toBeInTheDocument();
+  expect(screen.getByText('Thất bại')).toBeInTheDocument();
+  expect(screen.queryByText('Đối chiếu WO chưa xác định')).not.toBeInTheDocument();
   expect(submitUpload).toHaveBeenCalledTimes(1);
 });
 

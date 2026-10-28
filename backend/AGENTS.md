@@ -105,6 +105,9 @@ WO revision/ETag and uploads remain pending. See ../docs/person-access.md and ..
 - Track each item independently: pending, sending, confirmed, failed, conflict or unknown.
   A timeout after sending is unknown until reconciliation; do not resend automatically.
 - Read back successful writes and compare normalized values. Persist reconciliation outcomes.
+  A readable WO always settles an item: a match is confirmed; a difference is failed with the
+  observed fields recorded (readback_mismatch) and the WO released for a new upload. Only an
+  unreadable WO stays unknown. Never resend automatically; the planner decides.
   The remote update and local database transaction cannot be treated as one atomic transaction.
 - Keep business audit events append-only to application users; redact credentials and unrelated
   response content. Log authorization changes as well as WO changes.

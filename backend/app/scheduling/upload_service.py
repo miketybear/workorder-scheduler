@@ -473,7 +473,9 @@ async def readback_state(db, actor_id, item, reader, *, known_write_success=Fals
                 or pinned.details["requested"] != expected.model_dump(mode="json")
             ):
                 return "unknown"
-            return "confirmed" if current.baseline == observed else "unknown"
+            if current.baseline == observed:
+                return "confirmed"
+            return await readback_mismatch(db, actor_id, item, observed, current.baseline)
         if (
             known_write_success
             and pm_schedule_change(evidence.before, evidence.changes)
@@ -507,15 +509,48 @@ async def readback_state(db, actor_id, item, reader, *, known_write_success=Fals
                 )
             )
             await db.flush()
-            return "confirmed" if recalculated else "unknown"
+            if recalculated:
+                return "confirmed"
+            return await readback_mismatch(db, actor_id, item, expected, current.baseline)
         # Compare normalized entire relevant baseline, including fields we did not write.
-        return "confirmed" if current.baseline == expected else "unknown"
+        if current.baseline == expected:
+            return "confirmed"
+        return await readback_mismatch(db, actor_id, item, expected, current.baseline)
     except (MaximoReadError, HTTPException, ValueError, TimeoutError, OSError):
         return "unknown"
 
 
+async def readback_mismatch(db, actor_id, item, expected, observed):
+    """Maximo was read, so the outcome is known: fail the item and release its WO.
+
+    The planner sees what Maximo holds and decides whether to upload again; nothing is resent.
+    """
+    wanted, actual = expected.model_dump(mode="json"), observed.model_dump(mode="json")
+    db.add(
+        AuditEvent(
+            upload_item_id=item.id,
+            actor_id=actor_id,
+            event="readback_mismatch",
+            details={
+                # Compare typed values: the same instant may serialize with different offsets.
+                "fields": [
+                    {"field": field, "expected": wanted[field], "actual": actual[field]}
+                    for field in wanted
+                    if getattr(expected, field) != getattr(observed, field)
+                ]
+            },
+        )
+    )
+    await db.flush()
+    return "failed"
+
+
 async def reconcile_unknown(sessions, actor_id, item_id, reader: ReadCurrent):
-    """Explicit read-only reconciliation; mismatch stays unknown and keeps its WO reserved."""
+    """Explicit read-only reconciliation.
+
+    A readable WO settles the item (confirmed, or failed with the observed values) and
+    releases the WO; only an unreadable WO stays unknown and reserved.
+    """
     async with sessions.begin() as db:
         item = await upload_item(db, actor_id, item_id)
         key = WorkOrderKey(item.connection_id, item.site_id, item.workorder_id)
@@ -523,7 +558,7 @@ async def reconcile_unknown(sessions, actor_id, item_id, reader: ReadCurrent):
         if item.state != "unknown":
             return item.state
         state = await readback_state(db, actor_id, item, reader)
-        if state == "confirmed":
+        if state != "unknown":
             await record_transition(db, item, actor_id, state, reconciled=True)
         return state
 

@@ -101,7 +101,7 @@ async def batch_for(sessions, user, current, *, changes=None):
         ("failed", "failed"),
         ("timeout-before", "unknown"),
         ("timeout-after", "unknown"),
-        ("mismatch", "unknown"),
+        ("mismatch", "failed"),
     ],
 )
 def test_send_requires_durable_intent_and_readback_no_resend(mode, expected):
@@ -148,11 +148,29 @@ def test_send_requires_durable_intent_and_readback_no_resend(mode, expected):
                 assert evidence.details["member_id"] == str(prepared.items[0].member_id)
                 assert await db.scalar(select(func.count()).select_from(UploadBatch)) == 1
             if expected == "unknown":
+                # A readable WO always settles: applied -> confirmed, not applied -> failed.
                 confirmed = mode == "timeout-after"
                 assert await reconcile_unknown(sessions, user.id, item_id, fake.read) == (
-                    "confirmed" if confirmed else "unknown"
+                    "confirmed" if confirmed else "failed"
                 )
                 assert len(fake.calls) == 1
+            if mode in {"mismatch", "timeout-before"}:
+                async with sessions() as db:
+                    mismatch = await db.scalar(
+                        select(AuditEvent).where(
+                            AuditEvent.upload_item_id == item_id,
+                            AuditEvent.event == "readback_mismatch",
+                        )
+                    )
+                    assert mismatch.details["fields"]
+                    assert len({entry["field"] for entry in mismatch.details["fields"]}) == len(
+                        mismatch.details["fields"]
+                    )
+                    # Failed releases the WO reservation, so a new upload can be prepared.
+                    assert (
+                        await db.scalar(select(UploadItem.state).where(UploadItem.id == item_id))
+                        == "failed"
+                    )
 
     run(scenario())
 

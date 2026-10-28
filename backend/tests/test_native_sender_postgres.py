@@ -453,6 +453,9 @@ def test_verified_test_sender_native_condition_durable_intent_receipt_and_recove
                         if successful
                         else "conflict"
                         if mode in {"conflict", "token_send_race"}
+                        # A returned write whose readback differs is a known failure.
+                        else "failed"
+                        if mode == "pm_explicit"
                         else "unknown": 1
                     }
                 )

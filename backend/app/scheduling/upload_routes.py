@@ -367,6 +367,17 @@ async def status(request: Request, response: Response, batch_id: UUID):
             result = duration_results.get(item.id)
             if item.state == "confirmed" and result and result["code"] == "pm_duration_mismatch":
                 duration_results.pop(item.id)
+        mismatches = {
+            event.upload_item_id: event.details["fields"]
+            for event in (
+                await db.scalars(
+                    select(AuditEvent).where(
+                        AuditEvent.upload_item_id.in_([item.id for item in rows]),
+                        AuditEvent.event == "readback_mismatch",
+                    )
+                )
+            ).all()
+        }
         restore_sources = {}
         for item in rows:
             if item.state != "confirmed" or item.id not in sources:
@@ -401,6 +412,9 @@ async def status(request: Request, response: Response, batch_id: UUID):
                     "state": item.state,
                     "updated_at": item.updated_at.isoformat(),
                     "duration_result": duration_results.get(item.id),
+                    "readback_mismatch": mismatches.get(item.id)
+                    if item.state == "failed"
+                    else None,
                     "restore_source": restore_sources.get(item.id),
                     "source": {
                         field: sources[item.id][field]

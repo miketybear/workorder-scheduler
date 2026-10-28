@@ -121,6 +121,9 @@ Target range và schedule range là hai bộ lọc khác nhau.
 Không có transaction nguyên tử giữa PostgreSQL và Maximo. Nếu upstream đã ghi nhưng kết nối
 mất hoặc lưu kết quả thất bại, trạng thái phải chờ đối soát, không giả định chưa ghi.
 Timeout sau khi gửi là unknown; đọc lại trước khi quyết định có được retry.
+Đọc lại được Maximo thì luôn chốt: khớp là confirmed, khác là failed kèm các trường Maximo đang
+giữ (`readback_mismatch`) và mở khóa WO để người dùng tự upload lại; chỉ khi không đọc được mới
+giữ unknown. Không tự gửi lại.
 Deduplicate thao tác submit và tuần tự hóa cập nhật cùng WO trong ứng dụng.
 
 Kiểm tra read-before-write không tự loại bỏ race với người sửa trực tiếp trên Maximo.

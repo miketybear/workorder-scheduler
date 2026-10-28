@@ -2,6 +2,26 @@
 
 Cập nhật: 2026-10-28.
 
+## E2E live trên Onshore TEST — 2026-10-28
+
+- [x] **Bộ Playwright (`frontend/e2e/`, `npm run test:e2e`):** trình duyệt có giao diện; người dùng tự đăng nhập Entra (`auth.setup`), phiên lưu ở
+      `e2e/.auth/` và ảnh/nhật ký ở `e2e/results/` (đều gitignore). WO chọn mỗi lần chạy qua `E2E_SINGLE_WO`, `E2E_BATCH_WOS` (phẩy ngăn cách);
+      kịch bản ghi Maximo (`a-`…`d-`) chỉ chạy khi `E2E_ALLOW_TEST_WRITES=1`. Vitest bỏ qua `e2e/`.
+- [x] **Kết quả lần chạy đầu (agy):** A (1 WO P13465911: nháp, đối chiếu, upload `confirmed`, tải lại khớp) và D (khôi phục về gốc) đạt;
+      C (tạo rồi xóa nháp, Maximo giữ nguyên) đạt. B (3 WO): P13462775, P13462960 `confirmed`; P13431393 (OVERHAUL) `unknown` vì Maximo giữ
+      estdur 300 trong khi lô chờ 8. Khôi phục thủ công qua app: P13462960 về đúng gốc; P13462775 về đúng ngày/estdur nhưng PIC vẫn CUONGLV
+      (app không cho để trống PIC). Đã kiểm chứng trên trang thật: nút Xóa/Reset/Đóng nháp khóa khi upload chưa rõ kết quả.
+- [x] **Đọc lại lệch không còn khóa WO (2026-10-28, phương án 1 của chủ dự án):** đọc được Maximo thì luôn chốt — khớp `confirmed`, khác
+      `failed` + audit `readback_mismatch` (trường, gửi, Maximo giữ; so theo giá trị, không theo chuỗi) và WO được mở khóa; chỉ không đọc được mới
+      giữ `unknown`. Áp cho gửi, đối soát và nhánh PM. API trạng thái trả `readback_mismatch`; bảng kết quả ghi "Maximo giữ khác giá trị đã gửi: …
+      WO đã được mở khóa". Backend: ruff đạt, 875 test nhanh và 140 test upload PostgreSQL đạt; frontend typecheck/lint và 97 test liên quan đạt.
+      Đối soát lại lô `4de03ec1`: P13431393 → `failed`, hết khóa. Audit ghi lúc đó còn liệt kê nhầm `schedfinish` (cùng thời điểm, khác múi giờ),
+      đã sửa cho các lần sau; audit là append-only nên giữ nguyên.
+- [ ] **P13431393 chưa về giá trị gốc:** WO đã mở khóa; upload nháp gốc (start 02/10/2026 06:30, finish 30/10/2026 12:30) qua app.
+- [ ] **UI báo sai khi upload bị 409:** màn hình hiện "Chưa xác định được kết quả" dù yêu cầu bị từ chối và Maximo không đổi
+      (ít gặp hơn sau thay đổi trên, vẫn cần sửa).
+- [ ] **Chưa kiểm chứng (agy báo):** Ctrl+D điền xuống thiếu cột nếu chưa Enter ô đang sửa (`WorkOrders.tsx`).
+
 ## Codex model default — 2026-10-28
 
 - [x] Changed the main project default back to `gpt-6.1-sol` / `low` at the owner's request; aligned AGENTS.md and current usage instructions. Verified TOML values and diff. Existing sub-agent defaults remain unchanged. This configuration does not switch an active turn; live model execution was not tested.

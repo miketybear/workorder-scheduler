@@ -162,25 +162,31 @@ it('parses PM duration warnings per preview row and validates actual duration re
     await expect(previewUpload(draft, selected, new AbortController().signal)).rejects.toThrow();
   }
 
-  const status = { batch_id: 'batch', source_finalized: false, counts: { confirmed: 1, unknown: 1 }, items: [
+  const mismatch = [{ field: 'estdur', expected: '8', actual: '9' }];
+  const status = { batch_id: 'batch', source_finalized: false, counts: { confirmed: 1, failed: 1 }, items: [
     { item_id: 'one', connection_id: 'one', site_id: 'SITE', workorder_id: '100', state: 'confirmed', updated_at: '2026-10-08T00:00:00Z',
-      source: { draft_id: 'draft', draft_version: 3, member_id: 'a' }, duration_result: { code: 'pm_duration_recalculated', expected: '25', actual: '21' }, restore_source: null },
-    { item_id: 'two', connection_id: 'one', site_id: 'SITE', workorder_id: '101', state: 'unknown', updated_at: '2026-10-08T00:00:00Z',
-      source: { draft_id: 'draft', draft_version: 3, member_id: 'b' }, duration_result: { code: 'pm_duration_mismatch', expected: '8', actual: '9' }, restore_source: null },
+      source: { draft_id: 'draft', draft_version: 3, member_id: 'a' }, duration_result: { code: 'pm_duration_recalculated', expected: '25', actual: '21' }, readback_mismatch: null, restore_source: null },
+    { item_id: 'two', connection_id: 'one', site_id: 'SITE', workorder_id: '101', state: 'failed', updated_at: '2026-10-08T00:00:00Z',
+      source: { draft_id: 'draft', draft_version: 3, member_id: 'b' }, duration_result: { code: 'pm_duration_mismatch', expected: '8', actual: '9' }, readback_mismatch: mismatch, restore_source: null },
   ] };
   respond(status);
   const parsed = await getUploadStatus('batch', draft, 'one', selected, new AbortController().signal);
-  expect(parsed.items.map(({ state, duration_result }) => [state, duration_result])).toEqual([
-    ['confirmed', { code: 'pm_duration_recalculated', expected: '25', actual: '21' }],
-    ['unknown', { code: 'pm_duration_mismatch', expected: '8', actual: '9' }],
+  expect(parsed.items.map(({ state, duration_result, readback_mismatch }) => [state, duration_result, readback_mismatch])).toEqual([
+    ['confirmed', { code: 'pm_duration_recalculated', expected: '25', actual: '21' }, null],
+    ['failed', { code: 'pm_duration_mismatch', expected: '8', actual: '9' }, mismatch],
   ]);
+  // Mismatch details belong only to a failed item and must be well formed.
+  respond({ ...status, items: [{ ...status.items[0], readback_mismatch: mismatch }, status.items[1]] });
+  await expect(getUploadStatus('batch', draft, 'one', selected, new AbortController().signal)).rejects.toThrow();
+  respond({ ...status, items: [status.items[0], { ...status.items[1], readback_mismatch: [{ field: 'estdur', expected: 8 }] }] });
+  await expect(getUploadStatus('batch', draft, 'one', selected, new AbortController().signal)).rejects.toThrow();
   respond({ ...status, items: [{ ...status.items[0], duration_result: { code: 'pm_duration_mismatch', expected: '-1', actual: '100001' } }, status.items[1]] });
   await expect(getUploadStatus('batch', draft, 'one', selected, new AbortController().signal)).rejects.toThrow();
   respond({ ...status, counts: { confirmed: 2 }, items: [{ ...status.items[0], duration_result: { code: 'pm_duration_recalculated', expected: '25', actual: '21' } }, { ...status.items[1], state: 'confirmed' }] });
   await expect(getUploadStatus('batch', draft, 'one', selected, new AbortController().signal)).rejects.toThrow();
-  respond({ ...status, counts: { unknown: 2 }, items: [{ ...status.items[0], state: 'unknown', duration_result: { code: 'pm_duration_mismatch', expected: null, actual: null } }, status.items[1]] });
+  respond({ ...status, counts: { failed: 2 }, items: [{ ...status.items[0], state: 'failed', duration_result: { code: 'pm_duration_mismatch', expected: null, actual: null } }, status.items[1]] });
   expect(await getUploadStatus('batch', draft, 'one', selected, new AbortController().signal)).toMatchObject({
-    items: [{ state: 'unknown', duration_result: { code: 'pm_duration_mismatch', expected: null, actual: null }, restore_source: null }, { state: 'unknown', restore_source: null }],
+    items: [{ state: 'failed', duration_result: { code: 'pm_duration_mismatch', expected: null, actual: null }, restore_source: null }, { state: 'failed', restore_source: null }],
   });
 });
 

@@ -8,7 +8,10 @@ import styles from '../App.module.css';
 const labels: Record<typeof editableFields[number], string> = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish',
   assignedto: 'Assigned PIC', estdur: 'Est. Duration', targstartdate: 'Target Start', targcompdate: 'Target Finish' };
 const stateLabels = { pending: 'Chờ xử lý', sending: 'Đang gửi', confirmed: 'Đã xác nhận', failed: 'Thất bại', conflict: 'Xung đột', unknown: 'Chưa xác định' } as const;
-export type UploadConnection = { label: string; system: 'onshore' | 'offshore'; environment: 'test' | 'production' };
+const fieldLabel = (field: string) => labels[field as keyof typeof labels] ?? field;
+const shownValue = (field: string, value: string | null, timezone: string) =>
+  value === null ? 'trống' : field === 'estdur' || field === 'assignedto' ? value : displayDate(value, timezone);
+export type UploadConnection ={ label: string; system: 'onshore' | 'offshore'; environment: 'test' | 'production' };
 export type FinalizedUpload = { draft_id: string; version: number; items: { site_id: string; workorder_id: string; restore_source: { before: Baseline } | null }[] };
 
 export function UploadPreviewControls({ draft, selection, connection, connectionId, timezone, context, onDenied, enabled, buttonLabel, previewLabel,
@@ -309,12 +312,13 @@ export function UploadPreviewControls({ draft, selection, connection, connection
         </div>
         <ul>{Object.entries(counts).filter(([, count]) => (count ?? 0) > 0).map(([state, count]) =>
           <li key={state}>{stateLabels[state as keyof typeof stateLabels]}: {count}</li>)}</ul>
-        <div className={styles.tableWrap}><table><thead><tr><th>WO</th><th>Trạng thái</th><th>Kết quả Duration</th><th>Cập nhật</th></tr></thead>
+        <div className={styles.tableWrap}><table><thead><tr><th>WO</th><th>Trạng thái</th><th>Ghi chú</th><th>Cập nhật</th></tr></thead>
           <tbody>{status.items.map((item) => <tr key={item.item_id}><th>{selection.find((row) => row.site_id === item.site_id && row.workorder_id === item.workorder_id)?.wonum ?? '—'}</th>
-            <td>{stateLabels[item.state]}</td><td>{item.duration_result?.code === 'pm_duration_recalculated'
-              ? `Maximo đã tính lại Duration: ${item.duration_result.expected ?? '—'} → ${item.duration_result.actual ?? '—'} giờ.`
-              : item.duration_result?.code === 'pm_duration_mismatch'
-                ? `Chưa xác nhận: Duration thực tế ${item.duration_result.actual ?? '—'} giờ, dự kiến ${item.duration_result.expected ?? '—'} giờ. Nháp được giữ lại; hãy đối chiếu trước khi xử lý tiếp.`
+            <td>{stateLabels[item.state]}</td><td>{item.readback_mismatch?.length
+              ? `Maximo giữ khác giá trị đã gửi: ${item.readback_mismatch.map((entry) =>
+                `${fieldLabel(entry.field)} ${shownValue(entry.field, entry.actual, timezone)} (gửi ${shownValue(entry.field, entry.expected, timezone)})`).join('; ')}. WO đã được mở khóa; nháp giữ nguyên, kiểm tra rồi upload lại nếu cần.`
+              : item.duration_result?.code === 'pm_duration_recalculated'
+                ? `Maximo đã tính lại Duration: ${item.duration_result.expected ?? '—'} → ${item.duration_result.actual ?? '—'} giờ.`
                 : '—'}</td><td>{new Intl.DateTimeFormat('vi-VN', { timeZone: timezone, dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.updated_at))}</td></tr>)}</tbody></table></div>
         {status.source_finalized ? <p role="status">Các thay đổi đã được xác nhận trong Maximo; đang cập nhật dữ liệu trên bảng.</p>
           : status.items.every((item) => ['confirmed', 'failed', 'conflict'].includes(item.state))
