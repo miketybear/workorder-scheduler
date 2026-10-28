@@ -12,6 +12,8 @@
 **/coverage/
 **/*.tsbuildinfo
 *.log
+frontend/e2e/.auth/
+frontend/e2e/results/
 deployment/staging/*.env
 deployment/staging/*.pem
 deployment/staging/*.key
