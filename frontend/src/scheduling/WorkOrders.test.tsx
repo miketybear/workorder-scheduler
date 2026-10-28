@@ -1594,3 +1594,19 @@ it('opens the page menu from the header button and closes it on Esc or after cho
   expect(document.title).toBe('Rota Upload · Work Order Scheduler');
   expect(screen.getByRole('link', { name: 'Trang chủ' })).toHaveAttribute('href', '/');
 });
+
+it('shows a refresh as a busy table with a progress bar, keeping the loading text for screen readers only', async () => {
+  await inlineSetup([orderWith({})]);
+  const region = screen.getByRole('region', { name: 'WO từ Maximo' });
+  expect(region).toHaveAttribute('aria-busy', 'false');
+  let finish!: (result: { available: boolean; session: Session }) => void;
+  vi.mocked(getAuthSummary).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+  fireEvent.click(screen.getByRole('button', { name: 'Cập nhật' }));
+  await waitFor(() => expect(region).toHaveAttribute('aria-busy', 'true'));
+  expect(region.querySelector('[class*="loadingTrack"]')).not.toBeNull();
+  const status = screen.getByText('Đang xác minh phiên…');
+  expect(status).toHaveAttribute('role', 'status');
+  expect(status.className).toMatch(/srOnly/);
+  expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
+  await act(async () => finish({ available: true, session: { ...session, preferred_connection_id: 'two' } }));
+});

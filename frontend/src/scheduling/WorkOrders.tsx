@@ -824,7 +824,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {error && <button className={styles.tertiary} onClick={() => refreshSession.current?.()}>Kiểm tra lại phiên</button>}
     {checking && <p role="status">Đang kiểm tra quyền truy cập…</p>}
-    {verifying && !checking && <p role="status">Đang xác minh phiên…</p>}
+    {/* Refresh progress is shown by the spinning icon and a bar on the table edge; the text stays for screen readers only, so nothing shifts. */}
+    {verifying && !checking && <p role="status" className={styles.srOnly}>Đang xác minh phiên…</p>}
     <div className={styles.workOrdersContent} hidden={checking}>{!session ? <p>
       Cần đăng nhập để xem WO. {available && <a href={loginUrl}>Đăng nhập Microsoft</a>}
     </p> : session.grants.length === 0 ? <p>Chưa được cấp quyền WO. Vui lòng liên hệ quản trị viên.</p> : <>
@@ -879,7 +880,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       {batch && grant && <BatchPlanner key={editorGeneration} sendOnly sendNotes={batch.notes} selection={batch.selection} scope={editorScope} timezone={grant.timezone} active={active}
         connection={{ label: grant.label, system: grant.system, environment: grant.environment }}
         writable={grant.capability === 'write'} suspended={checking} refreshVersion={batchRefresh} onDirty={onDirty} onDenied={onDenied} onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onClose={closePanel} />}
-      {busy && <p role="status">Đang lấy và kiểm tra đầy đủ các trang dữ liệu…</p>}
+      {busy && <p role="status" className={rows === null ? undefined : styles.srOnly}>Đang lấy và kiểm tra đầy đủ các trang dữ liệu…</p>}
       {busy && rows === null && <div className={styles.skeleton} aria-hidden="true">{[0, 1, 2, 3, 4, 5].map((index) => <div key={index} />)}</div>}
       {grant && <div className={styles.woToolbar}>
         {fullScreen && <span className={styles.fullscreenEnvChip} data-env={grant.environment}>
@@ -958,7 +959,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       </div>}
       {rows !== null && <>
         {visibleRows.length > 0 && grant && <>
-          <div className={`${styles.tableWrap} ${styles.compactTable}${dense ? ` ${styles.denseTable}` : ''}`} tabIndex={0} role="region" aria-label="WO từ Maximo" onMouseEnter={loadCrew} onFocusCapture={loadCrew} onKeyDown={(event) => { moveBetweenRows(event); }}>
+          <div className={`${styles.tableWrap} ${styles.compactTable}${dense ? ` ${styles.denseTable}` : ''}`} tabIndex={0} role="region" aria-label="WO từ Maximo" aria-busy={busy || verifying} onMouseEnter={loadCrew} onFocusCapture={loadCrew} onKeyDown={(event) => { moveBetweenRows(event); }}>
+          {(busy || verifying) && <div className={styles.loadingTrack} aria-hidden="true" />}
           <table><thead><tr>{grant.capability === 'write' && <th scope="col"><input type="checkbox" aria-label={`Chọn tất cả ${pageRows.length} WO trên trang này`} checked={!!pageRows.length && pageRows.every((row) => selectedKeys.includes(rowKey(row)))} onChange={(e) => setSelectedKeys((previous) => {
             const visibleKeys = new Set(pageRows.map(rowKey));
             const retained = previous.filter((key) => !visibleKeys.has(key));
