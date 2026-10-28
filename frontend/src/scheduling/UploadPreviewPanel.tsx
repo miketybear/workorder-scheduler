@@ -275,8 +275,15 @@ export function UploadPreviewControls({ draft, selection, connection, connection
         const changeCount = items.reduce((sum, item) => sum + Object.keys(item.changes).length, 0);
         const blocked = items.filter((item) => item.code !== 'ready').length;
         const allReady = blocked === 0;
+        const missingText = (item: typeof items[number]) => {
+          if (item.code !== 'incomplete_schedule') return null;
+          const missingSchedule = item.missing?.includes('schedule') ?? false;
+          const missingPic = item.missing?.includes('pic') ?? false;
+          const label = missingSchedule && missingPic ? 'Thiếu lịch và PIC' : missingSchedule ? 'Thiếu lịch' : 'Thiếu PIC';
+          return <>{label}<small> Hoàn tất lịch/PIC hoặc xóa WO khỏi nhóm trước khi upload.</small></>;
+        };
         const verdict = (item: typeof items[number]) => item.code === 'ready' ? 'Khớp' : item.code === 'conflict' ? 'Xung đột'
-          : item.code === 'invalid_changes' ? 'Thay đổi không hợp lệ' : 'Không có thay đổi';
+          : item.code === 'invalid_changes' ? 'Thay đổi không hợp lệ' : item.code === 'incomplete_schedule' ? missingText(item) : 'Không có thay đổi';
         const show = (field: typeof editableFields[number], value: string | null | undefined) =>
           field === 'assignedto' || field === 'estdur' ? value ?? '—' : displayDate(value ?? null, timezone);
         return <>
@@ -298,7 +305,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
             })}</tbody></table></div>
           {!currentPreview.send_enabled && <p role="status">Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.</p>}
           {currentPreview.send_enabled && allReady && <p role="status">Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.</p>}
-          {currentPreview.send_enabled && !allReady && <p role="status">Maximo chưa thay đổi. Xử lý các WO có xung đột hoặc thay đổi không hợp lệ trước khi upload.</p>}
+          {currentPreview.send_enabled && !allReady && <p role="status">Maximo chưa thay đổi. Sửa các WO bị thiếu lịch/PIC, xung đột hoặc thay đổi không hợp lệ trước khi upload.</p>}
         </>;
       })()}
       {showReceiptRecovery && !busy && <p role="status">Kết quả yêu cầu chưa xác định; dữ liệu nháp được giữ nguyên.</p>}

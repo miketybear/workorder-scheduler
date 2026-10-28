@@ -155,6 +155,7 @@ async def preview_data(request, draft_id, payload, *, return_prepared=False):
                 "site_id": item.key.site_id,
                 "workorder_id": item.key.workorder_id,
                 "code": item.code,
+                **({"missing": list(item.missing)} if item.code == "incomplete_schedule" else {}),
                 "before": {field: item.before[field] for field in item.changes},
                 "changes": item.changes,
                 "warnings": preview_warnings(item),

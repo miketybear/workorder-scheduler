@@ -2,6 +2,15 @@
 
 Cập nhật: 2026-10-28.
 
+## Upload yêu cầu đủ lịch và PIC — 2026-10-28
+
+- [x] Backend kiểm tra `schedstart`, `schedfinish`, `assignedto` sau khi ghép nháp với Maximo hiện tại trong `validate_current`, dùng chung cho preview và kiểm tra cuối trước gửi. WO thiếu dữ liệu trả `incomplete_schedule` kèm `missing: ["schedule"]`, `["pic"]` hoặc cả hai; bất kỳ WO chưa sẵn sàng chặn upload cả nhóm. Nháp chưa hoàn chỉnh vẫn lưu theo validation hiện có; không đổi quy tắc route-to-Tech-PIC.
+- [x] Frontend parse mã mới, khóa Upload cho một WO hoặc cả nhóm và hiển thị “Thiếu lịch”, “Thiếu PIC”, “Thiếu lịch và PIC” cùng hướng dẫn sửa hoặc xóa WO khỏi nhóm. `batches.py` chỉ lưu/khôi phục nháp nên giữ nguyên; upload nhóm dùng chung `upload_routes.py`.
+- [x] Kiểm chứng: Ruff check và format check đạt (151 file); `uv run pytest -m "not integration"`: **884 passed, 542 deselected**, 3 warning. Bộ DB yêu cầu (`test_upload_postgres.py`, `test_pm_duration_upload.py`, `test_native_sender_postgres.py`) trên PostgreSQL `127.0.0.1:55432`: **138 passed**, 1 warning. Có ma trận single/group thiếu start/finish/PIC/cả hai, đủ dữ liệu, nháp bổ sung đủ, nháp cũ xóa dữ liệu và kiểm tra trước gửi không ghi WO bị chặn.
+- [x] Frontend typecheck/lint đạt; `npm test`: **588/588 passed, 46/46 file**. Sau khi bổ sung fixture nhóm gồm một WO hợp lệ và một WO thiếu dữ liệu, chạy lại hai file parser/preview với `--maxWorkers=1`: **59/59 passed**. `git diff --check` đạt; rà soát độc lập không có phát hiện cần sửa.
+- Giới hạn: **không kiểm thử với Maximo thật**, chỉ dùng fake HTTP và PostgreSQL test; chưa nghiệm thu trình duyệt thật. Lượt chạy sandbox đầu bị `spawn EPERM` (frontend) và quyền thư mục tạm (backend: 875 passed, 3 failed, 6 errors); các lượt có quyền thực thi bổ sung đạt như trên. Không commit, migration hay dependency mới. Quy tắc cũ yêu cầu cặp ngày hợp lệ khi sửa lịch và không cho lưu thao tác xóa giá trị vẫn giữ nguyên; test xóa dùng nháp cũ được lưu trực tiếp để kiểm chứng chặn upload.
+- Tiếp theo: nghiệm thu UI single/group bằng dữ liệu fake; kiểm thử Maximo thật chỉ khi có yêu cầu cho phép riêng.
+
 ## E2E live trên Onshore TEST — 2026-10-28
 
 - [x] **Bộ Playwright (`frontend/e2e/`, `npm run test:e2e`):** trình duyệt có giao diện; người dùng tự đăng nhập Entra (`auth.setup`), phiên lưu ở

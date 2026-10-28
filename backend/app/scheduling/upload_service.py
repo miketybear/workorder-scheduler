@@ -28,6 +28,7 @@ class PreparedItem:
     code: str
     source_revision: str | None = None
     revision_pinned: bool = False
+    missing: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -101,12 +102,25 @@ def member_hash(members):
     )
 
 
+def missing_schedule(before, proposal):
+    merged = {**before, **proposal}
+    missing = []
+    if not merged.get("schedstart") or not merged.get("schedfinish"):
+        missing.append("schedule")
+    pic = merged.get("assignedto")
+    if not isinstance(pic, str) or not pic.strip():
+        missing.append("pic")
+    return tuple(missing)
+
+
 def validate_current(item, current):
     if current.key != item.key or current.discipline != item.discipline:
         raise HTTPException(404, "Work order not found")
     before = WorkOrderBaseline.model_validate(item.before)
     if current.baseline != before or current.revision != item.revision:
         return "conflict", {}
+    if missing_schedule(current.baseline.model_dump(mode="json"), item.proposal):
+        return "incomplete_schedule", {}
     try:
         changes = ScheduleChanges.model_validate(item.proposal)
         values = build_changes(current.baseline, changes, set(current.allowed_pics))
@@ -174,6 +188,9 @@ async def prepare_upload(
                 code,
                 item.revision,
                 pin_current_revision,
+                missing_schedule(item.before, item.proposal)
+                if code == "incomplete_schedule"
+                else (),
             )
         )
     return PreparedUpload(draft.id, version, tuple(result))

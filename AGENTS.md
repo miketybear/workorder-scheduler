@@ -169,6 +169,9 @@ Additional domain modules in component instructions remain planned.
 - Recheck current WO discipline and access immediately before writing.
 - Allowed changes: schedstart, schedfinish, assignedto (the PIC; assignedtechname is no longer used), estdur; targstartdate and
   targcompdate only with explicit target-change intent and never for PM or CFT.
+  Upload requires non-empty schedstart, schedfinish and assignedto after applying draft changes
+  to current Maximo values. Incomplete drafts may be saved; any incomplete WO blocks the whole
+  group upload, with missing schedule/PIC reported per WO in preview and checked again before send.
 - One workflow action is allowed besides field edits: routing a WO to its Tech PIC through BD_WO
   ("Route to Tech PIC for execution"), by a Planner with write access, only for a WO whose schedule
   and PIC are already in Maximo, and only while the workflow definition matches the verified contract

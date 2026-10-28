@@ -30,6 +30,7 @@ def scheduled(current, worktype="PM"):
         baseline=WorkOrderBaseline(
             worktype=worktype,
             estdur=25,
+            assignedto="BASELINE-PIC",
             schedstart="2026-10-30T06:30:00+07:00",
             schedfinish="2026-10-31T17:30:00+07:00",
         ),

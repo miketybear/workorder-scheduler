@@ -89,6 +89,10 @@ WO revision/ETag and uploads remain pending. See ../docs/person-access.md and ..
 - Only allow schedstart, schedfinish, assignedto (the PIC), estdur and explicitly requested
   targstartdate/targcompdate. Do not send status, discipline or arbitrary browser-supplied fields.
 - Reject target updates for PM/CFT on the server even if the UI is bypassed.
+- Upload only when current Maximo values merged with draft changes have non-empty schedstart,
+  schedfinish and assignedto. Saving incomplete drafts remains allowed. Preview and the final
+  pre-send check reject incomplete WOs with incomplete_schedule and report missing schedule/PIC;
+  any non-ready preview item blocks the whole group upload.
 - Validate dates, required values and nonnegative duration; verify PIC membership against the
   configured crew. Null/clear semantics and date-only behavior must be settled in test.
 - Preserve offset-aware instants; business timezone is explicit connection configuration.
