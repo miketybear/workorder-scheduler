@@ -58,6 +58,9 @@ Cập nhật: 2026-10-28.
 
 ## Thu gọn phần trên bảng WO — 2026-10-28
 
+- [x] **Chip tự bật/tắt, "Xóa bộ lọc" chỉ cho hàng lọc:** chọn chip không hiện "Xóa bộ lọc"; bấm lại chip để bỏ. Nút nằm trong hàng tìm kiếm/
+      Status/Work Type, chỉ hiện khi một trong ba có giá trị và chỉ xóa ba ô đó. Trang thật: bật chip "Thiếu lịch", bảng không dịch, không có nút.
+
 - [x] **Đối chiếu WO thiếu lịch/PIC vẫn hiện thay đổi của nháp:** `validate_current` tính danh sách thay đổi trước, rồi mới gán
       `incomplete_schedule` (vẫn ưu tiên hơn `invalid_changes`); chỉ `ready` được gửi. Bảng đối chiếu hiện "Maximo hiện tại → sẽ ghi" kèm "Thiếu PIC".
       Backend 884 test nhanh + 125 test upload PostgreSQL; frontend test mới. Trang thật: P13431393 nháp tạm estdur 300→301 hiện đủ 2 thay đổi,

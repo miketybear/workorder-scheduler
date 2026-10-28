@@ -176,10 +176,14 @@ it('combines compact search, status and single-select chips, clears selection bu
   fireEvent.click(screen.getByRole('button', { name: 'Thiếu lịch 1' }));
   expect(screen.getByRole('button', { name: 'Thiếu lịch 1' })).toHaveAttribute('aria-pressed', 'true');
   const clear = screen.getByRole('button', { name: 'Xóa bộ lọc' });
-  expect(clear.closest('[class*="woToolbar"]')).not.toBeNull();
+  expect(clear.closest('[class*="toolbarFilters"]')).not.toBeNull();
   fireEvent.click(clear);
   expect(search).toHaveValue('');
   expect(status).toHaveValue('');
+  // "Xóa bộ lọc" clears the filter row only; the chip is turned off by clicking it again.
+  expect(screen.getByRole('button', { name: 'Thiếu lịch 1' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByRole('button', { name: 'Xóa bộ lọc' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Thiếu lịch 1' }));
   expect(screen.getByRole('button', { name: 'Thiếu lịch 1' })).toHaveAttribute('aria-pressed', 'false');
   expect(screen.getByRole('button', { name: 'Chưa có nháp 2' })).toHaveAttribute('aria-pressed', 'false');
   expect(screen.getByRole('button', { name: 'WO-PUMP' })).toBeVisible();
@@ -447,6 +451,7 @@ it('filters only retrieved rows by WO, description, tag and status without more 
   expect(screen.queryByRole('region', { name: 'WO từ Maximo' })).not.toBeInTheDocument();
   fireEvent.change(search, { target: { value: 'repair' } });
   expect(screen.getByRole('button', { name: 'WO-VALVE' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Hiện bộ lọc' }));
   fireEvent.click(screen.getByRole('button', { name: 'Xóa bộ lọc' }));
   expect(screen.getByText(/Hiển thị 3 \/ 3 WO/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'WO-NULL' })).toBeInTheDocument();
@@ -1595,6 +1600,7 @@ it('sorts by priority, then earliest start with unscheduled last, and filters by
   // The filter stays applied while hidden, and the icon shows how many are active.
   expect(order()).toEqual(['WO-HIGH-LATE', 'WO-NONE']);
   expect(screen.getByRole('button', { name: 'Hiện bộ lọc' })).toHaveTextContent('1');
+  fireEvent.click(screen.getByRole('button', { name: 'Hiện bộ lọc' }));
   fireEvent.click(screen.getByRole('button', { name: 'Xóa bộ lọc' }));
   expect(order()).toHaveLength(5);
 

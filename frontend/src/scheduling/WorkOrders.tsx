@@ -911,10 +911,11 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
               {worktypes.map((type) => <option key={type} value={type}>{type}</option>)}
             </select>
           </label>
+          {/* Clears this row only; a chip is turned off by clicking it again. */}
+          {(search.trim() || statusFilter || worktypeFilter) && <button className={styles.ghost} onClick={() => {
+            filterChanged(); setSearch(''); setStatusFilter(''); setWorktypeFilter('');
+          }}>Xóa bộ lọc</button>}
         </span>}
-        {(search.trim() || statusFilter || worktypeFilter || chipFilter) && <button className={styles.ghost} onClick={() => {
-          filterChanged(); setSearch(''); setStatusFilter(''); setWorktypeFilter(''); setChipFilter('');
-        }}>Xóa bộ lọc</button>}
         {!hasRows && iconBar}
       </div>}
       {/* Warnings stay above the table; the routine count and update time go to the footer when there is one. */}
