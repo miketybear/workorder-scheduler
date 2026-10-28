@@ -5,7 +5,7 @@ native của Codex; không cần cài thêm plugin hoặc framework agent.
 
 | Agent | Model | Effort | Phạm vi |
 | --- | --- | --- | --- |
-| Main / Fullstack Lead | `gpt-6-astra` | `low` | Yêu cầu, chia việc, quyết định, tích hợp và kiểm tra |
+| Main / Fullstack Lead | `gpt-6.1-sol` | `low` | Yêu cầu, chia việc, quyết định, tích hợp và kiểm tra |
 | `frontend` | `gpt-6-luna` | `medium` | React/TypeScript, UI, state và nối API |
 | `backend` | `gpt-6.1-sol` | `medium` | FastAPI, nghiệp vụ, PostgreSQL và migrations |
 | `reviewer` / Debugger | `gpt-6.1-sol` | `high` | Review độc lập có phạm vi; ca khó mới nâng mức |
@@ -103,7 +103,7 @@ README. Nếu model không khả dụng trên tài khoản, báo rõ để chủ
 không âm thầm thay model.
 
 CLI cũng dùng cùng cấu hình khi chạy từ repo: `codex`.
-Để ghi rõ Main cho một lần chạy: `codex -m gpt-6-astra -c 'model_reasoning_effort="low"'`.
+Để ghi rõ Main cho một lần chạy: `codex -m gpt-6.1-sol -c 'model_reasoning_effort="low"'`.
 
 Thiết lập được kiểm tra với Codex CLI `0.160.1`. Căn cứ định dạng:
 [OpenAI — Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)

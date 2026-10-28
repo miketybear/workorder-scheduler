@@ -4,7 +4,7 @@ Cập nhật: 2026-10-28.
 
 ## Codex model default — 2026-10-28
 
-- [x] Changed the main project default to `gpt-6-astra` / `low` at the owner's request; aligned AGENTS.md and current usage instructions. Verified TOML values and diff. Existing sub-agent defaults remain unchanged. This configuration does not switch an active turn; live model execution was not tested.
+- [x] Changed the main project default back to `gpt-6.1-sol` / `low` at the owner's request; aligned AGENTS.md and current usage instructions. Verified TOML values and diff. Existing sub-agent defaults remain unchanged. This configuration does not switch an active turn; live model execution was not tested.
 
 ## Đề xuất chưa làm — cập nhật 2026-10-19
 

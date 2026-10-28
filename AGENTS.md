@@ -5,13 +5,13 @@ Read this file before changing the project. Component instructions live in
 
 ## Codex agent routing
 
-The main Fullstack Lead defaults to GPT-6 Astra / low. Native project settings
+The main Fullstack Lead defaults to GPT-6.1 Sol / low. Native project settings
 are in .codex/config.toml; the only custom sub-agents are frontend, backend and reviewer
 in .codex/agents/. See [docs/codex-agents.md](docs/codex-agents.md) for setup and usage.
 
 | Agent | Model | Effort | Responsibility |
 | --- | --- | --- | --- |
-| Main / Fullstack Lead | gpt-6-astra | low | Requirements, planning, architecture decisions, integration and verification |
+| Main / Fullstack Lead | gpt-6.1-sol | low | Requirements, planning, architecture decisions, integration and verification |
 | frontend | gpt-6-luna | medium | Substantial React/TypeScript UI, state and API integration work |
 | backend | gpt-6.1-sol | medium | Substantial FastAPI, business logic, PostgreSQL and migration work |
 | reviewer / Debugger | gpt-6.1-sol | high | Independent review when useful; deeper models only for scoped escalation |
@@ -23,7 +23,7 @@ Routing instructions for the main agent:
 - Delegate substantial backend/database work to the backend sub-agent.
 - Delegate independent FE and BE work in parallel after agreeing the API contract;
   assign disjoint file scopes. Resolve dependencies first when the work is coupled.
-- Review small, routine changes yourself with the main Astra/low session. Do not spawn
+- Review small, routine changes yourself with the main Sol/low session. Do not spawn
   reviewer for every task, turn, status update, TODO/documentation edit or test run.
 - Use reviewer (Sol/high) when an independent review adds value to a substantial feature
   milestone or a concrete correctness/security concern. Batch completed work into one
