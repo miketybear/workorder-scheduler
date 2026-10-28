@@ -43,6 +43,7 @@ function Overview() {
 export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?: boolean } = {}) {
   const pathname = useLocation().pathname;
   const workOrdersActive = pathname === '/work-orders';
+  const [loadedWorkOrderRange, setLoadedWorkOrderRange] = useState<string | null>(null);
   const assignmentDemoActive = pathname === '/assignment-demo';
   const rotaStagingActive = pathname === '/rota-staging-demo';
   const rotaImportsActive = pathname === '/rota-imports';
@@ -71,8 +72,8 @@ export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?
     <header className={styles.header} onClickCapture={guardNavigation}><Link to="/" className={styles.brand} title="Về Tổng quan"><img className={styles.brandLogo} src={bdpocLogo} alt="Petrovietnam Biendong POC" /><span className={styles.brandName}>Work Order Scheduler</span></Link>
       <nav className={styles.mainNav} aria-label="Điều hướng chính">
         <NavLink to="/work-orders">Work orders</NavLink><NavLink to="/resource-timeline">Resource timeline</NavLink><NavLink to="/rota-imports">Rota</NavLink></nav>
-      <UserMenu /></header>
-    <main className={resourceTimelineActive ? styles.fullWidth : undefined} onClickCapture={guardNavigation}>{navigationBlocked && resourceMutationPending && <p role="status">Đang có yêu cầu phân công chưa đối soát. Hoàn tất hoặc đối soát để chuyển trang.</p>}<Routes><Route path="/" element={<Overview />} /><Route path="/demo" element={<DemoScheduler />} />
+      <UserMenu loadedWorkOrderRange={workOrdersActive ? loadedWorkOrderRange : null} /></header>
+    <main className={workOrdersActive ? `${styles.fullWidth} ${styles.workOrdersMain}` : resourceTimelineActive ? styles.fullWidth : undefined} onClickCapture={guardNavigation}>{navigationBlocked && resourceMutationPending && <p role="status">Đang có yêu cầu phân công chưa đối soát. Hoàn tất hoặc đối soát để chuyển trang.</p>}<Routes><Route path="/" element={<Overview />} /><Route path="/demo" element={<DemoScheduler />} />
       <Route path="/work-orders" element={null} />
       <Route path="/assignment-demo" element={null} />
       <Route path="/rota-staging-demo" element={null} />
@@ -81,7 +82,7 @@ export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?
       <Route path="/settings" element={<Settings />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="*" element={<p>Không tìm thấy trang. <Link to="/">Về tổng quan</Link></p>} /></Routes>
-      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} autoRetrieve={autoRetrieveWorkOrders} picSuggestion={picSuggestion} onPicSuggestionHandled={clearPicSuggestion} /></div>
+      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} autoRetrieve={autoRetrieveWorkOrders} picSuggestion={picSuggestion} onPicSuggestionHandled={clearPicSuggestion} onLoadedRangeChange={setLoadedWorkOrderRange} /></div>
       {assignmentDemoVisited && <div hidden={!assignmentDemoActive}><AssignmentTimelineDemo /></div>}
       {rotaStagingVisited && <div hidden={!rotaStagingActive}><RotaStagingPreview /></div>}
       {rotaImportsVisited && <div hidden={!rotaImportsActive}><RotaImports active={rotaImportsActive} /></div>}

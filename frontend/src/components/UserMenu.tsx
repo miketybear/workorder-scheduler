@@ -35,7 +35,7 @@ function EnvironmentChip({ session }: { session: Session }) {
   </span>;
 }
 
-export function UserMenu() {
+export function UserMenu({ loadedWorkOrderRange = null }: { loadedWorkOrderRange?: string | null }) {
   const auth = useAuth();
   const [open, setOpen] = useState(false);
   const [signOutError, setSignOutError] = useState('');
@@ -52,6 +52,7 @@ export function UserMenu() {
   const name = session?.user.name ?? 'Tài khoản';
   return <div className={styles.userArea}>
     {session && <EnvironmentChip session={session} />}
+    {session && loadedWorkOrderRange && <span className={styles.headerRange}>{loadedWorkOrderRange}</span>}
     <details className={styles.userMenu} open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary aria-label={`Menu tài khoản · ${name}`}><span className={styles.avatar} aria-hidden="true">{name.slice(0, 1).toUpperCase()}</span>
         <span className={styles.userName}>{name}</span></summary>

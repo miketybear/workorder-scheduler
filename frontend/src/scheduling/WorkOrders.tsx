@@ -44,7 +44,7 @@ export function mergePmOrigin(current: Map<string, Baseline>, principal: string,
   return next;
 }
 
-export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion = null, onPicSuggestionHandled }: { active?: boolean; autoRetrieve?: boolean; picSuggestion?: PicSuggestion | null; onPicSuggestionHandled?: () => void }) {
+export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion = null, onPicSuggestionHandled, onLoadedRangeChange }: { active?: boolean; autoRetrieve?: boolean; picSuggestion?: PicSuggestion | null; onPicSuggestionHandled?: () => void; onLoadedRangeChange?: (range: string | null) => void }) {
   const [session, setSession] = useState<Session | null>(null);
   const [available, setAvailable] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -60,17 +60,16 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const [loadedRange, setLoadedRange] = useState<WorkOrderFilter | null>(null);
   const [rows, setRows] = useState<WorkOrder[] | null>(null);
   const [search, setSearch] = useState('');
-  const [filtersVisible, setFiltersVisible] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
   const [dense, setDense] = useState(() => { try { return localStorage.getItem('workorder-scheduler-density') === 'dense'; } catch { return false; } });
   const toggleDensity = () => {
     const next = !dense; setDense(next);
     try { localStorage.setItem('workorder-scheduler-density', next ? 'dense' : 'comfortable'); } catch { /* preference is optional */ }
   };
-  const tableFiltersId = useId();
   const rangeTitleId = useId();
   const rangeBodyId = useId();
   const [statusFilter, setStatusFilter] = useState('');
-  const [planningFilter, setPlanningFilter] = useState('');
+  const [chipFilter, setChipFilter] = useState('');
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   // Cell edits typed straight into the table; they become drafts only when the user saves them.
   const [inline, setInline] = useState<Record<string, Staged>>({});
@@ -84,7 +83,6 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const [routeOutcome, setRouteOutcome] = useState<Record<string, RouteResultItem>>({});
   const [routeTargets, setRouteTargets] = useState<WorkOrder[] | null>(null);
   const [routeRecheck, setRouteRecheck] = useState(0);
-  const [routeFilter, setRouteFilter] = useState('');
   // The send panel always opens on the one draft that consolidateDrafts produced or reused.
   const [batch, setBatch] = useState<{ selection: { draftId: string }; notes: string[] } | null>(null);
   const [sending, setSending] = useState(false);
@@ -105,7 +103,6 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const [rechecked, setRechecked] = useState<Detail | null>(null);
   const [pmOrigins, setPmOrigins] = useState(() => new Map<string, Baseline>());
   const selected = useRef<{ selection: EditorSelection; scope: Scope } | null>(null);
-  const [draftFilter, setDraftFilter] = useState('');
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [chooser, setChooser] = useState<WorkOrder | null>(null);
   const dirty = useRef(false);
@@ -116,6 +113,13 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const authIdentity = useRef('');
   const principalRef = useRef('');
   const grant = useMemo(() => activeGrant(session), [session]);
+  useEffect(() => {
+    if (!active || checking || verifying || !session || !grant || rows === null || !loadedRange) {
+      onLoadedRangeChange?.(null);
+      return;
+    }
+    onLoadedRangeChange?.(`Đã tải: ${displayDate(loadedRange.target_from, grant.timezone, false)} → trước ${displayDate(loadedRange.target_before, grant.timezone, false)}`);
+  }, [active, checking, verifying, session, grant, rows, loadedRange, onLoadedRangeChange]);
   // Planners almost always start from the current month, so prefill it once per page visit.
   const [datesDefaulted, setDatesDefaulted] = useState(false);
   if (grant && !datesDefaulted && !start && !end) {
@@ -293,6 +297,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   }
   const scope = grant ? JSON.stringify([grant.connection_id, grant.discipline]) : '';
   const statuses = useMemo(() => [...new Set(rows?.map((row) => row.status) ?? [])].sort(), [rows]);
+  const routeScope = JSON.stringify(editorScope);
+  const routeAvailable = grant?.capability === 'write' && routeStatus?.scope === routeScope && routeStatus.status.can_route;
   // What the table already rules out is answered here; the server's answer is used only while the row is unchanged.
   const routeFresh = useCallback((row: WorkOrder): RouteInfo | null => {
     const local = localRouteCode(row);
@@ -300,15 +306,15 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     const known = routeInfo[rowKey(row)];
     return known && known.fingerprint === routeFingerprint(row) ? known : null;
   }, [routeInfo]);
-  const visibleRows = useMemo(() => {
+  const facetRows = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('vi');
     return rows?.map((row) => effectiveOrder(row, choices[rowKey(row)])).filter((row) => (!statusFilter || row.status === statusFilter) &&
-      (draftFilter !== 'yes' || !!row.drafts?.length) && (draftFilter !== 'no' || !row.drafts?.length) &&
-      (planningFilter !== 'schedule' || !row.schedstart || !row.schedfinish) &&
-      (planningFilter !== 'pic' || !row.assignedto) &&
-      (!routeFilter || routeCategory(routeOutcome[rowKey(row)], routeFresh(row)) === routeFilter) &&
       (!query || [row.wonum, row.description, row.location].some((value) => value?.toLocaleLowerCase('vi').includes(query)))) ?? [];
-  }, [rows, search, statusFilter, planningFilter, draftFilter, routeFilter, routeFresh, routeOutcome, choices]);
+  }, [rows, search, statusFilter, choices]);
+  const visibleRows = useMemo(() => facetRows.filter((row) =>
+    !chipFilter || (chipFilter === 'no_draft' ? !row.drafts?.length :
+      (routeAvailable ? routeCategory(routeOutcome[rowKey(row)], routeFresh(row)) : localRouteCode(row)) === chipFilter)),
+  [facetRows, chipFilter, routeAvailable, routeFresh, routeOutcome]);
 
   // The PIC drop-down needs the crew of the scope; read it once, the first time the pointer or focus reaches the table.
   const crewScope = JSON.stringify(editorScope);
@@ -326,8 +332,6 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     if (active && window.matchMedia?.('(hover: none)').matches) loadCrew();
   }, [active, loadCrew]);
   const rawByKey = useMemo(() => new Map((rows ?? []).map((row) => [rowKey(row), row])), [rows]);
-  const routeScope = JSON.stringify(editorScope);
-  const routeAvailable = grant?.capability === 'write' && routeStatus?.scope === routeScope && routeStatus.status.can_route;
   useEffect(() => {
     if (!active || checking || grant?.capability !== 'write' || rows === null) return;
     const controller = new AbortController();
@@ -410,7 +414,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     const marker = chosenPlan(source, choices[key]);
     const value = shown(source, marker && !marker.baseline_changed ? marker.changes : {}, inline[key] ?? {}, grant.timezone)[field];
     if (!value) return;
-    setInlineNotice(''); setInline((previous) => selectedKeys.filter((target) => target !== key && rawByKey.has(target)).reduce((acc, target) => {
+    const visibleKeys = new Set(visibleRows.map(rowKey));
+    setInlineNotice(''); setInline((previous) => selectedKeys.filter((target) => target !== key && visibleKeys.has(target) && rawByKey.has(target)).reduce((acc, target) => {
       const order = rawByKey.get(target)!; const plan = chosenPlan(order, choices[target]);
       return stage(acc, target, field, value, shown(order, plan && !plan.baseline_changed ? plan.changes : {}, {}, grant.timezone)[field]);
     }, previous));
@@ -425,6 +430,25 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     root.setAttribute('data-wo-panel-open', '');
     return () => root.removeAttribute('data-wo-panel-open');
   }, [panelOpen]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (fullScreen && active) root.setAttribute('data-wo-fullscreen', '');
+    else root.removeAttribute('data-wo-fullscreen');
+    return () => root.removeAttribute('data-wo-fullscreen');
+  }, [fullScreen, active]);
+
+  useEffect(() => {
+    if (!fullScreen || !active) return;
+    const exitOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || panelOpen || routeTargets || rangeChange ||
+          (event.target instanceof Element && event.target.closest('[role="dialog"], [role="alertdialog"]')) ||
+          document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
+      setFullScreen(false);
+    };
+    document.addEventListener('keydown', exitOnEscape);
+    return () => document.removeEventListener('keydown', exitOnEscape);
+  }, [fullScreen, active, panelOpen, routeTargets, rangeChange]);
 
   useEffect(() => { selected.current = selection ? { selection, scope: editorScope } : null; }, [selection, editorScope]);
 
@@ -459,9 +483,9 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     setUpdatedAt(null); setStale(false);
     selected.current = null;
     retrieved.current = null; setLoadedRange(null);
-    setBatch(null); setSelectedKeys([]); setPlanningFilter(''); setInline({}); setInlineErrors({}); setInlineNotice('');
-    setDraftFilter(''); setChoices({}); setChooser(null); setSendError('');
-    setRouteStatus(null); setRouteInfo({}); setRouteOutcome({}); setRouteTargets(null); setRouteFilter('');
+    setBatch(null); setSelectedKeys([]); setChipFilter(''); setInline({}); setInlineErrors({}); setInlineNotice('');
+    setChoices({}); setChooser(null); setSendError('');
+    setRouteStatus(null); setRouteInfo({}); setRouteOutcome({}); setRouteTargets(null);
     setSelection(null); setRechecked(null); dirty.current = false;
     pending.current?.abort();
     pending.current = null;
@@ -526,6 +550,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     selected.current = null;
     setSelection(null); setBatch(null); setChooser(null); setRechecked(null); dirty.current = false;
   }
+  // A selection must never include rows the planner can no longer see, so any filter change clears it.
   function filterChanged() { setSelectedKeys([]); }
   // What the table shows for this row (group draft changes plus unsaved cell edits), handed to the single-WO editor.
   function carryToEditor(row: WorkOrder, plan?: PlanningMarker) {
@@ -724,17 +749,23 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     applySuggestionRef.current(picSuggestion);
   }, [picSuggestion, active, checking, verifying, grant]);
 
-  const activeFilterCount = [!!search.trim(), !!statusFilter, !!planningFilter, !!draftFilter, !!routeFilter].filter(Boolean).length;
   const draftedCount = rows?.filter((row) => row.drafts?.length).length ?? 0;
+  const chipCounts = useMemo(() => {
+    const counts = routeChips(facetRows.map((row) =>
+    routeAvailable ? routeCategory(routeOutcome[rowKey(row)], routeFresh(row)) : localRouteCode(row))
+      .filter((category): category is string => category !== null));
+    if (chipFilter && chipFilter !== 'no_draft' && !counts.some(({ category }) => category === chipFilter)) counts.push({ category: chipFilter, count: 0 });
+    return counts;
+  }, [facetRows, routeAvailable, routeOutcome, routeFresh, chipFilter]);
 
-  return <div ref={workspace} tabIndex={-1}>
+  return <div ref={workspace} tabIndex={-1} className={fullScreen ? styles.workOrdersFullscreen : undefined}>
     <h1 className={styles.srOnly}>Work Orders</h1>
     {uploadNotice && <p role="status" className={styles.notice}>{uploadNotice}</p>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {error && <button className={styles.tertiary} onClick={() => refreshSession.current?.()}>Kiểm tra lại phiên</button>}
     {checking && <p role="status">Đang kiểm tra quyền truy cập…</p>}
     {verifying && !checking && <p role="status">Đang xác minh phiên…</p>}
-    <div hidden={checking}>{!session ? <p>
+    <div className={styles.workOrdersContent} hidden={checking}>{!session ? <p>
       Cần đăng nhập để xem WO. {available && <a href={loginUrl}>Đăng nhập Microsoft</a>}
     </p> : session.grants.length === 0 ? <p>Chưa được cấp quyền WO. Vui lòng liên hệ quản trị viên.</p> : <>
       {active && !checking && !verifying && visibleRecoveries.map(({ entry }) => <div className={styles.batchToolbar} key={entry.request_id}>
@@ -754,15 +785,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         {((recoveryResult.status.counts.pending ?? 0) + (recoveryResult.status.counts.sending ?? 0) + (recoveryResult.status.counts.unknown ?? 0) > 0) &&
           <button className={styles.tertiary} disabled={recoveryBusy} onClick={() => void recoverUpload(recoveryResult.entry)}>Kiểm tra trạng thái</button>}
       </section>}
-      {grant && <section className={styles.retrievePanel} aria-label="Lấy dữ liệu WO">
-      {rows !== null && loadedRange && !rangeExpanded && <div className={styles.retrieveSummary}>
-        <span>Đã tải: {displayDate(loadedRange.target_from, grant.timezone, false)} → trước {displayDate(loadedRange.target_before, grant.timezone, false)}</span>
-        <button className={styles.tertiary} onClick={() => {
-          // Drafts are deleted with the old range, so say so before the date fields even open.
-          if (!discard()) return;
-          if (draftedCount > 0) { setRangeError(''); setRangeChange({ open: true }); } else setRangeExpanded(true);
-        }}>Đổi khoảng ngày</button>
-      </div>}
+      {grant && <section className={styles.retrievePanel} aria-label="Lấy dữ liệu WO" hidden={rows !== null && !!loadedRange && !rangeExpanded}>
       <div className={styles.retrieveHeading} hidden={rows !== null && !!loadedRange && !rangeExpanded}>
         <strong>Lấy dữ liệu WO</strong>
       </div>
@@ -799,42 +822,54 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       {busy && <p role="status">Đang lấy và kiểm tra đầy đủ các trang dữ liệu…</p>}
       {busy && rows === null && <div className={styles.skeleton} aria-hidden="true">{[0, 1, 2, 3, 4, 5].map((index) => <div key={index} />)}</div>}
       {grant && <div className={styles.woToolbar}>
+        <button type="button" className={`${styles.tertiary} ${styles.fullscreenToggle}`} aria-pressed={fullScreen} onClick={() => setFullScreen((value) => !value)}>
+          {fullScreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}
+        </button>
+        {fullScreen && <span className={styles.fullscreenEnvChip} data-env={grant.environment}>
+          {grant.system === 'onshore' ? 'Onshore' : 'Offshore'} · {grant.environment === 'test' ? 'TEST' : 'PROD'}
+        </span>}
+        {rows !== null && loadedRange && <span className={styles.fullscreenRange}>
+          Đã tải: {displayDate(loadedRange.target_from, grant.timezone, false)} → trước {displayDate(loadedRange.target_before, grant.timezone, false)}
+        </span>}
+        {rows !== null && rows.length > 0 && <label className={styles.toolbarStatus}>Status
+          <select aria-label="WO Status" value={statusFilter} onChange={(event) => { filterChanged(); setStatusFilter(event.target.value); }}>
+            <option value="">Tất cả status đã tải</option>
+            {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+        </label>}
+        {rows !== null && loadedRange && !rangeExpanded && <button type="button" className={styles.tertiary} onClick={() => {
+          // Drafts are deleted with the old range, so say so before the date fields even open.
+          if (!discard()) return;
+          if (draftedCount > 0) { setRangeError(''); setRangeChange({ open: true }); } else setRangeExpanded(true);
+        }}>Đổi khoảng ngày</button>}
         {rows !== null && rows.length > 0 && !checking && <label className={styles.toolbarSearch}>
           <input type="search" placeholder="Tìm WO, mô tả hoặc Tag Name" aria-label="Tìm WO, mô tả hoặc Tag Name" value={search}
             onChange={(event) => { filterChanged(); setSearch(event.target.value); }} /></label>}
         {updatedAt !== null && rows !== null && <div className={styles.toolbarActions}>
           <button className={styles.tertiary} disabled={busy || verifying || checking} onClick={() => refreshSession.current?.(true)}>Cập nhật</button>
-          {!checking && rows.length > 0 && <button className={styles.tertiary}
-            aria-expanded={filtersVisible} aria-controls={tableFiltersId} onClick={() => setFiltersVisible((previous) => !previous)}>
-            {filtersVisible ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'}
-            {activeFilterCount > 0 && ` (${activeFilterCount})`}
-          </button>}
           {rows.length > 0 && <button className={styles.ghost} aria-pressed={dense} onClick={toggleDensity}>{dense ? 'Bảng thoáng' : 'Bảng gọn'}</button>}
+          {(search.trim() || statusFilter || chipFilter) && <button className={styles.ghost} onClick={() => {
+            filterChanged(); setSearch(''); setStatusFilter(''); setChipFilter('');
+          }}>Xóa bộ lọc</button>}
         </div>}
-        {grant && updatedAt !== null && rows !== null && <span className={styles.updatedAt}>Cập nhật lần cuối: {new Intl.DateTimeFormat('vi-VN', { timeZone: grant.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(updatedAt)}
-          </span>}
-        {stale && updatedAt !== null && rows !== null && <span role="status" className={styles.staleNotice}>Dữ liệu có thể đã thay đổi.</span>}
       </div>}
-      {rows !== null && rows.length === 0 && <p role="status">Không có WO trong phạm vi và khoảng ngày đã chọn.</p>}
-      {rows !== null && rows.length > 0 && <div id={tableFiltersId} hidden={!filtersVisible} className={`${styles.filters} ${styles.tableFilters}`} role="search" aria-label="Lọc WO đã tải">
-            <label>Status<select value={statusFilter} onChange={(event) => { filterChanged(); setStatusFilter(event.target.value); }}>
-              <option value="">Tất cả status đã tải</option>
-              {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
-            </select></label>
-            <label>Lập lịch<select value={planningFilter} onChange={(e) => { filterChanged(); setPlanningFilter(e.target.value); }}><option value="">Tất cả WO</option><option value="schedule">Chưa lập lịch đầy đủ</option><option value="pic">Chưa có Assigned PIC</option></select></label>
-            <label>Nháp<select aria-label="Nháp" value={draftFilter} onChange={(e) => { filterChanged(); setDraftFilter(e.target.value); }}>
-              <option value="">Tất cả ({rows.length})</option><option value="yes">Có nháp ({rows.filter((row) => row.drafts?.length).length})</option>
-              <option value="no">Chưa có nháp ({rows.filter((row) => !row.drafts?.length).length})</option></select></label>
-            <button className={styles.ghost} disabled={!search && !statusFilter && !planningFilter && !draftFilter && !routeFilter} onClick={() => { filterChanged(); setSearch(''); setStatusFilter(''); setPlanningFilter(''); setDraftFilter(''); setRouteFilter(''); }}>Xóa bộ lọc bảng</button>
-      </div>}
+      {rows !== null && <p role="status" className={`${styles.statusLine}${stale ? ` ${styles.statusLineStale}` : ''}`}>
+        {stale && <span className={styles.staleNotice}>Dữ liệu có thể đã thay đổi.</span>}
+        {rows.length === 0 ? 'Không có WO trong phạm vi và khoảng ngày đã chọn.' : `Hiển thị ${visibleRows.length} / ${rows.length} WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.`}
+        {rows.length > 0 && routeAvailable && !routeProgress && ` ${rows.filter((row) => !row.drafts?.length && routeFresh(row)?.ready && !routeOutcome[rowKey(row)]).length} WO sẵn sàng route.`}
+        {updatedAt !== null && grant && <span className={styles.statusUpdated}>Cập nhật lần cuối: {new Intl.DateTimeFormat('vi-VN', { timeZone: grant.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(updatedAt)}</span>}
+      </p>}
       {rows !== null && rows.length > 0 && <>
-        <p role="status">{`Hiển thị ${visibleRows.length} / ${rows.length} WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.`}
-          {routeAvailable && !routeProgress && ` ${rows.filter((row) => !row.drafts?.length && routeFresh(row)?.ready && !routeOutcome[rowKey(row)]).length} WO sẵn sàng route.`}</p>
-        {routeAvailable && <div className={styles.routeChips} role="group" aria-label="Tổng hợp theo khả năng route">
-          {routeChips(rows.map((row) => routeCategory(routeOutcome[rowKey(row)], routeFresh(row)))).map(({ category, count }) =>
-            <button key={category} type="button" className={styles.routeChip} data-category={category} aria-pressed={routeFilter === category}
-              onClick={() => { filterChanged(); setRouteFilter(routeFilter === category ? '' : category); }}>{chipText(category)} <strong>{count}</strong></button>)}
-        </div>}
+        <div className={styles.routeChips} role="group" aria-label="Lọc WO đã tải">
+          {chipCounts.map(({ category, count }) => <button key={category} type="button" className={styles.routeChip} data-category={category}
+            aria-pressed={chipFilter === category} onClick={() => { filterChanged(); setChipFilter(chipFilter === category ? '' : category); }}>
+            {chipText(category)} <strong>{count}</strong>
+          </button>)}
+          <button type="button" className={styles.routeChip} data-category="no_draft" aria-pressed={chipFilter === 'no_draft'}
+            onClick={() => { filterChanged(); setChipFilter(chipFilter === 'no_draft' ? '' : 'no_draft'); }}>
+            Chưa có nháp <strong>{facetRows.filter((order) => !order.drafts?.length).length}</strong>
+          </button>
+        </div>
         {routeAvailable && routeProgress && <p className={styles.routeProgress} role="status">{`Đang kiểm tra khả năng route… ${routeProgress.done}/${routeProgress.total}`}</p>}
         {visibleRows.length === 0 && <p>Không có WO khớp bộ lọc bảng. Xóa bộ lọc để xem lại dữ liệu đã tải.</p>}
       </>}
@@ -866,7 +901,11 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       {rows !== null && <>
         {visibleRows.length > 0 && grant && <>
           <div className={`${styles.tableWrap} ${styles.compactTable}${dense ? ` ${styles.denseTable}` : ''}`} tabIndex={0} role="region" aria-label="WO từ Maximo" onMouseEnter={loadCrew} onFocusCapture={loadCrew} onKeyDown={(event) => { moveBetweenRows(event); }}>
-          <table><thead><tr>{grant.capability === 'write' && <th scope="col"><input type="checkbox" aria-label={`Chọn tất cả ${visibleRows.length} WO trong kết quả lọc đã tải`} checked={!!visibleRows.length && visibleRows.every((row) => selectedKeys.includes(rowKey(row)))} onChange={(e) => setSelectedKeys(e.target.checked ? visibleRows.map(rowKey) : [])} /></th>}
+          <table><thead><tr>{grant.capability === 'write' && <th scope="col"><input type="checkbox" aria-label={`Chọn tất cả ${visibleRows.length} WO trong kết quả lọc đã tải`} checked={!!visibleRows.length && visibleRows.every((row) => selectedKeys.includes(rowKey(row)))} onChange={(e) => setSelectedKeys((previous) => {
+            const visibleKeys = new Set(visibleRows.map(rowKey));
+            const retained = previous.filter((key) => !visibleKeys.has(key));
+            return e.target.checked ? [...retained, ...visibleKeys] : retained;
+          })} /></th>}
             <th scope="col">Work Order / Type</th><th scope="col">Công việc / Tag Name</th><th scope="col">Status / Priority</th><th scope="col">Duration (giờ)</th><th scope="col">Lịch dự kiến</th><th scope="col">Target Start / Finish</th><th scope="col">Assigned PIC</th>{routeAvailable && <th scope="col">Action</th>}</tr></thead>
             <tbody>{visibleRows.map((row, index) => {
               const plan = chosenPlan(row, choices[rowKey(row)]);

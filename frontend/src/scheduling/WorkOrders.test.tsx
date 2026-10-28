@@ -28,20 +28,81 @@ const editorDetail = { item: row, baseline_token: 'a'.repeat(64), allowed_pics: 
   baseline: { worktype: 'CM', schedstart: null, schedfinish: null, assignedto: null, estdur: '8',
     targstartdate: null, targcompdate: row.targcompdate } };
 
-it('collapses only a successfully retrieved range and opens date controls without reloading rows', async () => {
-  await setup();
+it('toggles the work-order table fullscreen on and off with an accessible pressed state', async () => {
+  await setup(true);
+  const toggle = screen.getByRole('button', { name: 'Toàn màn hình' });
+  expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  fireEvent.click(toggle);
+  expect(screen.getByRole('button', { name: 'Thoát toàn màn hình' })).toHaveAttribute('aria-pressed', 'true');
+  expect(document.documentElement).toHaveAttribute('data-wo-fullscreen');
+  fireEvent.click(screen.getByRole('button', { name: 'Thoát toàn màn hình' }));
+  expect(screen.getByRole('button', { name: 'Toàn màn hình' })).toHaveAttribute('aria-pressed', 'false');
+  expect(document.documentElement).not.toHaveAttribute('data-wo-fullscreen');
+});
+
+it('exits fullscreen on Escape while preserving search and loaded rows', async () => {
+  await setup(false, 'two');
+  vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  await screen.findByRole('button', { name: 'WO-REAL' });
+  fireEvent.change(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name'), { target: { value: 'WO' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Toàn màn hình' }));
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(screen.getByRole('button', { name: 'Toàn màn hình' })).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('WO');
+  expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
+});
+
+it('preserves selected rows and inline edits while toggling fullscreen both ways', async () => {
+  await inlineSetup([orderWith({})]);
+  fireEvent.change(screen.getByLabelText(/^Sửa nhanh WO-REAL Est. Duration/), { target: { value: '12' } });
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Toàn màn hình' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Thoát toàn màn hình' }));
+  expect(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' })).toBeChecked();
+  expect(screen.getByLabelText(/^Sửa nhanh WO-REAL Est. Duration/)).toHaveValue('12');
+});
+
+it('keeps fullscreen active and preserves the editor while Escape is handled by an open draft panel', async () => {
+  await setup(false, 'two');
+  vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
+  vi.mocked(getDetail).mockResolvedValue(editorDetail);
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  fireEvent.click(screen.getByRole('button', { name: 'Toàn màn hình' }));
+  fireEvent.click(await screen.findByText('WO-REAL'));
+  await screen.findByRole('dialog');
+  fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+  expect(screen.getByRole('button', { name: 'Thoát toàn màn hình' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
+});
+
+it('clears fullscreen document layout when the retained work-orders page becomes inactive', async () => {
+  const view = await setup();
+  fireEvent.click(screen.getByRole('button', { name: 'Toàn màn hình' }));
+  expect(document.documentElement).toHaveAttribute('data-wo-fullscreen');
+  view.rerender(<MemoryRouter initialEntries={['/work-orders']}><WorkOrders active={false} /></MemoryRouter>);
+  expect(document.documentElement).not.toHaveAttribute('data-wo-fullscreen');
+});
+
+it('shows the loaded range in the header and opens date controls from the toolbar without reloading rows', async () => {
+  await setup(true);
   vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
   expect(screen.getByLabelText('Target Finish từ')).toBeVisible();
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByRole('button', { name: 'WO-REAL' });
-  expect(screen.getByText('Đã tải: 01/09/2026 → trước 01/10/2026')).toBeVisible();
+  const header = document.querySelector('header')!;
+  expect(await within(header).findByText('Đã tải: 01/09/2026 → trước 01/10/2026')).toBeVisible();
   expect(screen.getByLabelText('Target Finish từ')).not.toBeVisible();
-  fireEvent.click(screen.getByRole('button', { name: 'Đổi khoảng ngày' }));
+  const changeRange = screen.getByRole('button', { name: 'Đổi khoảng ngày' });
+  expect(changeRange.closest('[class*="woToolbar"]')).not.toBeNull();
+  fireEvent.click(changeRange);
   expect(screen.getByLabelText('Target Finish từ')).toBeVisible();
+  expect(within(header).getByText('Đã tải: 01/09/2026 → trước 01/10/2026')).toBeVisible();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
   setDate(screen.getByLabelText('Target Finish từ'), '2026-09-02');
-  expect(screen.queryByText(/Đã tải:/)).not.toBeInTheDocument();
+  expect(within(header).queryByText(/Đã tải:/)).not.toBeInTheDocument();
   vi.mocked(retrieveWorkOrders).mockRejectedValue(new Error('Retrieve failed'));
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByText('Retrieve failed');
@@ -49,34 +110,76 @@ it('collapses only a successfully retrieved range and opens date controls withou
   expect(screen.queryByRole('button', { name: 'Đổi khoảng ngày' })).not.toBeInTheDocument();
 });
 
-it('defaults filters to hidden and toggles beside refresh without losing filters, selection or loaded rows', async () => {
-  await setup(false, 'two');
+it('keeps the loaded range beside the environment chip in fullscreen mode', async () => {
+  await setup(true, 'two');
   vi.mocked(retrieveWorkOrders).mockResolvedValue([row]);
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByRole('button', { name: 'WO-REAL' });
-  const showFilters = screen.getByRole('button', { name: 'Hiện bộ lọc' });
-  expect(showFilters).toHaveAttribute('aria-expanded', 'false');
+  fireEvent.click(screen.getByRole('button', { name: 'Toàn màn hình' }));
+  const workspace = document.querySelector<HTMLElement>('[class*="workOrdersFullscreen"]')!;
+  expect(within(workspace).getByText('Offshore · TEST')).toBeVisible();
+  expect(within(workspace).getByText('Đã tải: 01/09/2026 → trước 01/10/2026')).toBeVisible();
+});
+
+it('combines compact search, status and single-select chips, clears selection but keeps edits, and clears all filters', async () => {
+  const filterDraft = { draft_id: 'filter-draft', version: 1, is_batch: false, updated_at: '2026-10-06T09:00:00+07:00',
+    changes: { estdur: '9' }, baseline_changed: false, state: 'draft' as const };
+  const valve = orderWith({ workorderid: '101', wonum: 'WO-VALVE', status: 'WMATL', description: 'Valve repair',
+    schedstart: '2026-09-01T06:30:00+07:00', schedfinish: '2026-09-01T14:30:00+07:00', assignedto: 'TECH' });
+  const pumpDraft = orderWith({ workorderid: '102', wonum: 'WO-PUMP-DRAFT', status: 'APPR', description: 'Pump service',
+    schedstart: null, schedfinish: null, assignedto: null, drafts: [filterDraft] });
+  const pump = orderWith({ wonum: 'WO-PUMP', status: 'APPR', description: 'Pump inspection', schedstart: null, schedfinish: null, assignedto: 'TECH' });
+  await inlineSetup([pump, pumpDraft, valve]);
+
+  expect(screen.queryByRole('button', { name: 'Hiện bộ lọc' })).not.toBeInTheDocument();
   expect(screen.queryByRole('search')).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Cập nhật' }).nextElementSibling).toBe(showFilters);
-  expect(screen.getByRole('heading', { name: 'Work Orders' })).not.toContainElement(showFilters);
-  fireEvent.click(showFilters);
-  fireEvent.change(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name'), { target: { value: 'WO-REAL' } });
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' }));
-  const toggle = screen.getByRole('button', { name: 'Ẩn bộ lọc (1)' });
-  const filterId = toggle.getAttribute('aria-controls');
-  expect(screen.getByRole('search')).toHaveAttribute('id', filterId);
-  fireEvent.click(toggle);
-  expect(screen.getByRole('button', { name: 'Hiện bộ lọc (1)' })).toHaveAttribute('aria-expanded', 'false');
-  expect(screen.queryByRole('search')).not.toBeInTheDocument();
-  expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toBeVisible();
-  expect(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' })).toBeChecked();
-  expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
-  fireEvent.click(screen.getByRole('button', { name: 'Hiện bộ lọc (1)' }));
-  expect(screen.getByRole('button', { name: 'Ẩn bộ lọc (1)' })).toHaveAttribute('aria-expanded', 'true');
-  expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toBeVisible();
-  expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('WO-REAL');
+  expect(screen.queryByLabelText('Lập lịch')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Nháp')).not.toBeInTheDocument();
+  const search = screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name');
+  const status = screen.getByLabelText('WO Status');
+  expect(status.closest('[class*="woToolbar"]')).not.toBeNull();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn WO-PUMP · dòng 1' }));
+  fireEvent.change(screen.getByLabelText('Sửa nhanh WO-PUMP Est. Duration'), { target: { value: '12' } });
+
+  fireEvent.change(search, { target: { value: 'pump' } });
+  fireEvent.change(status, { target: { value: 'APPR' } });
+  const noDrafts = screen.getByRole('button', { name: 'Chưa có nháp 1' });
+  const missingSchedule = screen.getByRole('button', { name: 'Thiếu lịch 1' });
+  expect(noDrafts).toHaveAttribute('aria-pressed', 'false');
+  expect(missingSchedule).toHaveAttribute('aria-pressed', 'false');
+  fireEvent.click(noDrafts);
+  expect(screen.getByRole('button', { name: 'Chưa có nháp 1' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(screen.getByRole('button', { name: 'Thiếu lịch 1' }));
+  expect(screen.getByRole('button', { name: 'Chưa có nháp 1' })).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByText(/Hiển thị 1 \/ 3 WO/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'WO-PUMP' })).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'WO-PUMP-DRAFT' })).not.toBeInTheDocument();
+
+  fireEvent.change(search, { target: { value: 'valve' } });
+  expect(screen.queryByRole('button', { name: 'WO-PUMP' })).not.toBeInTheDocument();
+  const zeroCountChip = screen.getByRole('button', { name: 'Thiếu lịch 0' });
+  expect(zeroCountChip).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(zeroCountChip);
+  expect(screen.queryByRole('button', { name: 'Thiếu lịch 0' })).not.toBeInTheDocument();
+  fireEvent.change(search, { target: { value: 'pump' } });
+  // Filtering clears the selection so hidden rows never ride along in a group action; edits stay.
+  expect(screen.getByRole('checkbox', { name: 'Chọn WO-PUMP · dòng 1' })).not.toBeChecked();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn WO-PUMP · dòng 1' }));
+  expect(screen.getByLabelText(/^Sửa nhanh WO-PUMP Est\. Duration/)).toHaveValue('12');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Thiếu lịch 1' }));
+  expect(screen.getByRole('button', { name: 'Thiếu lịch 1' })).toHaveAttribute('aria-pressed', 'true');
+  const clear = screen.getByRole('button', { name: 'Xóa bộ lọc' });
+  expect(clear.closest('[class*="woToolbar"]')).not.toBeNull();
+  fireEvent.click(clear);
+  expect(search).toHaveValue('');
+  expect(status).toHaveValue('');
+  expect(screen.getByRole('button', { name: 'Thiếu lịch 1' })).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByRole('button', { name: 'Chưa có nháp 2' })).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByRole('button', { name: 'WO-PUMP' })).toBeVisible();
+  expect(screen.getByRole('checkbox', { name: 'Chọn WO-PUMP · dòng 1' })).not.toBeChecked();
+  expect(screen.getByLabelText(/^Sửa nhanh WO-PUMP Est\. Duration/)).toHaveValue('12');
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
-  expect(screen.queryByText(/Bảng gọn ·/)).not.toBeInTheDocument();
 });
 
 it('keeps the first PM origin when a finalized recovery receipt carries an intermediate baseline', () => {
@@ -109,7 +212,6 @@ it('ignores window focus changes and rechecks only auth when returning to the ta
   await editWorkOrder();
   fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' }));
   fireEvent.change(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name'), { target: { value: 'WO-REAL' } });
-  // Filter changes clear selection; selecting afterwards must survive rechecks.
   fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn WO-REAL · dòng 1' }));
   fireEvent(window, new Event('blur')); fireEvent(window, new Event('focus'));
   expect(getAuthSummary).toHaveBeenCalledTimes(1);
@@ -268,11 +370,12 @@ it('shows detail without crew configuration and blocks editing even for a writer
 async function setup(withApp = false, connectionId = 'one') {
   vi.mocked(getLiveness).mockResolvedValue(true);
   vi.mocked(getAuthSummary).mockResolvedValue({ available: true, session: { ...session, preferred_connection_id: connectionId } });
-  render(<MemoryRouter initialEntries={['/work-orders']}>{withApp ? <App autoRetrieveWorkOrders={false} /> : <WorkOrders />}</MemoryRouter>);
+  const view = render(<MemoryRouter initialEntries={['/work-orders']}>{withApp ? <App autoRetrieveWorkOrders={false} /> : <WorkOrders />}</MemoryRouter>);
   await waitFor(() => expect(screen.getByRole('button', { name: 'Retrieve WO' })).toBeEnabled());
   setDate(screen.getByLabelText('Target Finish từ'), '2026-09-01');
   setDate(screen.getByLabelText('Target Finish trước'), '2026-10-01');
   expect(screen.queryByLabelText('Hệ thống / Discipline')).not.toBeInTheDocument();
+  return view;
 }
 
 async function chooseConnection(connectionId: string) {
@@ -333,12 +436,12 @@ it('filters only retrieved rows by WO, description, tag and status without more 
     expect(screen.getByRole('button', { name: 'WO-PUMP' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'WO-VALVE' })).not.toBeInTheDocument();
   }
-  fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'WMATL' } });
+  fireEvent.change(screen.getByLabelText('WO Status'), { target: { value: 'WMATL' } });
   expect(screen.getByText(/Không có WO khớp bộ lọc bảng/)).toBeInTheDocument();
   expect(screen.queryByRole('region', { name: 'WO từ Maximo' })).not.toBeInTheDocument();
   fireEvent.change(search, { target: { value: 'repair' } });
   expect(screen.getByRole('button', { name: 'WO-VALVE' })).toBeInTheDocument();
-  fireEvent.click(screen.getByText('Xóa bộ lọc bảng'));
+  fireEvent.click(screen.getByRole('button', { name: 'Xóa bộ lọc' }));
   expect(screen.getByText(/Hiển thị 3 \/ 3 WO/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'WO-NULL' })).toBeInTheDocument();
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
@@ -350,16 +453,16 @@ it('clears table filters and old scope data when the connection changes', async 
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByText('Hiển thị 1 / 1 WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.');
   fireEvent.change(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name'), { target: { value: 'no-match' } });
-  fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'APPR' } });
+  fireEvent.change(screen.getByLabelText('WO Status'), { target: { value: 'APPR' } });
   await chooseConnection('two');
   expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
-  expect(screen.queryByLabelText('Status')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('WO Status')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'WO-REAL' })).not.toBeInTheDocument();
   vi.mocked(retrieveWorkOrders).mockResolvedValue([{ ...row, wonum: 'WO-OFFSHORE' }]);
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByRole('button', { name: 'WO-OFFSHORE' });
   expect(screen.getByLabelText('Tìm WO, mô tả hoặc Tag Name')).toHaveValue('');
-  expect(screen.getByLabelText('Status')).toHaveValue('');
+  expect(screen.getByLabelText('WO Status')).toHaveValue('');
   expect(screen.queryByText('WO-REAL')).not.toBeInTheDocument();
 });
 
@@ -370,6 +473,7 @@ it('submits calendar dates as local midnight with the exclusive end unchanged', 
   vi.mocked(retrieveWorkOrders).mockResolvedValue([]);
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByText('Không có WO trong phạm vi và khoảng ngày đã chọn.');
+  expect(screen.getByText(/Cập nhật lần cuối:/)).toBeInTheDocument();
   expect(vi.mocked(retrieveWorkOrders).mock.calls[0][0]).toEqual({
     connection_id: 'one', discipline: 'MECH',
     target_from: '2026-09-01T00:00:00+07:00', target_before: '2026-10-01T00:00:00+07:00',
@@ -620,7 +724,7 @@ it('filters saved plans and opens their exact ID without requesting a new baseli
   fireEvent.click(screen.getByText('Retrieve WO'));
   await screen.findByText('Hiển thị 2 / 2 WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.');
   expect(screen.getByRole('cell', { name: 'TECHNháp' })).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('Nháp'), { target: { value: 'yes' } });
+  fireEvent.click(screen.getByRole('button', { name: /Còn nháp 1/ }));
   expect(screen.queryByRole('button', { name: 'NO-DRAFT' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
   await screen.findByLabelText('Est. Duration');
@@ -1149,7 +1253,7 @@ it('adds an Action column that marks WOs ready to route, greys the rest with the
   // The draft row is ruled out locally, so only the two rows with the schedule and PIC reach the server.
   const asked = fetcher.mock.calls.filter(([url]) => String(url).includes('/preview')).flatMap(([, init]) => (JSON.parse(String(init?.body)) as { items: { workorder_id: string }[] }).items.map((item) => item.workorder_id));
   expect(asked.sort()).toEqual(['100', '101']);
-  const chips = within(screen.getByRole('group', { name: 'Tổng hợp theo khả năng route' }));
+  const chips = within(screen.getByRole('group', { name: 'Lọc WO đã tải' }));
   expect(chips.getByRole('button', { name: /Sẵn sàng route 1/ })).toHaveAttribute('aria-pressed', 'false');
   expect(chips.getByRole('button', { name: /Còn nháp 1/ })).toBeInTheDocument();
   expect(chips.getByRole('button', { name: /Thiếu PIC\/ngày giao 1/ })).toBeInTheDocument();
@@ -1168,7 +1272,23 @@ it('does not show the Action column when the account cannot route', async () => 
   await waitFor(() => expect(screen.getByRole('button', { name: 'WO-READY' })).toBeVisible());
   expect(screen.queryByRole('columnheader', { name: 'Action' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /^Route / })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Chưa có nháp 1' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Sẵn sàng route/ })).not.toBeInTheDocument();
   vi.unstubAllGlobals();
+});
+
+it('keeps the no-draft filter available without route capability', async () => {
+  await setup(false, 'one');
+  vi.mocked(retrieveWorkOrders).mockResolvedValue([{ ...routable('102', 'WO-DRAFT'), drafts: [marker] }]);
+  fireEvent.click(screen.getByText('Retrieve WO'));
+  await screen.findByRole('button', { name: 'WO-DRAFT' });
+  const chips = screen.getByRole('group', { name: 'Lọc WO đã tải' });
+  expect(within(chips).getByRole('button', { name: 'Còn nháp 1' })).toBeInTheDocument();
+  fireEvent.click(within(chips).getByRole('button', { name: 'Chưa có nháp 0' }));
+  expect(screen.getByText(/Hiển thị 0 \/ 1 WO/)).toBeInTheDocument();
+  expect(within(chips).getByRole('button', { name: 'Chưa có nháp 0' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(within(chips).getByRole('button', { name: 'Chưa có nháp 0' }));
+  expect(screen.getByRole('button', { name: 'WO-DRAFT' })).toBeVisible();
 });
 
 it('blocks saving while a typed value is invalid and lets the user discard the edits', async () => {
