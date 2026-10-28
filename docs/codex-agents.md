@@ -5,7 +5,7 @@ native của Codex; không cần cài thêm plugin hoặc framework agent.
 
 | Agent | Model | Effort | Phạm vi |
 | --- | --- | --- | --- |
-| Main / Fullstack Lead | `gpt-6.1-sol` | `medium` | Yêu cầu, chia việc, quyết định, tích hợp và kiểm tra |
+| Main / Fullstack Lead | `gpt-6-astra` | `low` | Yêu cầu, chia việc, quyết định, tích hợp và kiểm tra |
 | `frontend` | `gpt-6-luna` | `medium` | React/TypeScript, UI, state và nối API |
 | `backend` | `gpt-6.1-sol` | `medium` | FastAPI, nghiệp vụ, PostgreSQL và migrations |
 | `reviewer` / Debugger | `gpt-6.1-sol` | `high` | Review độc lập có phạm vi; ca khó mới nâng mức |
@@ -29,7 +29,7 @@ native của Codex; không cần cài thêm plugin hoặc framework agent.
 - Backend/database có phạm vi đáng kể: giao `backend`.
 - FE và BE độc lập sau khi thống nhất API contract: giao song song, phân rõ file.
   Nếu còn phụ thuộc, giải quyết contract/phần nền trước rồi mới giao phần còn lại.
-- Main tự review các thay đổi nhỏ/thường bằng Sol/Medium. Không gọi reviewer chỉ
+- Main tự review các thay đổi nhỏ/thường bằng Astra/Low. Không gọi reviewer chỉ
   vì bắt đầu chat/lượt mới, cập nhật trạng thái, sửa TODO/tài liệu hoặc chạy test.
 - Khi cần góc nhìn độc lập cho một tính năng đáng kể hoặc vấn đề correctness/
   security cụ thể, giao `reviewer` Sol/High; gom thay đổi và review diff liên quan.
@@ -78,7 +78,7 @@ Giới hạn review và routing model/effort hiện có vẫn áp dụng. Review
 ## Cách dùng
 
 Mở project `workorder-scheduler` trong Codex và bắt đầu chat mới tại thư mục repo.
-Kiểm tra bộ chọn của Main là **GPT-6.1 Sol / Medium**. Project đã được đánh dấu
+Kiểm tra bộ chọn của Main là **GPT-6 Astra / Low**. Project đã được đánh dấu
 trusted trên máy khi thiết lập; project config chỉ được nạp khi repo trusted.
 Cấu hình là mặc định cho phiên mới; model/effort chọn riêng cho chat hoặc CLI có
 thể ghi đè mặc định. Thay file không tự đổi model của một lượt đang chạy.
@@ -103,7 +103,7 @@ README. Nếu model không khả dụng trên tài khoản, báo rõ để chủ
 không âm thầm thay model.
 
 CLI cũng dùng cùng cấu hình khi chạy từ repo: `codex`.
-Để ghi rõ Main cho một lần chạy: `codex -m gpt-6.1-sol -c 'model_reasoning_effort="medium"'`.
+Để ghi rõ Main cho một lần chạy: `codex -m gpt-6-astra -c 'model_reasoning_effort="low"'`.
 
 Thiết lập được kiểm tra với Codex CLI `0.160.1`. Căn cứ định dạng:
 [OpenAI — Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents)

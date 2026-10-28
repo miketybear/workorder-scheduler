@@ -1,6 +1,6 @@
 # Project defaults for the main Fullstack Lead.
-model = "gpt-6.1-sol"
-model_reasoning_effort = "medium"
+model = "gpt-6-astra"
+model_reasoning_effort = "low"
 
 [agents]
 enabled = true
