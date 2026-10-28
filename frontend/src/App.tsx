@@ -45,6 +45,8 @@ export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?
   const workOrdersActive = pathname === '/work-orders';
   // The WO page puts its loaded range and range button here, beside the environment chip.
   const [rangeSlot, setRangeSlot] = useState<HTMLSpanElement | null>(null);
+  // ...and its row count / last-update line here, in the footer.
+  const [statusSlot, setStatusSlot] = useState<HTMLSpanElement | null>(null);
   const assignmentDemoActive = pathname === '/assignment-demo';
   const rotaStagingActive = pathname === '/rota-staging-demo';
   const rotaImportsActive = pathname === '/rota-imports';
@@ -83,12 +85,12 @@ export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?
       <Route path="/settings" element={<Settings />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="*" element={<p>Không tìm thấy trang. <Link to="/">Về tổng quan</Link></p>} /></Routes>
-      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} autoRetrieve={autoRetrieveWorkOrders} picSuggestion={picSuggestion} onPicSuggestionHandled={clearPicSuggestion} headerSlot={rangeSlot} /></div>
+      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} autoRetrieve={autoRetrieveWorkOrders} picSuggestion={picSuggestion} onPicSuggestionHandled={clearPicSuggestion} headerSlot={rangeSlot} footerSlot={statusSlot} /></div>
       {assignmentDemoVisited && <div hidden={!assignmentDemoActive}><AssignmentTimelineDemo /></div>}
       {rotaStagingVisited && <div hidden={!rotaStagingActive}><RotaStagingPreview /></div>}
       {rotaImportsVisited && <div hidden={!rotaImportsActive}><RotaImports active={rotaImportsActive} /></div>}
       {resourceTimelineVisited && <div hidden={!resourceTimelineActive}><ResourceTimeline active={resourceTimelineActive} onPendingChange={reportMutationPending} onSuggestPic={suggestPic} /></div>}
     </main>
-    <footer><span>Onshore + Offshore · Nội bộ</span></footer>
+    <footer><span>Onshore + Offshore · Nội bộ</span><span ref={setStatusSlot} className={styles.footerStatus} hidden={!workOrdersActive} /></footer>
   </div>;
 }

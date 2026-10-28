@@ -252,7 +252,8 @@
 .fullscreenRange { display: inline-flex; color: var(--muted); font-size: 12px; line-height: 16px; }
 .statusLine { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 4px 0; color: var(--muted); font-size: 12px; line-height: 18px; }
 .statusLineStale { color: var(--warning-ink); }
-.statusUpdated { color: var(--muted); }
+.statusUpdated { margin-left: 10px; color: var(--muted); }
+.footerStatus { color: var(--muted); }
 .confirmOverlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; background: var(--scrim); }
 .confirmDialog { box-sizing: border-box; width: min(480px, 100%); display: grid; gap: 12px; padding: 20px 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--layer); color: var(--ink); box-shadow: var(--shadow-overlay); }
 .confirmDialog h2, .confirmDialog p { margin: 0; }

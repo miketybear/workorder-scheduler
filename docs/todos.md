@@ -17,11 +17,18 @@ Cập nhật: 2026-10-28.
       WO đã được mở khóa". Backend: ruff đạt, 875 test nhanh và 140 test upload PostgreSQL đạt; frontend typecheck/lint và 97 test liên quan đạt.
       Đối soát lại lô `4de03ec1`: P13431393 → `failed`, hết khóa. Audit ghi lúc đó còn liệt kê nhầm `schedfinish` (cùng thời điểm, khác múi giờ),
       đã sửa cho các lần sau; audit là append-only nên giữ nguyên.
-- [ ] **P13431393 chưa về giá trị gốc:** WO đã mở khóa; upload nháp gốc (start 02/10/2026 06:30, finish 30/10/2026 12:30) qua app.
+- [x] **P13431393 về giá trị gốc (2026-10-28):** upload qua app (start 02/10/2026 06:30, finish 30/10/2026 12:30, PIC trống) `confirmed`.
+      Lô `811de4df` (P13465570, tạo 10:53) đối soát chỉ đọc → `confirmed`; không còn upload pending/sending/unknown.
 - [ ] **UI báo sai khi upload bị 409:** màn hình hiện "Chưa xác định được kết quả" dù yêu cầu bị từ chối và Maximo không đổi
       (ít gặp hơn sau thay đổi trên, vẫn cần sửa).
 - [ ] **Chưa kiểm chứng (agy báo):** Ctrl+D điền xuống thiếu cột nếu chưa Enter ô đang sửa (`WorkOrders.tsx`).
+
 ## Thu gọn phần trên bảng WO — 2026-10-28
+
+- [x] **Icon và footer (theo góp ý trên trang):** khoảng ngày hiện `dd/mm/yyyy → dd/mm/yyyy` (ngày cuối nằm trong khoảng) cạnh chip môi trường
+      trên header, kèm icon lịch mở phần đổi khoảng ngày; toàn màn hình là icon ở góc phải toolbar. Khi toàn màn hình hai thứ này xuống toolbar.
+      Bỏ câu "Bộ lọc chỉ áp dụng…" và số "sẵn sàng route" (chip đã có). "Hiển thị X / Y WO" và "Cập nhật lần cuối" xuống footer; cảnh báo
+      dữ liệu cũ và "Không có WO…" vẫn trên bảng. Đã xem trên trang thật 1440px; typecheck/lint và 83 test WorkOrders đạt.
 
 - [x] Follow-up cùng ngày: bỏ nút `Hiện bộ lọc` và panel cùng các select Lập lịch/Nháp; đưa select `WO Status` nhỏ gọn vào toolbar. Dùng một trạng thái chip duy nhất, `aria-pressed`, bấm chip đang chọn để tắt; nút `Xóa bộ lọc` chỉ hiện khi search/Status/chip có điều kiện và xóa cả ba. Chip tính số theo search + Status trên dữ liệu đã tải, tổng X/Y thêm điều kiện chip; chip đang chọn vẫn hiện khi số đếm bằng 0.
 - [x] Giữ case `Chưa có nháp` bằng chip vì [docs/drafts.md](drafts.md) vẫn yêu cầu lọc trường hợp này trước khi tạo nhóm; không bỏ case `draftFilter=no`. Bỏ các predicate Lập lịch riêng và dùng bucket route/local hiện có: WO có lý do ưu tiên cao hơn (còn nháp, status chưa route được) nằm trong bucket đó thay vì đồng thời thuộc Thiếu lịch/PIC. Khi route không khả dụng vẫn có chip local và nháp, không suy diễn trạng thái sẵn sàng route.

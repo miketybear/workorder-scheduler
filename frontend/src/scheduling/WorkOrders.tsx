@@ -46,9 +46,11 @@ export function mergePmOrigin(current: Map<string, Baseline>, principal: string,
   return next;
 }
 
-export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion = null, onPicSuggestionHandled, headerSlot = null }: { active?: boolean; autoRetrieve?: boolean; picSuggestion?: PicSuggestion | null; onPicSuggestionHandled?: () => void;
+export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion = null, onPicSuggestionHandled, headerSlot = null, footerSlot = null }: { active?: boolean; autoRetrieve?: boolean; picSuggestion?: PicSuggestion | null; onPicSuggestionHandled?: () => void;
   /** Where the loaded range and its change button go in the app header; without it they stay in the toolbar. */
-  headerSlot?: HTMLElement | null }) {
+  headerSlot?: HTMLElement | null;
+  /** Where the row count and last update go in the app footer; without it they stay above the table. */
+  footerSlot?: HTMLElement | null }) {
   const [session, setSession] = useState<Session | null>(null);
   const [available, setAvailable] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -747,6 +749,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   }, [picSuggestion, active, checking, verifying, grant]);
 
   const draftedCount = rows?.filter((row) => row.drafts?.length).length ?? 0;
+  const rowSummary = rows !== null && <span role="status">{rows.length > 0 && `Hiển thị ${visibleRows.length} / ${rows.length} WO.`}
+    {updatedAt !== null && grant && <span className={styles.statusUpdated}>Cập nhật lần cuối: {new Intl.DateTimeFormat('vi-VN', { timeZone: grant.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(updatedAt)}</span>}</span>;
   // The range is loaded up to (not including) target_before, so its last shown day is the one before.
   const rangeControl = grant && rows !== null && loadedRange && !checking && <span className={styles.rangeControl}>
     <span>{displayDate(loadedRange.target_from, grant.timezone, false)} → {displayDate(new Date(Date.parse(loadedRange.target_before) - 1).toISOString(), grant.timezone, false)}</span>
@@ -852,11 +856,12 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
           aria-label={fullScreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} title={fullScreen ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình'}
           onClick={() => setFullScreen((value) => !value)}>{fullScreen ? <MinimizeIcon size={16} /> : <MaximizeIcon size={16} />}</button>
       </div>}
-      {rows !== null && <p role="status" className={`${styles.statusLine}${stale ? ` ${styles.statusLineStale}` : ''}`}>
+      {/* Warnings stay above the table; the routine count and update time go to the footer when there is one. */}
+      {rows !== null && (stale || rows.length === 0) && <p role="status" className={`${styles.statusLine}${stale ? ` ${styles.statusLineStale}` : ''}`}>
         {stale && <span className={styles.staleNotice}>Dữ liệu có thể đã thay đổi.</span>}
-        {rows.length === 0 ? 'Không có WO trong phạm vi và khoảng ngày đã chọn.' : `Hiển thị ${visibleRows.length} / ${rows.length} WO.`}
-        {updatedAt !== null && grant && <span className={styles.statusUpdated}>Cập nhật lần cuối: {new Intl.DateTimeFormat('vi-VN', { timeZone: grant.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(updatedAt)}</span>}
+        {rows.length === 0 && 'Không có WO trong phạm vi và khoảng ngày đã chọn.'}
       </p>}
+      {rows !== null && (footerSlot && !fullScreen ? createPortal(rowSummary, footerSlot) : <p className={styles.statusLine}>{rowSummary}</p>)}
       {rows !== null && rows.length > 0 && <>
         <div className={styles.routeChips} role="group" aria-label="Lọc WO đã tải">
           {chipCounts.map(({ category, count }) => <button key={category} type="button" className={styles.routeChip} data-category={category}
