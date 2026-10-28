@@ -793,9 +793,13 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const iconBar = <span className={styles.toolbarEnd}>
     {hasRows && <span className={styles.iconGroup}>
       <button type="button" className={styles.iconButton} aria-expanded={filtersVisible} aria-controls={filtersId}
-        aria-label={filtersVisible ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'} title={filtersVisible ? 'Ẩn tìm kiếm và bộ lọc' : 'Tìm kiếm và lọc theo Status / Work Type'}
-        onClick={() => setFiltersVisible((value) => !value)}>
-        <FilterIcon size={16} />{(search.trim() || statusFilter || worktypeFilter) && <span className={styles.iconBadge}>{[search.trim(), statusFilter, worktypeFilter].filter(Boolean).length}</span>}
+        aria-label={filtersVisible ? 'Ẩn và xóa bộ lọc' : 'Hiện bộ lọc'} title={filtersVisible ? 'Ẩn và xóa tìm kiếm / bộ lọc' : 'Tìm kiếm và lọc theo Status / Work Type'}
+        onClick={() => {
+          // Closing the filter row also clears it, so no hidden filter can be left applied.
+          if (filtersVisible && (search.trim() || statusFilter || worktypeFilter)) { filterChanged(); setSearch(''); setStatusFilter(''); setWorktypeFilter(''); }
+          setFiltersVisible(!filtersVisible);
+        }}>
+        <FilterIcon size={16} />
       </button>
       <button type="button" className={styles.iconButton} aria-pressed={dense} aria-label={dense ? 'Bảng thoáng' : 'Bảng gọn'}
         title={dense ? 'Bảng thoáng' : 'Bảng gọn'} onClick={toggleDensity}>{dense ? <RowExpandIcon size={16} /> : <RowCollapseIcon size={16} />}</button>
@@ -911,10 +915,6 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
               {worktypes.map((type) => <option key={type} value={type}>{type}</option>)}
             </select>
           </label>
-          {/* Clears this row only; a chip is turned off by clicking it again. */}
-          {(search.trim() || statusFilter || worktypeFilter) && <button className={styles.ghost} onClick={() => {
-            filterChanged(); setSearch(''); setStatusFilter(''); setWorktypeFilter('');
-          }}>Xóa bộ lọc</button>}
         </span>}
         {!hasRows && iconBar}
       </div>}
@@ -939,7 +939,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         {iconBar}
         </div>
         {routeAvailable && routeProgress && <p className={styles.routeProgress} role="status">{`Đang kiểm tra khả năng route… ${routeProgress.done}/${routeProgress.total}`}</p>}
-        {visibleRows.length === 0 && <p>Không có WO khớp bộ lọc bảng. Xóa bộ lọc để xem lại dữ liệu đã tải.</p>}
+        {visibleRows.length === 0 && <p>Không có WO khớp bộ lọc bảng. Bấm lại chip hoặc đóng bộ lọc để xem lại dữ liệu đã tải.</p>}
       </>}
       {grant && visibleRows.length > 0 && grant.capability === 'write' && selectedKeys.length > 0 && <div className={styles.bulkBar} role="region" aria-label="Thao tác với WO đã chọn">
         <span>{selectedKeys.length} WO đã chọn · nhập hoặc chọn giá trị ở một dòng rồi bấm Ctrl+D để điền xuống các dòng đã chọn</span>

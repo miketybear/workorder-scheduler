@@ -136,7 +136,7 @@ it('combines compact search, status and single-select chips, clears selection bu
   expect(toggle).toHaveAttribute('aria-expanded', 'false');
   expect(screen.getByLabelText('WO Status')).not.toBeVisible();
   fireEvent.click(toggle);
-  expect(screen.getByRole('button', { name: 'Ẩn bộ lọc' })).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByRole('button', { name: 'Ẩn và xóa bộ lọc' })).toHaveAttribute('aria-expanded', 'true');
   expect(screen.getByLabelText('WO Status')).toBeVisible();
   expect(screen.queryByRole('search')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Lập lịch')).not.toBeInTheDocument();
@@ -175,14 +175,12 @@ it('combines compact search, status and single-select chips, clears selection bu
 
   fireEvent.click(screen.getByRole('button', { name: 'Thiếu lịch 1' }));
   expect(screen.getByRole('button', { name: 'Thiếu lịch 1' })).toHaveAttribute('aria-pressed', 'true');
-  const clear = screen.getByRole('button', { name: 'Xóa bộ lọc' });
-  expect(clear.closest('[class*="toolbarFilters"]')).not.toBeNull();
-  fireEvent.click(clear);
+  expect(screen.queryByRole('button', { name: 'Xóa bộ lọc' })).not.toBeInTheDocument();
+  // Closing the filter row clears it; the chip is turned off by clicking it again.
+  fireEvent.click(screen.getByRole('button', { name: 'Ẩn và xóa bộ lọc' }));
   expect(search).toHaveValue('');
   expect(status).toHaveValue('');
-  // "Xóa bộ lọc" clears the filter row only; the chip is turned off by clicking it again.
   expect(screen.getByRole('button', { name: 'Thiếu lịch 1' })).toHaveAttribute('aria-pressed', 'true');
-  expect(screen.queryByRole('button', { name: 'Xóa bộ lọc' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Thiếu lịch 1' }));
   expect(screen.getByRole('button', { name: 'Thiếu lịch 1' })).toHaveAttribute('aria-pressed', 'false');
   expect(screen.getByRole('button', { name: 'Chưa có nháp 2' })).toHaveAttribute('aria-pressed', 'false');
@@ -452,7 +450,7 @@ it('filters only retrieved rows by WO, description, tag and status without more 
   fireEvent.change(search, { target: { value: 'repair' } });
   expect(screen.getByRole('button', { name: 'WO-VALVE' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Hiện bộ lọc' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Xóa bộ lọc' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ẩn và xóa bộ lọc' }));
   expect(screen.getByText(/Hiển thị 3 \/ 3 WO/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'WO-NULL' })).toBeInTheDocument();
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
@@ -1596,13 +1594,11 @@ it('sorts by priority, then earliest start with unscheduled last, and filters by
   fireEvent.click(screen.getByRole('button', { name: 'Hiện bộ lọc' }));
   fireEvent.change(screen.getByLabelText('Work Type'), { target: { value: 'PM' } });
   expect(order()).toEqual(['WO-HIGH-LATE', 'WO-NONE']);
-  fireEvent.click(screen.getByRole('button', { name: 'Ẩn bộ lọc' }));
-  // The filter stays applied while hidden, and the icon shows how many are active.
-  expect(order()).toEqual(['WO-HIGH-LATE', 'WO-NONE']);
-  expect(screen.getByRole('button', { name: 'Hiện bộ lọc' })).toHaveTextContent('1');
-  fireEvent.click(screen.getByRole('button', { name: 'Hiện bộ lọc' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Xóa bộ lọc' }));
+  // Closing the filter row clears it, so no hidden filter stays applied.
+  fireEvent.click(screen.getByRole('button', { name: 'Ẩn và xóa bộ lọc' }));
   expect(order()).toHaveLength(5);
+  fireEvent.click(screen.getByRole('button', { name: 'Hiện bộ lọc' }));
+  expect(screen.getByLabelText('Work Type')).toHaveValue('');
 
   const density = screen.getByRole('button', { name: 'Bảng gọn' });
   fireEvent.click(density);

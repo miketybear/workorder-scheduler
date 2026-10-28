@@ -152,7 +152,6 @@
 .iconButton[aria-pressed="true"], .iconButton[aria-expanded="true"] { border-color: var(--link); background: var(--accent-tint); color: var(--accent-deep); }
 /* On the dark header the calendar icon hovers like the main navigation. */
 .headerRange .iconButton:hover { background: #393939; color: #f4f4f4; }
-.iconBadge { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--link); color: var(--layer); font-size: 10px; line-height: 16px; }
 .spinning { display: inline-flex; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinning { animation: none; } }

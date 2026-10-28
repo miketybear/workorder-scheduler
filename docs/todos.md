@@ -58,7 +58,9 @@ Cập nhật: 2026-10-28.
 
 ## Thu gọn phần trên bảng WO — 2026-10-28
 
-- [x] **Chip tự bật/tắt, "Xóa bộ lọc" chỉ cho hàng lọc:** chọn chip không hiện "Xóa bộ lọc"; bấm lại chip để bỏ. Nút nằm trong hàng tìm kiếm/
+- [x] **Bỏ nút "Xóa bộ lọc":** đóng hàng lọc bằng icon phễu cũng xóa tìm kiếm/Status/Work Type (nhãn "Ẩn và xóa bộ lọc"), nên không còn bộ lọc
+      ẩn; bỏ số đếm trên icon. Chip vẫn tự tắt khi bấm lại. Trang thật: Work Type PM → 70/116, đóng icon → 116/116, không còn nút.
+- [x] (Thay bằng mục trên) **Chip tự bật/tắt, "Xóa bộ lọc" chỉ cho hàng lọc:** chọn chip không hiện "Xóa bộ lọc"; bấm lại chip để bỏ. Nút nằm trong hàng tìm kiếm/
       Status/Work Type, chỉ hiện khi một trong ba có giá trị và chỉ xóa ba ô đó. Trang thật: bật chip "Thiếu lịch", bảng không dịch, không có nút.
 
 - [x] **Đối chiếu WO thiếu lịch/PIC vẫn hiện thay đổi của nháp:** `validate_current` tính danh sách thay đổi trước, rồi mới gán
