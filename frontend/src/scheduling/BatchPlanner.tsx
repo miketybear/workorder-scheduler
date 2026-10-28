@@ -27,7 +27,7 @@ const targetForbidden = (row: BatchRow) => ['PM', 'CFT'].includes(row.baseline.w
 
 const groupDefaultTime = (field: EditableField) => (field === 'schedstart' ? '06:30' : field === 'targcompdate' ? '23:59' : '00:00');
 
-export function BatchPlanner({ selection, scope, timezone, writable, suspended, active = true, refreshVersion = 0, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, connection, sendOnly = false, sendNotes = [] }: {
+export function BatchPlanner({ selection, scope, timezone, writable, suspended, active = true, refreshVersion = 0, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, onUploadRequestRejected, connection, sendOnly = false, sendNotes = [] }: {
   selection: BatchSelection; scope: Scope; timezone: string; writable: boolean; suspended: boolean;
   active?: boolean;
   connection?: UploadConnection;
@@ -35,6 +35,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   onDraftReady?: (draft: DraftNotice) => void;
   onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>;
   onUploadRequestCreated?: (entry: UploadRecoveryEntry) => void;
+  onUploadRequestRejected?: (requestId: string) => void;
   refreshVersion?: number;
   // Send-only: a read-only summary plus the upload section, for a group that was assembled by the table.
   sendOnly?: boolean;
@@ -257,7 +258,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
         previewLabel="Đối chiếu nhóm với Maximo trước upload" autoPreview={sendOnly}
         buttonLabel={`Upload toàn bộ nhóm lên ${connection?.system === 'offshore' ? 'Offshore' : 'Onshore'} ${connection?.environment === 'production' ? 'production' : 'test'}`}
         onUploadFinalized={onUploadFinalized} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
-        onWorkflowCreated={onUploadRequestCreated} uploadAll permitted={writable && !suspended && active} />
+        onWorkflowCreated={onUploadRequestCreated} onWorkflowRejected={onUploadRequestRejected} uploadAll permitted={writable && !suspended && active} />
     </section>;
   const envChip = connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>;
   if (sendOnly) return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy) onClose(); }} className={`${styles.sidePanel} ${styles.batchPanel}`} role="dialog" aria-label="Gửi nhóm WO lên Maximo" aria-modal="false">

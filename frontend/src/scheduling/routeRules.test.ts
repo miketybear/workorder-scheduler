@@ -24,7 +24,7 @@ it('changes the fingerprint whenever a readiness field changes', () => {
 });
 
 it('has a reason for every code the server can give and falls back for unknown ones', () => {
-  for (const code of ['not_synced', 'supervisor_missing', 'is_child', 'status_not_routable', 'missing_schedule', 'missing_assignee', 'no_workflow',
+  for (const code of ['not_synced', 'upload_pending', 'supervisor_missing', 'is_child', 'status_not_routable', 'missing_schedule', 'missing_assignee', 'no_workflow',
     'no_active_assignment', 'multiple_assignments', 'already_routed', 'contract_changed', 'out_of_scope']) expect(reasonText(code)).not.toBe('Chưa route được');
   expect(reasonText('something_new')).toBe('Chưa route được');
 });
@@ -60,9 +60,10 @@ it('puts every row in one category and orders the chips by what can be acted on'
   expect(routeCategory(undefined, null)).toBe('checking');
   expect(routeCategory(undefined, info('ready', true))).toBe('ready');
   expect(routeCategory(undefined, info('missing_schedule'))).toBe('missing_schedule');
-  const chips = routeChips(['missing_schedule', 'missing_schedule', 'done', 'ready', 'missing_assignee', 'stranded', 'missing_schedule']);
-  expect(chips.map((chip) => chip.category)).toEqual(['ready', 'done', 'stranded', 'missing_schedule', 'missing_assignee']);
-  expect(chips[3].count).toBe(3);
+  const chips = routeChips(['missing_schedule', 'missing_schedule', 'done', 'ready', 'upload_pending', 'missing_assignee', 'stranded', 'missing_schedule']);
+  expect(chips.map((chip) => chip.category)).toEqual(['ready', 'upload_pending', 'done', 'stranded', 'missing_schedule', 'missing_assignee']);
+  expect(chips[1].count).toBe(1);
+  expect(chipText('upload_pending')).toBe('Upload chưa xong');
   // Workflow states the planner cannot act on get no chip; the row still shows the reason.
   expect(routeChips(['ready', 'no_active_assignment', 'no_workflow', 'is_child']).map((chip) => chip.category)).toEqual(['ready']);
   expect(chipText('missing_schedule')).toBe('Thiếu lịch');

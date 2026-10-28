@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { continueUpload, editableFields, getUploadStatus, previewUpload, reconcileUpload, submitUpload,
+import { continueUpload, editableFields, getUploadStatus, previewUpload, reconcileUpload, submitUpload, UploadRejectedError,
   type Baseline, type Saved, type UploadPreview, type UploadPreviewItem, type UploadRecoveryEntry, type UploadStatus } from '../api/drafts';
 import { RetrievalError } from '../api/workOrders';
 import { displayDate } from './presentation';
@@ -15,11 +15,12 @@ export type UploadConnection ={ label: string; system: 'onshore' | 'offshore'; e
 export type FinalizedUpload = { draft_id: string; version: number; items: { site_id: string; workorder_id: string; restore_source: { before: Baseline } | null }[] };
 
 export function UploadPreviewControls({ draft, selection, connection, connectionId, timezone, context, onDenied, enabled, buttonLabel, previewLabel,
-  active = true, onUploadFinalized, onWorkflowLock, discipline, onWorkflowCreated, uploadAll = false, permitted = true, autoPreview = false }: {
+  active = true, onUploadFinalized, onWorkflowLock, discipline, onWorkflowCreated, onWorkflowRejected, uploadAll = false, permitted = true, autoPreview = false }: {
   draft: Saved; selection: { site_id: string; workorder_id: string; wonum: string }[]; connection?: UploadConnection;
   connectionId: string; timezone: string; context: string; onDenied: () => void; enabled: boolean; buttonLabel: string; previewLabel: string; active?: boolean;
   onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>; onWorkflowLock?: (locked: boolean) => void;
   discipline: string; onWorkflowCreated?: (entry: UploadRecoveryEntry) => void;
+  onWorkflowRejected?: (requestId: string) => void;
   uploadAll?: boolean;
   permitted?: boolean;
   /** Reconcile with Maximo as soon as the panel is shown, without a button (the send screen has nothing else to do first). */
@@ -127,6 +128,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
     autoContinueRef.current = uploadAll;
     const startedSignature = signature;
     const controller = new AbortController(); operationController.current = controller;
+    let submittedRequestId = requestId;
     setBusy(true); setError('');
     try {
       let id = requestId;
@@ -143,6 +145,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
           setError('Maximo chưa thay đổi. Dữ liệu cần được đối chiếu trước khi gửi.'); return;
         }
         id = crypto.randomUUID(); setRequestId(id);
+        submittedRequestId = id;
         submittedDraft = draft; submittedConnection = connectionId;
         setWorkflow({ draft, preview: fresh, connectionId });
         onWorkflowCreated?.({ request_id: id, draft_id: draft.draft_id, version: draft.version,
@@ -171,6 +174,13 @@ export function UploadPreviewControls({ draft, selection, connection, connection
       }
     } catch (cause) {
       if (!controller.signal.aborted) {
+        if (cause instanceof UploadRejectedError) {
+          if (submittedRequestId) onWorkflowRejected?.(submittedRequestId);
+          setRequestId(null); setWorkflow(null); setPreview(null); setPreviewContext(''); setNeedsStatusCheck(false);
+          statusCheckRequiredRef.current = false; autoContinueRef.current = false; setViewState({ active, open: true });
+          setError(`Upload bị từ chối — Maximo chưa thay đổi: ${cause.message}`);
+          return;
+        }
         handleError(cause);
         setNeedsStatusCheck(true);
         setError('Chưa xác định được kết quả. Kiểm tra kết quả yêu cầu trước khi tiếp tục; hệ thống sẽ giữ nguyên yêu cầu hiện tại.');

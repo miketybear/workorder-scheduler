@@ -20,7 +20,7 @@ const labels: Record<EditableField, string> = { schedstart: 'Scheduled Start', s
 const target = (field: EditableField) => field === 'targstartdate' || field === 'targcompdate';
 export type EditorSelection = { key: Identity } | { draftId: string };
 
-export function DraftEditor({ selection, scope, writable, suspended, active = true, verifiedDetail, pmRestoreOrigin = null, prefill = null, onPrefillConsumed, seed = null, onSeedConsumed, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, timezone, connection }: {
+export function DraftEditor({ selection, scope, writable, suspended, active = true, verifiedDetail, pmRestoreOrigin = null, prefill = null, onPrefillConsumed, seed = null, onSeedConsumed, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, onUploadRequestRejected, timezone, connection }: {
   timezone: string;
   active?: boolean;
   connection?: UploadConnection;
@@ -31,6 +31,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   onDraftReady?: (draft: DraftNotice) => void;
   onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>;
   onUploadRequestCreated?: (entry: UploadRecoveryEntry) => void;
+  onUploadRequestRejected?: (requestId: string) => void;
 }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [changes, setChanges] = useState<Changes>({});
@@ -288,7 +289,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
                 previewLabel="Đối chiếu với Maximo trước upload"
                 buttonLabel={`Upload lên ${connection?.system === 'offshore' ? 'Offshore' : 'Onshore'} ${connection?.environment === 'production' ? 'production' : 'test'}`}
                 onUploadFinalized={onUploadFinalized} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
-                onWorkflowCreated={onUploadRequestCreated} />
+                onWorkflowCreated={onUploadRequestCreated} onWorkflowRejected={onUploadRequestRejected} />
             </section>}
           </div>
           <section className={`${styles.editorSection} ${styles.editorReference}`} aria-label="Thông tin WO từ Maximo">

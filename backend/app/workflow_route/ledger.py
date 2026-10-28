@@ -120,9 +120,21 @@ class PostgresLedger:
             )
             return [to_attempt(row) for row in rows]
 
-    async def unsynced(self, actor_user_id, connection_id, site_id, workorder_id) -> bool:
-        """An unsent draft of this user, or any upload still in flight, for this exact WO."""
+    async def unsynced(self, actor_user_id, connection_id, site_id, workorder_id) -> str | None:
+        """Why this exact WO is not synced; unresolved uploads take priority over drafts."""
         async with self.sessions() as db:
+            upload = await db.scalar(
+                select(UploadItem.id)
+                .where(
+                    UploadItem.connection_id == connection_id,
+                    UploadItem.site_id == site_id,
+                    UploadItem.workorder_id == workorder_id,
+                    UploadItem.state.in_(["pending", "sending", "unknown"]),
+                )
+                .limit(1)
+            )
+            if upload is not None:
+                return "upload_pending"
             draft = await db.scalar(
                 select(DraftItem.id)
                 .join(Draft, Draft.id == DraftItem.draft_id)
@@ -134,14 +146,4 @@ class PostgresLedger:
                 )
                 .limit(1)
             )
-            upload = await db.scalar(
-                select(UploadItem.id)
-                .where(
-                    UploadItem.connection_id == connection_id,
-                    UploadItem.site_id == site_id,
-                    UploadItem.workorder_id == workorder_id,
-                    UploadItem.state.in_(["pending", "sending", "unknown"]),
-                )
-                .limit(1)
-            )
-        return draft is not None or upload is not None
+        return "not_synced" if draft is not None else None

@@ -282,6 +282,7 @@ class MemoryLedger:
     def __init__(self):
         self.rows: list[Attempt] = []
         self.unsynced_keys: set[tuple] = set()
+        self.upload_pending_keys: set[tuple] = set()
         self.fail_insert = False
         self.snapshots: list[list[tuple]] = []
 
@@ -326,7 +327,10 @@ class MemoryLedger:
         ]
 
     async def unsynced(self, actor_user_id, connection_id, site_id, workorder_id):
-        return (connection_id, site_id, workorder_id) in self.unsynced_keys
+        key = (connection_id, site_id, workorder_id)
+        if key in self.upload_pending_keys:
+            return "upload_pending"
+        return "not_synced" if key in self.unsynced_keys else None
 
 
 class Writer:

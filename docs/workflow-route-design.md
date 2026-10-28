@@ -98,7 +98,8 @@ trả từng WO `ready` hoặc lý do cụ thể (mã ổn định):
 | Mã | Điều kiện |
 | --- | --- |
 | `out_of_scope` | WO không thuộc discipline/grant (trả như không tồn tại) |
-| `not_synced` | còn nháp chưa gửi hoặc upload đang chạy cho WO này (nút Route bị mờ) |
+| `not_synced` | còn nháp chưa gửi của người dùng hiện tại (nút Route bị mờ) |
+| `upload_pending` | WO có upload `pending`/`sending`/`unknown` của bất kỳ người dùng nào; ưu tiên trước nháp, vẫn chặn Route |
 | `supervisor_missing` | `SUPNAME` trống và Planner đang đăng nhập không ánh xạ được sang người trong nhóm `ALLSUPN` |
 | `is_child` | WO con (`parent` khác null) |
 | `status_not_routable` | status ngoài `APPR, WSCHED, SCHED, WMAT, WPCOND, CPLAN, WMATL` |
@@ -152,7 +153,7 @@ position; người thật nằm ở memo và ở audit của ứng dụng).
   - *Sẵn sàng*: nút Route bật, dòng có dải/nhãn xanh "Sẵn sàng route" để dễ nhận ra các WO đủ điều kiện (status, lịch,
     PIC/`ASSIGNEDTO`, việc đang chờ ở node 20/40, không còn nháp chưa gửi, và với PM có `SUPNAME` hoặc ánh xạ được).
   - *Chưa đủ điều kiện*: nút **mờ** kèm tooltip/nhãn lý do ngắn ("Còn nháp chưa gửi", "Thiếu lịch", "Chưa có PIC",
-    "Đã route"…); WO còn nháp luôn mờ (`not_synced`).
+    "Đã route"…); WO còn nháp luôn mờ (`not_synced`). Upload chưa đối soát dùng `upload_pending`, chip hành động "Upload chưa xong" và lý do "Đang có lần upload chưa đối soát — mở Gửi WO để kiểm tra kết quả". WO chỉ có upload chưa đối soát không được tính là "Còn nháp"; "Chưa có nháp" vẫn dựa trên nháp thực tế.
   - *Đã route*: nhãn "Đã route · <PIC>"; *Đang route*: vòng quay, khóa dòng; *Mất việc / Chưa rõ*: nhãn đỏ/vàng với
     hành động "Kiểm tra lại".
   Có thêm bộ lọc "Sẵn sàng route" để gom các WO đã đủ điều kiện. Kiểm tra sẵn sàng chạy theo lô cho các dòng đang hiện
@@ -199,3 +200,11 @@ position; người thật nằm ở memo và ở audit của ứng dụng).
 5. Thứ tự mở rộng cho MECHSUP/FIELDPRODSUP/RES/DECKFMHSE (cần cấp `MXAPIWFASSIGNMENT` cho nhóm bảo mật của từng
    tài khoản và API key test của họ); và cách xử lý WO dở dang (P13457863, H14323938) trước khi dùng thật.
 6. Chốt cách bảo vệ sau này khi chạy production: HTTPS bắt buộc, không giữ `maxauth` qua HTTP.
+
+### Upload bị từ chối và kết quả chưa xác định (2026-10-28)
+
+`POST /api/drafts/{id}/uploads` trả 409 là từ chối trước khi ghi Maximo trong yêu cầu đó: UI giữ nháp, cho đối chiếu mới và không tra receipt. Hiển thị "Upload bị từ chối — Maximo chưa thay đổi: <lý do>"; unresolved upload → "WO đang có lần upload chưa đối soát", preview changed → "Dữ liệu đã đổi, hãy đối chiếu lại", draft changed → "Nháp đã đổi, hãy mở lại"; lý do khác giữ nội dung backend. Thông báo này không kết luận về kết quả của lần upload cũ đang chờ đối soát. Lỗi mạng, timeout và 5xx vẫn dùng luồng chưa xác định/tra receipt, không gửi lại mù.
+
+Các kiểm tra nháp/preview và đặt chỗ upload chạy trước `execute_batch`/`transport.write`.
+Sau khi batch đã tồn tại, `submission_result` chuyển 409 từ thực thi, hoàn tất hoặc dựng trạng thái
+thành 503: dữ liệu audit bất nhất có thể được phát hiện sau ghi, nên không được báo là từ chối chắc chắn.

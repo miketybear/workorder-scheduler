@@ -160,6 +160,10 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     setUploadRecoveries((previous) => [...previous.filter((record) => record.entry.request_id !== entry.request_id),
       { principal_id: principal, entry }]);
   }, [session]);
+  const onUploadRequestRejected = useCallback((requestId: string) => {
+    setUploadRecoveries((previous) => previous.filter((record) => record.entry.request_id !== requestId));
+    setRecoveryResult((previous) => previous?.entry.request_id === requestId ? null : previous);
+  }, []);
   const onDraftReady = useCallback((draft: DraftNotice) => {
     draftRevision.current += 1;
     if (draft.items === null) knownDrafts.current.delete(draft.draft_id);
@@ -318,13 +322,18 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const worktypes = useMemo(() => [...new Set(rows?.map((row) => row.worktype).filter((type): type is string => !!type) ?? [])].sort(), [rows]);
   const routeScope = JSON.stringify(editorScope);
   const routeAvailable = grant?.capability === 'write' && routeStatus?.scope === routeScope && routeStatus.status.can_route;
+  const rawByKey = useMemo(() => new Map((rows ?? []).map((row) => [rowKey(row), row])), [rows]);
   // What the table already rules out is answered here; the server's answer is used only while the row is unchanged.
+  const routeLocalCode = useCallback((row: WorkOrder) =>
+    routeAvailable && row.drafts?.length ? null : localRouteCode(row), [routeAvailable]);
   const routeFresh = useCallback((row: WorkOrder): RouteInfo | null => {
-    const local = localRouteCode(row);
-    if (local) return infoFromLocal(row, local);
+    // Route readiness describes Maximo, even while the table displays a saved proposal.
+    const current = rawByKey.get(rowKey(row)) ?? row;
+    const local = routeLocalCode(current);
+    if (local) return infoFromLocal(current, local);
     const known = routeInfo[rowKey(row)];
-    return known && known.fingerprint === routeFingerprint(row) ? known : null;
-  }, [routeInfo]);
+    return known && known.fingerprint === routeFingerprint(current) ? known : null;
+  }, [routeInfo, routeLocalCode, rawByKey]);
   const facetRows = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('vi');
     return rows?.map((row) => effectiveOrder(row, choices[rowKey(row)])).filter((row) => (!statusFilter || row.status === statusFilter) &&
@@ -357,7 +366,6 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   useEffect(() => {
     if (active && window.matchMedia?.('(hover: none)').matches) loadCrew();
   }, [active, loadCrew]);
-  const rawByKey = useMemo(() => new Map((rows ?? []).map((row) => [rowKey(row), row])), [rows]);
   useEffect(() => {
     if (!active || checking || grant?.capability !== 'write' || rows === null) return;
     const controller = new AbortController();
@@ -379,7 +387,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   useEffect(() => {
     if (!routeAvailable || !rows) return;
     const controller = new AbortController();
-    const ask = rows.filter((row) => !localRouteCode(row) && routeInfoRef.current[rowKey(row)]?.fingerprint !== routeFingerprint(row));
+    const ask = rows.filter((row) => !routeLocalCode(row) && routeInfoRef.current[rowKey(row)]?.fingerprint !== routeFingerprint(row));
     if (!ask.length) return;
     (async () => {
       for (let start = 0; start < ask.length; start += MAX_ROUTE_BATCH) {
@@ -401,8 +409,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       }
     })();
     return () => controller.abort();
-  }, [routeAvailable, rows, routeRecheck, editorScope]);
-  const routeAsked = (rows ?? []).filter((row) => !localRouteCode(row));
+  }, [routeAvailable, rows, routeRecheck, editorScope, routeLocalCode]);
+  const routeAsked = (rows ?? []).filter((row) => !routeLocalCode(row));
   const routeProgress = routeAvailable && routeAsked.some((row) => !routeFresh(row))
     ? { done: routeAsked.filter((row) => routeFresh(row)).length, total: routeAsked.length } : null;
   const stagedKeys = Object.keys(inline).filter((key) => rawByKey.has(key));
@@ -876,10 +884,10 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
           editorScope.discipline, selection.key.site_id, selection.key.workorder_id])) ?? null : null}
         connection={{ label: grant.label, system: grant.system, environment: grant.environment }}
         verifiedDetail={rechecked} writable={grant.capability === 'write'} suspended={checking} onDirty={onDirty} onDenied={onDenied}
-        onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onClose={closePanel} />}
+        onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onUploadRequestRejected={onUploadRequestRejected} onClose={closePanel} />}
       {batch && grant && <BatchPlanner key={editorGeneration} sendOnly sendNotes={batch.notes} selection={batch.selection} scope={editorScope} timezone={grant.timezone} active={active}
         connection={{ label: grant.label, system: grant.system, environment: grant.environment }}
-        writable={grant.capability === 'write'} suspended={checking} refreshVersion={batchRefresh} onDirty={onDirty} onDenied={onDenied} onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onClose={closePanel} />}
+        writable={grant.capability === 'write'} suspended={checking} refreshVersion={batchRefresh} onDirty={onDirty} onDenied={onDenied} onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onUploadRequestRejected={onUploadRequestRejected} onClose={closePanel} />}
       {busy && <p role="status" className={rows === null ? undefined : styles.srOnly}>Đang lấy và kiểm tra đầy đủ các trang dữ liệu…</p>}
       {busy && rows === null && <div className={styles.skeleton} aria-hidden="true">{[0, 1, 2, 3, 4, 5].map((index) => <div key={index} />)}</div>}
       {grant && <div className={styles.woToolbar}>

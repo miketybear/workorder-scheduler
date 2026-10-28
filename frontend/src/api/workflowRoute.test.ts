@@ -46,3 +46,13 @@ it('rejects malformed answers instead of guessing', () => {
   expect(ok.items[0].state).toBe('stranded');
   expect(ok.counts).toEqual({ confirmed: 1 });
 });
+
+it('preserves upload_pending in route preview and rejected results', () => {
+  const identity = { site_id: 'BD1', workorder_id: '1', wonum: 'P1', code: 'upload_pending', assigned_to: null };
+  const preview = parsePreview({ contract: { ok: true, problem: null }, items: [{ ...identity,
+    ready: false, node_id: null, wfassignment_id: null, supervisor: null }] });
+  expect(preview.items[0]).toMatchObject({ code: 'upload_pending', ready: false });
+  const result = parseResult({ request_id: 'r', complete: true, counts: { rejected: 1 }, items: [{ ...identity,
+    state: 'rejected', wfassignment_id_after: null }] });
+  expect(result.items[0]).toMatchObject({ code: 'upload_pending', state: 'rejected' });
+});

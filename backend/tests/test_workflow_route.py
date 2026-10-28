@@ -293,6 +293,28 @@ def test_every_preview_reason_code(mutation, expected):
     assert all("maxauth" not in call.headers for call in fake.calls)
 
 
+@pytest.mark.parametrize(
+    "has_draft,has_upload,expected",
+    [(True, False, "not_synced"), (False, True, "upload_pending"), (True, True, "upload_pending")],
+)
+def test_unsent_draft_and_unresolved_upload_block_preview_and_route(
+    has_draft, has_upload, expected
+):
+    fake = FakeMaximo()
+    ctx = make_ctx(fake)
+    key = ctx.key("TEST", "100")
+    identity = (key.connection_id, key.site_id, key.workorder_id)
+    if has_draft:
+        ctx.ledger.unsynced_keys.add(identity)
+    if has_upload:
+        ctx.ledger.upload_pending_keys.add(identity)
+    assert run(service.evaluate(ctx, key)).code == expected
+    result = run(service.route_one(ctx, uuid.uuid4(), key))
+    assert (result.state, result.code) == ("rejected", expected)
+    assert ctx.ledger.rows[0].error_code == expected
+    assert fake.writes == []
+
+
 def test_nonexistent_and_out_of_scope_work_orders_are_indistinguishable():
     fake = FakeMaximo()
     ctx = make_ctx(fake)

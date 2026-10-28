@@ -131,6 +131,21 @@ it('submits only the verified preview with CSRF and validates scoped item status
   await expect(submitUpload(draft, 'stable-request-id', preview, 'one', new AbortController().signal)).rejects.toThrow('Không hoàn tất yêu cầu');
 });
 
+it.each([
+  ['Work order already has an unresolved upload', 'WO đang có lần upload chưa đối soát'],
+  ['Preview changed; preview again', 'Dữ liệu đã đổi, hãy đối chiếu lại'],
+  ['Draft changed; reopen before uploading', 'Nháp đã đổi, hãy mở lại'],
+  ['Other rejection detail', 'Other rejection detail'],
+])('parses a definite upload rejection: %s', async (detail, reason) => {
+  vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-wos-csrf=csrf-value');
+  const draft = { draft_id: 'draft', version: 3, state: 'draft' as const };
+  const preview = { draft_id: 'draft', version: 3, preview_hash: 'b'.repeat(64), send_enabled: true, gate: null,
+    items: [{ site_id: 'SITE', workorder_id: '100', code: 'ready' as const, warnings: [], before: { estdur: '8' }, changes: { estdur: '9' } }] };
+  respond({ detail }, 409);
+  await expect(submitUpload(draft, 'stable-request-id', preview, 'one', new AbortController().signal))
+    .rejects.toMatchObject({ status: 409, message: reason });
+});
+
 it('accepts only confirmed PM restoration evidence with a complete valid original baseline', async () => {
   const draft = { draft_id: 'draft', version: 3, state: 'draft' as const };
   const selected = [{ site_id: 'SITE', workorder_id: '100' }];
