@@ -25,6 +25,12 @@ Cập nhật: 2026-10-28.
 
 ## Thu gọn phần trên bảng WO — 2026-10-28
 
+- [x] **Chia trang và icon Cập nhật:** bảng hiện 20 WO/trang trên dữ liệu đã lọc, thanh "‹ 1 2 … › 21–40 / 116" dưới bảng; đổi search/Status/chip
+      về trang 1, Cập nhật giữ trang (hoặc trang cuối nếu ít đi). "Chọn tất cả" chỉ chọn trang đang xem; lựa chọn ở trang khác giữ khi chuyển trang
+      và xóa khi đổi bộ lọc. Ctrl+D chỉ điền vào dòng đã chọn trên trang đang xem. Số trên chip và "Hiển thị X / Y" vẫn tính trên toàn bộ.
+      Nút Cập nhật thành icon làm mới (xoay khi đang tải) cạnh icon toàn màn hình. Test mới cho phân trang và icon; frontend 584/584 đạt;
+      đã xem trên trang thật (116 WO → 6 trang).
+
 - [x] **Icon và footer (theo góp ý trên trang):** khoảng ngày hiện `dd/mm/yyyy → dd/mm/yyyy` (ngày cuối nằm trong khoảng) cạnh chip môi trường
       trên header, kèm icon lịch mở phần đổi khoảng ngày; toàn màn hình là icon ở góc phải toolbar. Khi toàn màn hình hai thứ này xuống toolbar.
       Bỏ câu "Bộ lọc chỉ áp dụng…" và số "sẵn sàng route" (chip đã có). "Hiển thị X / Y WO" và "Cập nhật lần cuối" xuống footer; cảnh báo

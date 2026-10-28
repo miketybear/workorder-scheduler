@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DateTimeInput } from '../components/DateTimeInput';
-import { CalendarIcon, MaximizeIcon, MinimizeIcon } from '../components/RouteIcon';
+import { CalendarIcon, MaximizeIcon, MinimizeIcon, RenewIcon } from '../components/RouteIcon';
 
 import { getAuthSummary, loginUrl, type Session } from '../api/client';
 import { RetrievalError, retrieveWorkOrders, type WorkOrder, type WorkOrderFilter } from '../api/workOrders';
@@ -45,6 +45,9 @@ export function mergePmOrigin(current: Map<string, Baseline>, principal: string,
   else if (!origin && receipt.restore_source?.before.worktype === 'PM') next.set(key, receipt.restore_source.before);
   return next;
 }
+
+/** Rows per table page; a month of WOs stays scannable without endless scrolling. */
+const PAGE_SIZE = 20;
 
 export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion = null, onPicSuggestionHandled, headerSlot = null, footerSlot = null }: { active?: boolean; autoRetrieve?: boolean; picSuggestion?: PicSuggestion | null; onPicSuggestionHandled?: () => void;
   /** Where the loaded range and its change button go in the app header; without it they stay in the toolbar. */
@@ -310,10 +313,15 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     return rows?.map((row) => effectiveOrder(row, choices[rowKey(row)])).filter((row) => (!statusFilter || row.status === statusFilter) &&
       (!query || [row.wonum, row.description, row.location].some((value) => value?.toLocaleLowerCase('vi').includes(query)))) ?? [];
   }, [rows, search, statusFilter, choices]);
+  const [page, setPage] = useState(0);
   const visibleRows = useMemo(() => facetRows.filter((row) =>
     !chipFilter || (chipFilter === 'no_draft' ? !row.drafts?.length :
       (routeAvailable ? routeCategory(routeOutcome[rowKey(row)], routeFresh(row)) : localRouteCode(row)) === chipFilter)),
   [facetRows, chipFilter, routeAvailable, routeFresh, routeOutcome]);
+  // The table shows one page of the filtered rows; a refresh that shrinks the list lands on its last page.
+  const pageCount = Math.max(1, Math.ceil(visibleRows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageRows = useMemo(() => visibleRows.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE), [visibleRows, currentPage]);
 
   // The PIC drop-down needs the crew of the scope; read it once, the first time the pointer or focus reaches the table.
   const crewScope = JSON.stringify(editorScope);
@@ -413,7 +421,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     const marker = chosenPlan(source, choices[key]);
     const value = shown(source, marker && !marker.baseline_changed ? marker.changes : {}, inline[key] ?? {}, grant.timezone)[field];
     if (!value) return;
-    const visibleKeys = new Set(visibleRows.map(rowKey));
+    // Fill down only into rows the planner can see on this page.
+    const visibleKeys = new Set(pageRows.map(rowKey));
     setInlineNotice(''); setInline((previous) => selectedKeys.filter((target) => target !== key && visibleKeys.has(target) && rawByKey.has(target)).reduce((acc, target) => {
       const order = rawByKey.get(target)!; const plan = chosenPlan(order, choices[target]);
       return stage(acc, target, field, value, shown(order, plan && !plan.baseline_changed ? plan.changes : {}, {}, grant.timezone)[field]);
@@ -482,7 +491,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     setUpdatedAt(null); setStale(false);
     selected.current = null;
     retrieved.current = null; setLoadedRange(null);
-    setBatch(null); setSelectedKeys([]); setChipFilter(''); setInline({}); setInlineErrors({}); setInlineNotice('');
+    setBatch(null); setSelectedKeys([]); setChipFilter(''); setPage(0); setInline({}); setInlineErrors({}); setInlineNotice('');
     setChoices({}); setChooser(null); setSendError('');
     setRouteStatus(null); setRouteInfo({}); setRouteOutcome({}); setRouteTargets(null);
     setSelection(null); setRechecked(null); dirty.current = false;
@@ -550,7 +559,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     setSelection(null); setBatch(null); setChooser(null); setRechecked(null); dirty.current = false;
   }
   // A selection must never include rows the planner can no longer see, so any filter change clears it.
-  function filterChanged() { setSelectedKeys([]); }
+  function filterChanged() { setSelectedKeys([]); setPage(0); }
   // What the table shows for this row (group draft changes plus unsaved cell edits), handed to the single-WO editor.
   function carryToEditor(row: WorkOrder, plan?: PlanningMarker) {
     const key = rowKey(row); const staged = inline[key];
@@ -846,15 +855,19 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
           <input type="search" placeholder="Tìm WO, mô tả hoặc Tag Name" aria-label="Tìm WO, mô tả hoặc Tag Name" value={search}
             onChange={(event) => { filterChanged(); setSearch(event.target.value); }} /></label>}
         {updatedAt !== null && rows !== null && <div className={styles.toolbarActions}>
-          <button className={styles.tertiary} disabled={busy || verifying || checking} onClick={() => refreshSession.current?.(true)}>Cập nhật</button>
           {rows.length > 0 && <button className={styles.ghost} aria-pressed={dense} onClick={toggleDensity}>{dense ? 'Bảng thoáng' : 'Bảng gọn'}</button>}
           {(search.trim() || statusFilter || chipFilter) && <button className={styles.ghost} onClick={() => {
             filterChanged(); setSearch(''); setStatusFilter(''); setChipFilter('');
           }}>Xóa bộ lọc</button>}
         </div>}
-        <button type="button" className={`${styles.iconButton} ${styles.fullscreenToggle}`} aria-pressed={fullScreen}
-          aria-label={fullScreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} title={fullScreen ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình'}
-          onClick={() => setFullScreen((value) => !value)}>{fullScreen ? <MinimizeIcon size={16} /> : <MaximizeIcon size={16} />}</button>
+        <span className={styles.toolbarEnd}>
+          {updatedAt !== null && rows !== null && <button type="button" className={styles.iconButton} aria-label="Cập nhật" title="Cập nhật dữ liệu từ Maximo"
+            aria-busy={busy || verifying} disabled={busy || verifying || checking} onClick={() => refreshSession.current?.(true)}>
+            <span className={busy || verifying ? styles.spinning : undefined}><RenewIcon size={16} /></span></button>}
+          <button type="button" className={`${styles.iconButton} ${styles.fullscreenToggle}`} aria-pressed={fullScreen}
+            aria-label={fullScreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} title={fullScreen ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình'}
+            onClick={() => setFullScreen((value) => !value)}>{fullScreen ? <MinimizeIcon size={16} /> : <MaximizeIcon size={16} />}</button>
+        </span>
       </div>}
       {/* Warnings stay above the table; the routine count and update time go to the footer when there is one. */}
       {rows !== null && (stale || rows.length === 0) && <p role="status" className={`${styles.statusLine}${stale ? ` ${styles.statusLineStale}` : ''}`}>
@@ -904,13 +917,14 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       {rows !== null && <>
         {visibleRows.length > 0 && grant && <>
           <div className={`${styles.tableWrap} ${styles.compactTable}${dense ? ` ${styles.denseTable}` : ''}`} tabIndex={0} role="region" aria-label="WO từ Maximo" onMouseEnter={loadCrew} onFocusCapture={loadCrew} onKeyDown={(event) => { moveBetweenRows(event); }}>
-          <table><thead><tr>{grant.capability === 'write' && <th scope="col"><input type="checkbox" aria-label={`Chọn tất cả ${visibleRows.length} WO trong kết quả lọc đã tải`} checked={!!visibleRows.length && visibleRows.every((row) => selectedKeys.includes(rowKey(row)))} onChange={(e) => setSelectedKeys((previous) => {
-            const visibleKeys = new Set(visibleRows.map(rowKey));
+          <table><thead><tr>{grant.capability === 'write' && <th scope="col"><input type="checkbox" aria-label={`Chọn tất cả ${pageRows.length} WO trên trang này`} checked={!!pageRows.length && pageRows.every((row) => selectedKeys.includes(rowKey(row)))} onChange={(e) => setSelectedKeys((previous) => {
+            const visibleKeys = new Set(pageRows.map(rowKey));
             const retained = previous.filter((key) => !visibleKeys.has(key));
             return e.target.checked ? [...retained, ...visibleKeys] : retained;
           })} /></th>}
             <th scope="col">Work Order / Type</th><th scope="col">Công việc / Tag Name</th><th scope="col">Status / Priority</th><th scope="col">Duration (giờ)</th><th scope="col">Lịch dự kiến</th><th scope="col">Target Start / Finish</th><th scope="col">Assigned PIC</th>{routeAvailable && <th scope="col">Action</th>}</tr></thead>
-            <tbody>{visibleRows.map((row, index) => {
+            <tbody>{pageRows.map((row, pageIndex) => {
+              const index = currentPage * PAGE_SIZE + pageIndex;
               const plan = chosenPlan(row, choices[rowKey(row)]);
               const changed = (fields: string[]) => !!plan && !plan.baseline_changed && fields.some((field) => field in plan.changes);
               return <tr key={JSON.stringify([scope, row.siteid, row.workorderid])} data-route={routeAvailable && !row.drafts?.length && routeFresh(row)?.ready && !routeOutcome[rowKey(row)] ? 'ready' : undefined}>
@@ -976,6 +990,13 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
                 return <td data-label="Action"><RouteAction kind={kind} label={`Route ${row.wonum} đến PIC`} text={text} onRoute={() => setRouteTargets([row])} /></td>;
               })()}
             </tr>; })}</tbody></table></div>
+          {pageCount > 1 && <nav className={styles.pager} aria-label="Trang của bảng WO">
+            <button type="button" className={styles.iconButton} aria-label="Trang trước" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>‹</button>
+            {Array.from({ length: pageCount }, (_, number) => <button type="button" key={number} className={styles.pageButton}
+              aria-current={number === currentPage ? 'page' : undefined} aria-label={`Trang ${number + 1}`} onClick={() => setPage(number)}>{number + 1}</button>)}
+            <button type="button" className={styles.iconButton} aria-label="Trang sau" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)}>›</button>
+            <span className={styles.pagerRange}>{currentPage * PAGE_SIZE + 1}–{currentPage * PAGE_SIZE + pageRows.length} / {visibleRows.length}</span>
+          </nav>}
         </>}
       </>}
       {routeTargets && grant && routeStatus && <RoutePanel scope={editorScope} status={routeStatus.status} rows={routeTargets}
