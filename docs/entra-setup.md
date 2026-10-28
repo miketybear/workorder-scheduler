@@ -14,8 +14,8 @@ Staging/production không khởi động nếu thiếu Entra; cấu hình thiế
 4. HTTPS với chứng chỉ browser/server tin cậy; mạng backend tới login.microsoftonline.com.
 5. Cấu hình Enterprise Application yêu cầu assignment và gán nhóm/người được đăng nhập.
 
-Ứng dụng chỉ yêu cầu OIDC login/profile, không gọi Microsoft Graph và không yêu cầu
-quyền đọc WO qua Entra. WO grants nằm trong PostgreSQL theo connection + discipline.
+Mặc định ứng dụng chỉ yêu cầu OIDC login/profile. Tính năng ảnh tùy chọn dùng Microsoft
+Graph delegated `User.Read`, không cấp quyền WO. WO grants nằm trong PostgreSQL theo connection + discipline.
 User mới có identity theo tenant ID + object ID, không có grants và không có admin.
 Không dùng email, roles hoặc nhóm từ browser làm bằng chứng quyền WO.
 Planner grants có API/CLI audit; xem [Planner access](planner-access.md).
@@ -125,3 +125,41 @@ revoked grants và hai discipline; ghi kết quả vào implementation-status.md
 
 Tham khảo: [MSAL code flow](https://msal-python.readthedocs.io/en/latest/),
 [MSAL 1.39 OIDC implementation](https://github.com/AzureAD/microsoft-authentication-library-for-python/blob/1.39.0/msal/oauth2cli/oidc.py).
+
+
+## Entra profile photo - 2026-10-28
+
+Default: `WOS_ENTRA__PROFILE_PHOTO_ENABLED=true` (owner decision 2026-10-28; IT confirmed
+the required permissions are set). Set it to `false` only if a tenant blocks it. IT checks
+the app registration: **API permissions > Add a permission > Microsoft Graph
+> Delegated permissions > User.Read**. No Application permission is needed.
+`User.Read` normally permits user consent; tenant policy may require IT to **Grant admin
+consent**. IT confirmed delegated `User.Read` and consent on 2026-10-28 (reported by the project owner);
+the live photo is verified only after a fresh sign-in.
+Allow outbound HTTPS from the backend to `graph.microsoft.com`.
+
+When enabled, login requests `User.Read`. A denied optional permission starts one fresh
+OIDC-only flow with new state/nonce/PKCE; identity validation is never bypassed. Keep the
+flag false until consent is ready. Log out and log in again after enabling the feature.
+
+The callback fetches `GET https://graph.microsoft.com/v1.0/me/photos/48x48/$value` once,
+with a 5-second timeout and a 128 KiB limit, accepting JPEG/PNG only. The delegated token
+is transient: no token is stored in the database, shared cache or browser. Only image
+bytes/content type enter a process-local session cache (128 entries, 8-hour TTL,
+served only while the database session remains valid). Logout/session rotation removes the old entry. No migration
+or runtime dependency is needed; existing HTTPX/MSAL provide the required functionality.
+Expired entries are purged on cache access/insertion. Restart, eviction or requests
+reaching another worker can cause initial-letter fallback.
+This tradeoff avoids persisting optional photo data; deployments requiring consistent
+photos across workers would need a separate shared image-cache design.
+
+`GET /api/auth/photo` authenticates the current session and serves only that session's
+photo. The frontend `user` query parameter distinguishes browser URLs; it never selects
+another person's photo. Missing photo/consent or Graph failure means 404; unauthenticated
+requests receive 401. Images use `Cache-Control: private, max-age=0, must-revalidate`,
+`Vary: Cookie` and validated content type. The same-origin avatar uses `alt=""` and falls
+back to the initial on error, preserving size and account-menu behavior. Never enable
+PII/token logging; the proxy logging rules above still apply.
+
+Microsoft references: [profile photo endpoint and 48x48 size](https://learn.microsoft.com/en-us/graph/api/profilephoto-get?view=graph-rest-1.0),
+[User.Read delegated permission and consent](https://learn.microsoft.com/en-us/graph/permissions-reference#userread).

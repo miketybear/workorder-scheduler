@@ -2,6 +2,18 @@
 
 Cập nhật: 2026-10-28.
 
+## Ảnh đại diện Entra trong header — 2026-10-28
+
+- [x] Backend tải ảnh Graph 48x48 một lần trong callback bằng delegated `User.Read`, bật tùy chọn qua `WOS_ENTRA__PROFILE_PHOTO_ENABLED` (mặc định false). Token chỉ tồn tại trong callback; cache bộ nhớ chỉ giữ JPEG/PNG tối đa 128 KiB, tối đa 128 phiên, TTL 8 giờ; endpoint luôn xác thực session DB. Không migration/dependency mới, không commit.
+- [x] `/api/auth/photo` chỉ trả ảnh phiên hiện tại, 401 khi chưa đăng nhập, 404 khi không có ảnh; private cache phải revalidate, không cho query chọn người khác. Logout/rotation xóa ảnh cũ. Consent bị từ chối khởi tạo một flow OIDC mới không có Graph; lỗi/timeout Graph không chặn login.
+- [x] UserMenu dùng ảnh cùng origin, `alt=""`, giữ vòng tròn/menu; lỗi ảnh trở về chữ cái, đổi identity reset trạng thái. Đã thêm test ảnh/fallback/đổi tài khoản và backend mock Graph, cách ly phiên, token không lộ trong response/log.
+- [x] Cập nhật [Entra setup](entra-setup.md), gồm delegated permission/admin consent theo policy tenant và giới hạn cache nhiều worker. Rà soát độc lập phát hiện dạng lỗi consent `invalid_grant` + `consent_required`/65001; đã bổ sung xử lý và test.
+- Kiểm chứng backend: Ruff check/format đạt (153 file); full offline **902 passed, 542 deselected**, gồm 18 ca ảnh mới; PostgreSQL `test_entra_postgres.py` + `test_postgres.py`: **14 passed**, test logout có kiểm tra xóa cache đã chạy lại đạt. Lượt sandbox ban đầu lỗi ACL thư mục Temp; chạy ngoài sandbox đạt, đã dọn thư mục tạm.
+- Kiểm chứng frontend: typecheck/lint đạt; test avatar **4/4** đạt. `npm test` song song: **595 passed, 1 failed** ở test WorkOrders gộp draft (callback `openBatch` chưa gọi khi assertion); không đổi mã/test WorkOrders. Chạy lại full suite `npm test -- --maxWorkers=1`: **596/596 passed, 47/47 file**. Vitest cần chạy ngoài sandbox do `spawn EPERM`. `git diff --check` đạt. Cần theo dõi độ ổn định test song song; không suy ra đã sửa lỗi thời điểm của test ngoài phạm vi này.
+- Giới hạn: **chưa kiểm chứng tenant/Graph/consent hoặc trình duyệt thật**. Restart/eviction/request tới worker khác có thể hiển thị chữ cái; không lưu ảnh trong PostgreSQL. Cache hết TTL được dọn khi đọc/thêm ảnh, phiên DB hết hạn luôn bị từ chối ngay.
+- [x] **Theo chủ dự án (2026-10-28):** IT xác nhận đã set quyền; ảnh **bật mặc định** (`profile_photo_enabled=True`, đặt false nếu tenant chặn). Header bỏ họ tên, chỉ còn ảnh/chữ cái (tên trong tooltip và menu tài khoản).
+- [ ] Nghiệm thu trên tenant thật sau khi đăng nhập lại: có ảnh, không có ảnh, logout, đổi tài khoản.
+
 ## Upload yêu cầu đủ lịch và PIC — 2026-10-28
 
 - [x] Backend kiểm tra `schedstart`, `schedfinish`, `assignedto` sau khi ghép nháp với Maximo hiện tại trong `validate_current`, dùng chung cho preview và kiểm tra cuối trước gửi. WO thiếu dữ liệu trả `incomplete_schedule` kèm `missing: ["schedule"]`, `["pic"]` hoặc cả hai; bất kỳ WO chưa sẵn sàng chặn upload cả nhóm. Nháp chưa hoàn chỉnh vẫn lưu theo validation hiện có; không đổi quy tắc route-to-Tech-PIC.

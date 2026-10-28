@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.assignments.routes import router as assignments_router
 from app.auth.entra import router as entra_router
+from app.auth.photos import PhotoStore, session_photo
 from app.auth.planner import router as planner_router
 from app.auth.sessions import logout, session_info
 from app.auth.settings import router as settings_router
@@ -62,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="Work Order Scheduler", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
+    app.state.profile_photos = PhotoStore()
     app.state.work_order_snapshots = SnapshotCache(
         settings.work_order_snapshot_ttl_seconds,
         settings.work_order_snapshot_max_entries,
@@ -134,6 +136,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"status": "ok", "scope": "database-schema-only"}
 
     app.add_api_route("/api/auth/session", session_info, methods=["GET"])
+    app.add_api_route("/api/auth/photo", session_photo, methods=["GET"])
     app.add_api_route("/api/auth/logout", logout, methods=["POST"])
 
     return app

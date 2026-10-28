@@ -8,6 +8,15 @@ import { ThemeToggle } from './ThemeToggle';
 
 type Auth = { available: boolean; session: Session | null } | null;
 
+function ProfileAvatar({ userId, initial }: { userId: string; initial: string }) {
+  const [failed, setFailed] = useState(false);
+  const photoUrl = `/api/auth/photo?user=${encodeURIComponent(userId)}`;
+  return <span className={styles.avatar} aria-hidden="true">
+    {!failed && <img src={photoUrl} alt="" onError={() => setFailed(true)} />}
+    {failed && initial}
+  </span>;
+}
+
 function useAuth(): Auth {
   const [auth, setAuth] = useState<Auth>(null);
   useEffect(() => {
@@ -54,8 +63,11 @@ export function UserMenu({ children }: { children?: ReactNode }) {
     {session && <EnvironmentChip session={session} />}
     {session && children}
     <details className={styles.userMenu} open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary aria-label={`Menu tài khoản · ${name}`}><span className={styles.avatar} aria-hidden="true">{name.slice(0, 1).toUpperCase()}</span>
-        <span className={styles.userName}>{name}</span></summary>
+      {/* Only the photo (or initial) shows in the header; the full name is in the tooltip and the open menu. */}
+      <summary aria-label={`Menu tài khoản · ${name}`} title={name}>{session
+        ? <ProfileAvatar key={session.user.id} userId={session.user.id} initial={name.slice(0, 1).toUpperCase()} />
+        : <span className={styles.avatar} aria-hidden="true">{name.slice(0, 1).toUpperCase()}</span>}
+</summary>
       <div className={styles.menuPanel} onClick={(event) => { if ((event.target as HTMLElement).closest('a')) setOpen(false); }}>
         {session && <p className={styles.menuIdentity}><strong>{session.user.name}</strong>
           {session.grants.map((grant) => <small key={`${grant.connection_id}/${grant.discipline}`}>

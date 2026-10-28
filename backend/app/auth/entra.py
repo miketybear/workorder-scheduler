@@ -11,6 +11,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from starlette.concurrency import run_in_threadpool
 
+from app.auth.photos import fetch_photo
 from app.auth.sessions import SESSION_COOKIE, issue_session, set_session_cookies, token_hash
 from app.config import EntraSettings
 from app.db.models import LoginFlow, LoginSession, User
@@ -33,9 +34,11 @@ def msal_client(settings: EntraSettings) -> ConfidentialClientApplication:
 
 
 def begin_flow(settings: EntraSettings) -> dict:
-    return msal_client(settings).initiate_auth_code_flow(
-        scopes=[], redirect_uri=settings.redirect_uri, response_mode="query"
+    flow = msal_client(settings).initiate_auth_code_flow(
+        scopes=settings.login_scopes, redirect_uri=settings.redirect_uri, response_mode="query"
     )
+    flow["photo_requested"] = settings.profile_photo_enabled
+    return flow
 
 
 def redeem_flow(settings: EntraSettings, flow: dict, response: dict) -> dict:
@@ -76,6 +79,20 @@ def identity_claims(result: dict, settings: EntraSettings) -> tuple[UUID, UUID, 
     return tenant, object_id, name[:200] if isinstance(name, str) and name else "Planner"
 
 
+def photo_consent_failed(result: dict) -> bool:
+    if result.get("error") in {
+        "access_denied",
+        "consent_required",
+        "interaction_required",
+        "invalid_scope",
+    }:
+        return True
+    # Entra can return consent failures from the token endpoint as invalid_grant.
+    return result.get("error") == "invalid_grant" and (
+        result.get("suberror") == "consent_required" or 65001 in (result.get("error_codes") or [])
+    )
+
+
 @router.get("/configuration")
 async def configuration(request: Request):
     return {"login_available": request.app.state.settings.entra is not None}
@@ -86,6 +103,10 @@ async def login(request: Request):
     settings = request.app.state.settings.entra
     if settings is None:
         raise HTTPException(503, "Sign-in is not configured")
+    return await start_login(request, settings)
+
+
+async def start_login(request: Request, settings: EntraSettings):
     try:
         flow = await run_in_threadpool(begin_flow, settings)
     except (RequestException, ValueError):
@@ -145,9 +166,28 @@ async def callback(request: Request):
         return failure
     try:
         result = await run_in_threadpool(redeem_flow, settings, stored.flow, params)
+        if (
+            stored.flow.get("photo_requested") is True
+            and isinstance(params.get("state"), str)
+            and secrets.compare_digest(params["state"], stored.flow.get("state", ""))
+            and photo_consent_failed(result)
+        ):
+            # Never authenticate from this error. Restart once with fresh ID-only state/nonce.
+            return await start_login(
+                request, settings.model_copy(update={"profile_photo_enabled": False})
+            )
         tenant, object_id, name = identity_claims(result, settings)
     except (RequestException, ValueError, KeyError, TypeError, RuntimeError, jwt.PyJWTError):
         return failure
+    access_token = result.pop("access_token", None)
+    result.pop("refresh_token", None)
+    result.pop("id_token", None)
+    photo = (
+        await fetch_photo(access_token)
+        if settings.profile_photo_enabled and isinstance(access_token, str) and access_token
+        else None
+    )
+    del access_token
     async with request.app.state.sessions.begin() as db:
         await db.execute(
             insert(User)
@@ -176,6 +216,10 @@ async def callback(request: Request):
         if old:
             await db.execute(delete(LoginSession).where(LoginSession.token_hash == token_hash(old)))
         session_token, csrf = await issue_session(db, user)
+    if old:
+        request.app.state.profile_photos.drop_session(token_hash(old))
+    if photo:
+        request.app.state.profile_photos.put(token_hash(session_token), photo)
     response = RedirectResponse(
         "/",
         status_code=303,
