@@ -63,6 +63,8 @@ it('puts every row in one category and orders the chips by what can be acted on'
   const chips = routeChips(['missing_schedule', 'missing_schedule', 'done', 'ready', 'missing_assignee', 'stranded', 'missing_schedule']);
   expect(chips.map((chip) => chip.category)).toEqual(['ready', 'done', 'stranded', 'missing_schedule', 'missing_assignee']);
   expect(chips[3].count).toBe(3);
+  // Workflow states the planner cannot act on get no chip; the row still shows the reason.
+  expect(routeChips(['ready', 'no_active_assignment', 'no_workflow', 'is_child']).map((chip) => chip.category)).toEqual(['ready']);
   expect(chipText('missing_schedule')).toBe('Thiếu lịch');
   expect(chipText('something_new')).toBe('Chưa route được');
 });

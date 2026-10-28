@@ -124,9 +124,12 @@ const CHIP_TEXT: Record<string, string> = {
 export const chipText = (category: string): string => CHIP_TEXT[category] ?? reasonText(category);
 
 /** Chips in reading order: what can be acted on first, then what is done, then the reasons by size. */
+/** Workflow states in Maximo the planner cannot act on from this app; the row's Action reason still explains them, but they get no chip. */
+const UNCHIPPED: ReadonlySet<string> = new Set(['no_active_assignment', 'no_workflow', 'is_child']);
+
 export function routeChips(categories: string[]): { category: string; count: number }[] {
   const counts = new Map<string, number>();
-  for (const category of categories) counts.set(category, (counts.get(category) ?? 0) + 1);
+  for (const category of categories) if (!UNCHIPPED.has(category)) counts.set(category, (counts.get(category) ?? 0) + 1);
   const rank = (category: string) => ['ready', 'done', 'stranded', 'unknown', 'checking'].indexOf(category);
   return [...counts].map(([category, count]) => ({ category, count })).sort((a, b) => {
     const ra = rank(a.category); const rb = rank(b.category);

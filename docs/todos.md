@@ -34,6 +34,12 @@ Cập nhật: 2026-10-28.
 
 ## Thu gọn phần trên bảng WO — 2026-10-28
 
+- [x] **Cập nhật không đẩy bảng xuống:** khi xác minh phiên/tải lại, bảng có `aria-busy`, thanh tiến trình 3px dính mép trên và dòng mờ đi; icon
+      Cập nhật xoay. Hai dòng "Đang xác minh phiên…"/"Đang lấy…" chỉ còn cho trình đọc màn hình (lần tải đầu vẫn hiện cùng skeleton). Đo trên
+      trang thật: bảng đứng yên ở cùng vị trí khi bấm Cập nhật.
+- [x] **Bỏ chip cho trạng thái workflow không xử lý được trong app:** `no_active_assignment` ("Không có việc chờ"), `no_workflow`, `is_child`
+      không còn chip; lý do vẫn hiện ở cột Action/route preview. Ví dụ P13462775 đã đủ lịch và PIC nhưng BD_WO không chờ ở tài khoản route.
+
 - [x] **Menu trang, sắp xếp, bộ lọc và icon (theo góp ý trên trang):** ba trang gom vào nút ≡ góc trái (WO Scheduler / Resource Timeline /
       Rota Upload), kèm icon Home; tiêu đề header và tab trình duyệt theo trang. Bảng xếp theo ưu tiên cao nhất (số Maximo lớn hơn), rồi Scheduled
       Start sớm hơn, chưa có lịch cuối nhóm, rồi số WO. Tìm kiếm + Status + Work Type (mới) là một hàng ẩn/hiện bằng icon phễu (đếm bộ lọc đang
