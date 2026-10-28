@@ -256,6 +256,20 @@ it.each(['PM', 'CFT'])('locks target controls for %s', async (worktype) => {
   expect(groupControl(screen.getByLabelText('Target Start'))).toBeDisabled();
 });
 
+it.each(['PM', 'CFT'])('never includes target-change fields in a %s schedule draft payload', async (worktype) => {
+  vi.mocked(getDetail).mockResolvedValue({ ...detail, baseline: { ...baseline, worktype } });
+  vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'saved', version: 1, state: 'draft' });
+  render(<DraftEditor {...props} />);
+  fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
+  fireEvent.click(screen.getAllByRole('button').find((button) => button.textContent?.trim().startsWith('L'))!);
+  await waitFor(() => expect(saveDraft).toHaveBeenCalledTimes(1));
+  const sentChanges = vi.mocked(saveDraft).mock.calls[0][1];
+  expect(Object.keys(sentChanges).sort()).toEqual(['estdur', 'schedfinish']);
+  expect(sentChanges).not.toHaveProperty('targstartdate');
+  expect(sentChanges).not.toHaveProperty('targcompdate');
+  expect(sentChanges).not.toHaveProperty('change_target');
+});
+
 it.each(['read-only', 'session recheck', 'missing crew'])('disables editing and footer actions during %s', async (condition) => {
   vi.mocked(getDetail).mockResolvedValue({ ...detail, pics_configured: condition !== 'missing crew' });
   const view = render(<DraftEditor {...props} />);
@@ -572,4 +586,25 @@ it('falls back to the bare code when no name is known', async () => {
   render(<DraftEditor {...props} />);
   const select = await screen.findByLabelText('Assigned PIC');
   expect(within(select).getByRole('option', { name: 'OTHER' })).toBeInTheDocument();
+});
+
+it('disables deleting the draft while an upload outcome is unknown', async () => {
+  vi.mocked(openDraft).mockResolvedValue({ ...detail, draft_id: 'saved', version: 4, state: 'draft', changes: { estdur: '9' },
+    baseline_changed: false, changes_valid_now: true });
+  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'saved', version: 4, preview_hash: 'f'.repeat(64), send_enabled: true,
+    gate: null, items: [{ site_id: 'TEST', workorder_id: '100', code: 'ready', warnings: [], before: { estdur: '8' }, changes: { estdur: '9' } }] });
+  vi.mocked(submitUpload).mockRejectedValue(new RetrievalError(503, 'response unavailable'));
+  vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000001');
+  render(<DraftEditor {...props} selection={{ draftId: 'saved' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
+  await screen.findByLabelText('Est. Duration');
+  fireEvent.click(screen.getByText('\u0110\u1ed1i chi\u1ebfu v\u1edbi Maximo tr\u01b0\u1edbc upload'));
+  await waitFor(() => expect(previewUpload).toHaveBeenCalledTimes(1));
+  fireEvent.click(screen.getByText('Upload l\u00ean Onshore test'));
+  await waitFor(() => expect(submitUpload).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(screen.getAllByRole('button')[0]).toBeDisabled());
+  const remove = screen.getByRole('button', { name: 'Xóa nháp' });
+  expect(remove).toBeDisabled();
+  fireEvent.click(remove);
+  expect(screen.queryByRole('button', { name: 'Xác nhận xóa nháp' })).not.toBeInTheDocument();
+  expect(deleteDraft).not.toHaveBeenCalled();
 });

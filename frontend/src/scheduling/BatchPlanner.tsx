@@ -262,7 +262,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   const envChip = connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>;
   if (sendOnly) return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy) onClose(); }} className={`${styles.sidePanel} ${styles.batchPanel}`} role="dialog" aria-label="Gửi nhóm WO lên Maximo" aria-modal="false">
     <div className={styles.panelHeading}><h2>Gửi {rows.length || ''} WO lên Maximo</h2>{envChip}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng</button></div>
-    <p>{scope.discipline} · Các thay đổi dưới đây chỉ được gửi khi bạn bấm upload. Maximo chưa thay đổi.</p>
+    <p>{scope.discipline} · Các thay đổi dưới đây chỉ được gửi khi bạn bấm upload.</p>
     {sendNotes.length > 0 && <ul role="status">{sendNotes.map((note) => <li key={note}>{note}</li>)}</ul>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {saved && Object.keys(issues).length > 0 && !uploadLocked && <p role="alert">Maximo hoặc nháp này vừa đổi ở nơi khác. Đóng bảng này, bấm Cập nhật rồi Gửi lại để đồng bộ.</p>}

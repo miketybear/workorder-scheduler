@@ -1,6 +1,10 @@
 # TODO — Work Order Scheduler
 
-Cập nhật: 2026-10-19.
+Cập nhật: 2026-10-28.
+
+## Codex model default — 2026-10-28
+
+- [x] Changed the main project default to `gpt-6-astra` / `low` at the owner's request; aligned AGENTS.md and current usage instructions. Verified TOML values and diff. Existing sub-agent defaults remain unchanged. This configuration does not switch an active turn; live model execution was not tested.
 
 ## Đề xuất chưa làm — cập nhật 2026-10-19
 
@@ -115,6 +119,10 @@ Cập nhật: 2026-10-19.
       101. Link trong phản hồi dùng host `maximo.biendongpoc.vn` và phải đổi về host test trước khi gọi.
 - [x] **D8:** chủ dự án quyết định 2026-10-23 không xoay key ENISUP test. (Ban đầu: xoay key ENISUP test. Một lệnh khảo sát ngày 2026-10-23 đã gửi key
       tới `maximo.biendongpoc.vn` (bị từ chối, BMXAA9549E). Host đó là một Maximo khác; việc xác nhận nó là hệ thống nào vẫn mở.)
+- [x] **Test lại thao tác nút flow upload (2026-10-28):** Codex (CLI 0.164.0) bổ sung test Vitest có mock cho kế hoạch đơn/batch tháng, nháp 1/2/50/200 WO (201 bị chặn),
+      trước/sau khi có nháp và sau upload (confirmed/partial/conflict/unknown, khôi phục không gửi lại), PM/CFT không gửi trường target. Sửa 2 lỗi tìm thấy: nút
+      "Xóa nháp"/"Xác nhận xóa nháp" một WO nay khóa khi upload chưa rõ kết quả; màn "Gửi N WO" bỏ câu cố định "Maximo chưa thay đổi" (sai sau khi upload xong).
+      Frontend 575 test, lint/tsc đạt. Chưa có E2E trình duyệt (Playwright) và chưa upload thật lên Onshore test.
 - [x] **Màn "Gửi N WO" tự đối chiếu khi mở (2026-10-28):** bỏ nút "Đối chiếu nhóm với Maximo trước upload" và "Ẩn đối chiếu" ở chế độ gửi nhóm (`autoPreview`); mở panel là chạy
       đối chiếu chỉ đọc ngay, lỗi thì có "Thử lại đối chiếu". Màn sửa một WO giữ nút cũ. Lỗi bắt được khi xem trên trang thật: React StrictMode (dev) gắn-gỡ-gắn làm hủy yêu cầu đang
       bay mà cờ "đã bắt đầu" vẫn còn nên panel kẹt ở "Đang đối chiếu…"; cờ nay đặt lại khi gỡ, có test StrictMode (thất bại nếu bỏ dòng sửa). Đã xem trên nhóm nháp 2 WO (không upload).

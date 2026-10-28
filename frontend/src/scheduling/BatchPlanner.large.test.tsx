@@ -26,7 +26,7 @@ function props(rows: Detail[]) {
     onDirty: vi.fn(), onDenied: vi.fn(), onClose: vi.fn() };
 }
 
-it.each([100, 200])('edits, pastes, previews, saves and restores a %i-WO monthly batch with row exceptions', async (count) => {
+it.each([2, 50, 100, 200])('edits, pastes, previews, saves and restores a %i-WO monthly batch with row exceptions', async (count) => {
   const rows = monthlyRows(count), callbacks = props(rows);
   vi.mocked(prepareBatch).mockResolvedValue(rows);
   const view = render(<BatchPlanner {...callbacks} />);
@@ -63,9 +63,10 @@ it.each([100, 200])('edits, pastes, previews, saves and restores a %i-WO monthly
   expect(screen.getByText('Lưu nháp nhóm')).toBeDisabled();
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
   const preview = within(screen.getByRole('region', { name: 'Preview nhóm' }));
-  expect(preview.getAllByRole('row')).toHaveLength(count * 4 + count / 10 + 1);
+  const pmCount = Math.ceil(count / 10);
+  expect(preview.getAllByRole('row')).toHaveLength(count * 4 + pmCount + 1);
   expect(preview.getAllByText('Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.'))
-    .toHaveLength(count / 10);
+    .toHaveLength(pmCount);
   vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'monthly', version: 1, state: 'draft' });
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
   await screen.findByText(`Đã lưu nháp ${count} WO. Maximo chưa thay đổi.`);

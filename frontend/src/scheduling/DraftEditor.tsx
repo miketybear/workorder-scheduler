@@ -302,10 +302,10 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
     </div>
     {detail && <div className={styles.editorFooter}>
       {saved && writable && <div>
-        <button className={styles.dangerGhost} disabled={busy || suspended || confirmDelete} onClick={() => setConfirmDelete(true)}>Xóa nháp</button>
+        <button className={styles.dangerGhost} disabled={busy || suspended || uploadLocked || confirmDelete} onClick={() => setConfirmDelete(true)}>Xóa nháp</button>
         {confirmDelete && <div role="group" aria-label="Xác nhận xóa nháp">
           <p>Xóa nháp đã lưu này? Maximo giữ nguyên.</p>
-          <button className={styles.danger} disabled={busy || suspended} onClick={() => void mutate(true)}>Xác nhận xóa nháp</button>
+          <button className={styles.danger} disabled={busy || suspended || uploadLocked} onClick={() => void mutate(true)}>Xác nhận xóa nháp</button>
           <button className={styles.ghost} disabled={busy} onClick={() => setConfirmDelete(false)}>Hủy xóa</button>
         </div>}
       </div>}

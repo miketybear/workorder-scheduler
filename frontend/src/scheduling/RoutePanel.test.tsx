@@ -141,3 +141,60 @@ it('only explains the values it will write when there are any', async () => {
   open(true);
   await screen.findByText(/được ghi vào WO trên Maximo trước khi route/);
 });
+
+it.each([1, 2, 50, 200])('previews and routes exactly %i eligible WOs', async (count) => {
+  const selected = Array.from({ length: count }, (_, index) => order(`WO-${index + 1}`, String(index + 1)));
+  vi.mocked(previewRoute).mockResolvedValue({ contract: { ok: true, problem: null },
+    items: selected.map((row) => ready(row.workorderid, row.wonum!)) });
+  vi.mocked(routeWorkOrders).mockResolvedValue(result(selected.map((row) => [row.workorderid, 'confirmed', null])));
+  const onResult = vi.fn(), onSession = vi.fn(), onClose = vi.fn(), onDenied = vi.fn();
+  render(<RoutePanel scope={scope} status={status(true)} rows={selected} onSession={onSession} onResult={onResult} onClose={onClose} onDenied={onDenied} />);
+  const route = await screen.findByRole('button', { name: `Route ${count} WO` });
+  expect(route).toBeEnabled();
+  fireEvent.click(route);
+  await screen.findByText(new RegExp(`route ${count} WO\\.`));
+  expect(routeWorkOrders).toHaveBeenCalledOnce();
+  expect(vi.mocked(routeWorkOrders).mock.calls[0][2]).toHaveLength(count);
+  expect(onResult).toHaveBeenCalledOnce();
+  expect(onDenied).not.toHaveBeenCalled();
+  fireEvent.click(screen.getAllByRole('button').at(-1)!);
+  expect(onClose).toHaveBeenCalledOnce();
+});
+
+it.each([1, 2, 50, 200])('rechecks %i unknown WOs without routing them a second time', async (count) => {
+  const selected = Array.from({ length: count }, (_, index) => order(`WO-${index + 1}`, String(index + 1)));
+  vi.mocked(previewRoute).mockResolvedValue({ contract: { ok: true, problem: null },
+    items: selected.map((row) => ready(row.workorderid, row.wonum!)) });
+  vi.mocked(routeWorkOrders).mockResolvedValue(result(selected.map((row) => [row.workorderid, 'unknown', 'outcome_unknown'])));
+  vi.mocked(reconcileRoute).mockResolvedValue(result(selected.map((row) => [row.workorderid, 'confirmed', null])));
+  render(<RoutePanel scope={scope} status={status(true)} rows={selected} onSession={vi.fn()} onResult={vi.fn()} onClose={vi.fn()} onDenied={vi.fn()} />);
+  fireEvent.click(await screen.findByRole('button', { name: `Route ${count} WO` }));
+  await waitFor(() => expect(screen.getAllByRole('button').some((button) => button.textContent?.trim().startsWith('K'))).toBe(true));
+  const recheck = screen.getAllByRole('button').find((button) => button.textContent?.trim().startsWith('K'))!;
+  fireEvent.click(recheck);
+  await waitFor(() => expect(reconcileRoute).toHaveBeenCalledOnce());
+  expect(routeWorkOrders).toHaveBeenCalledOnce();
+  expect(getRouteSubmission).not.toHaveBeenCalled();
+});
+
+it('lets the user cancel before a route write and close the result screen', async () => {
+  vi.mocked(previewRoute).mockResolvedValue({ contract: { ok: true, problem: null }, items: [ready('1', 'P1')] });
+  const onClose = vi.fn();
+  render(<RoutePanel scope={scope} status={status(false)} rows={rows} onSession={vi.fn()} onResult={vi.fn()} onClose={onClose} onDenied={vi.fn()} />);
+  const password = await screen.findByRole('textbox');
+  fireEvent.click(screen.getByRole('button', { name: /^H/ }));
+  expect(onClose).toHaveBeenCalledOnce();
+  expect(createRouteSession).not.toHaveBeenCalled();
+  expect(routeWorkOrders).not.toHaveBeenCalled();
+  expect(password).toBeInTheDocument();
+});
+
+it('lets the user cancel the route confirmation without starting a route request', async () => {
+  vi.mocked(previewRoute).mockResolvedValue({ contract: { ok: true, problem: null }, items: [ready('1', 'P1'), ready('2', 'P2')] });
+  const onClose = vi.fn();
+  render(<RoutePanel scope={scope} status={status(true)} rows={rows} onSession={vi.fn()} onResult={vi.fn()} onClose={onClose} onDenied={vi.fn()} />);
+  await screen.findByRole('button', { name: 'Route 2 WO' });
+  fireEvent.click(screen.getAllByRole('button').find((button) => button.textContent?.trim().startsWith('H'))!);
+  expect(onClose).toHaveBeenCalledOnce();
+  expect(routeWorkOrders).not.toHaveBeenCalled();
+});

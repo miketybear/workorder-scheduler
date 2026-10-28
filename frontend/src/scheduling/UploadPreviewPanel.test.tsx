@@ -1,9 +1,9 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { continueUpload, getUploadStatus, previewUpload, submitUpload, type Saved, type UploadPreview, type UploadStatus } from '../api/drafts';
+import { continueUpload, getUploadStatus, previewUpload, reconcileUpload, submitUpload, type Saved, type UploadPreview, type UploadStatus } from '../api/drafts';
 import { UploadPreviewControls } from './UploadPreviewPanel';
 
-vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), previewUpload: vi.fn(), submitUpload: vi.fn(), continueUpload: vi.fn(), getUploadStatus: vi.fn() }));
+vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), previewUpload: vi.fn(), submitUpload: vi.fn(), continueUpload: vi.fn(), getUploadStatus: vi.fn(), reconcileUpload: vi.fn() }));
 afterEach(() => vi.resetAllMocks());
 
 const draft: Saved = { draft_id: 'group', version: 2, state: 'draft' };
@@ -62,6 +62,72 @@ it('stops automatic chunks on an unknown result and resumes only after explicit 
   await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   await screen.findByText('Kết quả chưa hoàn tất. Kiểm tra trạng thái để quyết định bước tiếp theo.');
+  expect(continueUpload).not.toHaveBeenCalled();
+});
+
+it.each([1, 2, 50, 200])('reconciles unknown results for a %i-WO selection without retrying the original submit', async (count) => {
+  const items = preview.items.slice(0, count);
+  const selected = selection.slice(0, count);
+  const uncertain = receipt(0);
+  uncertain.items = selected.map((item, index) => ({ item_id: `unknown-${index}`, connection_id: 'conn', site_id: item.site_id,
+    workorder_id: item.workorder_id, state: index === count - 1 ? 'unknown' : 'confirmed', updated_at: '2026-10-10T00:00:00Z',
+    source: null, duration_result: null, restore_source: null }));
+  uncertain.counts = { confirmed: count - 1, ...(count === 1 ? {} : {}), unknown: 1 };
+  const resolved = { ...uncertain, source_finalized: false,
+    items: uncertain.items.map((item, index) => ({ ...item, state: index === count - 1 ? 'conflict' as const : 'confirmed' as const })),
+    counts: { confirmed: count - 1, conflict: 1 } };
+  vi.mocked(previewUpload).mockResolvedValue({ ...preview, items });
+  vi.mocked(submitUpload).mockResolvedValue(uncertain);
+  vi.mocked(getUploadStatus).mockResolvedValue(uncertain);
+  vi.mocked(reconcileUpload).mockResolvedValue(resolved);
+  render(<UploadPreviewControls {...baseProps} selection={selected} />);
+  fireEvent.click(screen.getAllByRole('button')[0]!);
+  await screen.findByRole('table');
+  fireEvent.click(screen.getAllByRole('button').find((button) => button.textContent?.trim().startsWith('Upload'))!);
+  await waitFor(() => expect(submitUpload).toHaveBeenCalledTimes(1));
+  fireEvent.click(screen.getAllByRole('button').find((button) => button.textContent?.includes('WO'))!);
+  await waitFor(() => expect(reconcileUpload).toHaveBeenCalledTimes(1));
+  expect(submitUpload).toHaveBeenCalledTimes(1);
+  expect(continueUpload).not.toHaveBeenCalled();
+});
+
+it.each([1, 2, 50, 200])('reports a mixed conflict result for a %i-WO selection without offering automatic continuation', async (count) => {
+  const items = preview.items.slice(0, count);
+  const selected = selection.slice(0, count);
+  const partial = receipt(0);
+  partial.items = selected.map((item, index) => ({ item_id: `mixed-${index}`, connection_id: 'conn', site_id: item.site_id,
+    workorder_id: item.workorder_id, state: index === count - 1 ? 'conflict' : 'confirmed', updated_at: '2026-10-10T00:00:00Z',
+    source: null, duration_result: null, restore_source: null }));
+  partial.counts = { confirmed: count - 1, conflict: 1 };
+  vi.mocked(previewUpload).mockResolvedValue({ ...preview, items });
+  vi.mocked(submitUpload).mockResolvedValue(partial);
+  render(<UploadPreviewControls {...baseProps} selection={selected} />);
+  fireEvent.click(screen.getAllByRole('button')[0]!);
+  await screen.findByRole('table');
+  fireEvent.click(screen.getAllByRole('button').find((button) => button.textContent?.trim().startsWith('Upload'))!);
+  await waitFor(() => expect(submitUpload).toHaveBeenCalledTimes(1));
+  const resultTable = screen.getAllByRole('table').at(-1)!;
+  expect(within(resultTable).getAllByRole('row')).toHaveLength(count + 1);
+  expect(continueUpload).not.toHaveBeenCalled();
+  expect(screen.getAllByRole('button').some((button) => button.textContent?.trim().startsWith('Tiếp tục'))).toBe(false);
+});
+
+it.each([1, 2, 50])('shows a finalized success receipt for a %i-WO selection', async (count) => {
+  const items = preview.items.slice(0, count);
+  const selected = selection.slice(0, count);
+  const success = receipt(0, true);
+  success.items = selected.map((item, index) => ({ item_id: `success-${index}`, connection_id: 'conn', site_id: item.site_id,
+    workorder_id: item.workorder_id, state: 'confirmed', updated_at: '2026-10-10T00:00:00Z', source: null,
+    duration_result: null, restore_source: null }));
+  success.counts = { confirmed: count };
+  vi.mocked(previewUpload).mockResolvedValue({ ...preview, items });
+  vi.mocked(submitUpload).mockResolvedValue(success);
+  render(<UploadPreviewControls {...baseProps} selection={selected} uploadAll={false} />);
+  fireEvent.click(screen.getAllByRole('button')[0]!);
+  await screen.findByRole('table');
+  fireEvent.click(screen.getAllByRole('button').find((button) => button.textContent?.trim().startsWith('Upload'))!);
+  await waitFor(() => expect(submitUpload).toHaveBeenCalledTimes(1));
+  expect(within(screen.getAllByRole('table').at(-1)!).getAllByRole('row')).toHaveLength(count + 1);
   expect(continueUpload).not.toHaveBeenCalled();
 });
 
@@ -223,6 +289,20 @@ it('shows the upload steps, a production warning and grouped result counts', asy
 });
 
 const wonumFor = (items: UploadPreview['items']) => items.map((item, index) => ({ ...item, wonum: `WO-${index + 1}` }));
+
+it.each([1, 2, 50])('previews and lists the exact %i-WO selection without losing or duplicating rows', async (count) => {
+  const items = Array.from({ length: count }, (_, index) => ({ site_id: 'BD1', workorder_id: String(index + 1), code: 'ready' as const,
+    before: { estdur: '8' }, changes: { estdur: '9' }, warnings: [] }));
+  vi.mocked(previewUpload).mockResolvedValue({ ...preview, items });
+  render(<UploadPreviewControls {...baseProps} selection={wonumFor(items)} />);
+  fireEvent.click(screen.getAllByRole('button')[0]!);
+  const table = within(await screen.findByRole('table'));
+  expect(table.getAllByRole('row')).toHaveLength(count + 1);
+  expect(table.getByRole('rowheader', { name: `WO-${count}` })).toBeInTheDocument();
+  expect(screen.getByText((_, element) => element?.tagName === 'P' && !!element.textContent?.includes(`${count} WO`) && !!element.textContent?.includes('Maximo'))).toBeInTheDocument();
+  expect(previewUpload).toHaveBeenCalledWith(expect.objectContaining({ draft_id: 'group', version: 2 }),
+    items.map((item) => ({ site_id: item.site_id, workorder_id: item.workorder_id })), expect.any(AbortSignal));
+});
 
 it('shows one table with before → after per WO, a summary beside the Upload button and a verdict per row', async () => {
   const items: UploadPreview['items'] = [

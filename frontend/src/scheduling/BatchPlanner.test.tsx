@@ -2,12 +2,12 @@ import { StrictMode } from 'react';
 import { act, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BatchPlanner } from './BatchPlanner';
-import { BatchError, deleteDraft, openBatch, prepareBatch, previewUpload, saveBatch, type Detail } from '../api/drafts';
+import { BatchError, deleteDraft, openBatch, prepareBatch, previewUpload, saveBatch, submitUpload, type Detail } from '../api/drafts';
 import { columns, RetrievalError, type WorkOrder } from '../api/workOrders';
 import { zonedDateTime } from '../api/dates';
 import { getDateTime, groupControl, setDateTime } from '../testDateTime';
 
-vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), prepareBatch: vi.fn(), saveBatch: vi.fn(), openBatch: vi.fn(), deleteDraft: vi.fn(), previewUpload: vi.fn() }));
+vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), prepareBatch: vi.fn(), saveBatch: vi.fn(), openBatch: vi.fn(), deleteDraft: vi.fn(), previewUpload: vi.fn(), submitUpload: vi.fn() }));
 afterEach(() => vi.resetAllMocks());
 const scope = { connection_id: 'one', discipline: 'MECH' };
 const details: Detail[] = ['100', '101'].map((id) => ({
@@ -444,4 +444,42 @@ it('send-only mode still reconciles when React mounts the panel twice (StrictMod
   render(<StrictMode><BatchPlanner {...props} sendOnly selection={{ draftId: 'group' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} /></StrictMode>);
   expect(await screen.findByRole('table', { name: 'Thay đổi sẽ ghi' })).toBeInTheDocument();
   expect(screen.queryByText('Đang đối chiếu với Maximo…')).not.toBeInTheDocument();
+});
+
+it('send-only header does not claim Maximo is unchanged after a confirmed upload', async () => {
+  vi.mocked(submitUpload).mockResolvedValue({ batch_id: 'batch', source_finalized: true, counts: { confirmed: 2 },
+    items: sendRows.map((row, index) => ({ item_id: `upload-${index}`, connection_id: 'one', site_id: row.item.siteid,
+      workorder_id: row.item.workorderid, state: 'confirmed' as const, updated_at: '2026-10-08T00:00:00Z',
+      source: { draft_id: 'group', draft_version: 2, member_id: `member-${index}` }, duration_result: null, restore_source: null })) });
+  await setupSend();
+  fireEvent.click(screen.getByRole('button', { name: /Upload/ }));
+  await screen.findByText(/2\/2/);
+  expect(screen.queryByText(/Maximo chưa thay đổi/)).not.toBeInTheDocument();
+});
+
+it.each([1, 2, 50, 200])('reopens send-only mode and auto-reconciles a saved %i-WO draft', async (count) => {
+  const rows = Array.from({ length: count }, (_, index) => {
+    const template = sendRows[index % sendRows.length]!;
+    return { ...template, item: { ...template.item, siteid: 'BD1', workorderid: String(1000 + index), wonum: `SEND-${index + 1}` },
+      changes: { estdur: '9' }, baseline_changed: false, changes_valid_now: true };
+  });
+  const draft = { draft_id: 'group', version: 2, state: 'draft' as const, items: rows };
+  const preview = { draft_id: 'group', version: 2, preview_hash: 'd'.repeat(64), send_enabled: true, gate: null,
+    items: rows.map((row) => ({ site_id: row.item.siteid, workorder_id: row.item.workorderid, code: 'ready' as const,
+      warnings: [], before: { estdur: '8' }, changes: { estdur: '9' } })) };
+  const selection = { draftId: 'group' };
+  const connection = { label: 'Onshore test', system: 'onshore' as const, environment: 'test' as const };
+  const onClose = vi.fn();
+  vi.mocked(openBatch).mockResolvedValue(draft);
+  vi.mocked(previewUpload).mockResolvedValue(preview);
+  const view = render(<BatchPlanner {...props} sendOnly selection={selection} connection={connection} onClose={onClose} />);
+  await waitFor(() => expect(previewUpload).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(previewUpload).mock.calls[0][1]).toHaveLength(count);
+  fireEvent.click(screen.getAllByRole('button')[0]!);
+  expect(onClose).toHaveBeenCalledOnce();
+  view.unmount();
+  render(<BatchPlanner {...props} sendOnly selection={selection} connection={connection} onClose={onClose} />);
+  await waitFor(() => expect(previewUpload).toHaveBeenCalledTimes(2));
+  expect(openBatch).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(previewUpload).mock.calls[1][1]).toHaveLength(count);
 });
