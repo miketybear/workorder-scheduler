@@ -397,6 +397,7 @@ it('send-only mode shows a read-only summary and the upload section without any 
   expect(within(panel).getByRole('heading', { name: 'Gửi 2 WO lên Maximo' })).toBeVisible();
   expect(within(panel).getByText('Onshore · TEST')).toBeVisible();
   expect(within(panel).getByText(/Bỏ khỏi nhóm WO-102/)).toBeVisible();
+  (within(panel).getByText('Xem chi tiết lịch').closest('details') as HTMLDetailsElement).open = true;
   const table = within(panel).getByRole('table', { name: 'Các WO sẽ gửi' });
   expect(within(table).getAllByRole('row')).toHaveLength(3);
   expect(within(table).getByRole('rowheader', { name: /WO-100/ })).toBeVisible();

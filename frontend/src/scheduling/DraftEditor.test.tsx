@@ -52,7 +52,7 @@ it('previews only the saved single-WO version and hides that response as soon as
   fireEvent.click(screen.getByText('Lưu nháp'));
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  expect(await screen.findByText('Maximo hiện tại')).toBeInTheDocument();
+  expect(await screen.findByRole('table', { name: 'Thay đổi sẽ ghi' })).toHaveTextContent('Maximo hiện tại');
   expect(screen.getByText(/Upload chưa mở/)).toBeInTheDocument();
   expect(screen.getByText('Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.')).toBeInTheDocument();
   expect(previewUpload).toHaveBeenCalledWith(expect.objectContaining({ draft_id: 'saved', version: 4 }),

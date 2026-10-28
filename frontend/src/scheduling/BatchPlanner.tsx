@@ -261,22 +261,25 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     </section>;
   const envChip = connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>;
   if (sendOnly) return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy) onClose(); }} className={`${styles.sidePanel} ${styles.batchPanel}`} role="dialog" aria-label="Gửi nhóm WO lên Maximo" aria-modal="false">
-    <div className={styles.panelHeading}><h2>Gửi {rows.length || ''} WO lên Maximo</h2>{envChip}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng nhóm</button></div>
+    <div className={styles.panelHeading}><h2>Gửi {rows.length || ''} WO lên Maximo</h2>{envChip}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng</button></div>
     <p>{scope.discipline} · Các thay đổi dưới đây chỉ được gửi khi bạn bấm upload. Maximo chưa thay đổi.</p>
     {sendNotes.length > 0 && <ul role="status">{sendNotes.map((note) => <li key={note}>{note}</li>)}</ul>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {saved && Object.keys(issues).length > 0 && !uploadLocked && <p role="alert">Maximo hoặc nháp này vừa đổi ở nơi khác. Đóng bảng này, bấm Cập nhật rồi Gửi lại để đồng bộ.</p>}
     {busy && <p role="status">Đang kiểm tra từng WO…</p>}
     {uploadSection}
-    <div className={styles.tableWrap}><table className={styles.planningTable} aria-label="Các WO sẽ gửi"><thead><tr><th>WO</th>{sendFields.map((field) => <th key={field}>{labels[field]}</th>)}<th>Kiểm tra</th></tr></thead>
-      <tbody>{rows.map((row) => <tr key={rowKey(row.item)}><th scope="row">{row.item.wonum}<small>{row.item.description ?? '—'}</small></th>
-        {sendFields.map((field) => <td key={field} className={row.changes[field] !== undefined ? styles.modified : undefined}>{field === 'assignedto'
-          ? picLabel(row.changes[field] ?? row.baseline[field], row.pic_names) || '—'
-          : field === 'estdur' ? row.changes[field] ?? row.baseline[field] ?? '—' : displayDate(row.changes[field] ?? row.baseline[field] ?? null, timezone)}</td>)}
-        <td>{problems[rowKey(row.item)] && <span role="alert" className={styles.error}>{problems[rowKey(row.item)]}</span>}</td></tr>)}</tbody></table></div>
+    {Object.values(problems).some(Boolean) && <ul role="alert" className={styles.error}>{rows.filter((row) => problems[rowKey(row.item)]).map((row) =>
+      <li key={rowKey(row.item)}>{row.item.wonum}: {problems[rowKey(row.item)]}</li>)}</ul>}
+    <details open={Object.values(problems).some(Boolean)}><summary>Xem chi tiết lịch</summary>
+      <div className={styles.tableWrap}><table className={styles.planningTable} aria-label="Các WO sẽ gửi"><thead><tr><th>WO</th>{sendFields.map((field) => <th key={field}>{labels[field]}</th>)}</tr></thead>
+        <tbody>{rows.map((row) => <tr key={rowKey(row.item)}><th scope="row">{row.item.wonum}<small>{row.item.description ?? '—'}</small></th>
+          {sendFields.map((field) => <td key={field} className={row.changes[field] !== undefined ? styles.modified : undefined}>{field === 'assignedto'
+            ? picLabel(row.changes[field] ?? row.baseline[field], row.pic_names) || '—'
+            : field === 'estdur' ? row.changes[field] ?? row.baseline[field] ?? '—' : displayDate(row.changes[field] ?? row.baseline[field] ?? null, timezone)}</td>)}</tr>)}</tbody></table></div>
+    </details>
   </section>;
   return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy) onClose(); }} className={`${styles.sidePanel} ${styles.batchPanel}`} role="dialog" aria-label="Lập lịch hàng loạt" aria-modal="false">
-    <div className={styles.panelHeading}><h2>Lập lịch {rows.length || ('keys' in selection ? selection.keys.length : '')} WO</h2>{envChip}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng nhóm</button></div>
+    <div className={styles.panelHeading}><h2>Lập lịch {rows.length || ('keys' in selection ? selection.keys.length : '')} WO</h2>{envChip}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng</button></div>
     <p>{scope.discipline} · {saved ? 'Nháp đã lưu' : 'Chưa lưu nháp'}</p>
     <p>Scheduled Finish tự tính từ Scheduled Start + Est. Duration theo ca 06:30–18:30, tối đa 10,5 giờ/ngày.</p>
     {error && <p role="alert" className={styles.error}>{error}</p>}

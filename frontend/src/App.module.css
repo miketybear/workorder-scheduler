@@ -391,3 +391,7 @@
 .routeChip[data-category="stranded"] { border-color: var(--danger-border); color: var(--danger-ink); }
 .routeChip[data-category="unknown"] { border-color: var(--warning-border); color: var(--warning-ink); }
 @media (pointer: coarse) { .routeChip { min-height: 36px; } }
+.previewSummary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; }
+.previewSummary p { margin: 0; font-weight: 600; }
+.changeList { margin: 0; padding-left: 18px; }
+td[data-code="conflict"], td[data-code="invalid_changes"] { color: var(--danger-ink); font-weight: 600; }

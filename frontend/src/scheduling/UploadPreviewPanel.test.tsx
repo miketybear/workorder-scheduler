@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { continueUpload, getUploadStatus, previewUpload, submitUpload, type Saved, type UploadPreview, type UploadStatus } from '../api/drafts';
 import { UploadPreviewControls } from './UploadPreviewPanel';
@@ -220,4 +220,37 @@ it('shows the upload steps, a production warning and grouped result counts', asy
   expect(summary).toHaveTextContent('Hoàn tất 9');
   expect(summary).toHaveTextContent('Lỗi / xung đột 1');
   expect(summary).toHaveTextContent('Cần đối chiếu 190');
+});
+
+const wonumFor = (items: UploadPreview['items']) => items.map((item, index) => ({ ...item, wonum: `WO-${index + 1}` }));
+
+it('shows one table with before → after per WO, a summary beside the Upload button and a verdict per row', async () => {
+  const items: UploadPreview['items'] = [
+    { site_id: 'BD1', workorder_id: '1', code: 'ready', before: { assignedto: null }, changes: { assignedto: 'LAMTH' }, warnings: [] },
+    { site_id: 'BD1', workorder_id: '2', code: 'ready', before: { estdur: '8' }, changes: { estdur: '9' }, warnings: [] },
+  ];
+  vi.mocked(previewUpload).mockResolvedValue({ ...preview, items });
+  render(<UploadPreviewControls {...baseProps} selection={wonumFor(items)} />);
+  fireEvent.click(screen.getByText('Đối chiếu nhóm'));
+  const table = within(await screen.findByRole('table', { name: 'Thay đổi sẽ ghi' }));
+  expect(screen.getByText('2 WO · 2 thay đổi · tất cả khớp với Maximo')).toBeInTheDocument();
+  expect(table.getByRole('rowheader', { name: 'WO-1' })).toBeInTheDocument();
+  expect(table.getByText(/Assigned PIC: — →/)).toHaveTextContent('Assigned PIC: — → LAMTH');
+  expect(table.getByText(/Est. Duration: 8 →/)).toHaveTextContent('Est. Duration: 8 → 9');
+  expect(table.getAllByText('Khớp')).toHaveLength(2);
+  expect(screen.getByText(baseProps.buttonLabel)).toBeEnabled();
+});
+
+it('blocks the Upload button and counts the WOs to fix when one has a conflict', async () => {
+  const items: UploadPreview['items'] = [
+    { site_id: 'BD1', workorder_id: '1', code: 'ready', before: { estdur: '8' }, changes: { estdur: '9' }, warnings: [] },
+    { site_id: 'BD1', workorder_id: '2', code: 'conflict', before: { estdur: '8' }, changes: { estdur: '10' }, warnings: [] },
+  ];
+  vi.mocked(previewUpload).mockResolvedValue({ ...preview, items });
+  render(<UploadPreviewControls {...baseProps} selection={wonumFor(items)} />);
+  fireEvent.click(screen.getByText('Đối chiếu nhóm'));
+  await screen.findByText('2 WO · 2 thay đổi · 1 WO cần xử lý');
+  expect(screen.getByText('Xung đột')).toBeInTheDocument();
+  expect(screen.getByText('Upload chưa khả dụng')).toBeDisabled();
+  expect(screen.queryByText(baseProps.buttonLabel)).not.toBeInTheDocument();
 });

@@ -1308,6 +1308,10 @@ it('opens the existing group draft untouched in the send-only panel', async () =
   const panel = await screen.findByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
   await within(panel).findByText('Đối chiếu nhóm với Maximo trước upload');
   expect(within(panel).getByRole('heading', { name: 'Gửi 2 WO lên Maximo' })).toBeVisible();
+  const detail = within(panel).getByText('Xem chi tiết lịch').closest('details') as HTMLDetailsElement;
+  expect(detail.open).toBe(false);
+  expect(within(panel).queryByRole('alert')).not.toBeInTheDocument();
+  detail.open = true;
   expect(within(panel).getByRole('table', { name: 'Các WO sẽ gửi' })).toBeVisible();
   expect(within(panel).queryByText('Áp dụng vào nháp')).not.toBeInTheDocument();
   expect(within(panel).queryByText('Xóa nháp nhóm')).not.toBeInTheDocument();
@@ -1327,7 +1331,7 @@ it('keeps the send panel across a tab return and releases the scroll lock on clo
   expect(screen.getByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' })).toBeVisible();
   expect(vi.mocked(openBatch).mock.calls.length).toBe(reads);
   expect(retrieveWorkOrders).toHaveBeenCalledTimes(1);
-  fireEvent.click(screen.getByRole('button', { name: 'Đóng nhóm' }));
+  fireEvent.click(within(screen.getByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' })).getByRole('button', { name: 'Đóng' }));
   expect(document.documentElement).not.toHaveAttribute('data-wo-panel-open');
 });
 
