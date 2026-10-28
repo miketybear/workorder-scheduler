@@ -45,7 +45,11 @@
 .envChip[data-env="production"] { background: #da1e28; color: #ffffff; }
 .envChip[data-env="none"] { background: #8a3800; color: #ffd9be; }
 .envChip:hover { text-decoration: none; }
-.headerRange { color: var(--tooltip-ink); font-size: 12px; line-height: 16px; white-space: normal; max-width: 300px; }
+.headerRange { color: var(--tooltip-ink); font-size: 12px; line-height: 16px; white-space: nowrap; }
+.headerRange .iconButton { color: inherit; border-color: transparent; background: transparent; }
+.rangeControl { display: inline-flex; align-items: center; gap: 4px; }
+.iconButton { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 0; border: 1px solid var(--line); background: var(--layer); color: var(--link); cursor: pointer; }
+.iconButton:hover { background: var(--ground); }
 :global([data-theme="g100"]) .headerRange { color: var(--muted); }
 .userMenu summary { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 8px; cursor: pointer; list-style: none; color: #f4f4f4; }
 .userMenu summary::-webkit-details-marker { display: none; }
@@ -118,7 +122,7 @@
 @media (max-width: 480px) { .retrieveDates { grid-template-columns: repeat(2, minmax(0, 1fr)); }.retrieveDates button { grid-column: 1 / -1; } }
 @media (max-width: 800px) { .workOrdersMain { max-width: 1600px; padding: 24px; } .fullWidth.workOrdersMain { max-width: 1600px; padding: 24px; } }
 @media (max-width: 560px) { .workOrdersMain, .fullWidth.workOrdersMain { padding: 16px; } }
-@media (min-width: 801px) { .fullscreenToggle { display: inline-flex; } }
+@media (min-width: 801px) { .fullscreenToggle { display: inline-flex; margin-left: auto; } }
 .filters label, .batchToolbar > label, .groupFields label { display: grid; gap: 8px; color: var(--muted); font: 400 12px/16px 'IBM Plex Sans', Arial, sans-serif; letter-spacing: .32px; min-width: 0; }
 .filters label { flex: 1 1 220px; }
 .filters input, .filters select, .batchToolbar > label select { width: 100%; }
@@ -244,10 +248,8 @@
 .toolbarActions .ghost[aria-pressed="true"] { background: var(--accent-tint); }
 .toolbarStatus { display: inline-grid; grid-template-columns: auto minmax(120px, 180px); align-items: center; gap: 6px; color: var(--muted); font-size: 12px; line-height: 16px; }
 .toolbarStatus select { width: 100%; min-height: 32px !important; padding: 5px 8px !important; font-size: 13px !important; }
-/* The toolbar copy of the loaded range stands in for the header one when the header is hidden or too narrow. */
-.fullscreenRange { display: none; color: var(--muted); font-size: 12px; line-height: 16px; }
-.workOrdersFullscreen .fullscreenRange { display: inline; }
-@media (max-width: 800px) { .fullscreenRange { display: inline; } .headerRange { display: none; } }
+/* The toolbar copy of the loaded range, used while the header is hidden (full screen). */
+.fullscreenRange { display: inline-flex; color: var(--muted); font-size: 12px; line-height: 16px; }
 .statusLine { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 4px 0; color: var(--muted); font-size: 12px; line-height: 18px; }
 .statusLineStale { color: var(--warning-ink); }
 .statusUpdated { color: var(--muted); }

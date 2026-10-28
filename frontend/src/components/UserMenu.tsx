@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { getAuthSummary, signOut, type Session } from '../api/client';
 import { activeGrant } from '../auth/activeGrant';
@@ -35,7 +35,7 @@ function EnvironmentChip({ session }: { session: Session }) {
   </span>;
 }
 
-export function UserMenu({ loadedWorkOrderRange = null }: { loadedWorkOrderRange?: string | null }) {
+export function UserMenu({ children }: { children?: ReactNode }) {
   const auth = useAuth();
   const [open, setOpen] = useState(false);
   const [signOutError, setSignOutError] = useState('');
@@ -52,7 +52,7 @@ export function UserMenu({ loadedWorkOrderRange = null }: { loadedWorkOrderRange
   const name = session?.user.name ?? 'Tài khoản';
   return <div className={styles.userArea}>
     {session && <EnvironmentChip session={session} />}
-    {session && loadedWorkOrderRange && <span className={styles.headerRange}>{loadedWorkOrderRange}</span>}
+    {session && children}
     <details className={styles.userMenu} open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary aria-label={`Menu tài khoản · ${name}`}><span className={styles.avatar} aria-hidden="true">{name.slice(0, 1).toUpperCase()}</span>
         <span className={styles.userName}>{name}</span></summary>

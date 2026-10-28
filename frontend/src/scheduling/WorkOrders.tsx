@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { DateTimeInput } from '../components/DateTimeInput';
+import { CalendarIcon, MaximizeIcon, MinimizeIcon } from '../components/RouteIcon';
 
 import { getAuthSummary, loginUrl, type Session } from '../api/client';
 import { RetrievalError, retrieveWorkOrders, type WorkOrder, type WorkOrderFilter } from '../api/workOrders';
@@ -44,7 +46,9 @@ export function mergePmOrigin(current: Map<string, Baseline>, principal: string,
   return next;
 }
 
-export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion = null, onPicSuggestionHandled, onLoadedRangeChange }: { active?: boolean; autoRetrieve?: boolean; picSuggestion?: PicSuggestion | null; onPicSuggestionHandled?: () => void; onLoadedRangeChange?: (range: string | null) => void }) {
+export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion = null, onPicSuggestionHandled, headerSlot = null }: { active?: boolean; autoRetrieve?: boolean; picSuggestion?: PicSuggestion | null; onPicSuggestionHandled?: () => void;
+  /** Where the loaded range and its change button go in the app header; without it they stay in the toolbar. */
+  headerSlot?: HTMLElement | null }) {
   const [session, setSession] = useState<Session | null>(null);
   const [available, setAvailable] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -113,13 +117,6 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const authIdentity = useRef('');
   const principalRef = useRef('');
   const grant = useMemo(() => activeGrant(session), [session]);
-  useEffect(() => {
-    if (!active || checking || verifying || !session || !grant || rows === null || !loadedRange) {
-      onLoadedRangeChange?.(null);
-      return;
-    }
-    onLoadedRangeChange?.(`Đã tải: ${displayDate(loadedRange.target_from, grant.timezone, false)} → trước ${displayDate(loadedRange.target_before, grant.timezone, false)}`);
-  }, [active, checking, verifying, session, grant, rows, loadedRange, onLoadedRangeChange]);
   // Planners almost always start from the current month, so prefill it once per page visit.
   const [datesDefaulted, setDatesDefaulted] = useState(false);
   if (grant && !datesDefaulted && !start && !end) {
@@ -750,6 +747,15 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   }, [picSuggestion, active, checking, verifying, grant]);
 
   const draftedCount = rows?.filter((row) => row.drafts?.length).length ?? 0;
+  // The range is loaded up to (not including) target_before, so its last shown day is the one before.
+  const rangeControl = grant && rows !== null && loadedRange && !checking && <span className={styles.rangeControl}>
+    <span>{displayDate(loadedRange.target_from, grant.timezone, false)} → {displayDate(new Date(Date.parse(loadedRange.target_before) - 1).toISOString(), grant.timezone, false)}</span>
+    {!rangeExpanded && <button type="button" className={styles.iconButton} aria-label="Đổi khoảng ngày" title="Đổi khoảng ngày" onClick={() => {
+      // Drafts are deleted with the old range, so say so before the date fields even open.
+      if (!discard()) return;
+      if (draftedCount > 0) { setRangeError(''); setRangeChange({ open: true }); } else setRangeExpanded(true);
+    }}><CalendarIcon size={16} /></button>}
+  </span>;
   const chipCounts = useMemo(() => {
     const counts = routeChips(facetRows.map((row) =>
     routeAvailable ? routeCategory(routeOutcome[rowKey(row)], routeFresh(row)) : localRouteCode(row))
@@ -822,26 +828,16 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       {busy && <p role="status">Đang lấy và kiểm tra đầy đủ các trang dữ liệu…</p>}
       {busy && rows === null && <div className={styles.skeleton} aria-hidden="true">{[0, 1, 2, 3, 4, 5].map((index) => <div key={index} />)}</div>}
       {grant && <div className={styles.woToolbar}>
-        <button type="button" className={`${styles.tertiary} ${styles.fullscreenToggle}`} aria-pressed={fullScreen} onClick={() => setFullScreen((value) => !value)}>
-          {fullScreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}
-        </button>
         {fullScreen && <span className={styles.fullscreenEnvChip} data-env={grant.environment}>
           {grant.system === 'onshore' ? 'Onshore' : 'Offshore'} · {grant.environment === 'test' ? 'TEST' : 'PROD'}
         </span>}
-        {rows !== null && loadedRange && <span className={styles.fullscreenRange}>
-          Đã tải: {displayDate(loadedRange.target_from, grant.timezone, false)} → trước {displayDate(loadedRange.target_before, grant.timezone, false)}
-        </span>}
+        {rangeControl && (headerSlot && !fullScreen ? createPortal(rangeControl, headerSlot) : <span className={styles.fullscreenRange}>{rangeControl}</span>)}
         {rows !== null && rows.length > 0 && <label className={styles.toolbarStatus}>Status
           <select aria-label="WO Status" value={statusFilter} onChange={(event) => { filterChanged(); setStatusFilter(event.target.value); }}>
             <option value="">Tất cả status đã tải</option>
             {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
         </label>}
-        {rows !== null && loadedRange && !rangeExpanded && <button type="button" className={styles.tertiary} onClick={() => {
-          // Drafts are deleted with the old range, so say so before the date fields even open.
-          if (!discard()) return;
-          if (draftedCount > 0) { setRangeError(''); setRangeChange({ open: true }); } else setRangeExpanded(true);
-        }}>Đổi khoảng ngày</button>}
         {rows !== null && rows.length > 0 && !checking && <label className={styles.toolbarSearch}>
           <input type="search" placeholder="Tìm WO, mô tả hoặc Tag Name" aria-label="Tìm WO, mô tả hoặc Tag Name" value={search}
             onChange={(event) => { filterChanged(); setSearch(event.target.value); }} /></label>}
@@ -852,11 +848,13 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
             filterChanged(); setSearch(''); setStatusFilter(''); setChipFilter('');
           }}>Xóa bộ lọc</button>}
         </div>}
+        <button type="button" className={`${styles.iconButton} ${styles.fullscreenToggle}`} aria-pressed={fullScreen}
+          aria-label={fullScreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} title={fullScreen ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình'}
+          onClick={() => setFullScreen((value) => !value)}>{fullScreen ? <MinimizeIcon size={16} /> : <MaximizeIcon size={16} />}</button>
       </div>}
       {rows !== null && <p role="status" className={`${styles.statusLine}${stale ? ` ${styles.statusLineStale}` : ''}`}>
         {stale && <span className={styles.staleNotice}>Dữ liệu có thể đã thay đổi.</span>}
-        {rows.length === 0 ? 'Không có WO trong phạm vi và khoảng ngày đã chọn.' : `Hiển thị ${visibleRows.length} / ${rows.length} WO. Bộ lọc chỉ áp dụng cho dữ liệu đã tải.`}
-        {rows.length > 0 && routeAvailable && !routeProgress && ` ${rows.filter((row) => !row.drafts?.length && routeFresh(row)?.ready && !routeOutcome[rowKey(row)]).length} WO sẵn sàng route.`}
+        {rows.length === 0 ? 'Không có WO trong phạm vi và khoảng ngày đã chọn.' : `Hiển thị ${visibleRows.length} / ${rows.length} WO.`}
         {updatedAt !== null && grant && <span className={styles.statusUpdated}>Cập nhật lần cuối: {new Intl.DateTimeFormat('vi-VN', { timeZone: grant.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(updatedAt)}</span>}
       </p>}
       {rows !== null && rows.length > 0 && <>

@@ -16,6 +16,27 @@ export function CheckmarkFilledIcon({ size = 20 }: IconProps) {
   </svg>;
 }
 
+/** calendar */
+export function CalendarIcon({ size = 20 }: IconProps) {
+  return <svg {...base(size)}>
+    <path d="M26,4h-4V2h-2v2h-8V2h-2v2H6C4.9,4,4,4.9,4,6v20c0,1.1.9,2,2,2h20c1.1,0,2-.9,2-2V6c0-1.1-.9-2-2-2ZM26,26H6V12h20v14ZM26,10H6V6h4v2h2v-2h8v2h2v-2h4v4Z" />
+  </svg>;
+}
+
+/** maximize */
+export function MaximizeIcon({ size = 20 }: IconProps) {
+  return <svg {...base(size)}>
+    <path d="M20,2v2h6.586L18,12.582,19.414,14,28,5.414V12h2V2Z M14,19.416L12.592,18,4,26.586V20H2V30H12V28H5.414Z" />
+  </svg>;
+}
+
+/** minimize */
+export function MinimizeIcon({ size = 20 }: IconProps) {
+  return <svg {...base(size)}>
+    <path d="M4,18v2h6.586L2,28.582,3.414,30,12,21.414V28h2V18Z M30,3.416L28.592,2,20,10.586V4H18V14H28V12H21.414Z" />
+  </svg>;
+}
+
 /** warning--filled */
 export function WarningFilledIcon({ size = 20 }: IconProps) {
   return <svg {...base(size)}>
