@@ -141,7 +141,10 @@ def test_upload_requires_merged_complete_schedule_and_pic(updates, proposal, mis
     original = current()
     snapshot = replace(original, baseline=original.baseline.model_copy(update=updates))
     item = prepared(snapshot, proposal)
-    assert validate_current(item, snapshot) == ("incomplete_schedule", {})
+    code, changes = validate_current(item, snapshot)
+    assert code == "incomplete_schedule"
+    # The draft's own valid changes are still reported for the preview, never sent.
+    assert changes == ({"estdur": "9"} if proposal == {"estdur": "9"} else {})
     assert missing_schedule(item.before, item.proposal) == missing
 
 

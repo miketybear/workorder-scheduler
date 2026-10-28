@@ -119,18 +119,21 @@ def validate_current(item, current):
     before = WorkOrderBaseline.model_validate(item.before)
     if current.baseline != before or current.revision != item.revision:
         return "conflict", {}
-    if missing_schedule(current.baseline.model_dump(mode="json"), item.proposal):
-        return "incomplete_schedule", {}
     try:
         changes = ScheduleChanges.model_validate(item.proposal)
         values = build_changes(current.baseline, changes, set(current.allowed_pics))
         # Serialize through Pydantic to preserve Decimal and aware datetime semantics.
         serialized = changes.model_dump(mode="json", exclude_unset=True)
-        return ("ready" if values else "empty_changes"), {
-            field: serialized[field] for field in values
-        }
+        shown, invalid = {field: serialized[field] for field in values}, False
     except ValueError:
+        shown, invalid = {}, True
+    # Incomplete wins over invalid, and still reports whatever draft changes it can so the
+    # planner sees them; only "ready" is ever sent.
+    if missing_schedule(current.baseline.model_dump(mode="json"), item.proposal):
+        return "incomplete_schedule", shown
+    if invalid:
         return "invalid_changes", {}
+    return ("ready" if shown else "empty_changes"), shown
 
 
 async def prepare_upload(

@@ -361,3 +361,17 @@ it.each([
   expect(screen.getByText('Upload chưa khả dụng')).toBeDisabled();
   expect(submitUpload).not.toHaveBeenCalled();
 });
+
+it('shows the draft changes of an incomplete WO beside the reason, while upload stays blocked', async () => {
+  const incomplete: UploadPreview['items'][number] = { site_id: 'BD1', workorder_id: '1', code: 'incomplete_schedule', missing: ['pic'],
+    before: { estdur: '300' }, changes: { estdur: '301' }, warnings: [] };
+  vi.mocked(previewUpload).mockResolvedValue({ ...preview, send_enabled: true, items: [incomplete] });
+  render(<UploadPreviewControls {...baseProps} selection={wonumFor([incomplete])} />);
+  fireEvent.click(screen.getByText('Đối chiếu nhóm'));
+  const row = (await screen.findByText((_, element) => element?.tagName === 'TD' && element.textContent?.includes('Thiếu PIC') === true)).closest('tr')!;
+  expect(row).toHaveTextContent('Est. Duration');
+  expect(row).toHaveTextContent('300');
+  expect(row).toHaveTextContent('301');
+  expect(screen.getByText('Upload chưa khả dụng')).toBeDisabled();
+  expect(submitUpload).not.toHaveBeenCalled();
+});

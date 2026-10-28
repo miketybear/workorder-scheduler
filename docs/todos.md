@@ -34,6 +34,11 @@ Cập nhật: 2026-10-28.
 
 ## Thu gọn phần trên bảng WO — 2026-10-28
 
+- [x] **Đối chiếu WO thiếu lịch/PIC vẫn hiện thay đổi của nháp:** `validate_current` tính danh sách thay đổi trước, rồi mới gán
+      `incomplete_schedule` (vẫn ưu tiên hơn `invalid_changes`); chỉ `ready` được gửi. Bảng đối chiếu hiện "Maximo hiện tại → sẽ ghi" kèm "Thiếu PIC".
+      Backend 884 test nhanh + 125 test upload PostgreSQL; frontend test mới. Trang thật: P13431393 nháp tạm estdur 300→301 hiện đủ 2 thay đổi,
+      Upload khóa; nháp tạm đã xóa, Maximo không đổi.
+
 - [x] **Cập nhật không đẩy bảng xuống:** khi xác minh phiên/tải lại, bảng có `aria-busy`, thanh tiến trình 3px dính mép trên và dòng mờ đi; icon
       Cập nhật xoay. Hai dòng "Đang xác minh phiên…"/"Đang lấy…" chỉ còn cho trình đọc màn hình (lần tải đầu vẫn hiện cùng skeleton). Đo trên
       trang thật: bảng đứng yên ở cùng vị trí khi bấm Cập nhật.
