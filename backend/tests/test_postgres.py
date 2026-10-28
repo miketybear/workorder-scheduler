@@ -12,6 +12,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.audit.uploads import recover_stale_sends, transition_upload
+from app.auth.photos import ProfilePhoto
 from app.auth.sessions import (
     SESSION_COOKIE,
     current_grants,
@@ -44,6 +45,7 @@ def test_session_api_logout_requires_csrf_and_revokes_session():
                 token, csrf = await issue_session(db, user)
             app = create_app(integration_settings())
             app.state.sessions = sessions
+            app.state.profile_photos.put(token_hash(token), ProfilePhoto(b"photo", "image/jpeg"))
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app), base_url="https://test.example"
             ) as client:
@@ -58,9 +60,11 @@ def test_session_api_logout_requires_csrf_and_revokes_session():
                 assert grant["timezone"] == "Asia/Ho_Chi_Minh"
                 assert "base_url" not in grant and "secret_reference" not in grant
                 assert (await client.post("/api/auth/logout")).status_code == 403
+                assert app.state.profile_photos.get(token_hash(token)) is not None
                 assert (await client.get("/api/auth/session")).status_code == 200
                 response = await client.post("/api/auth/logout", headers={"X-CSRF-Token": csrf})
                 assert response.status_code == 204
+                assert app.state.profile_photos.get(token_hash(token)) is None
                 client.cookies.set(SESSION_COOKIE, token)
                 assert (await client.get("/api/auth/session")).status_code == 401
 

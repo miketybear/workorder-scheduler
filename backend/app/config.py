@@ -22,6 +22,11 @@ class EntraSettings(BaseModel):
     client_secret: SecretStr
     redirect_uri: str
     timeout_seconds: int = 10
+    profile_photo_enabled: bool = True
+
+    @property
+    def login_scopes(self) -> list[str]:
+        return ["User.Read"] if self.profile_photo_enabled else []
 
     @field_validator("client_secret")
     @classmethod
