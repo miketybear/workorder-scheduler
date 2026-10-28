@@ -124,14 +124,20 @@ it('keeps the loaded range beside the environment chip in fullscreen mode', asyn
 it('combines compact search, status and single-select chips, clears selection but keeps edits, and clears all filters', async () => {
   const filterDraft = { draft_id: 'filter-draft', version: 1, is_batch: false, updated_at: '2026-10-06T09:00:00+07:00',
     changes: { estdur: '9' }, baseline_changed: false, state: 'draft' as const };
-  const valve = orderWith({ workorderid: '101', wonum: 'WO-VALVE', status: 'WMATL', description: 'Valve repair',
+  const valve = orderWith({ workorderid: '101', wonum: 'WO-VALVE', status: 'WMATL', wopriority: 1, description: 'Valve repair',
     schedstart: '2026-09-01T06:30:00+07:00', schedfinish: '2026-09-01T14:30:00+07:00', assignedto: 'TECH' });
-  const pumpDraft = orderWith({ workorderid: '102', wonum: 'WO-PUMP-DRAFT', status: 'APPR', description: 'Pump service',
+  const pumpDraft = orderWith({ workorderid: '102', wonum: 'WO-PUMP-DRAFT', status: 'APPR', wopriority: 2, description: 'Pump service',
     schedstart: null, schedfinish: null, assignedto: null, drafts: [filterDraft] });
-  const pump = orderWith({ wonum: 'WO-PUMP', status: 'APPR', description: 'Pump inspection', schedstart: null, schedfinish: null, assignedto: 'TECH' });
+  const pump = orderWith({ wonum: 'WO-PUMP', status: 'APPR', wopriority: 3, description: 'Pump inspection', schedstart: null, schedfinish: null, assignedto: 'TECH' });
   await inlineSetup([pump, pumpDraft, valve]);
 
-  expect(screen.queryByRole('button', { name: 'Hiện bộ lọc' })).not.toBeInTheDocument();
+  // Status and Work Type sit behind the filter icon; the old filter panel and its selects are gone.
+  const toggle = screen.getByRole('button', { name: 'Hiện bộ lọc' });
+  expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.getByLabelText('WO Status')).not.toBeVisible();
+  fireEvent.click(toggle);
+  expect(screen.getByRole('button', { name: 'Ẩn bộ lọc' })).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByLabelText('WO Status')).toBeVisible();
   expect(screen.queryByRole('search')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Lập lịch')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Nháp')).not.toBeInTheDocument();
@@ -1184,7 +1190,8 @@ it('saves several new rows as separate drafts, never as a group, and a failing r
 });
 
 it('moves between rows of the same column with Enter and the arrow keys, but leaves drop-down arrows alone', async () => {
-  await inlineSetup([orderWith({}), orderWith({ workorderid: '101', wonum: 'WO-TWO' }), orderWith({ workorderid: '102', wonum: 'WO-THREE' })]);
+  // Same priority and no schedule, so the table keeps them in WO-number order: WO-REAL, WO-THREE, WO-TWO; give them distinct priorities to fix the order.
+  await inlineSetup([orderWith({ wopriority: 3 }), orderWith({ workorderid: '101', wonum: 'WO-TWO', wopriority: 2 }), orderWith({ workorderid: '102', wonum: 'WO-THREE', wopriority: 1 })]);
   const duration = (wo: string) => screen.getByLabelText(new RegExp(`Sửa nhanh ${wo} Est. Duration`));
   duration('WO-REAL').focus();
   fireEvent.keyDown(duration('WO-REAL'), { key: 'Enter' });
@@ -1539,4 +1546,51 @@ it('shows no pager for 20 rows or fewer and refreshes from an icon button', asyn
   const refresh = screen.getByRole('button', { name: 'Cập nhật' });
   expect(refresh).not.toHaveTextContent('Cập nhật');
   expect(refresh).toHaveAttribute('title', 'Cập nhật dữ liệu từ Maximo');
+});
+
+it('sorts by priority, then earliest start with unscheduled last, and filters by Work Type behind the filter icon', async () => {
+  const rows = [
+    orderWith({ workorderid: '201', wonum: 'WO-LOW', wopriority: 1, worktype: 'CM', schedstart: '2026-09-01T06:30:00+07:00', schedfinish: '2026-09-01T14:30:00+07:00' }),
+    orderWith({ workorderid: '202', wonum: 'WO-HIGH-LATE', wopriority: 3, worktype: 'PM', schedstart: '2026-09-20T06:30:00+07:00', schedfinish: '2026-09-20T14:30:00+07:00' }),
+    orderWith({ workorderid: '203', wonum: 'WO-HIGH-NONE', wopriority: 3, worktype: 'CM', schedstart: null, schedfinish: null }),
+    orderWith({ workorderid: '204', wonum: 'WO-HIGH-EARLY', wopriority: 3, worktype: 'CM', schedstart: '2026-09-05T06:30:00+07:00', schedfinish: '2026-09-05T14:30:00+07:00' }),
+    orderWith({ workorderid: '205', wonum: 'WO-NONE', wopriority: null, worktype: 'PM' }),
+  ];
+  await inlineSetup(rows);
+  const order = () => [...document.querySelectorAll('tbody tr')].map((row) => within(row as HTMLElement).getAllByRole('button')[0].textContent);
+  expect(order()).toEqual(['WO-HIGH-EARLY', 'WO-HIGH-LATE', 'WO-HIGH-NONE', 'WO-LOW', 'WO-NONE']);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Hiện bộ lọc' }));
+  fireEvent.change(screen.getByLabelText('Work Type'), { target: { value: 'PM' } });
+  expect(order()).toEqual(['WO-HIGH-LATE', 'WO-NONE']);
+  fireEvent.click(screen.getByRole('button', { name: 'Ẩn bộ lọc' }));
+  // The filter stays applied while hidden, and the icon shows how many are active.
+  expect(order()).toEqual(['WO-HIGH-LATE', 'WO-NONE']);
+  expect(screen.getByRole('button', { name: 'Hiện bộ lọc' })).toHaveTextContent('1');
+  fireEvent.click(screen.getByRole('button', { name: 'Xóa bộ lọc' }));
+  expect(order()).toHaveLength(5);
+
+  const density = screen.getByRole('button', { name: 'Bảng gọn' });
+  fireEvent.click(density);
+  expect(screen.getByRole('button', { name: 'Bảng thoáng' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+it('opens the page menu from the header button and closes it on Esc or after choosing a page', async () => {
+  await setup(true);
+  const button = screen.getByRole('button', { name: 'Chọn trang' });
+  expect(screen.queryByRole('navigation', { name: 'Điều hướng chính' })).not.toBeInTheDocument();
+  fireEvent.click(button);
+  const menu = screen.getByRole('navigation', { name: 'Điều hướng chính' });
+  expect(within(menu).getAllByRole('link').map((link) => link.textContent)).toEqual(['WO Scheduler', 'Resource Timeline', 'Rota Upload']);
+  expect(within(menu).getByRole('link', { name: 'WO Scheduler' })).toHaveAttribute('aria-current', 'page');
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(screen.queryByRole('navigation', { name: 'Điều hướng chính' })).not.toBeInTheDocument();
+  fireEvent.click(button);
+  fireEvent.click(within(screen.getByRole('navigation', { name: 'Điều hướng chính' })).getByRole('link', { name: 'Rota Upload' }));
+  expect(screen.queryByRole('navigation', { name: 'Điều hướng chính' })).not.toBeInTheDocument();
+  expect(button).toHaveAttribute('aria-expanded', 'false');
+  // The header and the browser tab name the current page; Home sits next to the menu button.
+  expect(document.querySelector('header')).toHaveTextContent('Rota Upload');
+  expect(document.title).toBe('Rota Upload · Work Order Scheduler');
+  expect(screen.getByRole('link', { name: 'Trang chủ' })).toHaveAttribute('href', '/');
 });

@@ -31,6 +31,27 @@ export function RenewIcon({ size = 20 }: IconProps) {
   </svg>;
 }
 
+/** filter */
+export function FilterIcon({ size = 20 }: IconProps) {
+  return <svg {...base(size)}>
+    <path d="M18,28H14a2,2,0,0,1-2-2V18.41L4.59,11A2,2,0,0,1,4,9.59V6A2,2,0,0,1,6,4H26a2,2,0,0,1,2,2V9.59A2,2,0,0,1,27.41,11L20,18.41V26A2,2,0,0,1,18,28ZM6,6V9.59l8,8V26h4V17.59l8-8V6Z" />
+  </svg>;
+}
+
+/** row--collapse: tighter rows */
+export function RowCollapseIcon({ size = 20 }: IconProps) {
+  return <svg {...base(size)}>
+    <path d="M4,2H28V4H4Z M4,28H28v2H4Z M16,13.17,11.41,8.59,10,10l6,6,6-6-1.41-1.41Z M16,18.83l4.59,4.58L22,22l-6-6-6,6,1.41,1.41Z" />
+  </svg>;
+}
+
+/** row--expand: roomier rows */
+export function RowExpandIcon({ size = 20 }: IconProps) {
+  return <svg {...base(size)}>
+    <path d="M4,15H28v2H4Z M16,6.83l4.59,4.58L22,10,16,4,10,10l1.41,1.41Z M16,25.17l-4.59-4.58L10,22l6,6,6-6-1.41-1.41Z" />
+  </svg>;
+}
+
 /** maximize */
 export function MaximizeIcon({ size = 20 }: IconProps) {
   return <svg {...base(size)}>

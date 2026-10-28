@@ -34,6 +34,14 @@ Cập nhật: 2026-10-28.
 
 ## Thu gọn phần trên bảng WO — 2026-10-28
 
+- [x] **Menu trang, sắp xếp, bộ lọc và icon (theo góp ý trên trang):** ba trang gom vào nút ≡ góc trái (WO Scheduler / Resource Timeline /
+      Rota Upload), kèm icon Home; tiêu đề header và tab trình duyệt theo trang. Bảng xếp theo ưu tiên cao nhất (số Maximo lớn hơn), rồi Scheduled
+      Start sớm hơn, chưa có lịch cuối nhóm, rồi số WO. Tìm kiếm + Status + Work Type (mới) là một hàng ẩn/hiện bằng icon phễu (đếm bộ lọc đang
+      áp dụng); 4 icon (bộ lọc, bảng gọn | cập nhật, toàn màn hình) nằm cùng hàng chip nên bật bộ lọc chỉ thêm một hàng. Tiêu đề cột ngắn: WO / Type,
+      Status, Số giờ, Scheduled Date, Target Date, Technician; cột Công việc nhận phần rộng còn lại. Ô Technician chỉ hiện mã (danh sách vẫn
+      "mã — họ tên"), đủ rộng cho "Chưa phân công". Icon bật hiện trạng thái (nền xanh nhạt, viền xanh). Hover: icon trang dùng `--hover`; icon trên
+      header tối dùng `#393939` và phải viết `:hover:not(:disabled)` để thắng quy tắc chung `button:hover:not(:disabled)` (lỗi đã gặp với nút ≡ và
+      nút route xanh). Đã xem trên trang thật 1440×900, không cuộn trang khi bật/tắt bộ lọc. Test 200 WO nâng giới hạn 15s → 30s (jsdom chậm khi máy bận).
 - [x] **Chia trang và icon Cập nhật:** bảng hiện 20 WO/trang trên dữ liệu đã lọc, thanh "‹ 1 2 … › 21–40 / 116" dưới bảng; đổi search/Status/chip
       về trang 1, Cập nhật giữ trang (hoặc trang cuối nếu ít đi). "Chọn tất cả" chỉ chọn trang đang xem; lựa chọn ở trang khác giữ khi chuyển trang
       và xóa khi đổi bộ lọc. Ctrl+D chỉ điền vào dòng đã chọn trên trang đang xem. Số trên chip và "Hiển thị X / Y" vẫn tính trên toàn bộ.

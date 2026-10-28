@@ -82,7 +82,7 @@ it.each([2, 50, 100, 200])('edits, pastes, previews, saves and restores a %i-WO 
   expect(await screen.findByLabelText(`MONTH-${count} Est. Duration`)).toHaveValue('2.25');
   expect(screen.getByLabelText('MONTH-1 Assigned PIC')).toHaveValue('OTHER');
   expect(prepareBatch).toHaveBeenCalledTimes(1);
-}, 15000);
+}, 30000); // 200 rows through jsdom take ~15s on a busy machine.
 
 it.each(['baseline', 'version', 'revoked', 'late'])('keeps a 200-WO batch isolated after %s responses', async (fault) => {
   const rows = monthlyRows(200), callbacks = props(rows);
@@ -115,4 +115,4 @@ it.each(['baseline', 'version', 'revoked', 'late'])('keeps a 200-WO batch isolat
     expect(callbacks.onDirty).toHaveBeenLastCalledWith(true);
     expect(screen.getByText('Lưu nháp nhóm')).toBeDisabled();
   }
-}, 15000);
+}, 30000); // 200 rows through jsdom take ~15s on a busy machine.

@@ -35,10 +35,17 @@
 :global(summary) { cursor: pointer; padding: 8px 0; }
 .shell { min-height: 100vh; display: flex; flex-direction: column; }
 .header { min-height: 48px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 0 24px; gap: 24px; background: #161616; color: #f4f4f4; border-bottom: 1px solid #393939; }
-.mainNav { display: flex; align-self: stretch; margin-right: auto; margin-left: 24px; }
-.mainNav a { display: flex; align-items: center; padding: 0 16px; color: #c6c6c6; border-bottom: 3px solid transparent; }
-.mainNav a:hover { background: #393939; color: #f4f4f4; text-decoration: none; }
-.mainNav a[aria-current="page"] { color: #ffffff; border-bottom-color: #4589ff; }
+/* Page menu: one button at the far left; the panel lists the three pages. */
+.pageMenu { position: relative; display: flex; align-self: stretch; margin: 0 -16px 0 -16px; }
+.pageMenuButton { display: flex; align-items: center; justify-content: center; width: 48px; border: 0; background: transparent; color: #f4f4f4; cursor: pointer; }
+.pageMenu > a.pageMenuButton:hover { text-decoration: none; }
+/* :not(:disabled) is needed to outrank the global `button:hover:not(:disabled)` light hover, which made the icon vanish. */
+.pageMenuButton:hover:not(:disabled), .pageMenuButton[aria-expanded="true"] { background: #393939; }
+.pagePanel { position: absolute; z-index: 40; top: 100%; left: 0; display: grid; min-width: 220px; padding: 8px 0; background: #262626; border: 1px solid #393939; box-shadow: var(--shadow-overlay); }
+.pagePanel a { display: flex; align-items: center; min-height: 40px; padding: 0 16px; color: #c6c6c6; border-left: 3px solid transparent; }
+.pagePanel a:hover { background: #393939; color: #f4f4f4; text-decoration: none; }
+.pagePanel a[aria-current="page"] { color: #ffffff; border-left-color: #4589ff; font-weight: 600; }
+.header .brand { margin-right: auto; }
 .header a:focus-visible, .header summary:focus-visible { outline-color: #ffffff; outline-offset: -2px; }
 .userArea { display: flex; align-items: center; gap: 12px; position: relative; }
 .envChip { padding: 2px 10px; border-radius: 12px; font-size: 12px; line-height: 18px; font-weight: 600; background: #0e6027; color: #a7f0ba; white-space: nowrap; }
@@ -49,7 +56,8 @@
 .headerRange .iconButton { color: inherit; border-color: transparent; background: transparent; }
 .rangeControl { display: inline-flex; align-items: center; gap: 4px; }
 .iconButton { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 0; border: 1px solid var(--line); background: var(--layer); color: var(--link); cursor: pointer; }
-.iconButton:hover { background: var(--ground); }
+/* Hover must differ from both the button (--layer) and the page (--ground); --ground made the button vanish into the page. */
+.iconButton:hover { background: var(--hover); }
 :global([data-theme="g100"]) .headerRange { color: var(--muted); }
 .userMenu summary { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 8px; cursor: pointer; list-style: none; color: #f4f4f4; }
 .userMenu summary::-webkit-details-marker { display: none; }
@@ -69,7 +77,7 @@
 .actionCard span { color: var(--muted); font-size: 12px; }
 .actionCard p { margin: 0; color: var(--muted); }
 .cards + .cards { margin-top: 16px; }
-@media (max-width: 800px) { .userName { display: none; } .mainNav { margin-left: 8px; } .mainNav a { padding: 0 8px; } }
+@media (max-width: 800px) { .userName { display: none; } }
 .brand { display: flex; align-items: center; gap: 8px; color: #f4f4f4; font-weight: 600; white-space: nowrap; }
 .brand b { font-weight: 400; }
 .brandLogo { width: 44px; height: 36px; object-fit: contain; padding: 3px; box-sizing: content-box; background: #ffffff; border-radius: 3px; }
@@ -130,7 +138,22 @@
 .pageButton[aria-current="page"] { border-color: var(--link); font-weight: 600; color: var(--ink); }
 .pagerRange { margin-left: 8px; color: var(--muted); }
 .workOrdersFullscreen > .workOrdersContent > .pager { flex-shrink: 0; }
-.toolbarEnd { display: inline-flex; gap: 4px; margin-left: auto; }
+.toolbarEnd { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; }
+/* Chips and the icon groups share one row; the toolbar row above exists only while it has something visible (filters open). */
+.chipRow { display: flex; align-items: center; gap: 8px; margin: 8px 0 6px; }
+.chipRow > .routeChips { flex: 1 1 auto; margin: 0; }
+.woToolbar:not(:has(> :not([hidden]))) { display: none; }
+.iconGroup { display: inline-flex; gap: 4px; }
+.iconGroup + .iconGroup { padding-left: 12px; border-left: 1px solid var(--line); }
+.toolbarFilters { display: inline-flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.toolbarFilters .toolbarSearch { flex: 0 1 280px; }
+.toolbarFilters[hidden] { display: none; }
+.iconButton { position: relative; }
+/* A toggled icon (filters open, dense rows, full screen) reads as switched on, like a pressed chip. */
+.iconButton[aria-pressed="true"], .iconButton[aria-expanded="true"] { border-color: var(--link); background: var(--accent-tint); color: var(--accent-deep); }
+/* On the dark header the calendar icon hovers like the main navigation. */
+.headerRange .iconButton:hover { background: #393939; color: #f4f4f4; }
+.iconBadge { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--link); color: var(--layer); font-size: 10px; line-height: 16px; }
 .spinning { display: inline-flex; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinning { animation: none; } }
@@ -143,12 +166,15 @@
 :global(th) { padding: 12px 8px; background: var(--hover); color: var(--ink); font-weight: 600; white-space: nowrap; }
 :global(td) { padding: 12px 8px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: top; }
 :global(td small) { display: block; margin-top: 6px; color: var(--muted); }
-/* Fill the window down to the pager and footer (header, toolbar, chips, pager and footer take about 244px). */
-.compactTable { max-height: max(320px, calc(100dvh - 244px)); scrollbar-gutter: stable; }
+/* Fill the window down to the pager and footer (header, chip row, pager and footer take about 208px; the open filter row 40px more). */
+.compactTable { max-height: max(320px, calc(100dvh - 208px)); scrollbar-gutter: stable; }
+[data-filters-open] .compactTable { max-height: max(320px, calc(100dvh - 248px)); }
 .compactTable table { min-width: 980px; }
-.compactTable th { position: sticky; top: 0; z-index: 2; }
+.compactTable th { position: sticky; top: 0; z-index: 2; white-space: nowrap; }
 .compactTable td:first-child, .compactTable th:first-child { padding-left: 16px; }
-.compactTable .descriptionCell { min-width: 220px; max-width: 330px; }
+.compactTable td[data-label="Status"], .compactTable td[data-label="Target"] { white-space: nowrap; }
+/* Công việc takes whatever width the narrow columns leave. */
+.compactTable .descriptionCell { min-width: 220px; width: 100%; }
 .compactTable .woLink { display: inline; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--link); font-weight: 400; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 .compactTable .woLink:hover { color: var(--accent-deep); background: transparent; }
 .compactTable .draftMarker { margin-top: 6px; width: fit-content; color: var(--accent-deep); }
@@ -258,8 +284,8 @@
 .toolbarActions { display: flex; flex-wrap: wrap; gap: 6px; }
 .toolbarActions > button { min-height: 32px; padding: 5px 9px; font-size: 13px; line-height: 18px; }
 .toolbarActions .ghost[aria-pressed="true"] { background: var(--accent-tint); }
-.toolbarStatus { display: inline-grid; grid-template-columns: auto minmax(120px, 180px); align-items: center; gap: 6px; color: var(--muted); font-size: 12px; line-height: 16px; }
-.toolbarStatus select { width: 100%; min-height: 32px !important; padding: 5px 8px !important; font-size: 13px !important; }
+.toolbarStatus { display: inline-grid; grid-template-columns: auto auto; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; line-height: 16px; }
+.toolbarStatus select { width: auto; min-width: 96px; min-height: 32px !important; padding: 5px 8px !important; font-size: 13px !important; }
 /* The toolbar copy of the loaded range, used while the header is hidden (full screen). */
 .fullscreenRange { display: inline-flex; color: var(--muted); font-size: 12px; line-height: 16px; }
 .statusLine { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 4px 0; color: var(--muted); font-size: 12px; line-height: 18px; }
@@ -295,11 +321,8 @@
 .resultGroups [data-tone="warning"] { border-left-color: var(--warning-border); background: var(--warning-bg); color: var(--warning-ink); }
 @media (max-width: 1100px) {
   .header { flex-wrap: wrap; gap: 0 8px; padding: 0 16px; }
-  .brand { order: 1; }
-  .userArea { order: 2; margin-left: auto; max-width: 58vw; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .userArea { margin-left: auto; max-width: 58vw; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
   .headerRange { max-width: 100%; }
-  .mainNav { order: 3; flex: 1 0 100%; margin: 0 -16px; padding: 0 8px; overflow-x: auto; border-top: 1px solid var(--line); }
-  .mainNav a { flex: 1; justify-content: center; white-space: nowrap; min-height: 44px; }
 }
 @media (max-width: 640px) {
   .menuPanel { position: fixed; top: 48px; left: 8px; right: 8px; min-width: 0; }
@@ -392,7 +415,7 @@
 .compactTable td .dateTimeButton { min-height: 32px; min-width: 32px; padding: 0 6px; }
 .compactTable td select { min-height: 32px; width: 100%; max-width: 200px; padding: 2px 6px; font-size: 13px; }
 /* The select keeps its look and its "code — name" list; its own text is hidden under a code-only label. */
-.picCell { position: relative; display: inline-block; width: 100%; max-width: 140px; }
+.picCell { position: relative; display: inline-block; width: 100%; min-width: 132px; max-width: 160px; }
 /* Hide only the glyphs; color stays so the native arrow keeps showing. */
 .picCell select { -webkit-text-fill-color: transparent; }
 .picCell select option { -webkit-text-fill-color: var(--ink); color: var(--ink); }
@@ -416,7 +439,7 @@
 .routeCell { position: relative; display: grid; justify-items: start; gap: 4px; }
 .routeIconButton { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 32px; min-height: 32px; padding: 0 6px; border: 1px solid var(--line); border-radius: var(--radius); background: transparent; color: var(--muted); font-size: 13px; cursor: default; }
 .routeIconReady { border-color: var(--link); background: var(--link); color: #fff; cursor: pointer; }
-.routeIconReady:hover { background: var(--link); filter: brightness(0.9); }
+.routeIconReady:hover:not(:disabled) { background: var(--link); filter: brightness(0.9); }
 .routeIconButton:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 .routeStatusIcon { border-color: transparent; background: transparent; }
 .routeDone { color: var(--success-ink); }

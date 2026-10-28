@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DateTimeInput } from '../components/DateTimeInput';
-import { CalendarIcon, MaximizeIcon, MinimizeIcon, RenewIcon } from '../components/RouteIcon';
+import { CalendarIcon, FilterIcon, MaximizeIcon, MinimizeIcon, RenewIcon, RowCollapseIcon, RowExpandIcon } from '../components/RouteIcon';
 
 import { getAuthSummary, loginUrl, type Session } from '../api/client';
 import { RetrievalError, retrieveWorkOrders, type WorkOrder, type WorkOrderFilter } from '../api/workOrders';
@@ -49,6 +49,18 @@ export function mergePmOrigin(current: Map<string, Baseline>, principal: string,
 /** Rows per table page; a month of WOs stays scannable without endless scrolling. */
 const PAGE_SIZE = 20;
 
+/** Highest priority first (larger Maximo number), then earliest Scheduled Start, unscheduled last, then WO number. */
+function byPriority(a: WorkOrder, b: WorkOrder) {
+  const priority = (b.wopriority ?? -Infinity) - (a.wopriority ?? -Infinity);
+  if (priority) return priority;
+  if (a.schedstart !== b.schedstart) {
+    if (!a.schedstart) return 1;
+    if (!b.schedstart) return -1;
+    return Date.parse(a.schedstart) - Date.parse(b.schedstart);
+  }
+  return a.wonum.localeCompare(b.wonum);
+}
+
 export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion = null, onPicSuggestionHandled, headerSlot = null, footerSlot = null }: { active?: boolean; autoRetrieve?: boolean; picSuggestion?: PicSuggestion | null; onPicSuggestionHandled?: () => void;
   /** Where the loaded range and its change button go in the app header; without it they stay in the toolbar. */
   headerSlot?: HTMLElement | null;
@@ -76,8 +88,12 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     try { localStorage.setItem('workorder-scheduler-density', next ? 'dense' : 'comfortable'); } catch { /* preference is optional */ }
   };
   const rangeTitleId = useId();
+  const filtersId = useId();
   const rangeBodyId = useId();
   const [statusFilter, setStatusFilter] = useState('');
+  const [worktypeFilter, setWorktypeFilter] = useState('');
+  // Search, Status and Work Type stay out of the way until asked for; the chips are always shown.
+  const [filtersVisible, setFiltersVisible] = useState(false);
   const [chipFilter, setChipFilter] = useState('');
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   // Cell edits typed straight into the table; they become drafts only when the user saves them.
@@ -299,6 +315,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   }
   const scope = grant ? JSON.stringify([grant.connection_id, grant.discipline]) : '';
   const statuses = useMemo(() => [...new Set(rows?.map((row) => row.status) ?? [])].sort(), [rows]);
+  const worktypes = useMemo(() => [...new Set(rows?.map((row) => row.worktype).filter((type): type is string => !!type) ?? [])].sort(), [rows]);
   const routeScope = JSON.stringify(editorScope);
   const routeAvailable = grant?.capability === 'write' && routeStatus?.scope === routeScope && routeStatus.status.can_route;
   // What the table already rules out is answered here; the server's answer is used only while the row is unchanged.
@@ -311,8 +328,10 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const facetRows = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('vi');
     return rows?.map((row) => effectiveOrder(row, choices[rowKey(row)])).filter((row) => (!statusFilter || row.status === statusFilter) &&
-      (!query || [row.wonum, row.description, row.location].some((value) => value?.toLocaleLowerCase('vi').includes(query)))) ?? [];
-  }, [rows, search, statusFilter, choices]);
+      (!worktypeFilter || row.worktype === worktypeFilter) &&
+      (!query || [row.wonum, row.description, row.location].some((value) => value?.toLocaleLowerCase('vi').includes(query))))
+      .sort(byPriority) ?? [];
+  }, [rows, search, statusFilter, worktypeFilter, choices]);
   const [page, setPage] = useState(0);
   const visibleRows = useMemo(() => facetRows.filter((row) =>
     !chipFilter || (chipFilter === 'no_draft' ? !row.drafts?.length :
@@ -491,7 +510,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     setUpdatedAt(null); setStale(false);
     selected.current = null;
     retrieved.current = null; setLoadedRange(null);
-    setBatch(null); setSelectedKeys([]); setChipFilter(''); setPage(0); setInline({}); setInlineErrors({}); setInlineNotice('');
+    setBatch(null); setSelectedKeys([]); setChipFilter(''); setWorktypeFilter(''); setPage(0); setInline({}); setInlineErrors({}); setInlineNotice('');
     setChoices({}); setChooser(null); setSendError('');
     setRouteStatus(null); setRouteInfo({}); setRouteOutcome({}); setRouteTargets(null);
     setSelection(null); setRechecked(null); dirty.current = false;
@@ -760,6 +779,28 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const draftedCount = rows?.filter((row) => row.drafts?.length).length ?? 0;
   const rowSummary = rows !== null && <span role="status">{rows.length > 0 && `Hiển thị ${visibleRows.length} / ${rows.length} WO.`}
     {updatedAt !== null && grant && <span className={styles.statusUpdated}>Cập nhật lần cuối: {new Intl.DateTimeFormat('vi-VN', { timeZone: grant.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(updatedAt)}</span>}</span>;
+  const hasRows = rows !== null && rows.length > 0;
+  // View controls (filters, density) and data/window controls (refresh, full screen): two icon groups at the right of the chip row,
+  // so opening the filters adds one row above and closing it removes that row.
+  const iconBar = <span className={styles.toolbarEnd}>
+    {hasRows && <span className={styles.iconGroup}>
+      <button type="button" className={styles.iconButton} aria-expanded={filtersVisible} aria-controls={filtersId}
+        aria-label={filtersVisible ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'} title={filtersVisible ? 'Ẩn tìm kiếm và bộ lọc' : 'Tìm kiếm và lọc theo Status / Work Type'}
+        onClick={() => setFiltersVisible((value) => !value)}>
+        <FilterIcon size={16} />{(search.trim() || statusFilter || worktypeFilter) && <span className={styles.iconBadge}>{[search.trim(), statusFilter, worktypeFilter].filter(Boolean).length}</span>}
+      </button>
+      <button type="button" className={styles.iconButton} aria-pressed={dense} aria-label={dense ? 'Bảng thoáng' : 'Bảng gọn'}
+        title={dense ? 'Bảng thoáng' : 'Bảng gọn'} onClick={toggleDensity}>{dense ? <RowExpandIcon size={16} /> : <RowCollapseIcon size={16} />}</button>
+    </span>}
+    <span className={styles.iconGroup}>
+      {updatedAt !== null && rows !== null && <button type="button" className={styles.iconButton} aria-label="Cập nhật" title="Cập nhật dữ liệu từ Maximo"
+        aria-busy={busy || verifying} disabled={busy || verifying || checking} onClick={() => refreshSession.current?.(true)}>
+        <span className={busy || verifying ? styles.spinning : undefined}><RenewIcon size={16} /></span></button>}
+      <button type="button" className={`${styles.iconButton} ${styles.fullscreenToggle}`} aria-pressed={fullScreen}
+        aria-label={fullScreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} title={fullScreen ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình'}
+        onClick={() => setFullScreen((value) => !value)}>{fullScreen ? <MinimizeIcon size={16} /> : <MaximizeIcon size={16} />}</button>
+    </span>
+  </span>;
   // The range is loaded up to (not including) target_before, so its last shown day is the one before.
   const rangeControl = grant && rows !== null && loadedRange && !checking && <span className={styles.rangeControl}>
     <span>{displayDate(loadedRange.target_from, grant.timezone, false)} → {displayDate(new Date(Date.parse(loadedRange.target_before) - 1).toISOString(), grant.timezone, false)}</span>
@@ -777,7 +818,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     return counts;
   }, [facetRows, routeAvailable, routeOutcome, routeFresh, chipFilter]);
 
-  return <div ref={workspace} tabIndex={-1} className={fullScreen ? styles.workOrdersFullscreen : undefined}>
+  return <div ref={workspace} tabIndex={-1} className={fullScreen ? styles.workOrdersFullscreen : undefined} data-filters-open={filtersVisible || undefined}>
     <h1 className={styles.srOnly}>Work Orders</h1>
     {uploadNotice && <p role="status" className={styles.notice}>{uploadNotice}</p>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
@@ -845,29 +886,27 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
           {grant.system === 'onshore' ? 'Onshore' : 'Offshore'} · {grant.environment === 'test' ? 'TEST' : 'PROD'}
         </span>}
         {rangeControl && (headerSlot && !fullScreen ? createPortal(rangeControl, headerSlot) : <span className={styles.fullscreenRange}>{rangeControl}</span>)}
-        {rows !== null && rows.length > 0 && <label className={styles.toolbarStatus}>Status
-          <select aria-label="WO Status" value={statusFilter} onChange={(event) => { filterChanged(); setStatusFilter(event.target.value); }}>
-            <option value="">Tất cả status đã tải</option>
-            {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
-          </select>
-        </label>}
-        {rows !== null && rows.length > 0 && !checking && <label className={styles.toolbarSearch}>
-          <input type="search" placeholder="Tìm WO, mô tả hoặc Tag Name" aria-label="Tìm WO, mô tả hoặc Tag Name" value={search}
-            onChange={(event) => { filterChanged(); setSearch(event.target.value); }} /></label>}
-        {updatedAt !== null && rows !== null && <div className={styles.toolbarActions}>
-          {rows.length > 0 && <button className={styles.ghost} aria-pressed={dense} onClick={toggleDensity}>{dense ? 'Bảng thoáng' : 'Bảng gọn'}</button>}
-          {(search.trim() || statusFilter || chipFilter) && <button className={styles.ghost} onClick={() => {
-            filterChanged(); setSearch(''); setStatusFilter(''); setChipFilter('');
-          }}>Xóa bộ lọc</button>}
-        </div>}
-        <span className={styles.toolbarEnd}>
-          {updatedAt !== null && rows !== null && <button type="button" className={styles.iconButton} aria-label="Cập nhật" title="Cập nhật dữ liệu từ Maximo"
-            aria-busy={busy || verifying} disabled={busy || verifying || checking} onClick={() => refreshSession.current?.(true)}>
-            <span className={busy || verifying ? styles.spinning : undefined}><RenewIcon size={16} /></span></button>}
-          <button type="button" className={`${styles.iconButton} ${styles.fullscreenToggle}`} aria-pressed={fullScreen}
-            aria-label={fullScreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} title={fullScreen ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình'}
-            onClick={() => setFullScreen((value) => !value)}>{fullScreen ? <MinimizeIcon size={16} /> : <MaximizeIcon size={16} />}</button>
-        </span>
+        {rows !== null && rows.length > 0 && <span id={filtersId} className={styles.toolbarFilters} hidden={!filtersVisible}>
+          {!checking && <label className={styles.toolbarSearch}>
+            <input type="search" placeholder="Tìm WO, mô tả hoặc Tag Name" aria-label="Tìm WO, mô tả hoặc Tag Name" value={search}
+              onChange={(event) => { filterChanged(); setSearch(event.target.value); }} /></label>}
+          <label className={styles.toolbarStatus}>Status
+            <select aria-label="WO Status" value={statusFilter} onChange={(event) => { filterChanged(); setStatusFilter(event.target.value); }}>
+              <option value="">Tất cả</option>
+              {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </label>
+          <label className={styles.toolbarStatus}>Work Type
+            <select aria-label="Work Type" value={worktypeFilter} onChange={(event) => { filterChanged(); setWorktypeFilter(event.target.value); }}>
+              <option value="">Tất cả</option>
+              {worktypes.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </label>
+        </span>}
+        {(search.trim() || statusFilter || worktypeFilter || chipFilter) && <button className={styles.ghost} onClick={() => {
+          filterChanged(); setSearch(''); setStatusFilter(''); setWorktypeFilter(''); setChipFilter('');
+        }}>Xóa bộ lọc</button>}
+        {!hasRows && iconBar}
       </div>}
       {/* Warnings stay above the table; the routine count and update time go to the footer when there is one. */}
       {rows !== null && (stale || rows.length === 0) && <p role="status" className={`${styles.statusLine}${stale ? ` ${styles.statusLineStale}` : ''}`}>
@@ -876,6 +915,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       </p>}
       {rows !== null && (footerSlot && !fullScreen ? createPortal(rowSummary, footerSlot) : <p className={styles.statusLine}>{rowSummary}</p>)}
       {rows !== null && rows.length > 0 && <>
+        <div className={styles.chipRow}>
         <div className={styles.routeChips} role="group" aria-label="Lọc WO đã tải">
           {chipCounts.map(({ category, count }) => <button key={category} type="button" className={styles.routeChip} data-category={category}
             aria-pressed={chipFilter === category} onClick={() => { filterChanged(); setChipFilter(chipFilter === category ? '' : category); }}>
@@ -885,6 +925,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
             onClick={() => { filterChanged(); setChipFilter(chipFilter === 'no_draft' ? '' : 'no_draft'); }}>
             Chưa có nháp <strong>{facetRows.filter((order) => !order.drafts?.length).length}</strong>
           </button>
+        </div>
+        {iconBar}
         </div>
         {routeAvailable && routeProgress && <p className={styles.routeProgress} role="status">{`Đang kiểm tra khả năng route… ${routeProgress.done}/${routeProgress.total}`}</p>}
         {visibleRows.length === 0 && <p>Không có WO khớp bộ lọc bảng. Xóa bộ lọc để xem lại dữ liệu đã tải.</p>}
@@ -922,7 +964,10 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
             const retained = previous.filter((key) => !visibleKeys.has(key));
             return e.target.checked ? [...retained, ...visibleKeys] : retained;
           })} /></th>}
-            <th scope="col">Work Order / Type</th><th scope="col">Công việc / Tag Name</th><th scope="col">Status / Priority</th><th scope="col">Duration (giờ)</th><th scope="col">Lịch dự kiến</th><th scope="col">Target Start / Finish</th><th scope="col">Assigned PIC</th>{routeAvailable && <th scope="col">Action</th>}</tr></thead>
+            {/* Short headings leave the width to Công việc; the full name is in the hover title. */}
+            <th scope="col" title="Work Order / Work Type">WO / Type</th><th scope="col">Công việc / Tag Name</th><th scope="col" title="Status / Priority">Status</th>
+            <th scope="col" title="Est. Duration (giờ)">Số giờ</th><th scope="col" title="Scheduled Start → Finish">Scheduled Date</th><th scope="col" title="Target Start → Finish">Target Date</th>
+            <th scope="col" title="Assigned PIC">Technician</th>{routeAvailable && <th scope="col">Action</th>}</tr></thead>
             <tbody>{pageRows.map((row, pageIndex) => {
               const index = currentPage * PAGE_SIZE + pageIndex;
               const plan = chosenPlan(row, choices[rowKey(row)]);
