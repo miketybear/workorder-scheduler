@@ -22,7 +22,9 @@ Cập nhật: 2026-10-28.
 - Kiểm chứng frontend: typecheck/lint đạt; test avatar **4/4** đạt. `npm test` song song: **595 passed, 1 failed** ở test WorkOrders gộp draft (callback `openBatch` chưa gọi khi assertion); không đổi mã/test WorkOrders. Chạy lại full suite `npm test -- --maxWorkers=1`: **596/596 passed, 47/47 file**. Vitest cần chạy ngoài sandbox do `spawn EPERM`. `git diff --check` đạt. Cần theo dõi độ ổn định test song song; không suy ra đã sửa lỗi thời điểm của test ngoài phạm vi này.
 - Giới hạn: **chưa kiểm chứng tenant/Graph/consent hoặc trình duyệt thật**. Restart/eviction/request tới worker khác có thể hiển thị chữ cái; không lưu ảnh trong PostgreSQL. Cache hết TTL được dọn khi đọc/thêm ảnh, phiên DB hết hạn luôn bị từ chối ngay.
 - [x] **Theo chủ dự án (2026-10-28):** IT xác nhận đã set quyền; ảnh **bật mặc định** (`profile_photo_enabled=True`, đặt false nếu tenant chặn). Header bỏ họ tên, chỉ còn ảnh/chữ cái (tên trong tooltip và menu tài khoản).
-- [ ] Nghiệm thu trên tenant thật sau khi đăng nhập lại: có ảnh, không có ảnh, logout, đổi tài khoản.
+- [x] Nghiệm thu tenant thật (2026-10-28, local, sau khi đăng nhập lại): `/api/auth/photo` 200 `image/jpeg` 1,8 KB, ảnh 48px hiện trong header;
+      không cookie → 401; `/api/auth/session` và storage trình duyệt không có token. Phiên cũ (trước tính năng) → 404, hiện chữ cái.
+- [ ] Chưa thử trên tenant thật: tài khoản không có ảnh, logout rồi đổi tài khoản.
 
 ## Upload yêu cầu đủ lịch và PIC — 2026-10-28
 
