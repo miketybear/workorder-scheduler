@@ -12,13 +12,15 @@ export type UploadConnection = { label: string; system: 'onshore' | 'offshore'; 
 export type FinalizedUpload = { draft_id: string; version: number; items: { site_id: string; workorder_id: string; restore_source: { before: Baseline } | null }[] };
 
 export function UploadPreviewControls({ draft, selection, connection, connectionId, timezone, context, onDenied, enabled, buttonLabel, previewLabel,
-  active = true, onUploadFinalized, onWorkflowLock, discipline, onWorkflowCreated, uploadAll = false, permitted = true }: {
+  active = true, onUploadFinalized, onWorkflowLock, discipline, onWorkflowCreated, uploadAll = false, permitted = true, autoPreview = false }: {
   draft: Saved; selection: { site_id: string; workorder_id: string; wonum: string }[]; connection?: UploadConnection;
   connectionId: string; timezone: string; context: string; onDenied: () => void; enabled: boolean; buttonLabel: string; previewLabel: string; active?: boolean;
   onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>; onWorkflowLock?: (locked: boolean) => void;
   discipline: string; onWorkflowCreated?: (entry: UploadRecoveryEntry) => void;
   uploadAll?: boolean;
   permitted?: boolean;
+  /** Reconcile with Maximo as soon as the panel is shown, without a button (the send screen has nothing else to do first). */
+  autoPreview?: boolean;
 }) {
   const [preview, setPreview] = useState<UploadPreview | null>(null);
   const [workflow, setWorkflow] = useState<{ draft: Saved; preview: UploadPreview; connectionId: string } | null>(null);
@@ -33,6 +35,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
   const submittingRef = useRef(false);
   const autoContinueRef = useRef(false);
   const hiddenStopRef = useRef(false);
+  const autoStarted = useRef('');
   const signature = JSON.stringify([draft.draft_id, draft.version, selection, connectionId, connection, timezone, context]);
   const signatureRef = useRef(signature);
   signatureRef.current = signature;
@@ -58,6 +61,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
   useEffect(() => {
     if (active) return;
     hiddenStopRef.current = true;
+    autoStarted.current = '';
     previewController.current?.abort();
     setBusy((current) => operationController.current ? current : false);
   }, [active]);
@@ -66,12 +70,20 @@ export function UploadPreviewControls({ draft, selection, connection, connection
     autoContinueRef.current = false;
     if (statusRef.current) statusCheckRequiredRef.current = true;
   }, [signature]);
+  useEffect(() => {
+    if (!autoPreview || !active || !enabled || autoStarted.current === signature) return;
+    autoStarted.current = signature;
+    void loadPreviewRef.current();
+  }, [autoPreview, active, enabled, signature]);
   useEffect(() => { if (!permitted) { autoContinueRef.current = false; if (status) statusCheckRequiredRef.current = true; } }, [permitted, status]);
-  useEffect(() => () => { previewController.current?.abort(); operationController.current?.abort(); autoContinueRef.current = false; }, []);
+  // The cleanup also forgets that the automatic reconciliation started: it aborts the request in flight, and React
+  // (StrictMode in development) may mount the same instance again, which must start it again.
+  useEffect(() => () => { previewController.current?.abort(); operationController.current?.abort(); autoContinueRef.current = false; autoStarted.current = ''; }, []);
   useEffect(() => { onWorkflowLock?.(workflowCompatible && !!requestId && (!status || (!status.source_finalized &&
     ((status.counts.pending ?? 0) + (status.counts.sending ?? 0) + (status.counts.unknown ?? 0) > 0)))); },
   [workflowCompatible, requestId, status, onWorkflowLock]);
 
+  const loadPreviewRef = useRef<() => Promise<void>>(async () => {});
   function handleError(cause: unknown) {
     if (cause instanceof RetrievalError && [401, 403, 404].includes(cause.status)) onDenied();
     setError(cause instanceof Error ? cause.message : 'Không hoàn tất yêu cầu.');
@@ -229,8 +241,10 @@ export function UploadPreviewControls({ draft, selection, connection, connection
     } finally { submittingRef.current = false; if (operationController.current === controller) { operationController.current = null; setBusy(false); } }
   }
 
+  loadPreviewRef.current = loadPreview;
+  const manualButton = !autoPreview || (canRecoverRequest && !status);
   return <>
-    {(!workflow || panelVisible) && <button className={styles.tertiary} disabled={!active || busy || (!!status && !status.source_finalized) || (!canRecoverRequest && !status && !enabled)} onClick={() => {
+    {manualButton && (!workflow || panelVisible) && <button className={styles.tertiary} disabled={!active || busy || (!!status && !status.source_finalized) || (!canRecoverRequest && !status && !enabled)} onClick={() => {
       if (canRecoverRequest && !status) { void submitOrRecover(); return; }
       if (viewState.open) { previewController.current?.abort(); setBusy(false); setViewState({ active, open: false }); }
       else void loadPreview();
@@ -252,6 +266,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
         Dừng sau đợt đang gửi
       </button>}
       {error && <p role="alert" className={styles.error}>{error}</p>}
+      {autoPreview && error && !busy && !currentPreview && !status && !requestId && <button className={styles.tertiary} disabled={!active || !enabled} onClick={() => void loadPreview()}>Thử lại đối chiếu</button>}
       {currentPreview && !status && !requestId && (() => {
         const items = currentPreview.items;
         const changeCount = items.reduce((sum, item) => sum + Object.keys(item.changes).length, 0);

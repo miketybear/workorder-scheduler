@@ -254,7 +254,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
       <UploadPreviewControls draft={saved} selection={uploadSelection} connection={connection} connectionId={scope.connection_id}
         timezone={timezone} context={uploadContext} onDenied={onDenied} active={active}
         enabled={!blocked && !dirty && changed.length > 0 && !Object.values(problems).some(Boolean)}
-        previewLabel="Đối chiếu nhóm với Maximo trước upload"
+        previewLabel="Đối chiếu nhóm với Maximo trước upload" autoPreview={sendOnly}
         buttonLabel={`Upload toàn bộ nhóm lên ${connection?.system === 'offshore' ? 'Offshore' : 'Onshore'} ${connection?.environment === 'production' ? 'production' : 'test'}`}
         onUploadFinalized={onUploadFinalized} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
         onWorkflowCreated={onUploadRequestCreated} uploadAll permitted={writable && !suspended && active} />

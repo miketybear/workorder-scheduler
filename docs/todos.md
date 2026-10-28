@@ -115,6 +115,10 @@ Cập nhật: 2026-10-19.
       101. Link trong phản hồi dùng host `maximo.biendongpoc.vn` và phải đổi về host test trước khi gọi.
 - [x] **D8:** chủ dự án quyết định 2026-10-23 không xoay key ENISUP test. (Ban đầu: xoay key ENISUP test. Một lệnh khảo sát ngày 2026-10-23 đã gửi key
       tới `maximo.biendongpoc.vn` (bị từ chối, BMXAA9549E). Host đó là một Maximo khác; việc xác nhận nó là hệ thống nào vẫn mở.)
+- [x] **Màn "Gửi N WO" tự đối chiếu khi mở (2026-10-28):** bỏ nút "Đối chiếu nhóm với Maximo trước upload" và "Ẩn đối chiếu" ở chế độ gửi nhóm (`autoPreview`); mở panel là chạy
+      đối chiếu chỉ đọc ngay, lỗi thì có "Thử lại đối chiếu". Màn sửa một WO giữ nút cũ. Lỗi bắt được khi xem trên trang thật: React StrictMode (dev) gắn-gỡ-gắn làm hủy yêu cầu đang
+      bay mà cờ "đã bắt đầu" vẫn còn nên panel kẹt ở "Đang đối chiếu…"; cờ nay đặt lại khi gỡ, có test StrictMode (thất bại nếu bỏ dòng sửa). Đã xem trên nhóm nháp 2 WO (không upload).
+      Frontend 523 test, lint/tsc đạt.
 - [x] **Đơn giản hóa màn "Gửi N WO lên Maximo" (2026-10-28):** một bảng đối chiếu (WO | Thay đổi "Maximo hiện tại → sẽ ghi" | Kết quả) thay cho hai bảng, dòng tóm tắt
       ("N WO · M thay đổi · tất cả khớp" hoặc "N WO cần xử lý") cùng hàng với nút Upload; bảng chi tiết lịch thu vào "Xem chi tiết lịch" (mặc định ẩn, tự mở khi
       có lỗi kiểm tra; lỗi hiện thành danh sách đỏ), bỏ cột "Kiểm tra", "Đóng nhóm" → "Đóng". Dùng chung cho màn sửa một WO. Đã xem trên trang thật

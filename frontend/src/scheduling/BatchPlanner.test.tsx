@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { act, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BatchPlanner } from './BatchPlanner';
@@ -384,11 +385,16 @@ it('warns once about starts outside the shift and can keep them or move them all
 // Send-only mode: the table assembled the group; the panel only summarizes it and uploads it.
 const sendRows = details.map((detail, index) => ({ ...detail, changes: index === 0 ? { estdur: '9', assignedto: 'OTHER' } : { estdur: '10' },
   baseline_changed: false, changes_valid_now: true }));
-async function setupSend(notes: string[] = []) {
+const sendPreview = (sendEnabled: boolean, gate: 'write_contract_unverified' | null) => ({ draft_id: 'group', version: 2, preview_hash: 'c'.repeat(64),
+  send_enabled: sendEnabled, gate, items: sendRows.map((row) => ({ site_id: row.item.siteid, workorder_id: row.item.workorderid,
+    code: 'ready' as const, warnings: [], before: { estdur: '8' }, changes: { estdur: row.changes.estdur! } })) });
+// The send screen reconciles by itself when it opens; there is no button to press first.
+async function setupSend(notes: string[] = [], preview = sendPreview(true, null)) {
   vi.mocked(openBatch).mockResolvedValue({ draft_id: 'group', version: 2, state: 'draft', items: sendRows });
+  vi.mocked(previewUpload).mockResolvedValue(preview);
   render(<BatchPlanner {...props} sendOnly sendNotes={notes} selection={{ draftId: 'group' }}
     connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
-  await screen.findByText('Đối chiếu nhóm với Maximo trước upload');
+  await screen.findByRole('table', { name: 'Thay đổi sẽ ghi' });
 }
 
 it('send-only mode shows a read-only summary and the upload section without any editing control', async () => {
@@ -402,7 +408,9 @@ it('send-only mode shows a read-only summary and the upload section without any 
   expect(within(table).getAllByRole('row')).toHaveLength(3);
   expect(within(table).getByRole('rowheader', { name: /WO-100/ })).toBeVisible();
   expect(table).toHaveTextContent('OTHER');
-  expect(screen.getByText('Đối chiếu nhóm với Maximo trước upload')).toBeEnabled();
+  expect(screen.getByText('2 WO · 2 thay đổi · tất cả khớp với Maximo')).toBeInTheDocument();
+  expect(screen.queryByText('Đối chiếu nhóm với Maximo trước upload')).not.toBeInTheDocument();
+  expect(screen.queryByText('Ẩn đối chiếu')).not.toBeInTheDocument();
   for (const absent of ['Áp dụng vào nháp', 'Undo', 'Xem trước thay đổi', 'Lưu nháp nhóm', 'Xóa nháp nhóm', 'Reset dòng']) {
     expect(screen.queryByText(absent)).not.toBeInTheDocument();
   }
@@ -414,12 +422,26 @@ it('send-only mode shows a read-only summary and the upload section without any 
 });
 
 it('send-only mode previews the persisted group against Maximo before upload', async () => {
-  await setupSend();
-  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'group', version: 2, preview_hash: 'c'.repeat(64),
-    send_enabled: false, gate: 'write_contract_unverified', items: sendRows.map((row) => ({ site_id: row.item.siteid, workorder_id: row.item.workorderid,
-      code: 'ready' as const, warnings: [], before: { estdur: '8' }, changes: { estdur: row.changes.estdur! } })) });
-  fireEvent.click(screen.getByText('Đối chiếu nhóm với Maximo trước upload'));
+  await setupSend([], sendPreview(false, 'write_contract_unverified'));
   expect(await screen.findByText('Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.')).toBeInTheDocument();
   expect(previewUpload).toHaveBeenCalledWith(expect.objectContaining({ draft_id: 'group', version: 2 }),
     sendRows.map((row) => ({ site_id: row.item.siteid, workorder_id: row.item.workorderid })), expect.any(AbortSignal));
+});
+
+it('send-only mode reconciles once on its own and offers a retry when that fails', async () => {
+  vi.mocked(openBatch).mockResolvedValue({ draft_id: 'group', version: 2, state: 'draft', items: sendRows });
+  vi.mocked(previewUpload).mockRejectedValueOnce(new Error('Không đọc được Maximo')).mockResolvedValue(sendPreview(true, null));
+  render(<BatchPlanner {...props} sendOnly selection={{ draftId: 'group' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
+  fireEvent.click(await screen.findByText('Thử lại đối chiếu'));
+  await screen.findByRole('table', { name: 'Thay đổi sẽ ghi' });
+  expect(previewUpload).toHaveBeenCalledTimes(2);
+  expect(screen.queryByText('Thử lại đối chiếu')).not.toBeInTheDocument();
+});
+
+it('send-only mode still reconciles when React mounts the panel twice (StrictMode in development)', async () => {
+  vi.mocked(openBatch).mockResolvedValue({ draft_id: 'group', version: 2, state: 'draft', items: sendRows });
+  vi.mocked(previewUpload).mockResolvedValue(sendPreview(true, null));
+  render(<StrictMode><BatchPlanner {...props} sendOnly selection={{ draftId: 'group' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} /></StrictMode>);
+  expect(await screen.findByRole('table', { name: 'Thay đổi sẽ ghi' })).toBeInTheDocument();
+  expect(screen.queryByText('Đang đối chiếu với Maximo…')).not.toBeInTheDocument();
 });

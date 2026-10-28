@@ -926,7 +926,6 @@ async function prepareBatchUpload() {
   await screen.findByRole('button', { name: 'WO-SECOND' });
   fireEvent.click(screen.getByRole('button', { name: 'Gửi 1 WO lên Maximo' }));
   await screen.findByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
-  fireEvent.click(await screen.findByText('Đối chiếu nhóm với Maximo trước upload'));
   await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
 }
 
@@ -1304,9 +1303,12 @@ it('opens a member of a group draft in the detail dialog with the group draft va
 it('opens the existing group draft untouched in the send-only panel', async () => {
   await loadDrafted([{ ...row, drafts: [groupMarker] }, { ...second, drafts: [groupMarker] }]);
   vi.mocked(openBatch).mockResolvedValue({ draft_id: 'group', version: 3, state: 'draft', items: [member(row), member(second)] });
+  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'group', version: 3, preview_hash: 'd'.repeat(64), send_enabled: true, gate: null,
+    items: [row, second].map((order) => ({ site_id: order.siteid, workorder_id: order.workorderid, code: 'ready' as const, warnings: [], before: { estdur: '8' }, changes: { estdur: '9' } })) });
   fireEvent.click(screen.getByRole('button', { name: 'Gửi 2 WO lên Maximo' }));
   const panel = await screen.findByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
-  await within(panel).findByText('Đối chiếu nhóm với Maximo trước upload');
+  expect(await within(panel).findByText('2 WO · 2 thay đổi · tất cả khớp với Maximo')).toBeInTheDocument();
+  expect(within(panel).queryByText('Đối chiếu nhóm với Maximo trước upload')).not.toBeInTheDocument();
   expect(within(panel).getByRole('heading', { name: 'Gửi 2 WO lên Maximo' })).toBeVisible();
   const detail = within(panel).getByText('Xem chi tiết lịch').closest('details') as HTMLDetailsElement;
   expect(detail.open).toBe(false);
@@ -1323,8 +1325,10 @@ it('opens the existing group draft untouched in the send-only panel', async () =
 it('keeps the send panel across a tab return and releases the scroll lock on close', async () => {
   await loadDrafted([{ ...row, drafts: [groupMarker] }]);
   vi.mocked(openBatch).mockResolvedValue({ draft_id: 'group', version: 3, state: 'draft', items: [member(row)] });
+  vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'group', version: 3, preview_hash: 'd'.repeat(64), send_enabled: true, gate: null,
+    items: [{ site_id: row.siteid, workorder_id: row.workorderid, code: 'ready' as const, warnings: [], before: { estdur: '8' }, changes: { estdur: '9' } }] });
   fireEvent.click(screen.getByRole('button', { name: 'Gửi 1 WO lên Maximo' }));
-  await screen.findByText('Đối chiếu nhóm với Maximo trước upload');
+  await screen.findByText('1 WO · 1 thay đổi · tất cả khớp với Maximo');
   expect(document.documentElement).toHaveAttribute('data-wo-panel-open');
   const reads = vi.mocked(openBatch).mock.calls.length;
   await act(async () => returnToPage());
