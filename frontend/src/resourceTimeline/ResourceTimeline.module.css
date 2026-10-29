@@ -229,7 +229,10 @@
 .todayButton { min-height: 32px; padding: 4px 12px; border: 1px solid var(--link); border-radius: var(--radius); background: var(--layer); color: var(--link); cursor: pointer; }
 .todayButton:disabled { opacity: .5; cursor: default; }
 .legendPopover { position: relative; }
-.legendPopover summary { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--border-strong); border-radius: 50%; cursor: pointer; list-style: none; font-weight: 600; }
+/* Same look as the WO toolbar icon buttons: square, thin border, --hover on hover, accent when open. */
+.legendPopover summary { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line); background: var(--layer); color: var(--link); cursor: pointer; list-style: none; }
+.legendPopover summary:hover { background: var(--hover); }
+.legendPopover[open] summary { border-color: var(--link); background: var(--accent-tint); color: var(--accent-deep); }
 .legendPopover summary::-webkit-details-marker { display: none; }
 .legendPopover .legend { position: absolute; z-index: 10; top: 36px; right: 0; width: 280px; flex-direction: column; gap: 6px; padding: 12px; background: var(--layer); border: 1px solid var(--line); box-shadow: var(--shadow-overlay); font-size: 12px; }
 .grid thead th[data-today] { background: var(--accent-tint); box-shadow: inset 0 -3px var(--link); }

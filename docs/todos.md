@@ -594,7 +594,10 @@ Cập nhật: 2026-10-29.
       plan và đồng bộ hàng loạt vẫn là dialog giữa màn hình.
 - [x] Tách backlog, lưới, dialog phân công thành component: xong 2026-10-29 (xem mục đầu). Nếu cần gọn hơn, bước sau là đưa
       state/logic ghi sang một hook riêng — đụng luồng ghi/đối soát nên làm ở mức suy luận cao kèm review độc lập.
-- [ ] Chưa làm: popover chú giải.
+- [x] **Popover chú giải (2026-10-29):** tách `LegendPopover.tsx`; đóng khi bấm Esc (trả focus về nút) hoặc bấm ra ngoài, bấm bên
+      trong vẫn mở. Nút "?" đổi thành icon help (Carbon) vuông 32px cùng kiểu icon toolbar: hover `--hover`, khi mở nền xanh nhạt/viền xanh.
+      Test mới cho Esc và bấm ngoài; Resource Timeline 131/131. Trang thật: mở → Esc đóng + focus đúng; mở → bấm ngoài đóng; hover
+      `#e8e8e8` trên nền trang `#f4f4f4`.
 
 ## UI/UX bước 4: panel và luồng upload — 2026-10-16
 

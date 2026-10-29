@@ -303,6 +303,26 @@ it('filters people by name, keeps role totals, and offers today and legend contr
   expect(screen.getByText(/Technician · 2 người/)).toBeInTheDocument();
 });
 
+it('closes the legend popup on Escape and on a click outside it',async()=>{
+  await loaded(snapshot);
+  const legend=screen.getByLabelText('Chú giải').closest('details')!;
+  const toggle=screen.getByLabelText('Chú giải');
+  expect(toggle.querySelector('svg')).not.toBeNull();
+  expect(legend.open).toBe(false);
+  fireEvent.click(toggle);
+  await waitFor(()=>expect(legend.open).toBe(true));
+  // A click inside the legend keeps it open.
+  fireEvent.mouseDown(screen.getByText('Có capacity theo rota'));
+  expect(legend.open).toBe(true);
+  fireEvent.keyDown(document,{key:'Escape'});
+  await waitFor(()=>expect(legend.open).toBe(false));
+  expect(toggle).toHaveFocus();
+  fireEvent.click(toggle);
+  await waitFor(()=>expect(legend.open).toBe(true));
+  fireEvent.mouseDown(screen.getByRole('heading',{name:'Resource timeline'}));
+  await waitFor(()=>expect(legend.open).toBe(false));
+});
+
 it('loads remaining task summaries only for visible page cards with at most two requests at once',async()=>{
   vi.stubGlobal('IntersectionObserver',TestIntersectionObserver as unknown as typeof IntersectionObserver);
   const orders=Array.from({length:117},(_,index)=>({...workOrder,wonum:`WO-${String(index+1).padStart(3,'0')}`,workorderid:`wo-${index+1}`}));
