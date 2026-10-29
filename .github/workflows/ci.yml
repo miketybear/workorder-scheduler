@@ -87,7 +87,8 @@ jobs:
         run: |
           uv run --frozen alembic upgrade head
           uv run --frozen alembic check
-          uv run --frozen alembic downgrade base
+          # 0010-0013 refuse downgrade to protect audit history; round-trip only the reversible tail.
+          uv run --frozen alembic downgrade 0013_assignment_plans
           uv run --frozen alembic upgrade head
           uv run --frozen alembic check
       - run: uv run --frozen pytest -m integration --run-db-tests --tb=short
