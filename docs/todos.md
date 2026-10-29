@@ -18,6 +18,7 @@ Cập nhật: 2026-10-29.
 - [x] Frontend cuối: typecheck/lint đạt; `npm test` **603/603 passed, 47/47 file**. Lượt đầu **598 passed / 3 failed**: hai test mới (thông báo 409 bị ẩn, chip chưa chờ phản hồi) và timeout ResourceTimeline. Chạy lại năm file liên quan với `--maxWorkers=1`: **245 passed / 2 failed**, ResourceTimeline qua; hai lỗi còn lại phát hiện fingerprint Maximo/nháp không khớp ở dòng nháp. Sau khi sửa fingerprint và assertion số lần preview, bộ đầy đủ cuối đạt như trên. Lượt thử targeted trong sandbox của agent không khởi chạy vì `spawn EPERM`; main dùng quyền thực thi bổ sung cho các lượt kiểm chứng. Backend uv cũng cần quyền đọc cache ngoài sandbox. Không có test Maximo thật.
 - [x] `git diff --check` đạt; liên kết tương đối trong hai tài liệu tồn tại, không có template placeholder. Đã rà soát diff tích hợp, gồm parsing mã route, nhãn/chip, upload-only/cả nháp và upload, ánh xạ 409 và recovery khi lỗi mạng.
 - [ ] (2026-10-29) Chip `upload_pending` và thông báo 409 đã có test tự động backend/frontend, chưa kiểm tra live vì trạng thái này hiếm: chỉ thoáng qua khi gửi hoặc khi không đọc được Maximo. Không tạo upload chưa đối soát giả (ghi Maximo/chèn DB); khi xảy ra tự nhiên, kiểm tra chip “Upload chưa xong” hiện ở WO đó, mở Gửi WO để đối soát, và upload mới của WO đó báo “Upload bị từ chối — Maximo chưa thay đổi: …” (409), Maximo không đổi.
+      Kiểm tra 2026-10-29: DB local không có upload nào ở pending/sending/unknown → chưa có tình huống thật để nghiệm thu; giữ mở.
 ## Ảnh đại diện Entra trong header — 2026-10-28
 
 - [x] Backend tải ảnh Graph 48x48 một lần trong callback bằng delegated `User.Read`, bật tùy chọn qua `WOS_ENTRA__PROFILE_PHOTO_ENABLED` (mặc định false). Token chỉ tồn tại trong callback; cache bộ nhớ chỉ giữ JPEG/PNG tối đa 128 KiB, tối đa 128 phiên, TTL 8 giờ; endpoint luôn xác thực session DB. Không migration/dependency mới, không commit.
@@ -594,6 +595,12 @@ Cập nhật: 2026-10-29.
       plan và đồng bộ hàng loạt vẫn là dialog giữa màn hình.
 - [x] Tách backlog, lưới, dialog phân công thành component: xong 2026-10-29 (xem mục đầu). Nếu cần gọn hơn, bước sau là đưa
       state/logic ghi sang một hook riêng — đụng luồng ghi/đối soát nên làm ở mức suy luận cao kèm review độc lập.
+- [ ] **Quyết định 2026-10-29 (chủ dự án duyệt khuyến nghị): chưa tách logic ghi của ResourceTimeline sang hook.** Lợi ích thấp (người
+      dùng không thấy khác), rủi ro cao (request ID, pending/unknown, đối soát, chặn chuyển trang). Chỉ làm khi có tính năng/lỗi buộc sửa
+      luồng ghi phân công, theo thứ tự: (1) test khóa hành vi luồng ghi trước (gửi trùng mã, unknown→đối soát, conflict, chuyển trang khi
+      đang ghi) và chạy đạt trên code hiện tại; (2) Codex `frontend` Terra mức high chuyển sang hook (vd. `useAssignmentWrites`), không đổi
+      hành vi, worktree riêng; (3) `reviewer` Sol/high review luồng ghi; (4) Main chạy lại toàn bộ test và thử một lần lưu phân công trên
+      Onshore TEST với WO được duyệt trước khi gộp.
 - [x] **Popover chú giải (2026-10-29):** tách `LegendPopover.tsx`; đóng khi bấm Esc (trả focus về nút) hoặc bấm ra ngoài, bấm bên
       trong vẫn mở. Nút "?" đổi thành icon help (Carbon) vuông 32px cùng kiểu icon toolbar: hover `--hover`, khi mở nền xanh nhạt/viền xanh.
       Test mới cho Esc và bấm ngoài; Resource Timeline 131/131. Trang thật: mở → Esc đóng + focus đúng; mở → bấm ngoài đóng; hover
