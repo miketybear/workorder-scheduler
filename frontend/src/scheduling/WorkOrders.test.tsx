@@ -1505,7 +1505,8 @@ it('merges several drafts into one new group, deleting the old ones only after i
   vi.mocked(deleteDraft).mockResolvedValue();
   vi.mocked(openBatch).mockResolvedValue({ ...merged, items: [member(row), member(second)] });
   fireEvent.click(screen.getByRole('button', { name: 'Gửi 2 WO lên Maximo' }));
-  await screen.findByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
+  const panel = await screen.findByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
+  expect(await within(panel).findByRole('heading', { name: 'Gửi 2 WO lên Maximo' })).toBeVisible();
   expect(saveBatch).toHaveBeenCalledTimes(1);
   expect(vi.mocked(saveBatch).mock.calls[0][1]).toHaveLength(2);
   expect(vi.mocked(saveBatch).mock.calls[0][3]).toBeNull();
@@ -1524,6 +1525,7 @@ it('reports WOs dropped from the merged group and old drafts that could not be d
   vi.mocked(openBatch).mockResolvedValue({ ...merged, items: [member(second)] });
   fireEvent.click(screen.getByRole('button', { name: 'Gửi 2 WO lên Maximo' }));
   const panel = await screen.findByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
+  expect(await within(panel).findByRole('heading', { name: 'Gửi 1 WO lên Maximo' })).toBeVisible();
   expect(within(panel).getByText(/Bỏ khỏi nhóm WO-REAL/)).toBeVisible();
   expect(within(panel).getByText(/Chưa xóa được một nháp cũ/)).toBeVisible();
   expect(vi.mocked(saveBatch).mock.calls[0][1]).toHaveLength(1);
