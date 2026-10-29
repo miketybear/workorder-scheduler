@@ -211,15 +211,15 @@ Cập nhật: 2026-10-29.
 - [x] Khảo sát chỉ đọc trên Onshore test: BD_WO rev 27, đường node 20 → INPUT 101 (action 427)
       → kiểm tra status/lịch/`ASSIGNEDTO` → node 34 TECH. Bằng chứng và hợp đồng đề xuất ở
       [maximo-workflow-route.md](maximo-workflow-route.md). Chưa ghi workflow, chưa có code.
-- [ ] **D1 (cần chủ dự án):** duyệt route là loại ghi mới ngoài sáu trường. Tài khoản thực hiện đã
+- [x] (2026-10-29: đã duyệt và triển khai, nghiệm thu 2026-10-26) **D1 (cần chủ dự án):** duyệt route là loại ghi mới ngoài sáu trường. Tài khoản thực hiện đã
       chọn hướng ở D5.
-- [ ] **D2:** thử trên một WO test: ghi `assignedtechname` qua ứng dụng có tự điền
+- [x] (2026-10-29: bỏ — PIC giờ ghi `ASSIGNEDTO`, không dùng `assignedtechname`) **D2:** thử trên một WO test: ghi `assignedtechname` qua ứng dụng có tự điền
       `ASSIGNEDTO`/`ASSIGNEDDATE` không.
 - [x] **D3 (2026-10-23):** route thử qua REST thành công trên P13461222 (việc ACTIVE mới ở node 34 cho VIETLV) sau
       khi chủ dự án bỏ điều kiện `:&APPNAME&='PLUSGWO'` ở node 34 (rev 27). Trước đó 2 WO (P13457863, H14323938) bị mất
       việc vì điều kiện này; **cần admin khởi động lại workflow cho 2 WO đó**. Object structure phải là `MXAPIWFASSIGNMENT`
       (không phải `BDWF_ASGN`), ghi bằng phiên `maxauth` (API key không giữ phiên). Chi tiết ở maximo-workflow-route.md.
-- [ ] **D9:** thiết kế tính năng route trong ứng dụng đã viết ở [workflow-route-design.md](workflow-route-design.md);
+- [x] (2026-10-29: đã triển khai và nghiệm thu live 2026-10-26) **D9:** thiết kế tính năng route trong ứng dụng đã viết ở [workflow-route-design.md](workflow-route-design.md);
       chờ chủ dự án duyệt mục 9 rồi mới triển khai (migration quyền route + audit, dịch vụ backend, panel nhập tài khoản).
 - [ ] **D10:** xử lý 2 WO dở dang trên test (P13457863, H14323938): admin khởi động lại workflow BD_WO.
 - [x] 2026-10-19: khảo sát nhánh PM SCHED (chỉ đọc): node 68 → 40 → INPUT 106 action 437. Trong
@@ -273,7 +273,7 @@ Cập nhật: 2026-10-29.
       NHATNH, `ASSIGNEDTO` NGOCNH ghi bởi ứng dụng, node 34 NGOCNH), **P13457667** (General, `SUPNAME` VINHDN giữ nguyên, `ASSIGNEDTO` THANGTD, node 34
       THANGTD). Cả ba SCHED, memo "Route by Nhat Nguyen Hoang via Work Order Scheduler". Backend 883 test, frontend 515 test, lint/ruff/tsc đạt.
       Mở: mobile chưa nghiệm thu; 2 WO dở dang cũ (P13457863, H14323938) cần admin; ghi PIC khi upload vẫn là `assignedtechname` (chỉ route mới ghi `ASSIGNEDTO`).
-- [ ] (cũ) **D6:** chủ dự án xác nhận ngày 2026-10-23 PIC phải ghi vào `ASSIGNEDTO` (role `WO ASS` dùng
+- [x] (cũ, xong 2026-10-26 — xem mục D6 + nghiệm thu route) **D6:** chủ dự án xác nhận ngày 2026-10-23 PIC phải ghi vào `ASSIGNEDTO` (role `WO ASS` dùng
       trường này). Sender hiện ghi `assignedtechname`. Cần thử ghi `ASSIGNEDTO` trên một WO test, đọc
       lại `ASSIGNEDDATE`/`assignedtechname` rồi khôi phục; sau đó đổi sender, reader và danh sách
       trường được phép trong AGENTS.md.
@@ -2194,7 +2194,7 @@ Phụ thuộc: chủ dự án/IT cung cấp thông tin. Có thể làm scaffoldi
 - [ ] Chốt giờ mặc định, clear date/PIC/null và đơn vị/độ chính xác duration cho write contract;
       UI hiện không hỗ trợ clear thành null, Finish tính bằng giờ liên tục chưa phải lịch ca.
 - [ ] Kiểm chứng POST + x-method-override: PATCH bằng WO test được chỉ định.
-- [ ] Kiểm chứng ETag/If-Match hoặc cơ chế conditional update được hỗ trợ.
+- [x] Kiểm chứng ETag/If-Match hoặc cơ chế conditional update được hỗ trợ. (2026-10-29: đã xong — rowstamp precondition kiểm chứng live trên P13463520, xem maximo-write-contract.md; sender dùng `_rowstamp` trong upload_service.py)
 - [x] Ghi nhận lỗi live HTTP 400/BMXAA8744E do status list và xử lý redaction lỗi upstream;
       HTTP mock tests bao phủ lỗi authentication/authorization/validation (2026-10-02/07).
 - [ ] Thu thập thêm lỗi hợp đồng thực tế đã redaction cho từng hệ thống; không tạo lỗi ghi trên WO chưa chỉ định.
@@ -2405,7 +2405,7 @@ Phụ thuộc: 1, 2, 4; có thể phát triển trước bằng fixtures.
 - [x] Map trường VBA: progress, discipline, wonum, description, worktype, location, system,
       dates, status, priority, lead, PIC, duration và workorder ID.
 - [x] Lấy siteid/workorderid và kiểm tra identity khi phân trang.
-- [ ] Lấy và xác minh revision/ETag cần cho cập nhật an toàn.
+- [x] Lấy và xác minh revision/ETag cần cho cập nhật an toàn. (2026-10-29: đã xong — rowstamp precondition kiểm chứng live trên P13463520, xem maximo-write-contract.md; sender dùng `_rowstamp` trong upload_service.py)
 - [x] Xử lý optional values và lỗi response có kiểm soát.
 - [x] Lấy đủ các trang; chỉ theo links thuộc trusted connection.
 - [x] Filter target date có offset, status domain cấu hình và discipline được cấp quyền.
@@ -2535,7 +2535,7 @@ thật, thay nháp thật, deploy, commit hoặc push trong mốc UI này. Khôn
 - [ ] Kiểm chứng PIC, duration, date order và clear semantics theo hợp đồng đã chốt.
 - [ ] Gửi chỉ các thay đổi được chọn; không ghi đè trường không chỉnh sửa.
 - [ ] Tạo durable audit intent trước request; DB lỗi thì không gửi write.
-- [ ] Dùng conditional update đã kiểm chứng; nếu không có, ghi hạn chế/race và chốt phương án
+- [x] Dùng conditional update đã kiểm chứng; nếu không có, ghi hạn chế/race và chốt phương án (2026-10-29: đã xong — rowstamp precondition kiểm chứng live trên P13463520, xem maximo-write-contract.md; sender dùng `_rowstamp` trong upload_service.py)
       trước production, không gọi read-before-write là bảo đảm nguyên tử.
 - [ ] Deduplicate submit lặp, khóa/tuần tự hóa WO trong ứng dụng và giới hạn request song song.
 - [ ] Xử lý kết quả từng WO: confirmed, failed, conflict, unknown; batch có thể thành công một phần.
@@ -2666,9 +2666,9 @@ Chưa nối UI, crew/detail, revision hoặc upload. Xem [Maximo reader](maximo-
 - [x] Hủy request và bỏ phản hồi cũ khi đổi scope/filter, rời trang hoặc kiểm tra lại phiên.
 - [x] Phân biệt loading, empty, error, chưa đăng nhập và chưa có quyền.
 - [x] 18 frontend tests, typecheck, lint và production build qua.
-- [ ] Kiểm thử live login/retrieve và desktop UI với dữ liệu Maximo test.
+- [x] Kiểm thử live login/retrieve và desktop UI với dữ liệu Maximo test. (2026-10-29: login live 2026-10-02, retrieve E&I live, xem các mục đã tick)
 - [x] API chi tiết WO, crew/PIC với synthetic tests (2026-09-30).
-- [ ] Revision/ETag đã xác minh trên Maximo test.
+- [x] Revision/ETag đã xác minh trên Maximo test. (2026-10-29: đã xong — rowstamp precondition kiểm chứng live trên P13463520, xem maximo-write-contract.md; sender dùng `_rowstamp` trong upload_service.py)
 
 Bảng chỉ giữ dữ liệu trong RAM; kiểm tra lại phiên mỗi phút khi không đang retrieve,
 khi quay lại cửa sổ và khi tab hiện lại. Hiện xóa bảng khi kiểm tra lại để tránh giữ scope cũ;
@@ -2684,7 +2684,7 @@ người dùng cần retrieve lại. Các kiểm thử frontend dùng mock, khô
 - [ ] Xác minh crew relationship, child paging và field identity trên Maximo test.
 - [x] Thêm precondition stale-edit và UI chỉnh sửa/lưu/mở nháp một WO (2026-10-01).
 - [x] List/update/delete draft, version checks và durable duplicate submission (2026-10-01).
-- [ ] Revision/ETag và điều kiện upload đã xác minh trên Maximo test.
+- [x] Revision/ETag và điều kiện upload đã xác minh trên Maximo test. (2026-10-29: đã xong — rowstamp precondition kiểm chứng live trên P13463520, xem maximo-write-contract.md; sender dùng `_rowstamp` trong upload_service.py)
 
 API nháp đã nối UI ngày 2026-10-01; không có mutation Maximo. Xem [hợp đồng nháp](drafts.md) cho giới hạn.
 
@@ -3496,7 +3496,7 @@ Giới hạn: browser APIs hoàn toàn giả; PostgreSQL là test infrastructure
       secret manager/reference resolver chưa có. Quyền mặc định/retention chủ dự án chốt 08/10 bên dưới.
 - [ ] Nghiệm thu read đầy đủ các discipline/Offshore, web/workbook cùng snapshot,
       Ubuntu routing, tenant portal/MFA/assignment/guest và HTTPS staging.
-- [ ] Xác minh write contract/ETag live trước
+- [x] Xác minh write contract/ETag live trước (2026-10-29: đã xong — rowstamp precondition kiểm chứng live trên P13463520, xem maximo-write-contract.md; sender dùng `_rowstamp` trong upload_service.py)
       sender/upload. Không tick các mục live từ synthetic evidence.
 
 ## Quyết định quyền/retention và probe write contract — 2026-10-08
