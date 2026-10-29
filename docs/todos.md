@@ -17,7 +17,7 @@ Cập nhật: 2026-10-29.
 - [x] Backend: Ruff check/format check đạt (151 file); suite offline **891 passed, 553 deselected**, 3 warning; bộ DB yêu cầu trên PostgreSQL `127.0.0.1:55432` **169 passed**. Không sửa `validate_current` hoặc bảng preview; không migration, dependency mới, commit hay gọi Maximo thật.
 - [x] Frontend cuối: typecheck/lint đạt; `npm test` **603/603 passed, 47/47 file**. Lượt đầu **598 passed / 3 failed**: hai test mới (thông báo 409 bị ẩn, chip chưa chờ phản hồi) và timeout ResourceTimeline. Chạy lại năm file liên quan với `--maxWorkers=1`: **245 passed / 2 failed**, ResourceTimeline qua; hai lỗi còn lại phát hiện fingerprint Maximo/nháp không khớp ở dòng nháp. Sau khi sửa fingerprint và assertion số lần preview, bộ đầy đủ cuối đạt như trên. Lượt thử targeted trong sandbox của agent không khởi chạy vì `spawn EPERM`; main dùng quyền thực thi bổ sung cho các lượt kiểm chứng. Backend uv cũng cần quyền đọc cache ngoài sandbox. Không có test Maximo thật.
 - [x] `git diff --check` đạt; liên kết tương đối trong hai tài liệu tồn tại, không có template placeholder. Đã rà soát diff tích hợp, gồm parsing mã route, nhãn/chip, upload-only/cả nháp và upload, ánh xạ 409 và recovery khi lỗi mạng.
-- Giới hạn: chưa nghiệm thu trình duyệt thật; chỉ mock Maximo và PostgreSQL test. Tiếp theo: nghiệm thu UI bằng dữ liệu giả cho 409 và lỗi mạng.
+- [ ] (2026-10-29) Chip `upload_pending` và thông báo 409 đã có test tự động backend/frontend, chưa kiểm tra live vì trạng thái này hiếm: chỉ thoáng qua khi gửi hoặc khi không đọc được Maximo. Không tạo upload chưa đối soát giả (ghi Maximo/chèn DB); khi xảy ra tự nhiên, kiểm tra chip “Upload chưa xong” hiện ở WO đó, mở Gửi WO để đối soát, và upload mới của WO đó báo “Upload bị từ chối — Maximo chưa thay đổi: …” (409), Maximo không đổi.
 ## Ảnh đại diện Entra trong header — 2026-10-28
 
 - [x] Backend tải ảnh Graph 48x48 một lần trong callback bằng delegated `User.Read`, bật tùy chọn qua `WOS_ENTRA__PROFILE_PHOTO_ENABLED` (mặc định false). Token chỉ tồn tại trong callback; cache bộ nhớ chỉ giữ JPEG/PNG tối đa 128 KiB, tối đa 128 phiên, TTL 8 giờ; endpoint luôn xác thực session DB. Không migration/dependency mới, không commit.
@@ -30,7 +30,7 @@ Cập nhật: 2026-10-29.
 - [x] **Theo chủ dự án (2026-10-28):** IT xác nhận đã set quyền; ảnh **bật mặc định** (`profile_photo_enabled=True`, đặt false nếu tenant chặn). Header bỏ họ tên, chỉ còn ảnh/chữ cái (tên trong tooltip và menu tài khoản).
 - [x] Nghiệm thu tenant thật (2026-10-28, local, sau khi đăng nhập lại): `/api/auth/photo` 200 `image/jpeg` 1,8 KB, ảnh 48px hiện trong header;
       không cookie → 401; `/api/auth/session` và storage trình duyệt không có token. Phiên cũ (trước tính năng) → 404, hiện chữ cái.
-- [ ] Chưa thử trên tenant thật: tài khoản không có ảnh, logout rồi đổi tài khoản.
+- [ ] (2026-10-29) Ảnh Entra đã có test tự động, chưa thử live vì không có tài khoản thứ hai; khi có, kiểm tra tài khoản không có ảnh hiện chữ cái đầu và ảnh đổi sau logout rồi đăng nhập bằng người dùng khác.
 
 ## Upload yêu cầu đủ lịch và PIC — 2026-10-28
 
