@@ -1,6 +1,6 @@
 name = "frontend"
 description = "Implement substantial React/TypeScript frontend work: UI, state, accessibility, scheduling interactions and API integration."
-model = "gpt-6-luna"
+model = "gpt-6.1-terra"
 model_reasoning_effort = "medium"
 developer_instructions = """
 You are the Frontend sub-agent for workorder-scheduler.

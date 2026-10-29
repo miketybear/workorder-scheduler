@@ -12,7 +12,7 @@ in .codex/agents/. See [docs/codex-agents.md](docs/codex-agents.md) for setup an
 | Agent | Model | Effort | Responsibility |
 | --- | --- | --- | --- |
 | Main / Fullstack Lead | gpt-6.1-sol | low | Requirements, planning, architecture decisions, integration and verification |
-| frontend | gpt-6-luna | medium | Substantial React/TypeScript UI, state and API integration work |
+| frontend | gpt-6.1-terra | medium | Substantial React/TypeScript UI, state and API integration work |
 | backend | gpt-6.1-sol | medium | Substantial FastAPI, business logic, PostgreSQL and migration work |
 | reviewer / Debugger | gpt-6.1-sol | high | Independent review when useful; deeper models only for scoped escalation |
 
@@ -69,6 +69,19 @@ Routing instructions for the main agent:
   follow-up work; do not leave required work undone just to list it as a next step.
 - Preserve existing uncommitted work. Coordinate shared-file changes through the main;
   do not overwrite other agents' edits or run migrations concurrently.
+- Run the frontend role at medium effort; Terra at low effort stops early on large tasks.
+  When resuming a half-done task, require the agent to rewrite its docs/todos.md entry
+  to match the final result.
+
+### Claude Code: Sonnet sub-agent
+
+When the main runs in Claude Code (Opus), it may delegate to a Sonnet sub-agent for
+bounded, low-risk work: investigating flaky tests, writing or fixing tests, small scoped
+refactors and routine diff review before a merge. Never delegate to Sonnet Maximo writes
+(upload, restore, route), authentication/token handling, product invariants or
+architecture decisions, and do not use it in place of reviewer for high-risk milestones.
+Long multi-file work still goes to the Codex frontend/backend roles in a separate git
+worktree. The main always re-runs checks and reviews the diff before merging.
 
 ## Subagent Lifecycle Policy
 

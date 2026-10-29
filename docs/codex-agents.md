@@ -6,7 +6,7 @@ native của Codex; không cần cài thêm plugin hoặc framework agent.
 | Agent | Model | Effort | Phạm vi |
 | --- | --- | --- | --- |
 | Main / Fullstack Lead | `gpt-6.1-sol` | `low` | Yêu cầu, chia việc, quyết định, tích hợp và kiểm tra |
-| `frontend` | `gpt-6-luna` | `medium` | React/TypeScript, UI, state và nối API |
+| `frontend` | `gpt-6.1-terra` | `medium` | React/TypeScript, UI, state và nối API |
 | `backend` | `gpt-6.1-sol` | `medium` | FastAPI, nghiệp vụ, PostgreSQL và migrations |
 | `reviewer` / Debugger | `gpt-6.1-sol` | `high` | Review độc lập có phạm vi; ca khó mới nâng mức |
 
@@ -29,7 +29,7 @@ native của Codex; không cần cài thêm plugin hoặc framework agent.
 - Backend/database có phạm vi đáng kể: giao `backend`.
 - FE và BE độc lập sau khi thống nhất API contract: giao song song, phân rõ file.
   Nếu còn phụ thuộc, giải quyết contract/phần nền trước rồi mới giao phần còn lại.
-- Main tự review các thay đổi nhỏ/thường bằng Astra/Low. Không gọi reviewer chỉ
+- Main tự review các thay đổi nhỏ/thường bằng Sol/Low. Không gọi reviewer chỉ
   vì bắt đầu chat/lượt mới, cập nhật trạng thái, sửa TODO/tài liệu hoặc chạy test.
 - Khi cần góc nhìn độc lập cho một tính năng đáng kể hoặc vấn đề correctness/
   security cụ thể, giao `reviewer` Sol/High; gom thay đổi và review diff liên quan.
@@ -78,7 +78,7 @@ Giới hạn review và routing model/effort hiện có vẫn áp dụng. Review
 ## Cách dùng
 
 Mở project `workorder-scheduler` trong Codex và bắt đầu chat mới tại thư mục repo.
-Kiểm tra bộ chọn của Main là **GPT-6 Astra / Low**. Project đã được đánh dấu
+Kiểm tra bộ chọn của Main là **GPT-6.1 Sol / Low**. Project đã được đánh dấu
 trusted trên máy khi thiết lập; project config chỉ được nạp khi repo trusted.
 Cấu hình là mặc định cho phiên mới; model/effort chọn riêng cho chat hoặc CLI có
 thể ghi đè mặc định. Thay file không tự đổi model của một lượt đang chạy.
@@ -117,6 +117,26 @@ Sol/Medium; model/list có đủ ba model với effort tương ứng. Native pro
 nạp routing trong AGENTS.md. Không chạy lượt sub-agent/model live hoặc suite
 ứng dụng cho thay đổi cấu hình/tài liệu này; model catalog không chứng minh
 một lượt gọi model thành công.
+
+## Claude Code: agent phụ Sonnet
+
+Khi làm việc qua Claude Code, Main (Claude Opus) có thể giao việc cho một agent phụ
+**Sonnet** cho các việc có phạm vi rõ và rủi ro thấp: điều tra test chập chờn, viết
+hoặc sửa test, refactor nhỏ có ranh giới, rà diff định kỳ trước khi gộp. Không giao
+Sonnet: thao tác ghi Maximo (upload, khôi phục, route), xác thực/token, quy tắc nghiệp
+vụ trong [AGENTS.md](../AGENTS.md) hoặc quyết định kiến trúc. Sonnet không thay vai
+`reviewer` cho các mốc rủi ro cao. Việc dài, nhiều file vẫn giao Codex `frontend`/
+`backend` trong bản sao (worktree) riêng; Main luôn chạy lại test và xem diff trước khi gộp.
+
+## Đổi vai frontend sang Terra ngày 2026-10-29
+
+Theo chủ dự án, `frontend` đổi từ `gpt-6-luna` sang `gpt-6.1-terra`, mức `medium`, sau
+hai lượt thử: sửa test gộp nháp chập chờn (đúng nguyên nhân gốc, diff 3 dòng) và tách
+ResourceTimeline (Backlog/Grid/AssignmentDrawer, không đổi hành vi). Ở mức `low` Terra
+dừng sớm với việc lớn, nên khi gọi trực tiếp qua CLI phải ghi rõ
+`codex exec -m gpt-6.1-terra -c 'model_reasoning_effort="medium"'`. Khi tiếp tục một việc
+dở dang, dặn Terra viết lại mục TODO theo kết quả cuối. Đã kiểm tra TOML và tài liệu;
+không chạy lại lượt model cho thay đổi cấu hình này.
 
 ## Cập nhật tiết kiệm review ngày 2026-10-08
 

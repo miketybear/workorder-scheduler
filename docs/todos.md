@@ -62,6 +62,14 @@ Cập nhật: 2026-10-29.
       (ít gặp hơn sau thay đổi trên, vẫn cần sửa).
 - [ ] **Chưa kiểm chứng (agy báo):** Ctrl+D điền xuống thiếu cột nếu chưa Enter ô đang sửa (`WorkOrders.tsx`).
 
+## Phân vai agent — 2026-10-29
+
+- [x] Theo chủ dự án: vai Codex `frontend` đổi từ `gpt-6-luna` sang `gpt-6.1-terra`, mức `medium` (`.codex/agents/frontend.toml`,
+      bảng trong `AGENTS.md` và `docs/codex-agents.md`), dựa trên hai lượt thử (test chập chờn; tách ResourceTimeline). Thêm mục
+      Sonnet cho Claude Code (việc phạm vi rõ, rủi ro thấp; cấm ghi Maximo/xác thực/quy tắc nghiệp vụ). agy không có trong tài liệu
+      phân vai nên không cần bỏ. Sửa hai chỗ cũ ghi Main là Astra/Low → Sol/Low. Kiểm tra: 4 file TOML parse được, không còn tham chiếu
+      Luna ngoài dòng lịch sử. Chưa chạy lượt model live sau đổi cấu hình.
+
 ## Thu gọn phần trên bảng WO — 2026-10-28
 
 - [x] **Bỏ nút "Xóa bộ lọc":** đóng hàng lọc bằng icon phễu cũng xóa tìm kiếm/Status/Work Type (nhãn "Ẩn và xóa bộ lọc"), nên không còn bộ lọc
