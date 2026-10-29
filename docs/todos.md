@@ -1,7 +1,7 @@
 # TODO — Work Order Scheduler
 
 Cập nhật: 2026-10-29. Chỉ chứa việc **còn mở**. Việc xong thì xóa khỏi đây và ghi một mục có ngày,
-phạm vi và bằng chứng ở đầu [changelog.md](changelog.md). Số dòng `(changelog Lxxxx)` trỏ tới ngữ cảnh cũ.
+phạm vi và bằng chứng ở đầu [changelog.md](changelog.md). Số dòng `(Lxxxx)` trỏ tới ngữ cảnh trong [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
 Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[Maximo admin]`, `[sự kiện thật]`.
 
@@ -15,9 +15,11 @@ Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[M
 - [ ] Ổn định test PoC synthetic timeout nếu còn tái diễn trong full suite. (L1258)
 - [ ] Nghiệm thu keyboard-only toàn ứng dụng, screen reader/zoom/high contrast và trình duyệt khác. (L2458)
 - [ ] Đánh giá security patch dependency/runtime, scan image, SBOM và chính sách refresh digest. (L2223)
-- [ ] Log có correlation ID; theo dõi lỗi upstream, upload unknown và dung lượng DB. (L2610)
+- [ ] Log có correlation ID (liên kết request hash, retry attempt và log); theo dõi lỗi upstream, upload unknown và dung lượng DB. (L2610)
 - [ ] Runbook deploy/update/rollback, xoay credential và xử lý upload chưa rõ kết quả. (L2611)
 - [ ] Worker/lease và phục hồi tự động khi backend crash giữa lúc gửi Maximo; hiện chỉ có đối soát đọc. (L2268, L3701)
+
+- [ ] Đối chiếu metadata `lochierarchy.systemid` và thêm fixtures đã redaction từ response live Onshore test. (L2183, L2203, L2205)
 
 ### Tính năng P1 còn lại của workbook
 
@@ -40,6 +42,7 @@ Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[M
 - [ ] `[chủ dự án]` Quy tắc chia ngày cho planned nhiều giờ/quantity>1 (ví dụ 70h/quantity 3). (L1325)
 - [ ] `[chủ dự án]` Chốt giờ mặc định, cho phép xóa ngày/PIC thành null, độ chính xác duration. (L2197)
 - [ ] `[chủ dự án]` Tài khoản, quyền và WO/roster mẫu cho các discipline khác (MECH/RES/DECK/PROD/DNC). (L1328, L2379)
+- [ ] `[chủ dự án]` Chốt bảng mã rota (đặc biệt F/AF), mapping position còn lại, craft alias, P&P/PROD. (L1968, L1946)
 - [ ] `[chủ dự án]` Bật required checks/branch protection trên GitHub nếu muốn. (L3404)
 - [ ] `[chủ dự án]` Nghiệm thu UX timeline: chọn WO/người/ngày/giờ, ngữ nghĩa PIC vs assignment thực. (L1900, L2008)
 - [ ] `[chủ dự án]` Upload từng loại WO non-CM trên trình duyệt trước khi mở gate. (L3727)
@@ -57,6 +60,7 @@ Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[M
 - [ ] `[IT]` API key route cho MECHSUP, FIELDPRODSUP và các position còn lại. (L237)
 - [ ] `[IT]` Retention/cleanup cho draft_submission và nháp. (L2708)
 - [ ] `[IT]` Duyệt operator/bootstrap workflow trên staging. (L2377)
+- [ ] `[IT]` UI cấu hình connection/identity ngoài Onshore E&I khi có connection thứ hai. (L2404)
 - [ ] `[IT]` Offshore: URL/object structure test, kiểm chứng riêng, không suy từ Onshore. (L2171)
 - [ ] Sau staging: nghiệm thu 10 planner với SLO, E2E đầy đủ tới history, bàn giao hướng dẫn, rồi mới chốt production. (L2437, L2572, L2576, L2614, L2617)
 
@@ -73,16 +77,3 @@ Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[M
 - [ ] Hai Planner thật cùng làm: notice/reload, conflict, snapshot hết hạn, WO nhiều discipline. (L1145)
 - [ ] Lưu batch nhiều task trên UI theo lịch Planner thực tế; pool/rota hợp lệ biên 6h+4,5h. (L1169, L1605)
 - [ ] Crew/PIC và child paging lớn ở discipline khác/Offshore. (L2193, L2419, L2687)
-
-## 6. Có thể đã xong — xác minh rồi chuyển sang changelog
-
-Các mục cũ còn `[ ]` nhưng phần lớn đã được làm ở milestone sau; cần đối chiếu code/test trước khi đóng.
-
-- [ ] Preview/submit với allowlist field, chặn target PM/CFT, chỉ gửi trường đã chọn, read-back, dedupe/khóa WO. (L2535–L2545)
-- [ ] Redact response lỗi/log, không lộ WO ngoài quyền. (L2553)
-- [ ] Unit/contract test PM/CFT, allowlist, duration, pagination, null, lỗi Maximo. (L2562, L2564)
-- [ ] Request hash liên kết retry attempts và correlation logs. (L2258)
-- [ ] Resource href/orgid cho mutation; `parent!="*"`/`istask=0` đúng tập WO; metadata `lochierarchy.systemid`. (L2183–L2189)
-- [ ] Fixtures redaction từ response live. (L2203, L2205)
-- [ ] UI cấu hình connection ngoài Onshore E&I. (L2404)
-- [ ] Các mục rota/timeline 2026-10-10–11 (importer staging, LABOR reader, PoC tháng, activation). (L1713–L2019)
