@@ -565,7 +565,13 @@ Cập nhật: 2026-10-29.
 
 ## UI/UX bước 5: Resource timeline (một phần) — 2026-10-16
 
-- 2026-10-29: Tách riêng `BacklogFilters.tsx` (8 dòng), giữ state trong `ResourceTimeline.tsx` (1310 → 1311 dòng). Vitest `src/resourceTimeline`: 6 files, 130 tests pass; typecheck và lint pass. Chưa tách backlog đầy đủ, grid và assignment drawer; chưa chạy full suite 3 lần. Hai mục tách tiếp và popover chú giải vẫn mở.
+- [x] **2026-10-29 tách ResourceTimeline** (Codex GPT-6.1 Terra, mức medium; lượt low đầu chỉ tách được `BacklogFilters`):
+      `Backlog.tsx` 63 dòng (danh sách WO, tìm kiếm, phân trang, kéo), `BacklogFilters.tsx` 8, `Grid.tsx` 80 (người × ngày, ô phân
+      công), `AssignmentDrawer.tsx` 223 (giao diện đề xuất/sửa phân công). `ResourceTimeline.tsx` 1310 → 1167 dòng (152k → 119k ký tự;
+      code gốc dòng rất dài) vẫn giữ state, tải dữ liệu, gọi API, request ID, pending/unknown, đối soát, `onPendingChange`; component con
+      không import hàm API. Không sửa test: 130/130 ResourceTimeline, cả bộ 606/606 nhiều lượt song song. Trang thật (main 5173 vs nhánh
+      5174, Onshore TEST): chữ, aria, thẻ, class trùng khớp (3017 phần tử, cùng hash), cùng tự cuộn tới hôm nay; drawer cùng cấu trúc
+      (63 phần tử) và bố cục, đóng bằng Esc không ghi. Chưa thử trên trang thật: kéo thả và lưu phân công (ghi Maximo) — có test tự động.
 
 - [x] Tách helper thuần (ngày, giờ, capacity, gợi ý plan) sang `timelineHelpers.ts` và
       `RoleDonut.tsx`; `ResourceTimeline.tsx` giảm 1092 → 1050 dòng, không đổi hành vi.
@@ -578,9 +584,9 @@ Cập nhật: 2026-10-29.
 - [x] 2026-10-16: hộp thoại phân công (`proposal`) thành drawer phải 640px (980px khi chọn task),
       scrim nhẹ, nút hành động ghim đáy; xem trực quan với dữ liệu giả lập. Dialog chuyển
       plan và đồng bộ hàng loạt vẫn là dialog giữa màn hình.
-- [ ] Chưa làm: popover chú giải, và tách tiếp ~1000 dòng JSX còn lại (backlog, lưới,
-      dialog phân công) thành component. Cần xem trực quan và test từng bước vì luồng ghi
-      phân công/đối soát là phần rủi ro cao.
+- [x] Tách backlog, lưới, dialog phân công thành component: xong 2026-10-29 (xem mục đầu). Nếu cần gọn hơn, bước sau là đưa
+      state/logic ghi sang một hook riêng — đụng luồng ghi/đối soát nên làm ở mức suy luận cao kèm review độc lập.
+- [ ] Chưa làm: popover chú giải.
 
 ## UI/UX bước 4: panel và luồng upload — 2026-10-16
 
@@ -622,7 +628,7 @@ Cập nhật: 2026-10-29.
       màu nhấn), nên dark mode áp dụng đồng nhất.
 - [x] 399 frontend tests, lint, typecheck và build đạt (chunk advisory cũ còn).
       Chưa kiểm tra trực quan bằng trình duyệt; cần xem hai trang rota ở dark mode.
-- [ ] Bước 5 còn lại: drawer phân công và tách tiếp ResourceTimeline (xem mục bước 5).
+- [x] Bước 5 còn lại: drawer phân công và tách tiếp ResourceTimeline — xong 2026-10-29 (xem mục bước 5; còn popover chú giải).
 
 ## Chuyển task local bằng kéo thả — hoàn tất 2026-10-15
 
