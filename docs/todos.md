@@ -1,6 +1,12 @@
 # TODO — Work Order Scheduler
 
-Cập nhật: 2026-10-28.
+Cập nhật: 2026-10-29.
+
+## Ổn định test gộp nháp — 2026-10-29
+
+- [x] Dialog gửi xuất hiện trước effect bất đồng bộ của `BatchPlanner` gọi `openBatch`; test chờ dialog rồi kiểm tra mock có thể chạy quá sớm. Hai test gộp nháp chờ tiêu đề có số WO đã tải trước khi kiểm tra, giữ nguyên các assertion lưu/xóa và thứ tự. Các test gửi lân cận đã chờ kết quả preview; không thay đổi mã sản phẩm.
+- Kiểm chứng trước sửa: một lượt đầy đủ `npx vitest run --maxWorkers=2` đạt 606/606, không tái hiện lỗi; ba lượt trong sandbox không khởi động được do `spawn EPERM`. Báo cáo cũ ghi nhận assertion `openBatch` chưa được gọi khi chạy song song. Không kiểm thử Maximo hoặc trình duyệt thật; không commit.
+- [x] Sau sửa: năm lượt liên tiếp `npx vitest run --maxWorkers=2` đều đạt 606/606 test, 47/47 file; `npm run typecheck` và `npm run lint` đạt. Vitest chạy ngoài sandbox vì Vite cần tạo tiến trình con.
 
 ## Tách upload chưa đối soát và nháp chưa gửi; báo đúng 409 — 2026-10-28
 
