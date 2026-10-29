@@ -19,7 +19,7 @@ Cập nhật: 2026-10-29.
 - [x] `git diff --check` đạt; liên kết tương đối trong hai tài liệu tồn tại, không có template placeholder. Đã rà soát diff tích hợp, gồm parsing mã route, nhãn/chip, upload-only/cả nháp và upload, ánh xạ 409 và recovery khi lỗi mạng.
 - [x] (2026-10-29) CI job PostgreSQL đỏ từ khi có các migration 0010–0013 cố ý chặn downgrade (bảo vệ lịch sử audit),
       trong khi bước kiểm tra chạy `alembic downgrade base`. Đổi thành `downgrade 0013_assignment_plans` (round-trip 0014–0017).
-      Chạy thử trên Postgres 16 tạm: upgrade/check/downgrade/upgrade/check đạt. Chưa xác nhận trên GitHub (chưa push).
+      Chạy thử trên Postgres 16 tạm: upgrade/check/downgrade/upgrade/check đạt. GitHub run 40854674650: cả ba job xanh.
 - [ ] (2026-10-29) Chip `upload_pending` và thông báo 409 đã có test tự động backend/frontend, chưa kiểm tra live vì trạng thái này hiếm: chỉ thoáng qua khi gửi hoặc khi không đọc được Maximo. Không tạo upload chưa đối soát giả (ghi Maximo/chèn DB); khi xảy ra tự nhiên, kiểm tra chip “Upload chưa xong” hiện ở WO đó, mở Gửi WO để đối soát, và upload mới của WO đó báo “Upload bị từ chối — Maximo chưa thay đổi: …” (409), Maximo không đổi.
       Kiểm tra 2026-10-29: DB local không có upload nào ở pending/sending/unknown → chưa có tình huống thật để nghiệm thu; giữ mở.
 ## Ảnh đại diện Entra trong header — 2026-10-28
