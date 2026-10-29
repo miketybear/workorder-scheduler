@@ -565,6 +565,8 @@ Cập nhật: 2026-10-29.
 
 ## UI/UX bước 5: Resource timeline (một phần) — 2026-10-16
 
+- 2026-10-29: Tách riêng `BacklogFilters.tsx` (8 dòng), giữ state trong `ResourceTimeline.tsx` (1310 → 1311 dòng). Vitest `src/resourceTimeline`: 6 files, 130 tests pass; typecheck và lint pass. Chưa tách backlog đầy đủ, grid và assignment drawer; chưa chạy full suite 3 lần. Hai mục tách tiếp và popover chú giải vẫn mở.
+
 - [x] Tách helper thuần (ngày, giờ, capacity, gợi ý plan) sang `timelineHelpers.ts` và
       `RoleDonut.tsx`; `ResourceTimeline.tsx` giảm 1092 → 1050 dòng, không đổi hành vi.
 - [x] Chữ tối thiểu 11–12px (trước 9–11px), ô lịch 84×72px. 403 tests, lint, typecheck,
