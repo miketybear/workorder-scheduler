@@ -163,6 +163,7 @@ workorder-scheduler/
 ├── compose.yaml
 └── docs/
     ├── architecture.md
+    ├── changelog.md
     └── todos.md
 ```
 
@@ -226,9 +227,10 @@ Only explicitly configured connections are selectable; clients cannot supply arb
 - Small, focused functions and modules; no speculative abstractions, flags or compatibility shims.
 - Validate external boundaries; use explicit domain errors rather than broad exception swallowing.
 - Comments explain why; remove stale guidance and keep docs aligned with implementation.
-- After every completed task, update docs/todos.md before reporting completion. Record the date,
-  completed scope, verification evidence and remaining limitations; check off only verified work.
-  Include the TODO update in the task's commit when committing changes.
+- After every completed task, update docs/todos.md before reporting completion. docs/todos.md holds
+  only open work, grouped by who it waits on; remove verified items from it and add a dated entry
+  (scope, verification evidence, remaining limitations) at the top of docs/changelog.md. Close only
+  verified work. Include both updates in the task's commit when committing changes.
 - Automated tests must cover authorization, update rules, dates, conflicts and upload recovery.
   Mock Maximo for the fast suite; use only designated test infrastructure for live integration tests.
 - For documentation-only edits, verify links, consistency and removal of template placeholders.
