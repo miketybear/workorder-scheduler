@@ -2,6 +2,18 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## `base_url` cho connection và lệnh `app.maximo.provision` — 2026-10-30
+
+- [x] Connection trong `WOS_MAXIMO` có thể khai `base_url`; backend ghép `/oslc/os/BDSCHED_WO` rồi
+      chạy kiểm tra URL cũ. Khai cả `base_url` lẫn `collection_url` bị từ chối; `collection_url` cũ vẫn hợp lệ.
+- [x] `python -m app.maximo.provision` (owner DSN, chạy qua service `migrate`) tạo row
+      `maximo_connection` kèm audit `connection_created` theo actor Entra đã đăng nhập; có dry-run,
+      idempotent khi trùng, từ chối khác giá trị, trùng system/environment, HTTP ngoài test, timezone lạ.
+- [x] `bootstrap_admin` và `manage_planner` chuyển vào `app/operators/` để có trong image backend;
+      chạy `python -m app.operators.<name>` (staging: qua service `migrate`, owner DSN).
+- Bằng chứng: backend `--run-db-tests` 1478 passed; sau khi chuyển CLI, test admin/provision 15 passed; ruff sạch.
+- Giới hạn: chưa chạy trên server staging.
+
 ## Cấu hình Maximo dùng chung `WOS_MAXIMO_DEFAULTS` — 2026-10-30
 
 - [x] `open_statuses`, `crew_groups`, `person_login_domain` khai một lần trong `WOS_MAXIMO_DEFAULTS`;

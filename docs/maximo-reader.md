@@ -50,7 +50,8 @@ WOS_MAXIMO={"<connection UUID>":{"collection_url":"https://<test-host>/maximo/os
 
 Statuses, `crew_groups` và `person_login_domain` giống nhau cho mọi connection có thể
 khai một lần: `WOS_MAXIMO_DEFAULTS={"open_statuses":[...],"crew_groups":{...},"person_login_domain":"..."}`.
-Giá trị khai trong từng connection đè giá trị chung. Defaults không nhận URL, key hay write contract.
+Giá trị khai trong từng connection đè giá trị chung. Thay `collection_url` có thể khai
+`"base_url":"https://<host>/maximo"`; backend tự thêm `/oslc/os/BDSCHED_WO` (không khai cả hai). Defaults không nhận URL, key hay write contract.
 
 Đây là mẫu cấu trúc, không phải cấu hình dùng được. UUID, hostname, API key và status domain
 phải được cung cấp/xác minh cho từng hệ thống. Registry runtime giữ credential; bảng DB

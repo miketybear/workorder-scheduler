@@ -60,7 +60,7 @@ chứng triển khai trên server. Dùng [Compose staging](../compose.staging.ya
    approved images và hai private env files. Hai role `wos_owner` và `wos_runtime`
    phải khác DBA `scheduler_dba`. Điền Entra đủ cho cả hai Settings processes.
 4. Điền runtime Maximo registry bằng connection UUID đã provision trong DB:
-   collection URL và key được cấp. Statuses, crew groups và PERSON domain dùng chung
+   `base_url` (vd. `https://host/maximo`; backend tự thêm `/oslc/os/BDSCHED_WO`) và key được cấp. Statuses, crew groups và PERSON domain dùng chung
    đặt một lần trong `WOS_MAXIMO_DEFAULTS`; connection nào khác thì khai riêng để đè. Không
    thêm `conditional_write_contract`. `WOS_MAXIMO={}` chỉ dùng để kiểm tra startup,
    không đủ để nghiệm thu WO. Cấp scope theo [PERSON](person-access.md) và
@@ -104,7 +104,7 @@ docker compose --env-file "$staging_inputs" -f compose.staging.yaml --profile to
    owners/ACL. Chạy lại bước grants sau mỗi migration. Container runtime không
    có operator tools; không copy DBA credential vào backend để chạy script.
 6. Xác minh login runtime thật, DDL/admin escalation/audit mutation bị từ chối;
-   provision approved connections, bootstrap admin theo công cụ operator đã có.
+   connection và admin đầu tiên đăng ký ở bước 8.
    Chỉ đánh dấu grants xong khi runtime đã kiểm tra, không suy từ readiness.
 7. Khởi động ứng dụng:
 
@@ -113,6 +113,19 @@ docker compose --env-file "$staging_inputs" -f compose.staging.yaml --profile to
    docker compose --env-file "$staging_inputs" -f compose.staging.yaml exec -T web nginx -t
    docker compose --env-file "$staging_inputs" -f compose.staging.yaml ps
    ```
+
+8. Đăng nhập Entra một lần (chưa có WO là đúng), rồi đăng ký connection bằng owner DSN.
+   `--id` phải trùng key trong `WOS_MAXIMO`; chạy không `--execute` để xem trước, sau đó thêm
+   `--execute` để ghi row và audit `connection_created`. Lệnh từ chối ghi đè row khác giá trị.
+
+   ```sh
+   docker compose --env-file "$staging_inputs" -f compose.staging.yaml --profile tools run --rm migrate      python -m app.maximo.provision --id <connection-uuid> --system onshore --environment test      --label "Onshore test" --base-url http://bd-maxdev.biendongpoc.vn/maximo      --tenant <entra-tenant-id> --actor-object <your-entra-object-id> --reason "staging setup"
+   docker compose --env-file "$staging_inputs" -f compose.staging.yaml restart backend
+   ```
+
+   Admin đầu tiên và Planner grant dùng cùng cách chạy (dry-run trước, rồi `--execute` cho bootstrap):
+   `... run --rm migrate python -m app.operators.bootstrap_admin --tenant ... --user-object ... --operator ... --reason ...`
+   và `python -m app.operators.manage_planner grant ...` theo [Planner access](planner-access.md).
 
 8. Nghiệm thu từ browser/mạng người dùng: certificate, health/live và health/ready,
    Entra login/logout/callback, Secure/HttpOnly session + CSRF, scoped list/detail,

@@ -63,3 +63,37 @@ def test_connection_without_statuses_still_fails_when_no_default(monkeypatch):
 def test_defaults_cannot_carry_endpoints_keys_or_write_contracts(monkeypatch, defaults):
     with pytest.raises(ValidationError):
         settings(monkeypatch, {str(uuid4()): connection(open_statuses=["APPR"])}, defaults)
+
+
+def test_base_url_expands_to_the_shared_object_structure(monkeypatch):
+    identity = uuid4()
+    result = settings(
+        monkeypatch,
+        {
+            str(identity): {
+                "base_url": "https://maximo.invalid/maximo/",
+                "api_key": "synthetic-test-key",
+                "open_statuses": ["APPR"],
+            }
+        },
+    )
+    assert result.maximo[identity].collection_url == (
+        "https://maximo.invalid/maximo/oslc/os/BDSCHED_WO"
+    )
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        {"base_url": "https://maximo.invalid/maximo", "collection_url": "https://x.invalid"},
+        {"base_url": "https://user:secret@maximo.invalid/maximo"},
+        {"base_url": "https://maximo.invalid/maximo?apikey=secret"},
+        {"base_url": 5},
+    ],
+)
+def test_base_url_keeps_collection_url_checks(monkeypatch, entry):
+    with pytest.raises(ValidationError):
+        settings(
+            monkeypatch,
+            {str(uuid4()): {"api_key": "synthetic-test-key", "open_statuses": ["APPR"], **entry}},
+        )

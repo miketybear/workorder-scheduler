@@ -29,7 +29,7 @@ khi bất kỳ admin đã tồn tại. Runtime DB không được sửa is_admin
 Từ backend, trong shell operator có DSN đặc quyền được IT quản lý riêng:
 
 ```sh
-uv run python bootstrap_admin.py --tenant <tenant-uuid> --user-object <existing-object-uuid> --operator '<trusted operator attribution>' --reason '<approved reason>'
+uv run python -m app.operators.bootstrap_admin --tenant <tenant-uuid> --user-object <existing-object-uuid> --operator '<trusted operator attribution>' --reason '<approved reason>'
 ```
 
 Mặc định dry-run, không commit; đối chiếu preview stable identity trước khi thêm
@@ -48,7 +48,7 @@ Không tạo thêm WO grants, không chạy provisioning/cleanup execute trên D
 Người vận hành tin cậy có quyền DB có thể dùng CLI từ `backend/`:
 
 ```powershell
-uv run python manage_planner.py grant --tenant <tenant-uuid> --actor-object <operator-object-uuid> --user-object <planner-object-uuid> --connection <connection-uuid> --discipline 'E&I' --reason 'Approved scope and reason'
+uv run python -m app.operators.manage_planner grant --tenant <tenant-uuid> --actor-object <operator-object-uuid> --user-object <planner-object-uuid> --connection <connection-uuid> --discipline 'E&I' --reason 'Approved scope and reason'
 ```
 
 Dùng `revoke` thay cho `grant` để thu hồi. CLI đọc cấu hình duy nhất qua Settings;

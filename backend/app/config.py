@@ -177,6 +177,20 @@ class MaximoSettings(BaseModel):
             raise ValueError("Invalid discipline or person group code")
         return values
 
+    @model_validator(mode="before")
+    @classmethod
+    def collection_from_base_url(cls, data):
+        # Every server exposes the same object structure; only the Maximo base URL differs.
+        if not isinstance(data, dict) or "base_url" not in data:
+            return data
+        if "collection_url" in data:
+            raise ValueError("Set either base_url or collection_url, not both")
+        data = dict(data)
+        base = data.pop("base_url")
+        if not isinstance(base, str):
+            raise ValueError("base_url must be a string")
+        return {**data, "collection_url": base.rstrip("/") + "/oslc/os/BDSCHED_WO"}
+
     @field_validator("collection_url")
     @classmethod
     def trusted_collection(cls, value: str) -> str:
