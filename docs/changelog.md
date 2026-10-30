@@ -2,6 +2,14 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Cấu hình Maximo dùng chung `WOS_MAXIMO_DEFAULTS` — 2026-10-30
+
+- [x] `open_statuses`, `crew_groups`, `person_login_domain` khai một lần trong `WOS_MAXIMO_DEFAULTS`;
+      mỗi connection chỉ cần `collection_url` + `api_key`, giá trị riêng của connection đè giá trị chung.
+      Defaults không nhận URL, key hay write contract (`extra="forbid"`), giá trị gộp vẫn qua validator cũ.
+- Bằng chứng: `tests/test_maximo_defaults.py` (5 test); backend 914 passed, ruff sạch.
+- Giới hạn: chưa kiểm tra trên server staging; `backend/.env` local không đổi (cấu hình cũ vẫn hợp lệ).
+
 ## Biên nhận rota không còn hiện lý do "already activated" — 2026-10-30
 
 - [x] Khi đã có biên nhận kích hoạt, `RotaActivation` ẩn khối "Chưa thể kích hoạt" (lý do từ backend

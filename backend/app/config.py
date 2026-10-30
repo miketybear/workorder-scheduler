@@ -224,6 +224,15 @@ class MaximoSettings(BaseModel):
         return values
 
 
+class MaximoDefaults(BaseModel):
+    """Domain values shared by every connection; a connection's own value overrides them."""
+
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    open_statuses: list[str] | None = None
+    crew_groups: dict[str, str] | None = None
+    person_login_domain: str | None = None
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="WOS_",
@@ -236,6 +245,7 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "staging", "production"]
     database_url: SecretStr
     entra: EntraSettings | None = None
+    maximo_defaults: MaximoDefaults = Field(default_factory=MaximoDefaults)
     maximo: dict[UUID, MaximoSettings] = Field(default_factory=dict)
     maximo_ca_bundle: FilePath | None = None
     read_draft_request_timeout_seconds: int = Field(default=180, ge=1, le=300)
@@ -244,6 +254,22 @@ class Settings(BaseSettings):
     work_order_snapshot_max_entries: int = Field(default=8, ge=1, le=32)
     work_order_snapshot_max_rows: int = Field(default=20000, ge=20, le=50000)
     work_order_snapshot_max_bytes: int = Field(default=33554432, ge=1024, le=134217728)
+
+    @model_validator(mode="before")
+    @classmethod
+    def apply_maximo_defaults(cls, data):
+        # Merge before MaximoSettings validation so shared values get the same checks.
+        if not isinstance(data, dict) or not isinstance(data.get("maximo"), dict):
+            return data
+        shared = MaximoDefaults.model_validate(data.get("maximo_defaults") or {})
+        values = shared.model_dump(exclude_none=True)
+        if not values:
+            return data
+        maximo = {
+            key: {**values, **entry} if isinstance(entry, dict) else entry
+            for key, entry in data["maximo"].items()
+        }
+        return {**data, "maximo": maximo}
 
     @model_validator(mode="after")
     def require_production_identity(self):

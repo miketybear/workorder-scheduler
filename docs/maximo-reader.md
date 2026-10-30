@@ -48,6 +48,10 @@ Trong môi trường backend hoặc backend/.env (Git ignore), đặt `WOS_MAXIM
 WOS_MAXIMO={"<connection UUID>":{"collection_url":"https://<test-host>/maximo/oslc/os/oslcmxwodetail","api_key":"<secret>","open_statuses":["APPR","SCHED","WMATL","WMAT","DFAPPR"]}}
 ```
 
+Statuses, `crew_groups` và `person_login_domain` giống nhau cho mọi connection có thể
+khai một lần: `WOS_MAXIMO_DEFAULTS={"open_statuses":[...],"crew_groups":{...},"person_login_domain":"..."}`.
+Giá trị khai trong từng connection đè giá trị chung. Defaults không nhận URL, key hay write contract.
+
 Đây là mẫu cấu trúc, không phải cấu hình dùng được. UUID, hostname, API key và status domain
 phải được cung cấp/xác minh cho từng hệ thống. Registry runtime giữ credential; bảng DB
 chỉ giữ metadata/secret_reference, không chứa key. Hiện resolver dùng UUID trong WOS_MAXIMO;

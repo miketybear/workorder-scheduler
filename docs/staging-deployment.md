@@ -60,7 +60,8 @@ chứng triển khai trên server. Dùng [Compose staging](../compose.staging.ya
    approved images và hai private env files. Hai role `wos_owner` và `wos_runtime`
    phải khác DBA `scheduler_dba`. Điền Entra đủ cho cả hai Settings processes.
 4. Điền runtime Maximo registry bằng connection UUID đã provision trong DB:
-   collection URL, statuses, crew groups, PERSON domain và key được cấp. Không
+   collection URL và key được cấp. Statuses, crew groups và PERSON domain dùng chung
+   đặt một lần trong `WOS_MAXIMO_DEFAULTS`; connection nào khác thì khai riêng để đè. Không
    thêm `conditional_write_contract`. `WOS_MAXIMO={}` chỉ dùng để kiểm tra startup,
    không đủ để nghiệm thu WO. Cấp scope theo [PERSON](person-access.md) và
    [Planner](planner-access.md), không cấp WO access mặc định cho admin.
