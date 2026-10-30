@@ -2,6 +2,13 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Biên nhận rota không còn hiện lý do "already activated" — 2026-10-30
+
+- [x] Khi đã có biên nhận kích hoạt, `RotaActivation` ẩn khối "Chưa thể kích hoạt" (lý do từ backend
+      "Import is cancelled or already activated" làm biên nhận thành công trông như lỗi). Backend giữ nguyên.
+- [x] Test mới `shows an existing receipt without the "already activated" blocking reason` (fail trước sửa, đạt sau).
+      Typecheck, lint đạt; `vitest --maxWorkers=2` 609/609, 47/47 file. Chưa thử trên trình duyệt với roster thật.
+
 ## Ctrl+D điền xuống khi ô ngày chưa Enter — 2026-10-30
 
 - [x] Tái hiện lỗi agy báo: ô Scheduled Start giữ chữ đang gõ cho tới Enter/blur, nên Ctrl+D không điền gì (Duration và PIC

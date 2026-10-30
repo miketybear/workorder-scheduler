@@ -85,7 +85,8 @@ export function RotaActivation({ preview, canWrite, busy: parentBusy, resetToken
         <div><dt>Ngày thay đổi</dt><dd>{comparison.diff.changed_days}</dd></div>
         <div><dt>Tổng giờ</dt><dd>{hours(comparison.diff.before_hours)} → {hours(comparison.diff.after_hours)}</dd></div>
       </dl>
-      {comparison.blocking_reasons.length > 0 && <div className={styles.error}><strong>Chưa thể kích hoạt</strong><ul>{comparison.blocking_reasons.map((reason, index) => <li key={`${index}-${reason}`}>{reason}</li>)}</ul></div>}
+      {/* With a receipt the import is already activated; its "cannot activate again" reasons would read as a failure. */}
+      {!(receipt ?? comparison.activation_receipt) && comparison.blocking_reasons.length > 0 && <div className={styles.error}><strong>Chưa thể kích hoạt</strong><ul>{comparison.blocking_reasons.map((reason, index) => <li key={`${index}-${reason}`}>{reason}</li>)}</ul></div>}
       {comparison.changes.length > 0 ? <div className={styles.activationChanges}><table><thead><tr><th>Người</th><th>Thay đổi</th><th>Craft / role trước</th><th>Craft / role sau</th><th>Giờ trước → sau</th><th>Ngày</th></tr></thead><tbody>
         {comparison.changes.map(change => <tr key={change.person_key}><td><strong>{change.name}</strong></td><td>{change.change_type === 'added' ? 'Thêm' : change.change_type === 'removed' ? 'Gỡ' : 'Thay đổi'}</td>
           <td>{change.before_crafts.join(', ') || '—'}<small>{change.before_roles.map(roleLabel).join(', ') || '—'}</small></td><td>{change.after_crafts.join(', ') || '—'}<small>{change.after_roles.map(roleLabel).join(', ') || '—'}</small></td>

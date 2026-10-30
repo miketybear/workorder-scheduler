@@ -7,7 +7,6 @@ Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[M
 
 ## 1. Làm được ngay
 
-- [ ] Biên nhận rota còn hiện lý do "Import is cancelled or already activated" khi không kích hoạt lại được; cần thông báo rõ. (L1524)
 - [ ] Hiệu năng `assignment-timeline` B2: song song hóa có giới hạn các lần đọc WO/PERSON, giữ thứ tự kiểm tra quyền, không cache số tải. (L204)
 - [ ] Tiến độ có số giây cho lần tải nguội (~15–30 giây) và đo lần tải nguội (cần xóa cache backend/Maximo). (L210, L551, L561)
 - [ ] Endpoint gộp tóm tắt task cho backlog Resource timeline (backend). (L551)

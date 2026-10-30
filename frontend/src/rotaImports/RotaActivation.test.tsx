@@ -69,6 +69,15 @@ it('notifies parent to reload when an ordinary comparison discovers an existing 
   expect(activated).toHaveBeenCalledWith(receipt);
 });
 
+it('shows an existing receipt without the "already activated" blocking reason', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respond({ ...savedDiff, can_activate:false, blocking_reasons:['Import is cancelled or already activated'], activation_receipt:receipt })));
+  render(<RotaActivation preview={{ ...stage, status:'activated' }} canWrite busy={false} resetToken={0} onActivated={vi.fn()} onAccessFailure={vi.fn()} onBusyChange={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name:'Xem biên nhận kích hoạt' }));
+  expect(await screen.findByText('receipt-1')).toBeInTheDocument();
+  expect(screen.queryByText('Chưa thể kích hoạt')).not.toBeInTheDocument();
+  expect(screen.queryByText('Import is cancelled or already activated')).not.toBeInTheDocument();
+});
+
 it('clears acknowledgment when another parent operation starts', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respond(savedDiff)));
   const { rerender } = render(<RotaActivation preview={stage} canWrite busy={false} resetToken={0} onActivated={vi.fn()} onAccessFailure={vi.fn()} onBusyChange={vi.fn()} />);
