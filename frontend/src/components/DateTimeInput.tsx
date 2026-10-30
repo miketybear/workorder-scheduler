@@ -113,6 +113,8 @@ export function DateTimeInput({ label, value: given, onChange: emit, disabled, d
       onBlur={(event) => commit(event.target.value)}
       onKeyDown={(event) => {
         if (event.key === 'Enter') { event.preventDefault(); commit(event.currentTarget.value); }
+        // Commit typed text before a table fill-down (Ctrl+D) reads the cell; the key still bubbles to it.
+        else if ((event.ctrlKey || event.metaKey) && (event.code === 'KeyD' || event.key.toLowerCase() === 'd')) { if (draft !== null) commit(event.currentTarget.value); }
         else if (event.key === 'ArrowDown' && event.altKey) { event.preventDefault(); openPopup(); }
       }} />
     <button type="button" className={styles.dateTimeButton} aria-label={`Chọn ngày giờ ${label}`} aria-expanded={open} disabled={disabled}

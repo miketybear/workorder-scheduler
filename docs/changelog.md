@@ -2,6 +2,14 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Ctrl+D điền xuống khi ô ngày chưa Enter — 2026-10-30
+
+- [x] Tái hiện lỗi agy báo: ô Scheduled Start giữ chữ đang gõ cho tới Enter/blur, nên Ctrl+D không điền gì (Duration và PIC
+      không bị vì lưu ngay khi đổi). Sửa: `DateTimeInput` commit chữ đang gõ khi nhấn Ctrl/Cmd+D, và `fillDown` đọc giá trị
+      nguồn trong updater của `setInline` để thấy giá trị vừa commit cùng lần nhấn.
+- [x] Test mới `fills a typed Scheduled Start down with Ctrl+D before it is committed with Enter` (fail trước sửa, đạt sau).
+      Typecheck, lint đạt; `vitest --maxWorkers=2` 608/608, 47/47 file. Chưa thử trên trình duyệt với dữ liệu live.
+
 ## Đối chiếu nhóm "có thể đã xong" trong todos — 2026-10-29
 
 - [x] Đóng sau khi đối chiếu code/test: preview/submit allowlist, chặn target PM/CFT, chỉ gửi trường đã đổi, read-back,

@@ -1216,6 +1216,16 @@ it('moves between rows of the same column with Enter and the arrow keys, but lea
   expect(pic('WO-TWO')).toHaveFocus();
 });
 
+it('fills a typed Scheduled Start down with Ctrl+D before it is committed with Enter', async () => {
+  const two = orderWith({ workorderid: '101', wonum: 'WO-TWO' });
+  await inlineSetup([orderWith({}), two]);
+  fireEvent.click(screen.getByLabelText(/Chọn WO-REAL/)); fireEvent.click(screen.getByLabelText(/Chọn WO-TWO/));
+  const first = screen.getByLabelText('Sửa nhanh WO-REAL Scheduled Start (nhập)');
+  fireEvent.change(first, { target: { value: '05/11/2026 07:00' } });
+  fireEvent.keyDown(first, { key: 'd', code: 'KeyD', ctrlKey: true });
+  expect(screen.getByLabelText('Sửa nhanh WO-TWO Scheduled Start (chưa lưu) (nhập)')).toHaveValue('05/11/2026 07:00');
+});
+
 it('fills a chosen PIC down to the ticked rows with Ctrl+D', async () => {
   const two = orderWith({ workorderid: '101', wonum: 'WO-TWO' });
   await inlineSetup([orderWith({}), two]);

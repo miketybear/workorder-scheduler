@@ -446,14 +446,18 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
     if (!grant) return;
     const source = rawByKey.get(key); if (!source) return;
     const marker = chosenPlan(source, choices[key]);
-    const value = shown(source, marker && !marker.baseline_changed ? marker.changes : {}, inline[key] ?? {}, grant.timezone)[field];
-    if (!value) return;
     // Fill down only into rows the planner can see on this page.
     const visibleKeys = new Set(pageRows.map(rowKey));
-    setInlineNotice(''); setInline((previous) => selectedKeys.filter((target) => target !== key && visibleKeys.has(target) && rawByKey.has(target)).reduce((acc, target) => {
-      const order = rawByKey.get(target)!; const plan = chosenPlan(order, choices[target]);
-      return stage(acc, target, field, value, shown(order, plan && !plan.baseline_changed ? plan.changes : {}, {}, grant.timezone)[field]);
-    }, previous));
+    setInlineNotice('');
+    // Read the source inside the updater: a cell committed by this same key press is not in `inline` yet.
+    setInline((previous) => {
+      const value = shown(source, marker && !marker.baseline_changed ? marker.changes : {}, previous[key] ?? {}, grant.timezone)[field];
+      if (!value) return previous;
+      return selectedKeys.filter((target) => target !== key && visibleKeys.has(target) && rawByKey.has(target)).reduce((acc, target) => {
+        const order = rawByKey.get(target)!; const plan = chosenPlan(order, choices[target]);
+        return stage(acc, target, field, value, shown(order, plan && !plan.baseline_changed ? plan.changes : {}, {}, grant.timezone)[field]);
+      }, previous);
+    });
   }
 
   const panelOpen = active && !checking && !!(selection || batch || chooser);
