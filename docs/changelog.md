@@ -2,6 +2,19 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Deploy staging `wos.biendongpoc.vn` — 2026-10-30
+
+- [x] Ubuntu `wos.biendongpoc.vn`: source `1f88dd9` ở `~/wos-staging/src-1f88dd9` (`current` symlink),
+      image `wos-backend`/`wos-web:1f88dd9` build trên server; secrets ở `~/wos-staging/private` (700/600).
+- [x] Host nginx `sites-enabled/wos` (10.17.31.187:443, cert `*-0926`) re-encrypt tới web `127.0.0.1:9443`.
+- [x] Role `wos_owner`/`wos_runtime` tách DBA; migration head `0017`; `provision_roles.sql` (runtime đọc 36/36 bảng).
+- [x] Kết nối Onshore test `aab45085-…` đăng ký bằng `app.maximo.provision` (audit `connection_created`);
+      admin đầu tiên bằng `bootstrap_admin` (audit `first_admin_bootstrap`, 0 WO grant).
+- Bằng chứng: db/backend/web healthy; HTTPS `/` và `/api/health/ready` 200; login 303 tới Entra tenant;
+      chủ dự án đăng nhập Entra và thấy danh sách WO E&I qua PERSON. Server ra được `bd-maxdev` (HTTP test).
+- Giới hạn: upload tắt (bỏ `assignment_write_contract`); image tag local, chưa registry digest; chưa backup;
+      chưa nghiệm thu 10 planner.
+
 ## `base_url` cho connection và lệnh `app.maximo.provision` — 2026-10-30
 
 - [x] Connection trong `WOS_MAXIMO` có thể khai `base_url`; backend ghép `/oslc/os/BDSCHED_WO` rồi

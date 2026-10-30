@@ -50,14 +50,14 @@ Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[M
 
 ## 3. Chờ IT / hạ tầng
 
-- [ ] `[IT]` Ubuntu staging: routing tới Maximo, DNS/TLS/CA nội bộ, HTTPS ingress, Entra redirect. (L2176, L2592, L2601)
+- [ ] `[IT]` Staging dùng image tag local build trên server; chuyển sang registry + digest đã duyệt.
 - [ ] `[IT]` Tách cấu hình/secret test và production; secret manager. (L2603, L3498)
-- [ ] `[IT]` DB roles/DSN tách biệt trên staging, backup RPO/RTO/offsite/encryption và diễn tập restore. (L2274, L2608, L3563)
+- [ ] `[IT]` Backup staging RPO/RTO/offsite/encryption và diễn tập restore. (L2274, L2608, L3563)
 - [ ] `[IT]` Entra: nhóm được đăng nhập, single-tenant/assignment, MFA/Conditional Access, blocked account, logout URI. (L2361–L2367)
 - [ ] `[IT]` Tài khoản tích hợp riêng, chủ sở hữu key, quyền tối thiểu, vòng đời key. (L2179, L2612)
 - [ ] `[IT]` API key route cho MECHSUP, FIELDPRODSUP và các position còn lại. (L237)
 - [ ] `[IT]` Retention/cleanup cho draft_submission và nháp. (L2708)
-- [ ] `[IT]` Duyệt operator/bootstrap workflow trên staging. (L2377)
+- [ ] `[IT]` Duyệt operator/bootstrap workflow trên staging (chủ dự án đã tự chạy 2026-10-30). (L2377)
 - [ ] `[IT]` UI cấu hình connection/identity ngoài Onshore E&I khi có connection thứ hai. (L2404)
 - [ ] `[IT]` Offshore: URL/object structure test, kiểm chứng riêng, không suy từ Onshore. (L2171)
 - [ ] Sau staging: nghiệm thu 10 planner với SLO, E2E đầy đủ tới history, bàn giao hướng dẫn, rồi mới chốt production. (L2437, L2572, L2576, L2614, L2617)
