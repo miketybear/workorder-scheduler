@@ -58,7 +58,8 @@ services:
     logging: *bounded_logs
   web:
     image: ${WOS_WEB_IMAGE:?Set immutable web release image}
-    ports: ["443:443"]
+    # 443 when this nginx owns the host; 127.0.0.1:<port> behind a shared host nginx.
+    ports: ["${WOS_WEB_PUBLISH:?Set web publish address, e.g. 443 or 127.0.0.1:9443}:443"]
     volumes:
       - ./deployment/staging/nginx.conf:/etc/nginx/nginx.conf:ro
       - ${WOS_TLS_CERT_FILE:?Set certificate fullchain file}:/etc/nginx/tls/fullchain.pem:ro
