@@ -11,7 +11,8 @@ Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trư�
 - [x] Popup `RouteLogin` sau khi tải WO, cho phép bỏ qua; `RoutePanel` hỏi lại khi chưa có đăng nhập.
 - Dependency: khai trực tiếp `cryptography` (đã có sẵn qua `pyjwt[crypto]`): mã hóa chuẩn không tự viết được; chỉ dùng ở credential store; không thêm gói mới.
 - Bằng chứng: backend `--run-db-tests` 1479 passed, ruff sạch; frontend typecheck, lint, vitest 612/612. Maximo là mock.
-- Giới hạn: chưa deploy, chưa thử với Maximo thật; preview N WO tạo tối đa N lần đăng nhập `maxauth` (chưa đo tải phiên Maximo); khóa mất thì phải đăng nhập lại.
+- Deploy staging `1627d28`: migration head 0018, grants runtime đã kiểm tra, `/api/health/ready` 200, `workflow_route_accounts` E&I = ENISUP.
+- Giới hạn: chưa thử với Maximo thật; preview N WO tạo tối đa N lần đăng nhập `maxauth` (chưa đo tải phiên Maximo); khóa mất thì phải đăng nhập lại.
 
 ## Mở toàn bộ chức năng trên staging cho user testing — 2026-11-02
 
