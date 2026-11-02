@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     UniqueConstraint,
     func,
@@ -249,6 +250,24 @@ class AuditEvent(Base):
     # Restricted structured data, never raw upstream responses or credentials.
     details: Mapped[dict] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WorkflowRouteCredential(Base):
+    """A planner's encrypted position-account maxauth, kept until Maximo rejects it."""
+
+    __tablename__ = "workflow_route_credential"
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("app_user.id", ondelete="CASCADE"), primary_key=True
+    )
+    connection_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("maximo_connection.id", ondelete="CASCADE"), primary_key=True
+    )
+    discipline: Mapped[str] = mapped_column(String(50), primary_key=True)
+    personid: Mapped[str] = mapped_column(String(30))
+    ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class WorkflowRouteAttempt(Base):

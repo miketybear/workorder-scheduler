@@ -1,6 +1,8 @@
 # Thiết kế: Route WO đến Tech PIC trong ứng dụng
 
 Ngày: 2026-10-23 (cập nhật 2026-10-26). Trạng thái: **đã triển khai và nghiệm thu trên Onshore test với 3 WO** (backend `app/workflow_route/`, giao diện cột Action + `RoutePanel`); hợp đồng API ở [workflow-route-api.md](workflow-route-api.md). Khác thiết kế ban đầu: route còn ghi `ASSIGNEDTO` từ PIC (phiên ENISUP), tên đăng nhập `maxauth` chữ thường, revision lấy bản đang active. Nền: kết quả route thử thành công trên
+
+> **Cập nhật 2026-11-02 (quyết định chủ dự án):** bỏ API key của position. `maxauth` được mã hóa (Fernet, khóa `WOS_WORKFLOW_ROUTE_CREDENTIAL_KEY`) và lưu trong `workflow_route_credential` theo Entra user + kết nối + discipline, đến khi Maximo trả 401, user chọn quên hoặc mất quyền ghi. Đọc việc của position bằng `maxauth`. Popup hỏi mật khẩu hiện sau khi tải WO và được phép bỏ qua. Các đoạn dưới nói về API key position hoặc giữ `maxauth` trong bộ nhớ là thiết kế cũ.
 Onshore test ở [maximo-workflow-route.md](maximo-workflow-route.md). Phạm vi đầu tiên: Onshore **test**, discipline
 E&I (tài khoản position `ENISUP`), WO cha đã có lịch và PIC.
 

@@ -7,6 +7,7 @@ Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[M
 
 ## 1. Làm được ngay
 
+- [ ] Deploy route lưu đăng nhập lên staging (thêm `WOS_WORKFLOW_ROUTE_CREDENTIAL_KEY` và `workflow_route_accounts`, migrate 0018), nghiệm thu với Maximo test và đo số phiên `maxauth` khi preview nhiều WO.
 - [ ] Hiệu năng `assignment-timeline` B2: song song hóa có giới hạn các lần đọc WO/PERSON, giữ thứ tự kiểm tra quyền, không cache số tải. (L204)
 - [ ] Tiến độ có số giây cho lần tải nguội (~15–30 giây) và đo lần tải nguội (cần xóa cache backend/Maximo). (L210, L551, L561)
 - [ ] Endpoint gộp tóm tắt task cho backlog Resource timeline (backend). (L551)

@@ -29,6 +29,7 @@ export const infoFromLocal = (row: WorkOrder, code: string): RouteInfo =>
 /** Short reason shown under a greyed Route button. */
 export const REASON_TEXT: Record<string, string> = {
   ready: 'Sẵn sàng route',
+  route_session_required: 'Chưa đăng nhập tài khoản route',
   out_of_scope: 'Không thuộc phạm vi của bạn',
   not_synced: 'Còn nháp chưa gửi lên Maximo',
   upload_pending: 'Đang có lần upload chưa đối soát — mở Gửi WO để kiểm tra kết quả',

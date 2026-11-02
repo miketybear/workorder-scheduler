@@ -27,6 +27,7 @@ import { moveBetweenRows } from './tableNav';
 import { getRouteStatus, previewRoute, type RouteResultItem, type RouteStatus } from '../api/workflowRoute';
 import { RouteAction, type RouteActionKind } from './RouteAction';
 import { RoutePanel } from './RoutePanel';
+import { RouteLogin } from './RouteLogin';
 import { ATTENTION_CODES, chipText, mergeFreshRows, routeCategory, routeChips, infoFromLocal, infoFromPreview, localRouteCode, MAX_ROUTE_BATCH, reasonText, routeFingerprint, type RouteInfo } from './routeRules';
 import { outsideShift } from './ShiftNotice';
 import { usePanelFocus } from './usePanelFocus';
@@ -108,6 +109,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
   const [routeOutcome, setRouteOutcome] = useState<Record<string, RouteResultItem>>({});
   const [routeTargets, setRouteTargets] = useState<WorkOrder[] | null>(null);
   const [routeRecheck, setRouteRecheck] = useState(0);
+  const [routeLoginSkipped, setRouteLoginSkipped] = useState(false);
   // The send panel always opens on the one draft that consolidateDrafts produced or reused.
   const [batch, setBatch] = useState<{ selection: { draftId: string }; notes: string[] } | null>(null);
   const [sending, setSending] = useState(false);
@@ -1059,6 +1061,12 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
           </nav>}
         </>}
       </>}
+      {routeAvailable && routeStatus && !routeStatus.status.session.active && !routeLoginSkipped && !routeTargets && !rangeChange && rows !== null &&
+        <RouteLogin scope={editorScope} personid={routeStatus.status.personid ?? ''} onDenied={onDenied} onSkip={() => setRouteLoginSkipped(true)}
+          onSession={(session) => {
+            setRouteStatus((previous) => previous && { ...previous, status: { ...previous.status, session } });
+            setRouteInfo({}); setRouteRecheck((n) => n + 1);
+          }} />}
       {routeTargets && grant && routeStatus && <RoutePanel scope={editorScope} status={routeStatus.status} rows={routeTargets}
         onSession={(session) => setRouteStatus((previous) => previous && { ...previous, status: { ...previous.status, session } })}
         onResult={(items) => {

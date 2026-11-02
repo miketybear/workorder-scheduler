@@ -21,6 +21,7 @@ from app.workflow_route.contract import expected_option_offered, memo_for
 from app.workflow_route.credentials import RouteCredential
 from app.workflow_route.ledger import Attempt, RequestIdReused, RouteBusy
 from app.workflow_route.maximo import (
+    PositionLoginRejected,
     RouteOrder,
     RouteTransportError,
     UnsafeLink,
@@ -59,7 +60,7 @@ class RouteContext:
     contract: Callable[[], Awaitable[tuple[str | None, int | None]]]
     transport_factory: Callable[[UUID], Any]
     credential: RouteCredential | None = None
-    drop_credential: Callable[[], None] = lambda: None
+    drop_credential: Callable[[], Awaitable[None]] | None = None
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep
     readback_attempts: int = 3
     readback_delay: float = 1.0
@@ -105,6 +106,13 @@ def result_from(attempt: Attempt) -> ItemResult:
     )
 
 
+def routed(order: RouteOrder, route) -> bool:
+    return any(
+        a.status == "ACTIVE" and a.process == route.process and a.node == route.assignment_node
+        for a in order.assignments
+    )
+
+
 def decide_assignment(order: RouteOrder, position, route, account, revision: int) -> str:
     """Pure decision over the WO's BD_WO work (all holders) and the position account's work."""
     active = [a for a in order.assignments if a.status == "ACTIVE" and a.process == route.process]
@@ -127,6 +135,13 @@ def decide_assignment(order: RouteOrder, position, route, account, revision: int
     ):
         return "no_active_assignment"
     return READY
+
+
+async def forget_credential(ctx: RouteContext) -> None:
+    """Later work orders must not send a rejected password again: that locks the shared account."""
+    ctx.credential = None
+    if ctx.drop_credential is not None:
+        await ctx.drop_credential()
 
 
 async def supervisor_for_planner(ctx: RouteContext) -> str | None:
@@ -170,10 +185,18 @@ async def evaluate(ctx: RouteContext, key: WorkOrderKey) -> Evaluation:
     problem, revision = await ctx.contract()
     if problem is not None or revision is None:
         return Evaluation("contract_changed", order)
-    async with ctx.client_factory() as client:
-        position = await read_position_assignments(
-            client, ctx.config, ctx.route, ctx.account, key.workorder_id
-        )
+    if ctx.credential is None:
+        # Already routed is visible from the WO itself; only the rest needs the position login.
+        code = "already_routed" if routed(order, ctx.route) else "route_session_required"
+        return Evaluation(code, order)
+    try:
+        async with ctx.client_factory() as client:
+            position = await read_position_assignments(
+                client, ctx.config, ctx.route, ctx.credential.maxauth.reveal(), key.workorder_id
+            )
+    except PositionLoginRejected:
+        await forget_credential(ctx)
+        return Evaluation("route_session_required", order)
     code = decide_assignment(order, position, ctx.route, ctx.account, revision)
     if code != READY:
         return Evaluation(code, order)
@@ -398,7 +421,7 @@ async def mutate(ctx, attempt, key, evaluation, held, action_id, evidence) -> It
             return await stop("complete_unconfirmed", uncertain=True)
         evidence.update(complete_status=first.status, complete_reason=first.reason)
         if first.status == 401:
-            ctx.drop_credential()
+            await forget_credential(ctx)
             return await stop("route_session_expired")
         if first.status != 200:
             return await stop("complete_rejected")
@@ -415,7 +438,7 @@ async def mutate(ctx, attempt, key, evaluation, held, action_id, evidence) -> It
             return await stop("choose_unconfirmed", uncertain=True)
     evidence.update(choose_status=second.status, choose_reason=second.reason)
     if second.status == 401:
-        ctx.drop_credential()
+        await forget_credential(ctx)
         return await stop("route_session_expired")
     if second.status not in {200, 201, 204}:
         return await stop("choose_rejected")

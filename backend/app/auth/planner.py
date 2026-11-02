@@ -7,7 +7,15 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from app.auth.sessions import SESSION_COOKIE, resolve_session, verify_csrf
-from app.db.models import AccessGrant, AuthorizationEvent, MaximoConnection, PlannerPermission, User
+from app.db.models import (
+    AccessGrant,
+    AuthorizationEvent,
+    MaximoConnection,
+    PlannerPermission,
+    User,
+    WorkflowRouteCredential,
+)
+from app.workflow_route.credentials import drop_credentials
 
 router = APIRouter(prefix="/api/admin")
 
@@ -55,6 +63,14 @@ async def change_planner(db, settings, actor_id, change, *, source="admin_sessio
             AccessGrant.discipline == change.discipline,
         )
     )
+    if not change.enabled:
+        await drop_credentials(
+            db,
+            change.user_id,
+            "planner_revoked",
+            WorkflowRouteCredential.connection_id == change.connection_id,
+            WorkflowRouteCredential.discipline == change.discipline,
+        )
     if grant and not change.enabled:
         grant.capability = "read"
     db.add(

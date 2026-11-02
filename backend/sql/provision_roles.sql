@@ -96,4 +96,6 @@ GRANT INSERT ON workflow_route_attempt TO :"runtime_role";
 GRANT UPDATE (wonum, node_id, wfassignment_id_before, chosen_action_id, state, error_code,
     wfassignment_id_after, assigncode_after, evidence, updated_at)
     ON workflow_route_attempt TO :"runtime_role";
+-- Encrypted position-account credentials are replaced on login and deleted when rejected.
+GRANT INSERT, UPDATE, DELETE ON workflow_route_credential TO :"runtime_role";
 COMMIT;

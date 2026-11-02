@@ -2,23 +2,20 @@
 
 import asyncio
 from collections import Counter
-from datetime import UTC
 from functools import partial
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
-from sqlalchemy import select
 
 from app.auth.sessions import SESSION_COOKIE, resolve_session, verify_csrf
-from app.db.models import LoginSession, MaximoConnection, MaximoPersonBinding, User
+from app.db.models import MaximoConnection, MaximoPersonBinding, User
 from app.maximo.sender import NativeTestTransport, write_enabled
 from app.scheduling.drafts import WorkOrderKey, require_scope
 from app.scheduling.routes import checked_settings
 from app.scheduling.upload_routes import PrivateRoute
 from app.workflow_route import service
 from app.workflow_route.contract import resolve_contract
-from app.workflow_route.credentials import RouteCredential, SecretString
 from app.workflow_route.ledger import PostgresLedger
 from app.workflow_route.maximo import (
     RouteTransportError,
@@ -138,10 +135,8 @@ async def build_context(request: Request, scope: Scope, *, with_credential=False
                 await transport.write_supname(resource_id, revision, supname)
 
     store = state.workflow_route_credentials
-    session_key = (identity.token_hash, scope.connection_id, scope.discipline)
-    credential = store.get(*session_key) if with_credential else None
-    if credential is not None and credential.user_id != identity.user_id:
-        credential = None
+    owner = (identity.user_id, scope.connection_id, scope.discipline)
+    credential = await store.get(*owner, account.personid) if with_credential else None
     ctx = service.RouteContext(
         actor_id=identity.user_id,
         actor_name=user.display_name,
@@ -157,7 +152,7 @@ async def build_context(request: Request, scope: Scope, *, with_credential=False
         contract=partial(state.workflow_route_contract.problem, cache_key, load_problem),
         transport_factory=SupnameWriter,
         credential=credential,
-        drop_credential=partial(store.drop, *session_key),
+        drop_credential=partial(store.drop, *owner, "maximo_rejected"),
     )
     return identity, ctx
 
@@ -205,17 +200,22 @@ async def status(request: Request, connection_id: UUID, discipline: str):
     account = config.workflow_route_accounts.get(discipline)
     enabled = bool(connection and account and route_enabled(state.settings, connection))
     can_route = enabled and writer
-    credential = state.workflow_route_credentials.get(
-        identity.token_hash, connection_id, discipline
+    store = state.workflow_route_credentials
+    if store is not None and not writer:
+        # Lost write access (revoked grant or changed PERSON discipline) ends the stored login.
+        await store.drop(identity.user_id, connection_id, discipline, "write_access_lost")
+    active = (
+        can_route
+        and await store.get(identity.user_id, connection_id, discipline, account.personid)
+        is not None
     )
-    active = can_route and credential is not None and credential.user_id == identity.user_id
     return {
         "enabled": enabled,
         "can_route": can_route,
         "personid": account.personid if can_route else None,
         "session": {
             "active": active,
-            "expires_at": credential.expires_at.isoformat() if active else None,
+            "expires_at": None,
         },
     }
 
@@ -260,22 +260,10 @@ async def login(request: Request):
             remaining_attempts=state.workflow_route_limiter.remaining(identity.user_id),
         )
     state.workflow_route_limiter.release(identity.user_id, account_key)
-    async with state.sessions() as db:
-        expires_at = await db.scalar(
-            select(LoginSession.expires_at).where(LoginSession.token_hash == identity.token_hash)
-        )
-    if expires_at is None:
-        raise HTTPException(401, "Sign-in required")
-    credential = RouteCredential(
-        SecretString(maxauth), personid, identity.user_id, expires_at.astimezone(UTC)
+    await state.workflow_route_credentials.put(
+        identity.user_id, payload.connection_id, payload.discipline, personid, maxauth
     )
-    state.workflow_route_credentials.put(
-        identity.token_hash, payload.connection_id, payload.discipline, credential
-    )
-    return {
-        "personid": personid,
-        "session": {"active": True, "expires_at": credential.expires_at.isoformat()},
-    }
+    return {"personid": personid, "session": {"active": True, "expires_at": None}}
 
 
 @router.delete("/route/session", status_code=204)
@@ -287,15 +275,15 @@ async def logout_route_session(
         verify_csrf(identity, request.headers.get("X-CSRF-Token"))
     store = request.app.state.workflow_route_credentials
     if connection_id is not None and discipline is not None:
-        store.drop(identity.token_hash, connection_id, discipline)
+        await store.drop(identity.user_id, connection_id, discipline, "user_forgot")
     else:
-        store.drop_session(identity.token_hash)
+        await store.drop_all(identity.user_id, "user_forgot")
     return Response(status_code=204)
 
 
 @router.post("/route/preview")
 async def preview(request: Request, payload: PreviewRequest):
-    _, ctx = await build_context(request, payload)
+    _, ctx = await build_context(request, payload, with_credential=True)
     keys = [ctx.key(item.site_id, item.workorder_id) for item in payload.items]
     problem, _ = await ctx.contract()
     rows = []

@@ -2,6 +2,17 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Route: lưu đăng nhập position mã hóa, bỏ API key position, popup — 2026-11-02
+
+- [x] Chủ dự án chốt: Maximo production chấp nhận `maxauth`, tool chạy nội bộ, production dùng HTTPS. `maxauth` lưu mã hóa Fernet
+      (migration 0018, `WOS_WORKFLOW_ROUTE_CREDENTIAL_KEY`) theo Entra user + kết nối + discipline; giữ qua logout/khởi động lại;
+      xóa khi Maximo trả 401, user quên, revoke Planner hoặc mất quyền ghi; có audit lưu/xóa, không ghi giá trị.
+- [x] Đọc việc position bằng `maxauth`, `workflow_route_accounts` chỉ còn `personid`. 401 không gửi lại cho WO kế tiếp.
+- [x] Popup `RouteLogin` sau khi tải WO, cho phép bỏ qua; `RoutePanel` hỏi lại khi chưa có đăng nhập.
+- Dependency: khai trực tiếp `cryptography` (đã có sẵn qua `pyjwt[crypto]`): mã hóa chuẩn không tự viết được; chỉ dùng ở credential store; không thêm gói mới.
+- Bằng chứng: backend `--run-db-tests` 1479 passed, ruff sạch; frontend typecheck, lint, vitest 612/612. Maximo là mock.
+- Giới hạn: chưa deploy, chưa thử với Maximo thật; preview N WO tạo tối đa N lần đăng nhập `maxauth` (chưa đo tải phiên Maximo); khóa mất thì phải đăng nhập lại.
+
 ## Mở toàn bộ chức năng trên staging cho user testing — 2026-11-02
 
 - [x] Chủ dự án đổi thỏa thuận ban đầu: staging được ghi Maximo. `WRITE_APP_ENVIRONMENTS` thêm `staging`;

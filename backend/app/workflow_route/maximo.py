@@ -1,6 +1,6 @@
 """Maximo access for the BD_WO route.
 
-maxauth and API keys go only to the configured connection. Every link Maximo returns is
+maxauth and the integration key go only to the configured connection. Every link Maximo returns is
 validated and rewritten onto that connection, or refused, before a request is made.
 """
 
@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from app.config import MaximoSettings, WorkflowRouteAccount, WorkflowRouteSettings
+from app.config import MaximoSettings, WorkflowRouteSettings
 from app.maximo.contract_probe import canonical_resource
 from app.maximo.detail import code, read_pics
 from app.maximo.reader import MaximoReadError, read_collection
@@ -148,6 +148,10 @@ def location_pattern(route: WorkflowRouteSettings) -> str:
     return rf"/oslc/wf/{re.escape(route.object_structure)}_[A-Za-z0-9_~-]{{1,100}}"
 
 
+class PositionLoginRejected(Exception):
+    """Maximo answered 401 to the stored maxauth; retrying could lock the shared account."""
+
+
 def maxauth_value(username: str, password: str) -> str:
     return base64.b64encode(f"{username}:{password}".encode()).decode()
 
@@ -262,18 +266,12 @@ async def read_position_assignments(
     client,
     config: MaximoSettings,
     route: WorkflowRouteSettings,
-    account: WorkflowRouteAccount,
+    maxauth: str,
     workorder_id: str,
 ) -> list[PositionAssignment]:
-    """The shared position account's ACTIVE BD_WO work for one WO, read with its own API key."""
+    """The position account's ACTIVE BD_WO work for one WO, read in its own maxauth login."""
     if not re.fullmatch(r"[0-9]{1,30}", workorder_id):
         raise MaximoReadError("Invalid work order identity")
-    scoped = config.model_copy(
-        update={
-            "collection_url": os_url(config, route.object_structure.lower()),
-            "api_key": account.api_key,
-        }
-    )
     params = {
         "lean": "1",
         "oslc.select": POSITION_SELECT,
@@ -297,19 +295,28 @@ async def read_position_assignments(
             or assignment.status != "ACTIVE"
         ):
             raise MaximoReadError("Workflow assignment outside requested scope")
-        return (
-            PositionAssignment(
-                assignment.id,
-                href,
-                assignment.process,
-                assignment.revision,
-                assignment.node,
-                assignment.assigncode,
-            ),
+        return PositionAssignment(
             assignment.id,
+            href,
+            assignment.process,
+            assignment.revision,
+            assignment.node,
+            assignment.assigncode,
         )
 
-    return await read_collection(client, scoped, params, validate)
+    url = httpx.URL(os_url(config, route.object_structure.lower()), params=params)
+    try:
+        reply = await call(
+            client, "GET", str(url), headers=route_headers(maxauth), timeout=config.timeout_seconds
+        )
+    except RouteTransportError:
+        raise MaximoReadError("Maximo could not be reached") from None
+    if reply.status == 401:
+        raise PositionLoginRejected()
+    members = reply.body.get("member") if isinstance(reply.body, dict) else None
+    if reply.status != 200 or not isinstance(members, list):
+        raise MaximoReadError("Maximo rejected the workflow assignment read")
+    return [validate(raw) for raw in members]
 
 
 async def read_process(client, config: MaximoSettings, route: WorkflowRouteSettings) -> list[dict]:

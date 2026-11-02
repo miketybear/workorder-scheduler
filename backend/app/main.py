@@ -29,7 +29,7 @@ from app.workflow_route.credentials import CredentialStore, LoginLimiter
 from app.workflow_route.routes import router as workflow_route_router
 from app.workflow_route.service import ContractCache
 
-SCHEMA_REVISION = "0017_workflow_route_attempt"
+SCHEMA_REVISION = "0018_workflow_route_credential"
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -70,8 +70,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         settings.work_order_snapshot_max_rows,
         settings.work_order_snapshot_max_bytes,
     )
-    # Position-account sessions live only in this process's memory.
-    app.state.workflow_route_credentials = CredentialStore()
+    credential_key = settings.workflow_route_credential_key
+    app.state.workflow_route_credentials = (
+        CredentialStore(lambda: app.state.sessions, credential_key.get_secret_value())
+        if credential_key
+        else None
+    )
     app.state.workflow_route_limiter = LoginLimiter()
     app.state.workflow_route_contract = ContractCache()
     app.state.workflow_route_locks = {}

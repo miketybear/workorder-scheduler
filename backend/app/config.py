@@ -2,6 +2,7 @@ from typing import Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
+from cryptography.fernet import Fernet
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -68,15 +69,6 @@ class WorkflowRouteAccount(BaseModel):
 
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
     personid: str = Field(pattern=r"^[A-Z0-9_]{1,30}$")
-    api_key: SecretStr
-
-    @field_validator("api_key")
-    @classmethod
-    def required_key(cls, value: SecretStr) -> SecretStr:
-        raw = value.get_secret_value()
-        if not raw.strip() or any(ord(char) < 33 or ord(char) > 126 for char in raw):
-            raise ValueError("A nonempty API key is required")
-        return value
 
 
 class WorkflowRouteSettings(BaseModel):
@@ -266,6 +258,8 @@ class Settings(BaseSettings):
     maximo_defaults: MaximoDefaults = Field(default_factory=MaximoDefaults)
     maximo: dict[UUID, MaximoSettings] = Field(default_factory=dict)
     maximo_ca_bundle: FilePath | None = None
+    # Fernet key for stored position-account maxauth; kept outside the database and its backups.
+    workflow_route_credential_key: SecretStr | None = None
     read_draft_request_timeout_seconds: int = Field(default=180, ge=1, le=300)
     assignment_summary_ttl_seconds: int = Field(default=300, ge=1, le=300)
     work_order_snapshot_ttl_seconds: int = Field(default=120, ge=1, le=300)
@@ -301,6 +295,13 @@ class Settings(BaseSettings):
             for connection in self.maximo.values()
         ):
             raise ValueError("Verified conditional write contract is TEST-only")
+        if any(connection.workflow_route_accounts for connection in self.maximo.values()):
+            if self.workflow_route_credential_key is None:
+                raise ValueError("Workflow route accounts require a credential key")
+            try:
+                Fernet(self.workflow_route_credential_key.get_secret_value())
+            except ValueError:
+                raise ValueError("Workflow route credential key is not a Fernet key") from None
         if self.environment == "production" and any(
             urlsplit(connection.collection_url).scheme == "http"
             for connection in self.maximo.values()

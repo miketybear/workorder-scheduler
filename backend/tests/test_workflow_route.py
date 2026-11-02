@@ -31,7 +31,6 @@ from app.scheduling.upload_service import WriteRejected
 from app.workflow_route import service
 from app.workflow_route.contract import contract_problem, expected_option_offered
 from app.workflow_route.credentials import (
-    CredentialStore,
     LoginLimiter,
     RouteCredential,
     SecretString,
@@ -86,7 +85,7 @@ def test_route_block_defaults_to_verified_contract_and_is_test_only(monkeypatch)
     monkeypatch.setenv("WOS_ENVIRONMENT", "production")
     monkeypatch.setenv(
         f"WOS_MAXIMO__{identity}__WORKFLOW_ROUTE_ACCOUNTS",
-        '{"E&I": {"personid": "ENISUP", "api_key": "synthetic-route-key"}}',
+        '{"E&I": {"personid": "ENISUP"}}',
     )
     with pytest.raises(ValidationError):  # accounts (and so the route) never reach production
         Settings(_env_file=None)
@@ -142,26 +141,23 @@ def test_route_enabled_mirrors_write_gate(field, value):
 # ---------------------------------------------------------------- credentials
 
 
-def test_credentials_are_dropped_on_logout_expiry_and_scope_change():
-    now = datetime(2026, 10, 23, tzinfo=UTC)
-    clock = [now]
-    store = CredentialStore(clock=lambda: clock[0])
-    user, connection = uuid.uuid4(), uuid.uuid4()
+def test_rejected_position_login_is_forgotten_and_never_sent_again():
+    fake = FakeMaximo()
+    fake.position_login_rejected = True
+    ctx = make_ctx(fake)
+    keys = [ctx.key("TEST", "100"), ctx.key("TEST", "101")]
+    results = run(service.preview(ctx, keys))
+    assert [evaluation.code for _, evaluation in results][0] == "route_session_required"
+    assert ctx.credential is None and ctx.dropped == [1]
+    position = [c for c in fake.calls if c.path.endswith("/mxapiwfassignment")]
+    assert len(position) == 1  # the second work order did not repeat the rejected password
 
-    def credential(minutes):
-        return RouteCredential(SecretString("x"), "ENISUP", user, now + timedelta(minutes=minutes))
 
-    store.put("s1", connection, "E&I", credential(30))
-    assert store.get("s1", connection, "E&I")
-    assert store.get("s1", connection, "MECH") is None
-    assert store.get("s2", connection, "E&I") is None
-    store.put("s1", connection, "MECH", credential(30))  # discipline change replaces
-    assert store.get("s1", connection, "E&I") is None and len(store) == 1
-    store.drop_session("s1")
-    assert len(store) == 0
-    store.put("s1", connection, "E&I", credential(5))
-    clock[0] = now + timedelta(minutes=6)
-    assert store.get("s1", connection, "E&I") is None and len(store) == 0
+def test_preview_without_a_login_asks_for_one_and_reads_no_position_work():
+    fake = FakeMaximo()
+    ctx = make_ctx(fake, credential=False)
+    assert run(service.evaluate(ctx, ctx.key("TEST", "100"))).code == "route_session_required"
+    assert not [c for c in fake.calls if c.path.endswith("/mxapiwfassignment")]
 
 
 def test_secret_string_never_prints_or_pickles():
@@ -169,7 +165,7 @@ def test_secret_string_never_prints_or_pickles():
 
     secret = SecretString(PASSWORD)
     assert PASSWORD not in repr(secret) and PASSWORD not in str(secret)
-    assert PASSWORD not in repr(RouteCredential(secret, "ENISUP", uuid.uuid4(), datetime.now(UTC)))
+    assert PASSWORD not in repr(RouteCredential(secret, "ENISUP", uuid.uuid4()))
     with pytest.raises(TypeError):
         pickle.dumps(secret)
 
@@ -289,7 +285,11 @@ def test_every_preview_reason_code(mutation, expected):
     evaluation = run(service.evaluate(ctx, ctx.key("TEST", "100")))
     assert evaluation.code == expected
     assert not fake.writes and not fake.of("whoami")
-    assert all("maxauth" not in call.headers for call in fake.calls)
+    # The password only ever goes to the position account's own assignment read.
+    assert all(
+        "maxauth" not in call.headers or call.path.endswith("/mxapiwfassignment")
+        for call in fake.calls
+    )
 
 
 @pytest.mark.parametrize(
@@ -377,12 +377,12 @@ def test_credentials_headers_and_bodies_go_only_where_they_belong():
     assert json.loads(complete.body) == {"memo": memo, "accepted": True}
     assert json.loads(choose.body) == {"actionid": 437, "memo": memo}
     for call in fake.calls:
-        mutation = fake.kind(call) in {"complete", "choose"}
-        assert ("maxauth" in call.headers) == mutation
-        assert ("apikey" in call.headers) == (not mutation and fake.kind(call) != "whoami")
-    # Reads of the position account's work use its own key; everything else the integration key.
-    position = [c for c in fake.of("read") if c.path.endswith("/mxapiwfassignment")]
-    assert position and all(c.headers["apikey"] == "synthetic-route-key" for c in position)
+        position = call.path.endswith("/mxapiwfassignment") and fake.kind(call) == "read"
+        login = fake.kind(call) in {"complete", "choose"} or position
+        assert ("maxauth" in call.headers) == login
+        assert ("apikey" in call.headers) == (not login and fake.kind(call) != "whoami")
+    # Everything the position account does runs in its login; other reads use the integration key.
+    assert [c for c in fake.of("read") if c.path.endswith("/mxapiwfassignment")]
     assert_no_secrets(result, ctx.ledger.rows)
 
 
@@ -621,7 +621,7 @@ def test_stranded_work_order_stops_the_rest_of_the_batch():
 def test_missing_credential_blocks_routing():
     fake = FakeMaximo()
     ctx, result = route_once(fake, credential=False)
-    assert (result.state, result.code) == ("failed", "route_session_required")
+    assert (result.state, result.code) == ("rejected", "route_session_required")
     assert fake.writes == []
 
 

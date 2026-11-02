@@ -23,10 +23,9 @@ HOST = "maximo.invalid"
 ROOT = f"https://{HOST}/maximo"
 PASSWORD = "Pa55-word!synthetic"
 MAXAUTH = base64.b64encode(f"enisup:{PASSWORD}".encode()).decode()
-ROUTE_KEY = "synthetic-route-key"
 INTEGRATION_KEY = "synthetic-test-key"
 OPTION = "Route to Tech PIC for execution"
-SECRETS = (PASSWORD, MAXAUTH, ROUTE_KEY, INTEGRATION_KEY)
+SECRETS = (PASSWORD, MAXAUTH, INTEGRATION_KEY)
 
 
 def good_process():
@@ -72,6 +71,7 @@ class Call:
 class FakeMaximo:
     def __init__(self):
         self.calls: list[Call] = []
+        self.position_login_rejected = False
         self.wo = {
             "siteid": "TEST",
             "workorderid": 100,
@@ -173,8 +173,11 @@ class FakeMaximo:
         if path.endswith("/BDSCHED_WO"):
             return self.read_order(call)
         if path.endswith("/mxapiwfassignment"):
-            if call.headers.get("apikey") != ROUTE_KEY:
-                return httpx.Response(400, json={"Error": {"reasonCode": "BMXAA0024E"}})
+            # The integration account holds no assignments, so its key finds none.
+            if call.headers.get("maxauth") != MAXAUTH:
+                return httpx.Response(200, json={"member": []})
+            if self.position_login_rejected:
+                return httpx.Response(401, json={})
             return self.read_position(call)
         if path.endswith("/mxapiwfprocess"):
             return httpx.Response(200, json={"member": [self.process, *self.extra_processes]})
@@ -358,7 +361,7 @@ def route_config(revision=None, **overrides):
         conditional_write_contract="native_rowstamp_test",
         crew_groups={"E&I": "CREW"},
         workflow_route=WorkflowRouteSettings(**({"revision": revision} if revision else {})),
-        workflow_route_accounts={"E&I": {"personid": "ENISUP", "api_key": ROUTE_KEY}},
+        workflow_route_accounts={"E&I": {"personid": "ENISUP"}},
         paging_origin_aliases=["https://alias.invalid:9443"],
         **overrides,
     )
@@ -384,6 +387,10 @@ def make_ctx(
         return resolve_contract(records, config_.workflow_route)
 
     dropped = []
+
+    async def drop_credential():
+        dropped.append(1)
+
     ctx = service.RouteContext(
         actor_id=actor_id,
         actor_name="Pat Planner",
@@ -400,12 +407,10 @@ def make_ctx(
         transport_factory=lambda attempt_id: Writer(
             fake, config_, attempt_id, actor_id, connection_id
         ),
-        credential=RouteCredential(
-            SecretString(MAXAUTH), "ENISUP", actor_id, datetime(2099, 1, 1, tzinfo=UTC)
-        )
+        credential=RouteCredential(SecretString(MAXAUTH), "ENISUP", actor_id)
         if credential
         else None,
-        drop_credential=lambda: dropped.append(1),
+        drop_credential=drop_credential,
         sleep=lambda seconds: asyncio.sleep(0),
         readback_delay=0,
         **extra,

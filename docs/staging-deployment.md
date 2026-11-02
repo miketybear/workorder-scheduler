@@ -62,7 +62,8 @@ chứng triển khai trên server. Dùng [Compose staging](../compose.staging.ya
 4. Điền runtime Maximo registry bằng connection UUID đã provision trong DB:
    `base_url` (vd. `https://host/maximo`; backend tự thêm `/oslc/os/BDSCHED_WO`) và key được cấp. Statuses, crew groups và PERSON domain dùng chung
    đặt một lần trong `WOS_MAXIMO_DEFAULTS`; connection nào khác thì khai riêng để đè. Để mở ghi, thêm vào connection Onshore test các contract `conditional_write_contract`,
-   `assignment_write_contract`, `assignment_daily_write_contract`, `task_load_contract` và `workflow_route_accounts`;
+   `assignment_write_contract`, `assignment_daily_write_contract`, `task_load_contract` và `workflow_route_accounts` (chỉ `personid` theo discipline, không có key);
+   route còn cần `WOS_WORKFLOW_ROUTE_CREDENTIAL_KEY` (Fernet, giữ ngoài DB và backup DB; mất khóa thì planner chỉ cần đăng nhập lại);
    gate vẫn đòi connection enabled, system=onshore, environment=test. `WOS_MAXIMO={}` chỉ dùng để kiểm tra startup,
    không đủ để nghiệm thu WO. Cấp scope theo [PERSON](person-access.md) và
    [Planner](planner-access.md), không cấp WO access mặc định cho admin.

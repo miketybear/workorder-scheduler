@@ -176,6 +176,7 @@ def test_provisioned_runtime_has_dml_but_no_ddl_admin_or_audit_mutation():
                 ("assignment_plan_upload_batch", ("SELECT", "INSERT")),
                 ("assignment_plan_upload_batch_item", ("SELECT", "INSERT")),
                 ("workflow_route_attempt", ("SELECT", "INSERT")),
+                ("workflow_route_credential", ("SELECT", "INSERT", "UPDATE", "DELETE")),
             ):
                 for privilege in privileges:
                     assert db.execute(

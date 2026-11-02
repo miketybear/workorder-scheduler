@@ -1,14 +1,18 @@
-"""In-memory Maximo position-account sessions and login attempt limits.
+"""Stored Maximo position-account credentials and login attempt limits.
 
-Only the base64 maxauth string is kept, never the password, and never on disk, in the
-database, in logs, audit rows or responses.
+maxauth is base64 of user:password, so it is encrypted before it reaches the database and
+never appears in logs, audit rows or responses. The key is configured outside the database.
 """
 
 import time
 from collections import deque
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from uuid import UUID
+
+from cryptography.fernet import Fernet, InvalidToken
+from sqlalchemy import delete
+
+from app.db.models import AuthorizationEvent, WorkflowRouteCredential
 
 USER_LIMIT, USER_WINDOW = 3, 300
 ACCOUNT_LIMIT, ACCOUNT_WINDOW = 10, 3600
@@ -37,39 +41,90 @@ class RouteCredential:
     maxauth: SecretString
     personid: str
     user_id: UUID
-    expires_at: datetime
 
 
 class CredentialStore:
-    """One credential per login session; keyed by (session, connection, discipline)."""
+    """One encrypted credential per Entra user, connection and discipline; audited, never logged.
 
-    def __init__(self, clock=lambda: datetime.now(UTC)):
-        self._clock = clock
-        self._items: dict[tuple[str, UUID, str], RouteCredential] = {}
+    It stays until Maximo rejects it, the user forgets it or the user loses write access.
+    """
 
-    def put(self, session: str, connection_id: UUID, discipline: str, credential: RouteCredential):
-        # A different connection or discipline replaces the previous credential.
-        self.drop_session(session)
-        self._items[(session, connection_id, discipline)] = credential
+    def __init__(self, sessions, key: str):
+        # A callable: the session factory only exists once the application has started.
+        self._sessions = sessions
+        self._fernet = Fernet(key)
 
-    def get(self, session: str, connection_id: UUID, discipline: str) -> RouteCredential | None:
-        self.purge()
-        return self._items.get((session, connection_id, discipline))
+    async def get(
+        self, user_id: UUID, connection_id: UUID, discipline: str, personid: str
+    ) -> RouteCredential | None:
+        async with self._sessions()() as db:
+            row = await db.get(WorkflowRouteCredential, (user_id, connection_id, discipline))
+        if row is None or row.personid != personid:
+            return None
+        try:
+            maxauth = self._fernet.decrypt(row.ciphertext).decode()
+        except InvalidToken:  # The key was rotated; the user simply signs in again.
+            return None
+        return RouteCredential(SecretString(maxauth), personid, user_id)
 
-    def drop(self, session: str, connection_id: UUID, discipline: str) -> None:
-        self._items.pop((session, connection_id, discipline), None)
+    async def put(
+        self, user_id: UUID, connection_id: UUID, discipline: str, personid: str, maxauth: str
+    ) -> None:
+        ciphertext = self._fernet.encrypt(maxauth.encode())
+        async with self._sessions().begin() as db:
+            await db.merge(
+                WorkflowRouteCredential(
+                    user_id=user_id,
+                    connection_id=connection_id,
+                    discipline=discipline,
+                    personid=personid,
+                    ciphertext=ciphertext,
+                )
+            )
+            db.add(
+                AuthorizationEvent(
+                    actor_id=user_id,
+                    connection_id=connection_id,
+                    event="route_credential_saved",
+                    details={"discipline": discipline, "personid": personid},
+                )
+            )
 
-    def drop_session(self, session: str) -> None:
-        for key in [key for key in self._items if key[0] == session]:
-            del self._items[key]
+    async def drop(self, user_id: UUID, connection_id: UUID, discipline: str, reason: str) -> None:
+        async with self._sessions().begin() as db:
+            await drop_credentials(
+                db,
+                user_id,
+                reason,
+                WorkflowRouteCredential.connection_id == connection_id,
+                WorkflowRouteCredential.discipline == discipline,
+            )
 
-    def purge(self) -> None:
-        now = self._clock()
-        for key in [key for key, item in self._items.items() if item.expires_at <= now]:
-            del self._items[key]
+    async def drop_all(self, user_id: UUID, reason: str) -> None:
+        async with self._sessions().begin() as db:
+            await drop_credentials(db, user_id, reason)
 
-    def __len__(self) -> int:
-        return len(self._items)
+
+async def drop_credentials(db, user_id: UUID, reason: str, *criteria) -> None:
+    """Delete and audit in the caller's transaction, so a revoke and its cleanup land together."""
+    rows = await db.execute(
+        delete(WorkflowRouteCredential)
+        .where(WorkflowRouteCredential.user_id == user_id, *criteria)
+        .returning(
+            WorkflowRouteCredential.connection_id,
+            WorkflowRouteCredential.discipline,
+            WorkflowRouteCredential.personid,
+        )
+    )
+    for connection_id, discipline, personid in rows.all():
+        db.add(
+            AuthorizationEvent(
+                actor_id=user_id,
+                connection_id=connection_id,
+                event="route_credential_dropped",
+                details={"discipline": discipline, "personid": personid, "reason": reason},
+            )
+        )
 
 
 class LoginLimiter:

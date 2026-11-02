@@ -26,8 +26,8 @@ Chỉ hoạt động trên kết nối Onshore **test** của ứng dụng devel
 
 - `enabled`: kết nối + discipline có tài khoản position được cấu hình và là kết nối test (không cần cấu hình revision); revision BD_WO đang `active` được server tự xác định khi chạy (tối đa vài chục giây bộ nhớ đệm), nên revision mới được kích hoạt sẽ tự được nhận. `can_route`: `enabled` và người dùng có quyền
   Planner ghi. `personid` (tên tài khoản position, hiển thị cố định trong ô đăng nhập) chỉ có khi `can_route`.
-- `session.active`: server đang giữ phiên Maximo của tài khoản position cho phiên Entra này; `expires_at` (ISO 8601) = lúc
-  phiên Entra hết hạn. Phiên bị bỏ khi logout, hết phiên Entra, đổi kết nối/discipline, khởi động lại backend, hoặc Maximo trả 401.
+- `session.active`: server đang lưu đăng nhập position (đã mã hóa) của Entra user cho kết nối + discipline này; `expires_at` luôn `null`.
+  Đăng nhập được giữ qua logout và khởi động lại backend; chỉ bị xóa khi Maximo trả 401, user chọn quên, hoặc mất quyền ghi.
 - Ẩn nút Route khi `can_route=false`. Lỗi: `401` chưa đăng nhập, `404` không có grant.
 
 ## 2. Phiên tài khoản position
@@ -39,7 +39,7 @@ Chỉ hoạt động trên kết nối Onshore **test** của ứng dụng devel
 ```
 
 - `username` (không phân biệt hoa thường) phải bằng `personid` ở trên, nếu không `422 username_mismatch` (không gọi Maximo).
-- Thành công `200`: `{ "personid": "ENISUP", "session": { "active": true, "expires_at": "2026-10-23T18:00:00+00:00" } }`.
+- Thành công `200`: `{ "personid": "ENISUP", "session": { "active": true, "expires_at": null } }`.
 - Lỗi:
   - `422 {"code":"maximo_login_failed","remaining_attempts":2}` sai mật khẩu. Giới hạn: **3 lần sai / 5 phút / người dùng**
     và **10 lần sai / giờ / tài khoản position** (dùng chung). Đăng nhập thành công không tốn lượt.
@@ -48,8 +48,8 @@ Chỉ hoạt động trên kết nối Onshore **test** của ứng dụng devel
   - `409 {"code":"workflow_route_disabled"}`; `502 {"code":"maximo_unavailable"}` (không tốn lượt).
 - Xóa ô mật khẩu ngay sau khi gửi; không lưu ở `localStorage`.
 
-`DELETE /api/workflow/route/session?connection_id=…&discipline=…` -> `204`. Bỏ qua hai tham số để quên mọi phiên của
-đăng nhập hiện tại. Logout Entra (`POST /api/auth/logout`) cũng quên phiên.
+`DELETE /api/workflow/route/session?connection_id=…&discipline=…` -> `204`. Bỏ qua hai tham số để quên mọi đăng nhập
+position của user. Logout Entra không xóa đăng nhập này.
 
 ## 3. Kiểm tra trước (chỉ đọc)
 
@@ -70,7 +70,7 @@ Chỉ hoạt động trên kết nối Onshore **test** của ứng dụng devel
                "supervisor": { "current": null, "will_set": "VINHDN" } } ] }
 ```
 
-- Không cần phiên Maximo; không ghi gì lên Maximo hay DB. WO ngoài phạm vi hoặc không tồn tại đều trả `code:"out_of_scope"`,
+- Đọc việc của position bằng `maxauth` đã lưu; chưa có đăng nhập thì WO đủ điều kiện khác trả `code:"route_session_required"` và không gửi gì bằng `maxauth`. Không ghi gì lên Maximo; `401` từ Maximo xóa đăng nhập đã lưu và không gửi lại. WO ngoài phạm vi hoặc không tồn tại đều trả `code:"out_of_scope"`,
   `wonum:null` (không phân biệt được).
 - `assigned_to` = `ASSIGNEDTO` hiện có. Route không bao giờ ghi `ASSIGNEDTO`/`ASSIGNEDDATE`; PIC là trường `assignedto` (đã thay `assignedtechname`, trường cũ đã bị loại hoàn toàn khỏi API).
 - `supervisor.will_set`: giá trị `SUPNAME` sẽ được ghi (chỉ khi `current` trống và Planner thuộc nhóm `ALLSUPN`);

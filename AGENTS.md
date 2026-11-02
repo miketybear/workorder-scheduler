@@ -193,8 +193,10 @@ Additional domain modules in component instructions remain planned.
   (see docs/workflow-route-design.md). It writes no WO field except the supervisor name the workflow requires,
   and only when it is empty (SUPNAME, from the signed-in Planner's own PERSON record); the PIC (assignedto) and
   its date must already be in Maximo. It never starts a workflow or
-  completes an interaction node. The position-account password is used only for the Maximo session,
-  is held in server memory for the Entra session and is never stored, logged or audited.
+  completes an interaction node. The position-account password is entered by the Planner and used only as
+  maxauth for the position's Maximo work. Owner decision 2026-11-02: maxauth is stored encrypted per Entra user,
+  connection and discipline until Maximo rejects it, the user forgets it or write access is lost; the key stays
+  outside the database. It is never logged, audited or returned. No position API key is configured.
 - Maximo owns authoritative WO state. A saved draft is not an uploaded change.
 - Each outbound mutation requires a durable audit intent attributed to an authenticated user.
   Report partial success, conflicts and unknown outcomes honestly; never blindly retry writes.

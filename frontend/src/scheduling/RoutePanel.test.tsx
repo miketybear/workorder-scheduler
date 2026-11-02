@@ -124,7 +124,7 @@ it('lets the user forget the held position-account session from the confirmation
   vi.mocked(previewRoute).mockResolvedValue({ contract: { ok: true, problem: null }, items: [ready('1', 'P1')] });
   vi.mocked(deleteRouteSession).mockResolvedValue();
   const { onSession } = open(true);
-  fireEvent.click(await screen.findByRole('button', { name: 'Quên phiên tài khoản route' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Quên đăng nhập tài khoản route' }));
   await screen.findByLabelText('Mật khẩu');
   expect(deleteRouteSession).toHaveBeenCalledWith(scope, expect.anything());
   expect(onSession).toHaveBeenCalledWith({ active: false, expires_at: null });

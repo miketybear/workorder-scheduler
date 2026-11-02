@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from pydantic import SecretStr
 from route_fakes import MAXAUTH, PASSWORD, ROOT, SECRETS, FakeMaximo, good_process, route_config
 from sqlalchemy import select
 from test_postgres import database, seed
@@ -15,18 +16,23 @@ from app.auth.sessions import SESSION_COOKIE, issue_session
 from app.config import integration_settings
 from app.db.models import (
     AccessGrant,
+    AuthorizationEvent,
     Draft,
     DraftItem,
     MaximoConnection,
     UploadBatch,
     UploadItem,
     WorkflowRouteAttempt,
+    WorkflowRouteCredential,
 )
 from app.main import create_app
-from app.workflow_route.credentials import LoginLimiter
+from app.workflow_route.credentials import LoginLimiter, drop_credentials
 from app.workflow_route.ledger import PostgresLedger, RequestIdReused, RouteBusy
 
 pytestmark = pytest.mark.integration
+
+
+CREDENTIAL_KEY = "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="
 
 
 @asynccontextmanager
@@ -41,6 +47,7 @@ async def environment(*, capability="write", discipline="E&I", fake=None):
             token, csrf = await issue_session(db, user)
         settings = integration_settings()
         settings.maximo = {connections[0].id: route_config()}
+        settings.workflow_route_credential_key = SecretStr(CREDENTIAL_KEY)
         app = create_app(settings)
         app.state.sessions = sessions
         app.state.maximo_client_factory = fake.client
@@ -136,7 +143,18 @@ def test_login_session_status_limits_and_logout(caplog):
             assert ok.status_code == 200 and ok.json()["personid"] == "ENISUP", ok.text
             assert ok.json()["session"]["active"]
             assert all(MAXAUTH not in text and PASSWORD not in text for text in env.responses)
-            assert len(env.app.state.workflow_route_credentials) == 1
+            async with env.sessions() as db:
+                stored = (await db.scalars(select(WorkflowRouteCredential))).all()
+                events = (
+                    await db.scalars(
+                        select(AuthorizationEvent.event).where(
+                            AuthorizationEvent.event.like("route_credential_%")
+                        )
+                    )
+                ).all()
+            assert len(stored) == 1 and events == ["route_credential_saved"]
+            assert MAXAUTH.encode() not in stored[0].ciphertext
+            assert PASSWORD.encode() not in stored[0].ciphertext
             status = await client.get("/api/workflow/route/status", params=env.scope)
             assert status.json()["session"]["active"]
             other = await client.get(
@@ -147,11 +165,13 @@ def test_login_session_status_limits_and_logout(caplog):
             assert (
                 await client.delete("/api/workflow/route/session", params=env.scope)
             ).status_code == 204
-            assert not env.app.state.workflow_route_credentials._items
+            async with env.sessions() as db:
+                assert not (await db.scalars(select(WorkflowRouteCredential))).all()
             await env.login()
-            assert len(env.app.state.workflow_route_credentials) == 1
+            # The login outlives the Entra session: only Maximo or the user ends it.
             assert (await client.post("/api/auth/logout")).status_code == 204
-            assert len(env.app.state.workflow_route_credentials) == 0
+            async with env.sessions() as db:
+                assert len((await db.scalars(select(WorkflowRouteCredential))).all()) == 1
         for secret in SECRETS:
             assert secret not in caplog.text
 
@@ -252,6 +272,11 @@ def test_contract_drift_refuses_routing_with_409():
 def test_preview_is_read_only_and_hides_out_of_scope_work_orders():
     async def scenario():
         async with environment() as env:
+            without_login = await env.post("/route/preview", env.preview_body(["100"]))
+            assert without_login.json()["items"][0]["code"] == "route_session_required"
+            assert env.fake.of("whoami") == []
+            await env.login()
+            calls_after_login = len(env.fake.of("whoami"))
             preview = await env.post("/route/preview", env.preview_body(["100", "999"]))
             assert preview.status_code == 200
             ready, hidden = preview.json()["items"]
@@ -262,7 +287,7 @@ def test_preview_is_read_only_and_hides_out_of_scope_work_orders():
                 "out_of_scope",
                 None,
             )
-            assert env.fake.writes == [] and env.fake.of("whoami") == []
+            assert env.fake.writes == [] and len(env.fake.of("whoami")) == calls_after_login
             env.fake.wo["bdpocdiscipline"] = "MECH"
             moved = await env.post("/route/preview", env.preview_body(["100"]))
             assert moved.json()["items"][0] == {**hidden, "workorder_id": "100"}
@@ -382,6 +407,7 @@ def test_preview_and_route_distinguish_draft_from_unresolved_upload(
 ):
     async def scenario():
         async with environment() as env:
+            await env.login()
             async with env.sessions.begin() as db:
                 if has_draft:
                     draft = Draft(owner_id=env.user.id, connection_id=env.connection_id)
@@ -437,5 +463,38 @@ def test_preview_and_route_distinguish_draft_from_unresolved_upload(
                 result = blocked.json()["items"][0]
                 assert (result["state"], result["code"]) == ("rejected", expected)
                 assert env.fake.writes == []
+
+    run(scenario())
+
+
+def test_stored_login_is_forgotten_when_maximo_rejects_it_or_the_planner_is_revoked():
+    async def stored(env):
+        async with env.sessions() as db:
+            return (await db.scalars(select(WorkflowRouteCredential))).all()
+
+    async def scenario():
+        async with environment() as env:
+            await env.login()
+            env.fake.position_login_rejected = True
+            preview = await env.post("/route/preview", env.preview_body())
+            assert preview.json()["items"][0]["code"] == "route_session_required"
+            assert await stored(env) == []
+            env.fake.position_login_rejected = False
+            await env.login()
+            async with env.sessions.begin() as db:
+                await drop_credentials(db, env.user.id, "planner_revoked")
+            assert await stored(env) == []
+            async with env.sessions() as db:
+                events = (
+                    await db.execute(
+                        select(AuthorizationEvent.event, AuthorizationEvent.details).where(
+                            AuthorizationEvent.event == "route_credential_dropped"
+                        )
+                    )
+                ).all()
+            assert {details["reason"] for _, details in events} == {
+                "maximo_rejected",
+                "planner_revoked",
+            }
 
     run(scenario())

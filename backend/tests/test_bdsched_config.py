@@ -112,6 +112,8 @@ def test_bdsched_resource_href_with_other_object_case_resolves_on_configured_pat
 def test_workflow_route_accounts_are_secret_scoped_and_test_only(monkeypatch):
     import json
 
+    from cryptography.fernet import Fernet
+
     from app.config import Settings
 
     identity = uuid4()
@@ -125,12 +127,16 @@ def test_workflow_route_accounts_are_secret_scoped_and_test_only(monkeypatch):
     monkeypatch.setenv("WOS_MAXIMO", json.dumps({str(identity): base}))
     monkeypatch.setenv(
         f"WOS_MAXIMO__{identity}__WORKFLOW_ROUTE_ACCOUNTS",
-        '{"E&I": {"personid": "ENISUP", "api_key": "synthetic-route-key"}}',
+        '{"E&I": {"personid": "ENISUP"}}',
     )
+    with pytest.raises(ValidationError):  # stored logins need an encryption key
+        Settings(_env_file=None)
+    monkeypatch.setenv("WOS_WORKFLOW_ROUTE_CREDENTIAL_KEY", "not-a-fernet-key")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)
+    monkeypatch.setenv("WOS_WORKFLOW_ROUTE_CREDENTIAL_KEY", Fernet.generate_key().decode())
     account = Settings(_env_file=None).maximo[identity].workflow_route_accounts["E&I"]
     assert account.personid == "ENISUP"
-    assert "synthetic-route-key" not in repr(account)
-    assert account.api_key.get_secret_value() == "synthetic-route-key"
 
     monkeypatch.setenv("WOS_ENVIRONMENT", "production")
     with pytest.raises(ValidationError):
@@ -140,10 +146,10 @@ def test_workflow_route_accounts_are_secret_scoped_and_test_only(monkeypatch):
 @pytest.mark.parametrize(
     "accounts",
     [
-        {"E&I;DROP": {"personid": "ENISUP", "api_key": "k"}},
-        {"E&I": {"personid": "enisup", "api_key": "k"}},
+        {"E&I;DROP": {"personid": "ENISUP"}},
+        {"E&I": {"personid": "enisup"}},
         {"E&I": {"personid": "ENISUP", "api_key": " "}},
-        {"E&I": {"personid": "ENISUP", "api_key": "k", "password": "x"}},
+        {"E&I": {"personid": "ENISUP", "password": "x"}},
     ],
 )
 def test_workflow_route_accounts_reject_unsafe_values(accounts):

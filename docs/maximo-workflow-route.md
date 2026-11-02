@@ -109,8 +109,8 @@ Cấu hình (đã có trong `app/config.py`, chưa có code dùng): trong `backe
 WOS_MAXIMO__<connection-uuid>__WORKFLOW_ROUTE_ACCOUNTS={"E&I":{"personid":"ENISUP","api_key":"..."}}
 ```
 
-Key là `SecretStr`, không hiện trong log hay repr. Cấu hình chỉ được chấp nhận khi
-`WOS_ENVIRONMENT` là development/test; staging/production từ chối khi khởi động.
+(Đã thay thế 2026-11-02: không còn key position; xem [workflow-route-design.md](workflow-route-design.md).
+Cấu hình `workflow_route_accounts` được chấp nhận ở development/test/staging; production từ chối khi khởi động.)
 
 Kiểm tra chỉ đọc bằng key ENISUP test (2026-10-23):
 

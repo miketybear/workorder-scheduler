@@ -5,13 +5,15 @@ import type { WorkOrder } from '../api/workOrders';
 import styles from '../App.module.css';
 import { allConfirmed, reasonText, resultDetail, STATE_TEXT, SUMMARY_NEEDS_ATTENTION } from './routeRules';
 
+export const SAVED_LOGIN_NOTE = 'Thông tin đăng nhập được mã hóa và lưu theo tài khoản của bạn, chỉ dùng để route, cho đến khi mật khẩu trên Maximo đổi hoặc bạn chọn quên đăng nhập.';
+
 type Stage = 'checking' | 'locked' | 'none' | 'login' | 'confirm' | 'running' | 'done' | 'unsure' | 'error';
 const targetOf = (row: WorkOrder) => ({ site_id: row.siteid, workorder_id: row.workorderid });
 const keyOf = (item: { site_id: string; workorder_id: string }) => JSON.stringify([item.site_id, item.workorder_id]);
 
 /**
  * Route the given WOs to their Tech PIC: re-check on the server, ask for the position account's password only
- * when the server holds no session, confirm, run, and show a per-WO outcome. The password lives only in this
+ * when the server holds no saved login, confirm, run, and show a per-WO outcome. The password lives only in this
  * form's state until the request is sent; it is cleared right after, whatever the answer.
  */
 export function RoutePanel({ scope, status, rows, onSession, onResult, onClose, onDenied }: {
@@ -37,14 +39,20 @@ export function RoutePanel({ scope, status, rows, onSession, onResult, onClose, 
     setMessage(cause instanceof Error ? cause.message : fallback);
   }
 
+  function check(loggedIn: boolean, signal: AbortSignal) {
+    return previewRoute(scope, rows.map(targetOf), signal).then((value) => {
+      setPreview(value.items);
+      const needsLogin = value.items.some((item) => item.code === 'route_session_required');
+      if (!value.contract.ok) setStage('locked');
+      else if (needsLogin || (!loggedIn && value.items.some((item) => item.ready))) setStage('login');
+      else if (!value.items.some((item) => item.ready)) setStage('none');
+      else setStage('confirm');
+    }).catch((cause: unknown) => { if (!signal.aborted) { fail(cause, 'Không kiểm tra được WO.'); setStage('error'); } });
+  }
+
   useEffect(() => {
     const controller = new AbortController();
-    previewRoute(scope, rows.map(targetOf), controller.signal).then((value) => {
-      setPreview(value.items);
-      if (!value.contract.ok) setStage('locked');
-      else if (!value.items.some((item) => item.ready)) setStage('none');
-      else setStage(status.session.active ? 'confirm' : 'login');
-    }).catch((cause: unknown) => { if (!controller.signal.aborted) { fail(cause, 'Không kiểm tra được WO.'); setStage('error'); } });
+    void check(status.session.active, controller.signal);
     return () => controller.abort();
     // The check runs once per opening; rows and scope are fixed for the lifetime of the panel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -59,7 +67,7 @@ export function RoutePanel({ scope, status, rows, onSession, onResult, onClose, 
     setPassword(''); setBusy(true); setMessage('');
     try {
       const session = await createRouteSession(scope, status.personid, typed, new AbortController().signal);
-      onSession(session); setStage('confirm');
+      onSession(session); setStage('checking'); await check(true, new AbortController().signal);
     } catch (cause) {
       if (cause instanceof RouteApiError && cause.code === 'maximo_login_failed') {
         const left = cause.extra.remaining_attempts;
@@ -111,7 +119,7 @@ export function RoutePanel({ scope, status, rows, onSession, onResult, onClose, 
     } finally { setBusy(false); }
   }
 
-  const notReady = preview.filter((item) => !item.ready);
+  const notReady = preview.filter((item) => !item.ready && item.code !== 'route_session_required');
   const locked = busy && stage === 'running';
   return <div className={styles.confirmOverlay}><section ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={bodyId}
     className={`${styles.confirmDialog} ${styles.routeDialog}`} onKeyDown={(event) => { if (event.key === 'Escape' && !locked) onClose(); }}>
@@ -130,8 +138,8 @@ export function RoutePanel({ scope, status, rows, onSession, onResult, onClose, 
     </div>}
 
     {stage === 'login' && <form className={styles.routeLogin} onSubmit={(event) => void login(event)}>
-      <p>Sẽ route {ready.length} WO: <strong>{ready.map(label).join(', ')}</strong>.</p>
-      <p>Nhập mật khẩu Maximo của tài khoản route <strong>{status.personid}</strong> một lần cho phiên đăng nhập này. Mật khẩu chỉ dùng để route, không được lưu, và tự bỏ khi bạn đăng xuất hoặc hết phiên.</p>
+      {ready.length > 0 && <p>Sẽ route {ready.length} WO: <strong>{ready.map(label).join(', ')}</strong>.</p>}
+      <p>Nhập mật khẩu Maximo của tài khoản route <strong>{status.personid}</strong>. {SAVED_LOGIN_NOTE}</p>
       <label>Tài khoản<input value={status.personid ?? ''} readOnly aria-readonly="true" /></label>
       <label>Mật khẩu<input type="password" value={password} autoComplete="off" autoFocus disabled={busy} onChange={(event) => setPassword(event.target.value)} /></label>
       <div className={styles.confirmActions}>
@@ -147,7 +155,7 @@ export function RoutePanel({ scope, status, rows, onSession, onResult, onClose, 
           <td>{item.supervisor?.current ?? (item.supervisor?.will_set ? <strong className={styles.routeWrites}>{`Sẽ điền ${item.supervisor.will_set}`}</strong> : '—')}</td></tr>)}</tbody></table></div>
       {ready.some((item) => item.supervisor?.will_set) && <p className={styles.routeIntro}>Các giá trị <strong className={styles.routeWrites}>Sẽ điền</strong> được ghi vào WO trên Maximo trước khi route.</p>}
       <div className={styles.confirmActions}>
-        <button className={styles.ghost} onClick={() => void forget()} disabled={busy}>Quên phiên tài khoản route</button>
+        <button className={styles.ghost} onClick={() => void forget()} disabled={busy}>Quên đăng nhập tài khoản route</button>
         <button className={styles.ghost} onClick={onClose}>Hủy</button>
         <button className={styles.primary} onClick={() => void run()} disabled={busy}>Route {ready.length} WO</button>
       </div>
