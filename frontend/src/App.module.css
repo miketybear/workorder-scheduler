@@ -133,7 +133,7 @@
 /* Same 12px text as the filter chips above the table. */
 .pager { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 8px 0; font-size: 12px; }
 .pager button { font-size: 12px; }
-.pageButton { min-width: 32px; min-height: 32px; padding: 0 6px; border: 1px solid transparent; background: transparent; color: var(--link); cursor: pointer; }
+.pageButton { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 0 6px; border: 1px solid transparent; background: transparent; color: var(--link); cursor: pointer; }
 .pageButton[aria-current="page"] { border-color: var(--link); font-weight: 600; color: var(--ink); }
 .pagerRange { margin-left: 8px; color: var(--muted); }
 .workOrdersFullscreen > .workOrdersContent > .pager { flex-shrink: 0; }

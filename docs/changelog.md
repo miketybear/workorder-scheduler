@@ -2,6 +2,10 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Căn giữa số trang ở pager bảng WO — 2026-11-02
+
+- [x] `.pageButton` căn giữa nội dung cả hai chiều. Chỉ sửa CSS; chưa xem trên trình duyệt, chưa deploy.
+
 ## Route: lưu đăng nhập position mã hóa, bỏ API key position, popup — 2026-11-02
 
 - [x] Chủ dự án chốt: Maximo production chấp nhận `maxauth`, tool chạy nội bộ, production dùng HTTPS. `maxauth` lưu mã hóa Fernet
