@@ -19,6 +19,7 @@ from app.assignments.plan_uploads import (
     serialized,
 )
 from app.assignments.plans import PlanSegment, verify_plan_source
+from app.db.models import MaximoConnection
 from app.maximo.task_load import effective_load
 from app.rota.models import PersonDayCapacity
 from app.scheduling.routes import digest
@@ -148,7 +149,10 @@ async def edit_segments(request, pool_id, plan_id, body):
         allocated = await day_loads(request, db, plan, settings, days)
         for segment in body.segments:
             validate_capacity(days[segment.date], segment.minutes, allocated[segment.date])
-        await verify_plan_source(request, settings, anchor)
+        # Days already planned stay editable after the WO schedule moves; only new days must fit.
+        added = {s.date for s in body.segments} - {i.date for i in items}
+        connection = await db.get(MaximoConnection, plan.connection_id)
+        await verify_plan_source(request, settings, anchor, added, connection.timezone)
         await current_remote_scope(request, db, item, identity, settings, eligible=True)
         await recheck(request, db, item, identity, settings, write=True, csrf=True)
         previous_revision = await revision(db, pool_id, item.connection_id, item.discipline)

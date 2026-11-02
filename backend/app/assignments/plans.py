@@ -12,8 +12,10 @@ from app.assignments.capacity import validate_capacity
 from app.assignments.incremental import metadata, receipt_metadata, revision
 from app.assignments.load import load_lock, remote_load
 from app.assignments.models import Allocation, AssignmentEvent, AssignmentPlan, AssignmentSubmission
+from app.assignments.schedule_gate import require_schedule
 from app.assignments.summary import remember_tasks
 from app.assignments.tasks import TaskSelection, select_tasks
+from app.db.models import MaximoConnection
 from app.maximo.detail import read_detail
 from app.maximo.task_load import effective_load
 from app.maximo.tasks import read_tasks
@@ -116,7 +118,10 @@ async def reserve_plan(request, pool_id, body):
 
     require_resource_discipline(body.discipline, body.discipline)
     wo_key = key(body)
-    identity = await read_scope(request, wo_key, body.discipline, write=True, require_eligible=True)
+    dates = [segment.date for entry in entries for segment in entry.segments]
+    identity = await read_scope(
+        request, wo_key, body.discipline, write=True, require_eligible=True, assign_dates=dates
+    )
     _, settings = await checked_settings(request, wo_key, body.discipline, write=True, csrf=True)
     async with request.app.state.maximo_client_factory() as client:
         tasks = await read_tasks(client, settings, wo_key, body.discipline)
@@ -200,6 +205,8 @@ async def reserve_plan(request, pool_id, body):
             or fresh_order.parent not in (None, "")
         ):
             raise HTTPException(409, "Work order is no longer eligible for planning")
+        connection = await db.get(MaximoConnection, body.connection_id)
+        require_schedule(fresh_order, dates, connection.timezone)
         fresh_selected = select_tasks(fresh_tasks, choices, body.discipline)
         for (_, _, assignment), (_, _, fresh_assignment) in zip(
             selected, fresh_selected, strict=True
@@ -331,7 +338,7 @@ async def validate_plan_edit(db, item, body):
     return plan
 
 
-async def verify_plan_source(request, settings, item):
+async def verify_plan_source(request, settings, item, assign_dates=None, timezone=None):
     from app.assignments.routes import key, remember_work_order
 
     async with request.app.state.maximo_client_factory() as client:
@@ -344,6 +351,8 @@ async def verify_plan_source(request, settings, item):
         or order.parent not in (None, "")
     ):
         raise HTTPException(409, "Work order is no longer eligible for planning")
+    if assign_dates is not None:
+        require_schedule(order, assign_dates, timezone)
     choice = TaskSelection(
         task_workorder_id=item.task_workorder_id,
         task_id=item.task_id,

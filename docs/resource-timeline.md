@@ -13,6 +13,8 @@ Route `/resource-timeline` hiển thị backlog WO bên cạnh các hàng nhân 
 cột ngày trong tháng. Nhân lực, rota working/off/blank và giờ còn lại lấy từ
 roster đã kích hoạt. WO lấy từ Maximo theo quyền connection/discipline hiện hành.
 
+- Chỉ phân công được WO đã có Scheduled Start, Scheduled Finish và PIC trên Maximo,
+  vào ngày nằm trong lịch WO. Server kiểm tra lại trước khi lưu và trước khi gửi.
 - Kéo WO từ backlog vào ô người × ngày làm việc để tạo đề xuất. Nhập giờ và
   xác nhận trước khi lưu. Một WO có thể có nhiều người và nhiều ngày.
 - Kéo thanh phân công đã lưu sang người/ngày khác để đề xuất di chuyển;

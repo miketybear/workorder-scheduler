@@ -75,7 +75,14 @@ async def reserve_tasks(request, pool_id, body):
 
     require_resource_discipline(body.discipline, body.discipline)
     wo_key = key(body)
-    identity = await read_scope(request, wo_key, body.discipline, write=True, require_eligible=True)
+    identity = await read_scope(
+        request,
+        wo_key,
+        body.discipline,
+        write=True,
+        require_eligible=True,
+        assign_dates=[body.date],
+    )
     _, settings = await checked_settings(request, wo_key, body.discipline, write=True, csrf=True)
     async with request.app.state.maximo_client_factory() as client:
         tasks = await read_tasks(client, settings, wo_key, body.discipline)

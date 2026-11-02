@@ -14,7 +14,7 @@ from sqlalchemy import delete, func, select
 from test_assignment_plans_postgres import concurrent_plan_database
 from test_assignments_postgres import discipline_fixture
 from test_entra import entra_settings
-from test_maximo import config, record
+from test_maximo import config, scheduled_record as record
 from test_postgres import seed
 from test_task_assignments import sample
 
@@ -74,6 +74,7 @@ pytestmark = pytest.mark.integration
         "revoked_during_load",
         "source_changed_during_load",
         "closed_during_load",
+        "outside_schedule",
         "preview_drift",
         "duplicate",
         "concurrent_duplicate",
@@ -287,7 +288,16 @@ def test_whole_plan_move_is_atomic_scoped_and_local(monkeypatch, mode):
                     json={
                         "member": [
                             record(
-                                bdpocdiscipline="MECH", status="COMP" if flags["closed"] else "APPR"
+                                bdpocdiscipline="MECH",
+                                status="COMP" if flags["closed"] else "APPR",
+                                **(
+                                    dict(
+                                        schedstart="2020-01-01T08:00:00+07:00",
+                                        schedfinish="2020-01-02T17:00:00+07:00",
+                                    )
+                                    if mode == "outside_schedule"
+                                    else {}
+                                ),
                             )
                         ]
                     },
@@ -388,6 +398,7 @@ def test_whole_plan_move_is_atomic_scoped_and_local(monkeypatch, mode):
                     "revoked_during_load",
                     "source_changed_during_load",
                     "closed_during_load",
+                    "outside_schedule",
                     "person_discipline_changed",
                 }
                 if rejected:

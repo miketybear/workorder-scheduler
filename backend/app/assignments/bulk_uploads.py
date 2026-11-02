@@ -24,6 +24,7 @@ from app.assignments.models import (
 from app.assignments.models import (
     AssignmentPlanUploadBatchItem as BatchItem,
 )
+from app.assignments.schedule_gate import ScheduleGateError
 from app.auth.person_access import sync_person_access
 from app.auth.sessions import SESSION_COOKIE, resolve_session
 from app.db.models import AccessGrant, PlannerPermission
@@ -450,8 +451,19 @@ async def prepare(request, batch_id):
     labels = None
     try:
         allocation = await existing(request, allocation_id)
+        if allocation.plan_id:
+            async with request.app.state.sessions() as db:
+                _, planned = await plan_uploads.plan_items(db, allocation.plan_id)
+            dates = [i.date for i in planned]
+        else:
+            dates = [allocation.date]
         await read_scope(
-            request, key(allocation), allocation.discipline, write=True, require_eligible=True
+            request,
+            key(allocation),
+            allocation.discipline,
+            write=True,
+            require_eligible=True,
+            assign_dates=dates,
         )
         async with request.app.state.sessions() as db, db.begin():
             batch, _, connection = await batch_scope(request, db, batch_id, write=True, lock=True)
@@ -517,13 +529,17 @@ async def prepare(request, batch_id):
                 item.reason = reason
                 item.labels = labels
             update_state(batch, await rows(db, batch.id))
-    except (HTTPException, MaximoReadError):
+    except (HTTPException, MaximoReadError) as error:
         async with request.app.state.sessions() as db, db.begin():
             batch, _, _ = await batch_scope(request, db, batch_id, write=True, lock=True)
             item = await db.get(BatchItem, selected_id, populate_existing=True)
             if item.state == "pending":
                 item.state = "blocked"
-                item.reason = "scope_or_binding_unavailable"
+                item.reason = (
+                    "outside_wo_schedule"
+                    if isinstance(error, ScheduleGateError)
+                    else "scope_or_binding_unavailable"
+                )
             update_state(batch, await rows(db, batch.id))
     return await envelope(request, batch_id, changed_id=selected_id)
 

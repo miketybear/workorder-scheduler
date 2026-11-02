@@ -11,7 +11,7 @@ from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from test_assignments_postgres import current_receipt, discipline_fixture
 from test_entra import entra_settings
-from test_maximo import config, record
+from test_maximo import config, scheduled_record as record
 from test_postgres import database, seed
 from test_task_assignments import sample
 
@@ -58,6 +58,7 @@ async def concurrent_plan_database():
     [
         "batch_normal",
         "batch_aggregate",
+        "batch_outside_schedule",
         "batch_foreign_load",
         "batch_lower_capacity",
         "batch_pool_revoke",
@@ -212,7 +213,16 @@ def test_local_plan_atomic_capacity_edit_release_and_source_ownership(monkeypatc
                     json={
                         "member": [
                             record(
-                                bdpocdiscipline="MECH", status="COMP" if order_closed else "APPR"
+                                bdpocdiscipline="MECH",
+                                status="COMP" if order_closed else "APPR",
+                                **(
+                                    dict(
+                                        schedstart="2020-01-01T08:00:00+07:00",
+                                        schedfinish="2020-01-02T17:00:00+07:00",
+                                    )
+                                    if mode.endswith("outside_schedule")
+                                    else {}
+                                ),
                             )
                         ]
                     },

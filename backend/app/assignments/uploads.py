@@ -96,7 +96,12 @@ async def upload(request, allocation_id, body):
 
     item = await existing(request, allocation_id)
     identity = await read_scope(
-        request, key(item), item.discipline, write=True, require_eligible=True
+        request,
+        key(item),
+        item.discipline,
+        write=True,
+        require_eligible=True,
+        assign_dates=[item.date],
     )
     _, settings = await checked_settings(request, key(item), item.discipline, write=True, csrf=True)
     request_hash = digest(
@@ -203,7 +208,14 @@ async def upload(request, allocation_id, body):
         attempt_id = attempt.id
     # The intent commits before any outbound mutation. Unknown is the crash-safe state.
     request.state.assignment_upload_not_sent = False
-    await read_scope(request, key(item), item.discipline, write=True, require_eligible=True)
+    await read_scope(
+        request,
+        key(item),
+        item.discipline,
+        write=True,
+        require_eligible=True,
+        assign_dates=[item.date],
+    )
     async with request.app.state.sessions() as db:
         current_actor, _, _, _ = await authority(db, request, item.pool_id, True)
         if current_actor.user_id != identity.user_id:

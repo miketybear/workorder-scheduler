@@ -15,7 +15,7 @@ from test_assignment_plans_postgres import concurrent_plan_database
 from test_assignments_postgres import discipline_fixture
 from test_daily_plan_sender import PROTECTED
 from test_entra import entra_settings
-from test_maximo import config, record
+from test_maximo import config, scheduled_record as record
 from test_postgres import seed
 
 from app.assignments.models import (

@@ -11,6 +11,7 @@ import type { Dispatch, SetStateAction, RefObject } from 'react';
 type TimelinePerson = ResourcePerson & { dayMetadata: Record<string, string[]> };
 
 type Props = {
+  dateOutside: (date: string) => boolean;
   month: string;
   peopleSearch: string;
   setPeopleSearch: Dispatch<SetStateAction<string>>;
@@ -46,7 +47,7 @@ type Props = {
   beginCreate: (person: ResourcePerson, date: string, selected?: AssignmentWorkOrder) => void;
 };
 
-export function Grid({ month, peopleSearch, setPeopleSearch, dates, today, scrollToToday, gridRef, discipline, roster, totalMinutes, roleGroups, timelineRoleOf, shownTimeline, setCollapsed, collapsed, roleTitle, rotaLeftText, lanes, workOrderLabel, segmentOf, hoverPlan, canEditItem, setHoverPlan, cardWarning, beginDrag, planDayCount, moveDrag, finishDrag, cancelDrag, clickAssignment, taskOfPlan, canWrite, beginCreate }: Props) {
+export function Grid({ dateOutside, month, peopleSearch, setPeopleSearch, dates, today, scrollToToday, gridRef, discipline, roster, totalMinutes, roleGroups, timelineRoleOf, shownTimeline, setCollapsed, collapsed, roleTitle, rotaLeftText, lanes, workOrderLabel, segmentOf, hoverPlan, canEditItem, setHoverPlan, cardWarning, beginDrag, planDayCount, moveDrag, finishDrag, cancelDrag, clickAssignment, taskOfPlan, canWrite, beginCreate }: Props) {
   return <section className={styles.timelineSection} aria-label="Resource timeline theo ngày"><div className={styles.panelTitle}><h2>{month ? new Date(`${month}-01T00:00:00Z`).toLocaleDateString('vi-VN', {month:'long',year:'numeric',timeZone:'UTC'}) : ''}</h2><span>Ngày làm = 10,5 giờ · rota thật</span>
         <input type="search" className={styles.peopleSearch} aria-label="Tìm nhân sự" placeholder="Tìm nhân sự" value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} />
         <button type="button" className={styles.todayButton} disabled={!dates.includes(today)} onClick={() => scrollToToday()}>Hôm nay</button>
@@ -54,7 +55,7 @@ export function Grid({ month, peopleSearch, setPeopleSearch, dates, today, scrol
       <div className={styles.gridWrap} ref={gridRef}><table className={styles.grid}><thead><tr><th scope="col">Nhân sự / capacity</th>{dates.map(date => { const weekday = new Date(`${date}T00:00:00Z`).getUTCDay(); return <th scope="col" key={date} data-day-header={date} data-today={date===today||undefined}><span>{date.slice(-2)}</span><small>{dayNames[weekday]}</small></th>; })}</tr></thead>
         <tbody><tr className={styles.craftRow}><th className={styles.person}>{discipline}<small>{roster.length} người</small></th>{dates.map(date => <td key={date}>{displayHours(totalMinutes(roster, 'allocated_minutes', date))} / {displayHours(totalMinutes(roster, 'capacity_minutes', date))}h</td>)}</tr>{roleGroups.map(role => { const members = roster.filter(person => timelineRoleOf(person, shownTimeline) === role); return <Fragment key={role}><tr className={styles.roleRow}><th className={styles.person}><button onClick={() => setCollapsed(value => ({...value, [role]: !value[role]}))} aria-expanded={!collapsed[role]}>{collapsed[role] ? '＋' : '−'} {roleTitle(role)} · {members.length} người</button><small>{displayHours(totalMinutes(members, 'allocated_minutes'))} / {displayHours(totalMinutes(members, 'capacity_minutes'))}h</small></th>{dates.map(date => <td key={date}>{displayHours(totalMinutes(members, 'allocated_minutes', date))} / {displayHours(totalMinutes(members, 'capacity_minutes', date))}h</td>)}</tr>{(!collapsed[role] || !!peopleSearch.trim()) && members.filter(person => !peopleSearch.trim() || `${person.name} ${person.laborcode}`.toLowerCase().includes(peopleSearch.trim().toLowerCase())).map(person => <tr key={person.person_id}><th scope="row" className={styles.person}><strong>{person.name}</strong><small>{person.laborcode} · {[...new Set(Object.values(person.dayMetadata).flat())].join(' / ')}</small><small className={styles.rotaLeft}>{rotaLeftText(person)}</small></th>{dates.map(date => {
           const day = capacityFor(person, date); const items = shownTimeline.items.filter(item => item.state === 'reserved' && item.person_id === person.person_id && item.date === date);
-          return <td key={date} className={!day ? styles.off : day.capacity_minutes > 0 ? styles.working : day.code === '' ? styles.blank : styles.off} data-person-id={person.person_id} data-date={date}>
+          return <td key={date} className={!day ? styles.off : day.capacity_minutes > 0 ? styles.working : day.code === '' ? styles.blank : styles.off} data-person-id={person.person_id} data-date={date} data-outside-schedule={dateOutside(date)?'true':undefined}>
             {(() => {
               // Hatched or missing days show nothing; the shift code and remaining hours live in the tooltip. The row keeps its height so bars align across days.
               const unverified = day?.load_complete === false, over = !!day && day.remaining_minutes < 0;

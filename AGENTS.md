@@ -187,6 +187,9 @@ Additional domain modules in component instructions remain planned.
   Upload requires non-empty schedstart, schedfinish and assignedto after applying draft changes
   to current Maximo values. Incomplete drafts may be saved; any incomplete WO blocks the whole
   group upload, with missing schedule/PIC reported per WO in preview and checked again before send.
+- A task may be assigned on the Resource timeline only when Maximo already holds schedstart, schedfinish and
+  assignedto, on days inside that schedule in the connection timezone. Rechecked before saving and before send.
+  The PIC need not be an assignee: it only warns.
 - One workflow action is allowed besides field edits: routing a WO to its Tech PIC through BD_WO
   ("Route to Tech PIC for execution"), by a Planner with write access, only for a WO whose schedule
   and PIC are already in Maximo, and only while the workflow definition matches the verified contract

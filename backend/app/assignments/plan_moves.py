@@ -21,6 +21,7 @@ from app.assignments.plan_uploads import (
     serialized,
 )
 from app.assignments.plans import PlanSegment, verify_plan_source
+from app.db.models import MaximoConnection
 from app.maximo.task_load import effective_load
 from app.rota.models import PersonDayCapacity, ResourcePerson
 from app.scheduling.routes import digest
@@ -229,7 +230,15 @@ async def proposal(request, db, plan, items, settings, body, backfill):
         laborcode,
         backfill,
     )
-    await verify_plan_source(request, settings, anchor)
+    # The final dates, so a reallocation cannot spill past the WO schedule.
+    connection = await db.get(MaximoConnection, plan.connection_id)
+    await verify_plan_source(
+        request,
+        settings,
+        anchor,
+        [date.fromisoformat(s["date"]) for s in segments],
+        connection.timezone,
+    )
     return {
         "plan_id": str(plan.id),
         "plan_version": plan.version,

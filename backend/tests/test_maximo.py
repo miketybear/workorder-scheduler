@@ -42,6 +42,17 @@ def record(**overrides):
     }
 
 
+def scheduled_record(**overrides):
+    """A WO the schedule gate accepts on any date these fixtures use."""
+    return record(
+        **{
+            "schedstart": "2020-01-01T08:00:00+07:00",
+            "schedfinish": "2035-12-31T17:00:00+07:00",
+            **overrides,
+        }
+    )
+
+
 def run_reader(handler, settings=None, discipline="E&I"):
     async def scenario():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:

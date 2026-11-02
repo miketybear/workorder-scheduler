@@ -12,7 +12,6 @@ import { AssignmentTimelineDemo } from './assignmentTimeline/AssignmentTimelineD
 import { RotaStagingPreview } from './rotaStaging/RotaStagingPreview';
 import { RotaImports } from './rotaImports/RotaImports';
 import { ResourceTimeline } from './resourceTimeline/ResourceTimeline';
-import type { PicSuggestion } from './picSuggestion';
 
 const pages = [['/work-orders', 'WO Scheduler'], ['/resource-timeline', 'Resource Timeline'], ['/rota-imports', 'Rota Upload']] as const;
 
@@ -64,9 +63,6 @@ export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?
   const [navigationBlocked, setNavigationBlocked] = useState(false);
   const reportMutationPending = useCallback((value: boolean) => setResourceMutationPending(value), []);
   const navigate = useNavigate();
-  const [picSuggestion, setPicSuggestion] = useState<PicSuggestion | null>(null);
-  const suggestPic = useCallback((suggestion: Omit<PicSuggestion, 'id'>) => { setPicSuggestion({ ...suggestion, id: Date.now() }); navigate('/work-orders'); }, [navigate]);
-  const clearPicSuggestion = useCallback(() => setPicSuggestion(null), []);
   const guardNavigation = useCallback((event: MouseEvent<HTMLElement>) => {
     if (resourceMutationPending && (event.target as HTMLElement).closest('a')) {
       event.preventDefault(); setNavigationBlocked(true);
@@ -89,11 +85,11 @@ export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?
       <Route path="/settings" element={<Settings />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="*" element={<p>Không tìm thấy trang. <Link to="/">Về tổng quan</Link></p>} /></Routes>
-      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} autoRetrieve={autoRetrieveWorkOrders} picSuggestion={picSuggestion} onPicSuggestionHandled={clearPicSuggestion} headerSlot={rangeSlot} footerSlot={statusSlot} /></div>
+      <div hidden={!workOrdersActive}><WorkOrders active={workOrdersActive} autoRetrieve={autoRetrieveWorkOrders} headerSlot={rangeSlot} footerSlot={statusSlot} /></div>
       {assignmentDemoVisited && <div hidden={!assignmentDemoActive}><AssignmentTimelineDemo /></div>}
       {rotaStagingVisited && <div hidden={!rotaStagingActive}><RotaStagingPreview /></div>}
       {rotaImportsVisited && <div hidden={!rotaImportsActive}><RotaImports active={rotaImportsActive} /></div>}
-      {resourceTimelineVisited && <div hidden={!resourceTimelineActive}><ResourceTimeline active={resourceTimelineActive} onPendingChange={reportMutationPending} onSuggestPic={suggestPic} /></div>}
+      {resourceTimelineVisited && <div hidden={!resourceTimelineActive}><ResourceTimeline active={resourceTimelineActive} onPendingChange={reportMutationPending} /></div>}
     </main>
     <footer><span>Onshore + Offshore · Nội bộ</span><span ref={setStatusSlot} className={styles.footerStatus} hidden={!workOrdersActive} /></footer>
   </div>;

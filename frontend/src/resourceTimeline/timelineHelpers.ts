@@ -69,7 +69,18 @@ export function localDate(value: string | null, timeZone: string): string | null
 
 const samePerson = (left: string, right: string) => left.trim().toUpperCase() === right.trim().toUpperCase();
 
-// Warnings never block anything: they only tell the planner the plan disagrees with Maximo's WO header.
+/** Why a WO cannot take an assignment yet; the backend enforces the same rule. Empty when it can. */
+export function missingForAssign(info: ScheduleInfo): string {
+  const missing = [...(info.schedstart && info.schedfinish ? [] : ['lịch']), ...(info.pic?.trim() ? [] : ['PIC'])];
+  return missing.length ? `Chưa có ${missing.join(' và ')} trên Maximo` : '';
+}
+
+export function outsideSchedule(info: ScheduleInfo, date: string, timeZone: string): boolean {
+  const start = localDate(info.schedstart, timeZone); const finish = localDate(info.schedfinish, timeZone);
+  return !start || !finish || date < start || date > finish;
+}
+
+// These flag existing assignments that disagree with Maximo's WO header, e.g. after its schedule moved.
 export function woWarnings(info: ScheduleInfo | undefined, assigned: AssignedPerson[], timeZone: string): WoWarnings {
   if (!info || assigned.length === 0) return { outsideDates: [], picNotAssigned: false };
   const start = localDate(info.schedstart, timeZone); const finish = localDate(info.schedfinish, timeZone);
@@ -81,11 +92,6 @@ export function woWarnings(info: ScheduleInfo | undefined, assigned: AssignedPer
   return { outsideDates, picNotAssigned };
 }
 
-/** First assigned person: earliest assignment day, ties broken by name. Null when nobody is assigned. */
-export function suggestedPic(assigned: AssignedPerson[]): string | null {
-  const sorted = [...assigned].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, 'vi') || a.laborcode.localeCompare(b.laborcode));
-  return sorted[0]?.laborcode ?? null;
-}
 
 export type PlanItem = { id: string; person_id: string; date: string; plan_id?: string | null; workorder_id: string };
 export type Lanes = {

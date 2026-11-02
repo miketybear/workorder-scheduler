@@ -2,6 +2,14 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Resource timeline chỉ phân công WO đã có lịch và PIC — 2026-11-02
+
+- [x] Backend chặn tạo, chuyển, thêm ngày và gửi task (đơn lẻ, theo ngày, hàng loạt) khi Maximo thiếu `schedstart`, `schedfinish` hoặc `assignedto`, hoặc ngày phân công nằm ngoài lịch WO (so theo ngày ở múi giờ connection, tính cả hai đầu). Đọc giá trị hiện tại trên Maximo nên WO xếp lịch trực tiếp trên Maximo vẫn hợp lệ.
+- [x] Phân công cũ lệch lịch vẫn sửa giờ, chuyển vào lịch hoặc xóa được; chỉ chặn gửi. PIC ngoài nhóm được giao chỉ cảnh báo, vì PIC là người điều phối.
+- [x] Backlog hiện lý do và không cho kéo WO thiếu lịch/PIC; ngày ngoài lịch mờ đi khi đang đặt WO. Bỏ gợi ý "Đặt ... làm PIC" và luồng điền sẵn PIC.
+- Bằng chứng: backend 1492 test pass trước khi thêm 4 mode `outside_schedule`; xem commit cho lần chạy cuối. Frontend vitest và `tsc`.
+- Giới hạn: chưa có test tích hợp riêng cho gửi đơn lẻ, lần kiểm tra ngay trước khi gửi và lý do `outside_wo_schedule` của gửi hàng loạt. Chưa thử trên staging. Lần chạy test đầu treo 38 phút, chưa xác định nguyên nhân; sau khi bỏ session DB lồng trong transaction thì không tái diễn.
+
 ## Thông báo sau upload rõ nghĩa — 2026-11-02
 
 - [x] Upload xong xóa thông báo "Đã lưu nháp", đổi câu thành "Đã upload N WO lên Maximo và đọc lại khớp"; dòng thông báo không còn nền sáng trên giao diện tối.

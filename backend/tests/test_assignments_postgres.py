@@ -6,7 +6,7 @@ import httpx
 import pytest
 from sqlalchemy import select
 from test_entra import entra_settings
-from test_maximo import config, record
+from test_maximo import config, scheduled_record as record
 from test_postgres import database, seed
 from test_rota_activation import fixture
 
@@ -209,8 +209,8 @@ def test_assignment_api_lifecycle_capacity_scope_and_replacement(monkeypatch, le
                 assert by_site["TEST"]["schedfinish"] == "2026-10-01T17:00:00+07:00"
                 assert by_site["TEST"]["assignedto"] == "TEST-PIC"
                 # Missing schedule values pass through as null.
-                assert by_site["OTHER"]["schedstart"] is None
-                assert by_site["OTHER"]["schedfinish"] is None
+                assert by_site["OTHER"]["schedstart"] == "2020-01-01T08:00:00+07:00"
+                assert by_site["OTHER"]["schedfinish"] == "2035-12-31T17:00:00+07:00"
                 assert by_site["OTHER"]["assignedto"] == "TEST-PIC"
                 assert all(row["craft"] == "MECH" for row in timeline.json()["rows"])
                 assert (

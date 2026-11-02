@@ -17,11 +17,13 @@ from app.assignments.plan_segments import register as register_plan_segments
 from app.assignments.plan_uploads import register as register_plan_uploads
 from app.assignments.plans import register as register_plans
 from app.assignments.plans import release_empty_plan, validate_plan_edit
+from app.assignments.schedule_gate import require_schedule
 from app.assignments.summary import remember_tasks
 from app.assignments.tasks import register
 from app.assignments.uploads import register as register_uploads
 from app.auth.person_access import sync_person_access
 from app.auth.sessions import SESSION_COOKIE, resolve_session
+from app.db.models import MaximoConnection
 from app.maximo.detail import read_detail
 from app.maximo.tasks import read_tasks
 from app.request_deadline import ReadDraftDeadlineRoute
@@ -100,7 +102,9 @@ def view(item):
     }
 
 
-async def read_scope(request, wo_key, discipline, *, write=False, require_eligible=False):
+async def read_scope(
+    request, wo_key, discipline, *, write=False, require_eligible=False, assign_dates=None
+):
     """Closed WOs retain scoped local reservations that planners must be able to release."""
     identity, settings = await checked_settings(
         request, wo_key, discipline, write=write, csrf=write
@@ -115,6 +119,10 @@ async def read_scope(request, wo_key, discipline, *, write=False, require_eligib
             or order.parent not in (None, "")
         ):
             raise HTTPException(409, "Work order is no longer eligible for scheduling")
+    if assign_dates is not None:
+        async with request.app.state.sessions() as db:
+            connection = await db.get(MaximoConnection, wo_key.connection_id)
+        require_schedule(order, assign_dates, connection.timezone)
     refreshed, _ = await checked_settings(request, wo_key, discipline, write=write, csrf=write)
     if refreshed.user_id != identity.user_id:
         raise HTTPException(401, "Sign-in required")
@@ -156,8 +164,15 @@ async def persist(request, pool_id, body, allocation_id=None, release=False):
     target = original or body
     require_resource_discipline(target.discipline, target.discipline)
     pool_id = original.pool_id if original else pool_id
+    # An hours-only edit stays possible on a day the WO schedule has since moved away from.
+    keeps_day = release or (original and original.date == body.date)
     identity = await read_scope(
-        request, key(target), target.discipline, write=True, require_eligible=not release
+        request,
+        key(target),
+        target.discipline,
+        write=True,
+        require_eligible=not release,
+        assign_dates=None if keeps_day else [body.date],
     )
     _, capacity_settings = await checked_settings(
         request, key(target), target.discipline, write=True, csrf=True

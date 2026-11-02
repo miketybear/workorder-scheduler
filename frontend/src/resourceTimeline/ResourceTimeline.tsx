@@ -14,8 +14,7 @@ import { PlanMoveDialog } from './PlanMoveDialog';
 import { RoleDonut } from './RoleDonut';
 import { restoreFocus } from './focusRestore';
 import { MonthInput } from '../components/DateTimeInput';
-import type { PicSuggestion } from '../picSuggestion';
-import { computeLanes, monthOf, addMonth, monthDates, addCalendarDays, calendarRange, displayHours, parseHours, displayRole, capacityFor, subMonth, suggestTaskPlans, todayIn, woWarnings, type AssignedPerson, type ScheduleInfo, type WoWarnings } from './timelineHelpers';
+import { computeLanes, monthOf, addMonth, monthDates, addCalendarDays, calendarRange, displayHours, parseHours, displayRole, capacityFor, subMonth, suggestTaskPlans, todayIn, woWarnings, type AssignedPerson, type ScheduleInfo, type WoWarnings, missingForAssign, outsideSchedule } from './timelineHelpers';
 import styles from './ResourceTimeline.module.css';
 
 type PointerDrag = { payload: string; label: string; startX: number; startY: number; moved: boolean; context: string };
@@ -54,7 +53,7 @@ function matchesTaskPlanBatch(operation:Pending,result:TaskPlanBatchResult,poolI
   return result.plans.every(plan=>{const task=input.tasks.find(value=>value.task_workorder_id===plan.task_workorder_id&&value.task_id===plan.task_id&&value.assignment_id===plan.assignment_id);if(!task||task.total_minutes!==plan.total_minutes)return false;const segments=[...task.segments].sort((a,b)=>a.date.localeCompare(b.date));const items=[...plan.items].sort((a,b)=>a.date.localeCompare(b.date));return items.length===segments.length&&items.every((item,index)=>item.pool_id===poolId&&item.connection_id===connectionId&&item.site_id===input.site_id&&item.workorder_id===input.workorder_id&&item.discipline===input.discipline&&item.person_id===input.person_id&&item.task_workorder_id===task.task_workorder_id&&item.task_id===task.task_id&&item.assignment_id===task.assignment_id&&item.plan_id===plan.plan_id&&item.plan_total_minutes===task.total_minutes&&item.state==='reserved'&&item.date===segments[index]?.date&&item.minutes===segments[index]?.minutes);});
 }
 
-export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic }: { active?: boolean; onPendingChange?: (pending: boolean) => void; onSuggestPic?: (suggestion: Omit<PicSuggestion, 'id'>) => void }) {
+export function ResourceTimeline({ active = true, onPendingChange }: { active?: boolean; onPendingChange?: (pending: boolean) => void }) {
   const previousActive = useRef(active);
   const activationEpoch = useRef(0);
   // Keep an activation nonce synchronous so cached scope data is hidden on the first render after reactivation.
@@ -131,7 +130,7 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
   const planMoveController=useRef<AbortController|null>(null);
   const taskPlanCapacityGeneration=useRef(0);
   const [suppressClick,setSuppressClick]=useState(false);
-  const [dragPreview, setDragPreview] = useState<{label:string;x:number;y:number} | null>(null);
+  const [dragPreview, setDragPreview] = useState<{payload:string;label:string;x:number;y:number} | null>(null);
   const [selectedWoKey, setSelectedWoKey] = useState('');
   const [selectedWorkOrder,setSelectedWorkOrder]=useState<WorkOrder|null>(null);
   const dialogRef = useRef<HTMLElement>(null);
@@ -614,6 +613,12 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
     if (!capacity || capacity.capacity_minutes < 1) return;
     const chosen = selectedWorkOrder ?? workOrders.find(order => `${order.siteid}|${order.workorderid}` === selectedWoKey);
     const candidate = selected ?? (chosen ? { connection_id: pool!.connection_id, site_id: chosen.siteid, workorder_id: chosen.workorderid, wonum: chosen.wonum, description: chosen.description ?? '', status: chosen.status, eligible: true } : undefined);
+    const schedule = candidate && scheduleByWo.get(`${candidate.site_id}|${candidate.workorder_id}`);
+    if (schedule) {
+      const blocked = missingForAssign(schedule);
+      if (blocked) { setError(`${candidate.wonum}: ${blocked}. Hãy upload ở Work orders trước khi phân công.`); return; }
+      if (outsideSchedule(schedule, date, businessZone)) { setError(`${candidate.wonum}: ngày này nằm ngoài lịch WO.`); return; }
+    }
     resetProposalDetails(!!candidate);
     setTaskPlanStart(date);
     const minutes = Math.min(60, capacity.remaining_minutes) || 60;
@@ -630,7 +635,7 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
     if (!canWrite || drag.context !== currentContext) { cancelDrag(); return; }
     if (Math.hypot(event.clientX-drag.startX,event.clientY-drag.startY) < 6 && !drag.moved) return;
     drag.moved = true;
-    setDragPreview({label:drag.label,x:event.clientX,y:event.clientY});
+    setDragPreview({payload:drag.payload,label:drag.label,x:event.clientX,y:event.clientY});
   }
   function cancelDrag() { pointerDrag.current = null; setDragPreview(null); }
   function finishDrag(event: React.PointerEvent<HTMLButtonElement>) {
@@ -1139,6 +1144,14 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
     if (warn.outsideDates.includes(item.date)) return 'ngày này nằm ngoài lịch WO';
     return warn.picNotAssigned ? 'PIC của WO chưa nằm trong người được giao' : undefined;
   };
+  // While a WO is being placed, the days its schedule does not cover are dimmed.
+  const placingKey = useMemo(() => {
+    const payload = dragPreview?.payload ?? selectedWoKey;
+    const item = shownTimeline?.items.find(candidate => candidate.id === payload);
+    return item ? `${item.site_id}|${item.workorder_id}` : payload;
+  }, [dragPreview?.payload, selectedWoKey, shownTimeline]);
+  const placingSchedule = placingKey ? scheduleByWo.get(placingKey) : undefined;
+  const dateOutside = (date: string) => !!placingSchedule && outsideSchedule(placingSchedule, date, businessZone);
   const monthLocked = busy || !!pending || uploading || !!uploadUnknownRequest || bulkUploadLocked || !!planMove;
   if (error && !shownTimeline && !(pending && unknown)) return <section className={styles.page}><h1>Resource timeline</h1><p role="alert">{error}</p><button onClick={refreshTimeline}>Kiểm tra lại quyền và tải</button></section>;
   return <section className={styles.page}>
@@ -1156,9 +1169,9 @@ export function ResourceTimeline({ active = true, onPendingChange, onSuggestPic 
       {revisionNotice&&<p className={styles.revisionNotice} role="status">Phân công đã thay đổi kể từ lần tải này. <button type="button" disabled={busy||!!pending||uploading||!!uploadUnknownRequest} onClick={refreshTimeline}>Làm mới dữ liệu</button></p>}
       <p className={styles.mobileNotice} role="note">Phân công cần màn hình lớn. Trên điện thoại bạn chỉ xem được thống kê tải ở trên; mở trang này trên máy tính để xếp lịch.</p>
       <div className={styles.workspace} ref={workspaceRef} style={{gridTemplateColumns:`minmax(220px, ${backlogWidth}px) 10px minmax(0,1fr)`}}>
-        <Backlog backlogView={backlogView} setBacklogView={setBacklogView} search={search} setSearch={setSearch} workOrderPageNotice={workOrderPageNotice} workOrderPageLoading={workOrderPageLoading} workOrderPageError={workOrderPageError} setPageRefresh={setPageRefresh} backlogListRef={backlogListRef} backlog={backlog} backlogPageOrders={backlogPageOrders} summaryNow={summaryNow} summaryLoadState={summaryLoadState} backlogSummaryScope={backlogSummaryScope} warningsByWo={warningsByWo} assignedByWo={assignedByWo} shownPool={shownPool} backlogCardRefFor={backlogCardRefFor} nameByCode={nameByCode} selectedWoKey={selectedWoKey} beginDrag={beginDrag} moveDrag={moveDrag} finishDrag={finishDrag} cancelDrag={cancelDrag} clickWorkOrder={clickWorkOrder} backlogSummaryScheduler={backlogSummaryScheduler} discipline={discipline} canWrite={canWrite} onSuggestPic={onSuggestPic} shownWorkOrderPage={shownWorkOrderPage} visibleBacklogPage={visibleBacklogPage} changeBacklogPage={changeBacklogPage} />
+        <Backlog backlogView={backlogView} setBacklogView={setBacklogView} search={search} setSearch={setSearch} workOrderPageNotice={workOrderPageNotice} workOrderPageLoading={workOrderPageLoading} workOrderPageError={workOrderPageError} setPageRefresh={setPageRefresh} backlogListRef={backlogListRef} backlog={backlog} backlogPageOrders={backlogPageOrders} summaryNow={summaryNow} summaryLoadState={summaryLoadState} backlogSummaryScope={backlogSummaryScope} warningsByWo={warningsByWo} shownPool={shownPool} backlogCardRefFor={backlogCardRefFor} nameByCode={nameByCode} selectedWoKey={selectedWoKey} beginDrag={beginDrag} moveDrag={moveDrag} finishDrag={finishDrag} cancelDrag={cancelDrag} clickWorkOrder={clickWorkOrder} backlogSummaryScheduler={backlogSummaryScheduler} discipline={discipline} shownWorkOrderPage={shownWorkOrderPage} visibleBacklogPage={visibleBacklogPage} changeBacklogPage={changeBacklogPage} />
         <div className={styles.splitter} role="separator" aria-label="Điều chỉnh độ rộng Backlog" aria-orientation="vertical" aria-valuemin={220} aria-valuemax={maxBacklogWidth()} aria-valuenow={backlogWidth} tabIndex={0} onKeyDown={adjustSplitter} onPointerDown={beginSplitterDrag} onPointerMove={moveSplitterDrag} onPointerUp={endSplitterDrag} onPointerCancel={endSplitterDrag} />
-      <Grid month={month} peopleSearch={peopleSearch} setPeopleSearch={setPeopleSearch} dates={dates} today={today} scrollToToday={scrollToToday} gridRef={gridRef} discipline={discipline} roster={roster} totalMinutes={totalMinutes} roleGroups={roleGroups} timelineRoleOf={timelineRoleOf} shownTimeline={shownTimeline} setCollapsed={setCollapsed} collapsed={collapsed} roleTitle={roleTitle} rotaLeftText={rotaLeftText} lanes={lanes} workOrderLabel={workOrderLabel} segmentOf={segmentOf} hoverPlan={hoverPlan} canEditItem={canEditItem} setHoverPlan={setHoverPlan} cardWarning={cardWarning} beginDrag={beginDrag} planDayCount={planDayCount} moveDrag={moveDrag} finishDrag={finishDrag} cancelDrag={cancelDrag} clickAssignment={clickAssignment} taskOfPlan={taskOfPlan} canWrite={canWrite} beginCreate={beginCreate} /></div>
+      <Grid dateOutside={dateOutside} month={month} peopleSearch={peopleSearch} setPeopleSearch={setPeopleSearch} dates={dates} today={today} scrollToToday={scrollToToday} gridRef={gridRef} discipline={discipline} roster={roster} totalMinutes={totalMinutes} roleGroups={roleGroups} timelineRoleOf={timelineRoleOf} shownTimeline={shownTimeline} setCollapsed={setCollapsed} collapsed={collapsed} roleTitle={roleTitle} rotaLeftText={rotaLeftText} lanes={lanes} workOrderLabel={workOrderLabel} segmentOf={segmentOf} hoverPlan={hoverPlan} canEditItem={canEditItem} setHoverPlan={setHoverPlan} cardWarning={cardWarning} beginDrag={beginDrag} planDayCount={planDayCount} moveDrag={moveDrag} finishDrag={finishDrag} cancelDrag={cancelDrag} clickAssignment={clickAssignment} taskOfPlan={taskOfPlan} canWrite={canWrite} beginCreate={beginCreate} /></div>
     </>}
     {dragPreview && shownTimeline && <div className={styles.dragGhost} style={{left:dragPreview.x+12,top:dragPreview.y+12}}>{dragPreview.label}</div>}
     {planMove&&shownTimeline&&shownPool&&<PlanMoveDialog item={planMove.item} knownItems={planMove.knownItems} people={shownTimeline.rows} visibleMonth={month} workOrderLabel={shownTimeline.work_orders.find(order=>order.connection_id===planMove.item.connection_id&&order.site_id===planMove.item.site_id&&order.workorder_id===planMove.item.workorder_id)?.wonum} connectionLabel={`${shownPool.connection_label} · ${shownPool.environment==='test'?'Test':shownPool.environment}`} targetPersonId={planMove.targetPersonId} targetDate={planMove.targetDate} requestId={planMove.request?.request_id} loading={planMove.loading} busy={busy} error={planMove.error} preview={planMove.preview} canReallocate={planMove.canReallocate} unknown={planMove.unknown} reconciling={planMove.reconciling} onPersonChange={value=>setPlanMove(current=>current?{...current,targetPersonId:value,preview:null,loading:true,error:'',canReallocate:false}:current)} onDateChange={value=>setPlanMove(current=>current?{...current,targetDate:value,preview:null,loading:true,error:'',canReallocate:false}:current)} onReallocate={()=>setPlanMove(current=>current?{...current,mode:'reallocate',preview:null,loading:true,error:'',canReallocate:false}:current)} onShift={()=>setPlanMove(current=>current?{...current,mode:'shift',preview:null,loading:true,error:'',canReallocate:false}:current)} backfillOn={planMove.backfillOn} onBackfillChange={value=>setPlanMove(current=>current?{...current,backfillOn:value}:current)} onConfirm={()=>void submitPlanMove()} onReconcile={()=>void reconcilePlanMove()} onClose={()=>setPlanMove(null)} />}

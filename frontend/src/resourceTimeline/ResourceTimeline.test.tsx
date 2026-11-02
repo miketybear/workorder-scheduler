@@ -34,7 +34,7 @@ const person = { person_id: 'person-1', name: 'Nguyen A', craft: 'E&I', role: 'T
 ] };
 const order = { connection_id: 'conn', site_id: 'SITE', workorder_id: 'wo-1', wonum: 'WO-1', description: 'Pump repair', status: 'WAPPR', eligible: true };
 const workOrder = { siteid: 'SITE', wonum: 'WO-1', workorderid: 'wo-1', description: 'Pump repair', status: 'WAPPR', worktype: 'CM', targcompdate: '2026-10-31', wopriority: 2,
-  wolo10: '0', bdpocdiscipline: 'E&I', location: 'P-1', systemid: 'SYS', schedstart: null, schedfinish: null, actstart: null, actfinish: null, wopriority_description: '2', lead: null, assignedto: null, estdur: '4', targstartdate: null } as unknown as import('../api/workOrders').WorkOrder;
+  wolo10: '0', bdpocdiscipline: 'E&I', location: 'P-1', systemid: 'SYS', schedstart: '2026-01-01T08:00:00+07:00', schedfinish: '2027-12-31T17:00:00+07:00', actstart: null, actfinish: null, wopriority_description: '2', lead: null, assignedto: 'TECH-1', estdur: '4', targstartdate: null } as unknown as import('../api/workOrders').WorkOrder;
 const item: Assignment = { id: 'a-1', pool_id: pool.id, connection_id: 'conn', site_id: 'SITE', workorder_id: 'wo-1', discipline: 'E&I', person_id: person.person_id, date: '2026-10-05', minutes: 120, version: 1, state: 'reserved' };
 const snapshot: Snapshot = { pool_id: pool.id, pool_version: 2, rows: [person], items: [], work_orders: [], assignment_revision:'r1' };
 class TestIntersectionObserver {
@@ -803,7 +803,7 @@ it('requires saving changed hours before uploading the persisted task',async()=>
 
 it('shows the PIC and schedule range on backlog cards, or says they are missing',async()=>{
   const withPic={...workOrder,wonum:'WO-PIC',workorderid:'wo-pic',assignedto:'HAIDQ',schedstart:'2026-10-04T15:06:00+07:00',schedfinish:'2026-10-31T15:06:00+07:00'} as unknown as typeof workOrder;
-  await loaded(snapshot,[withPic,workOrder]);
+  await loaded(snapshot,[withPic,{...workOrder,schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder]);
   expect(screen.getByText('PIC HAIDQ · 04/10 → 31/10')).toBeInTheDocument();
   expect(screen.getByText('Chưa có PIC · Chưa có lịch')).toBeInTheDocument();
   expect(screen.getByRole('button',{name:/WO-PIC .*PIC HAIDQ · Lịch 04\/10 → 31\/10/})).toBeInTheDocument();
@@ -817,17 +817,11 @@ it('warns, without blocking, when assignments fall outside the WO schedule or th
   expect(screen.queryByRole('button',{name:/làm PIC/})).not.toBeInTheDocument();
 });
 
-it('suggests the first assigned person as PIC for a WO without PIC and hands it to the page',async()=>{
-  const onSuggestPic=vi.fn();
-  await loaded({...snapshot,items:[item],work_orders:[order]},[workOrder],{onSuggestPic});
-  fireEvent.click(screen.getByRole('button',{name:'Đặt LAB-1 — Nguyen A làm PIC (tạo nháp)'}));
-  expect(onSuggestPic).toHaveBeenCalledWith({connection_id:'conn',discipline:'E&I',site_id:'SITE',workorder_id:'wo-1',pic:'LAB-1'});
-});
-
-it('does not offer a PIC suggestion when the WO already has one or nobody is assigned',async()=>{
-  const withPic={...workOrder,assignedto:'LAB-1'} as unknown as typeof workOrder;
-  await loaded({...snapshot,items:[item],work_orders:[order]},[withPic],{onSuggestPic:vi.fn()});
-  expect(screen.queryByRole('button',{name:/làm PIC/})).not.toBeInTheDocument();
+it('refuses to place a WO that Maximo has no schedule or PIC for, and says why',async()=>{
+  const unscheduled={...workOrder,schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder;
+  await loaded(snapshot,[unscheduled]);
+  expect(screen.getByText('Chưa có lịch và PIC trên Maximo, chưa thể phân công')).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:/WO-1 · Pump repair/})).toHaveAttribute('data-blocked','true');
 });
 
 describe('live Resource timeline interactions', () => {
@@ -840,6 +834,15 @@ describe('live Resource timeline interactions', () => {
     await screen.findByText(/Phân công đã lưu vào kế hoạch nội bộ/);
     fireEvent.click(screen.getByRole('button', { name: 'Đóng thông báo' }));
     expect(screen.queryByText(/Phân công đã lưu vào kế hoạch nội bộ/)).not.toBeInTheDocument();
+  });
+
+  it('refuses a day outside the WO schedule and dims it while placing', async () => {
+    const october={...workOrder,schedstart:'2026-10-10T08:00:00+07:00',schedfinish:'2026-10-12T17:00:00+07:00'} as unknown as typeof workOrder;
+    await loaded(snapshot,[october]);
+    dragTo(screen.getByRole('button',{name:/WO-1 · Pump repair/}),screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-05'}));
+    expect(await screen.findByText(/WO-1: ngày này nằm ngoài lịch WO/)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(api.save).not.toHaveBeenCalled();
   });
 
   it('creates a scoped reservation by dragging a WO to a person/day cell', async () => {

@@ -12,7 +12,7 @@ from test_assignment_plans_postgres import concurrent_plan_database
 from test_assignments_postgres import discipline_fixture
 from test_daily_plan_sender import confirmed_target, fixture
 from test_entra import entra_settings
-from test_maximo import config, record
+from test_maximo import config, scheduled_record as record
 from test_postgres import seed
 
 from app.assignments.load import load_lock
@@ -56,6 +56,7 @@ pytestmark = pytest.mark.integration
         "rota_revoke",
         "planner_revoke",
         "wo_moved",
+        "outside_schedule",
         "disabled",
         "reconcile_revoke",
         "cancel",
@@ -304,7 +305,17 @@ def test_daily_plan_durable_routes(monkeypatch, mode):
                     200,
                     json={
                         "member": [
-                            record(bdpocdiscipline="OTHER" if mode == "wo_moved" else "MECH")
+                            record(
+                                bdpocdiscipline="OTHER" if mode == "wo_moved" else "MECH",
+                                **(
+                                    dict(
+                                        schedstart="2020-01-01T08:00:00+07:00",
+                                        schedfinish="2020-01-02T17:00:00+07:00",
+                                    )
+                                    if mode == "outside_schedule"
+                                    else {}
+                                ),
+                            )
                         ]
                     },
                 )
@@ -369,6 +380,10 @@ def test_daily_plan_durable_routes(monkeypatch, mode):
                     return
                 p = await client.get(base + "/upload-preview")
                 assert p.headers["Cache-Control"] == "no-store"
+                if mode == "outside_schedule":
+                    assert p.status_code == 409 and "ngoài lịch WO" in p.text
+                    assert not writes
+                    return
                 if mode in {"disabled", "wo_moved", "other_pool_capacity"}:
                     assert p.status_code in {409, 404, 502}
                     assert not writes

@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from test_assignment_plans_postgres import concurrent_plan_database
 from test_assignments_postgres import discipline_fixture
 from test_entra import entra_settings
-from test_maximo import config, record
+from test_maximo import config, scheduled_record as record
 from test_postgres import seed
 from test_task_assignments import sample
 
@@ -44,6 +44,7 @@ pytestmark = pytest.mark.integration
 
 D1, D2, D3 = date(2026, 10, 1), date(2026, 10, 2), date(2026, 10, 3)
 REJECTED = {
+    "outside_schedule": 409,
     "same_dates_noop": 422,
     "sum_mismatch": 422,
     "duplicate_dates": 422,
@@ -73,6 +74,7 @@ def seg(*pairs):
         "remove_day",
         "swap_uses_own_minutes",
         "same_dates_noop",
+        "outside_schedule",
         "sum_mismatch",
         "duplicate_dates",
         "off_day",
@@ -245,7 +247,18 @@ def test_plan_segment_edit_is_atomic_scoped_and_local(monkeypatch, mode):
                     return httpx.Response(200, json={"member": []})
                 if "WOACTIVITYTASK" in request.url.params.get("oslc.select", ""):
                     return httpx.Response(200, json={"member": [deepcopy(remote_sample)]})
-                return httpx.Response(200, json={"member": [record(bdpocdiscipline="MECH")]})
+                # D1 and D3 are already planned, so only the added D2 falls outside this window.
+                window = (
+                    {
+                        "schedstart": f"{D3.isoformat()}T08:00:00+07:00",
+                        "schedfinish": f"{D3.isoformat()}T17:00:00+07:00",
+                    }
+                    if mode == "outside_schedule"
+                    else {}
+                )
+                return httpx.Response(
+                    200, json={"member": [record(bdpocdiscipline="MECH", **window)]}
+                )
 
             app.state.maximo_client_factory = lambda: httpx.AsyncClient(
                 transport=httpx.MockTransport(respond)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { taskHue, computeLanes, localDate, scheduleRange, suggestedPic, woWarnings } from './timelineHelpers';
+import { taskHue, computeLanes, localDate, scheduleRange, missingForAssign, outsideSchedule, woWarnings } from './timelineHelpers';
 
 const now = new Date('2026-10-19T03:00:00Z');
 
@@ -58,11 +58,19 @@ describe('woWarnings', () => {
   });
 });
 
-describe('suggestedPic', () => {
-  it('picks the earliest assignment day, then the name', () => {
-    expect(suggestedPic([{ date: '2026-10-06', laborcode: 'B1', name: 'An' }, { date: '2026-10-05', laborcode: 'C1', name: 'Zoe' }, { date: '2026-10-05', laborcode: 'D1', name: 'Binh' }])).toBe('D1');
+describe('assignment gate', () => {
+  const ready = { schedstart: '2026-10-05T00:00:00Z', schedfinish: '2026-10-09T20:00:00Z', pic: 'HAIDQ' };
+  it('names what Maximo is missing', () => {
+    expect(missingForAssign(ready)).toBe('');
+    expect(missingForAssign({ ...ready, pic: ' ' })).toBe('Chưa có PIC trên Maximo');
+    expect(missingForAssign({ schedstart: null, schedfinish: null, pic: null })).toBe('Chưa có lịch và PIC trên Maximo');
   });
-  it('returns null when nobody is assigned', () => { expect(suggestedPic([])).toBeNull(); });
+  it('compares days in the business timezone, both ends included', () => {
+    expect(outsideSchedule(ready, '2026-10-05', 'Asia/Ho_Chi_Minh')).toBe(false);
+    expect(outsideSchedule(ready, '2026-10-10', 'Asia/Ho_Chi_Minh')).toBe(false);
+    expect(outsideSchedule(ready, '2026-10-11', 'Asia/Ho_Chi_Minh')).toBe(true);
+    expect(outsideSchedule(ready, '2026-10-04', 'Asia/Ho_Chi_Minh')).toBe(true);
+  });
 });
 
 describe('localDate', () => {

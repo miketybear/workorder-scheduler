@@ -20,6 +20,7 @@ from app.assignments.models import (
     AssignmentPlanPreview,
     AssignmentPlanUpload,
 )
+from app.assignments.schedule_gate import require_schedule
 from app.auth.person_access import verified_person_scope
 from app.auth.sessions import SESSION_COOKIE, resolve_session
 from app.config import WRITE_APP_ENVIRONMENTS
@@ -97,7 +98,7 @@ def segment_set(plan, items):
 
 
 async def scoped_plan(
-    request, plan_id, *, write=False, csrf=False, eligible=False, any_state=False
+    request, plan_id, *, write=False, csrf=False, eligible=False, any_state=False, gated=False
 ):
     from app.assignments.routes import existing, key, read_scope
 
@@ -105,13 +106,21 @@ async def scoped_plan(
         await resolve_session(db, request.cookies.get(SESSION_COOKIE))
         _, items = await plan_items(db, plan_id, any_state=any_state)
     item = await existing(request, items[0].id)
+    dates = [i.date for i in items] if gated else None
     # Preview requires Planner but GET does not require CSRF.
     if write and not csrf:
         identity, settings = await checked_settings(request, key(item), item.discipline, write=True)
-        await read_scope(request, key(item), item.discipline, require_eligible=eligible)
+        await read_scope(
+            request, key(item), item.discipline, require_eligible=eligible, assign_dates=dates
+        )
     else:
         identity = await read_scope(
-            request, key(item), item.discipline, write=write, require_eligible=eligible
+            request,
+            key(item),
+            item.discipline,
+            write=write,
+            require_eligible=eligible,
+            assign_dates=dates,
         )
         _, settings = await checked_settings(
             request, key(item), item.discipline, write=write, csrf=csrf
@@ -166,7 +175,9 @@ async def serialized(request, item, identity, settings, *, csrf=True, request_id
             yield db
 
 
-async def current_remote_scope(request, db, item, identity, settings, *, eligible=False):
+async def current_remote_scope(
+    request, db, item, identity, settings, *, eligible=False, assign_dates=None
+):
     from app.assignments.routes import key
 
     user = await db.get(User, identity.user_id, populate_existing=True)
@@ -184,6 +195,8 @@ async def current_remote_scope(request, db, item, identity, settings, *, eligibl
         order.status not in settings.open_statuses or order.istask or order.parent not in (None, "")
     ):
         raise HTTPException(409, "Work order is no longer eligible for scheduling")
+    if assign_dates is not None:
+        require_schedule(order, assign_dates, connection.timezone)
     await recheck(request, db, item, identity, settings, write=True, csrf=True)
     return connection
 
@@ -332,7 +345,7 @@ async def check_capacity(request, db, plan, items, settings, connection):
 async def preview(request, plan_id, start_time):
 
     item, identity, settings, connection = await scoped_plan(
-        request, plan_id, write=True, eligible=True
+        request, plan_id, write=True, eligible=True, gated=True
     )
     async with serialized(request, item, identity, settings, csrf=False) as db:
         plan, items = await plan_items(db, plan_id)
@@ -458,6 +471,8 @@ async def outcome(request, db, attempt, items, readback, identity, settings, res
 
 
 async def submit(request, plan_id, body):
+    from app.assignments.routes import key
+
     item, identity, settings, connection = await scoped_plan(
         request, plan_id, write=True, csrf=True, eligible=True
     )
@@ -484,6 +499,12 @@ async def submit(request, plan_id, body):
             plan, items
         ):
             raise HTTPException(409, "Plan changed after preview")
+        # Refused here, before any intent exists, so the planner gets a clean "not sent".
+        async with request.app.state.maximo_client_factory() as client:
+            order = await read_detail(client, settings, key(item), item.discipline)
+        if order is None:
+            raise HTTPException(404, "Work order not found")
+        require_schedule(order, [i.date for i in items], connection.timezone)
         intent = await validate_plan(
             request, db, plan, items, settings, connection, row.intent["start_time"]
         )
@@ -549,7 +570,13 @@ async def submit(request, plan_id, body):
         if fresh_target != intent["target"]:
             raise HTTPException(409, "Source assignment changed before upload send")
         connection = await current_remote_scope(
-            request, db, item, identity, settings, eligible=True
+            request,
+            db,
+            item,
+            identity,
+            settings,
+            eligible=True,
+            assign_dates=[i.date for i in items],
         )
         if connection_revision(connection) != intent["connection_revision"] or not enabled(
             request, settings, connection
