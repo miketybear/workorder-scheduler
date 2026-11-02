@@ -189,7 +189,8 @@ export function RotaImports({ active = true }: { active?: boolean }) {
       const input = document.getElementById('rota-file') as HTMLInputElement | null; if (input) input.value = '';
     } catch (reason) {
       if (operationRef.current !== operation || poolRef.current !== targetPool || currentUserRef.current !== targetUser) return;
-      setError(`${errorMessage(reason)} Nếu kết quả upload chưa rõ, kiểm tra danh sách phiên đã lưu trước khi gửi lại.`);
+      // A 422 is a definite refusal, so the "result unclear" advice would only mislead.
+      setError(reason instanceof RotaImportError && reason.status === 422 ? errorMessage(reason) : `${errorMessage(reason)} Nếu kết quả upload chưa rõ, kiểm tra danh sách phiên đã lưu trước khi gửi lại.`);
       if (reason instanceof RotaImportError && [401, 403, 404].includes(reason.status)) { setPreview(null); setImports([]); setReloadKey(key => key + 1); }
     } finally { if (operationRef.current === operation) setBusy(''); }
   };

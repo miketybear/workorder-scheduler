@@ -2,6 +2,14 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Lỗi upload rota nêu rõ nguyên nhân — 2026-11-02
+
+- [x] Sai tên sheet: báo tên đã nhập và các sheet có trong file. UI hiện lý do server trả cho mọi lỗi 422, bỏ câu "kết quả chưa rõ" vì 422 là từ chối chắc chắn. Các lỗi cấu trúc file khác vẫn là tiếng Anh. Chưa deploy.
+
+## Tạo resource pool trên staging — 2026-11-02
+
+- [x] Pool "Onshore test" (`BDPOC`) có audit `pool_provision`. Chưa có rota; chưa mở Resource Timeline bằng phiên thật.
+
 ## Home thành danh sách việc cần làm — 2026-11-02
 
 - [x] `GET /api/home/summary`: tổng WO mở, thiếu lịch, thiếu PIC, quá Target theo scope được cấp; nháp, upload và route chưa rõ kết quả của chính user. Kiểm tra quyền trước và sau khi đọc Maximo.

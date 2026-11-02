@@ -441,3 +441,12 @@ def test_legacy_preview_filters_position_and_stale_binding_without_source_mutati
     assert result["policy_version"] == "rota-2026-10-11-v4"
     assert len(source["rows"]) == 5
     assert stage.mapping == {"13": "old"}
+
+
+def test_wrong_sheet_name_lists_the_sheets_in_the_file():
+    with pytest.raises(RotaParseError) as xlsx:
+        parse_rota(fixture_xlsx(), "rota.xlsx", "ROTA_2025")
+    assert str(xlsx.value) == 'Không tìm thấy sheet "ROTA_2025". File này có: ROTA_2026.'
+    with pytest.raises(RotaParseError) as ods:
+        parse_rota(fixture_ods(), "rota.ods", "ROTA_2025")
+    assert 'Không tìm thấy sheet "ROTA_2025"' in str(ods.value)

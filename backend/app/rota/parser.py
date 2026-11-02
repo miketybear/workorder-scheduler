@@ -41,6 +41,9 @@ POSITIONS = {
 }
 
 
+MAX_LISTED_SHEETS = 20
+
+
 class RotaParseError(ValueError):
     pass
 
@@ -131,19 +134,24 @@ def bounded_archive(content):
         raise RotaParseError("Invalid spreadsheet archive") from None
 
 
+def sheet_not_found(sheet, names):
+    shown = ", ".join(str(name) for name in names[:MAX_LISTED_SHEETS])
+    more = (
+        f" và {len(names) - MAX_LISTED_SHEETS} sheet khác" if len(names) > MAX_LISTED_SHEETS else ""
+    )
+    return RotaParseError(f'Không tìm thấy sheet "{sheet}". File này có: {shown}{more}.')
+
+
 def ods_cells(archive, sheet):
     ns = {
         "t": "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
         "o": "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
         "text": "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
     }
-    tables = [
-        t
-        for t in xml(archive, "content.xml").findall(".//t:table", ns)
-        if t.get(f"{{{ns['t']}}}name") == sheet
-    ]
+    every = xml(archive, "content.xml").findall(".//t:table", ns)
+    tables = [t for t in every if t.get(f"{{{ns['t']}}}name") == sheet]
     if len(tables) != 1:
-        raise RotaParseError("Requested rota sheet not found")
+        raise sheet_not_found(sheet, [t.get(f"{{{ns['t']}}}name") for t in every])
     cells, row_index = {}, 1
     for row in tables[0].findall("t:table-row", ns):
         repeat = int(row.get(f"{{{ns['t']}}}number-rows-repeated", "1"))
@@ -173,9 +181,10 @@ def ods_cells(archive, sheet):
 def xlsx_cells(archive, sheet):
     ns = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
     wb = xml(archive, "xl/workbook.xml")
-    sheets = [s for s in wb.findall("s:sheets/s:sheet", ns) if s.get("name") == sheet]
+    every = wb.findall("s:sheets/s:sheet", ns)
+    sheets = [s for s in every if s.get("name") == sheet]
     if len(sheets) != 1:
-        raise RotaParseError("Requested rota sheet not found")
+        raise sheet_not_found(sheet, [s.get("name") for s in every])
     relationship = sheets[0].get(
         "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
     )

@@ -125,6 +125,8 @@ docker compose --env-file "$staging_inputs" -f compose.staging.yaml --profile to
    docker compose --env-file "$staging_inputs" -f compose.staging.yaml restart backend
    ```
 
+   Resource Timeline cần một resource pool cho mỗi connection (`orgid=BDPOC`): chạy `app.rota.provision.provision_pool` qua service `migrate` (owner DSN), truyền thêm `WOS_MAXIMO`, `WOS_MAXIMO_DEFAULTS` và `WOS_WORKFLOW_ROUTE_CREDENTIAL_KEY` từ `runtime.env`. Admin và Planner tự có quyền ghi; sau đó upload và kích hoạt rota.
+
    Admin đầu tiên và Planner grant dùng cùng cách chạy (dry-run trước, rồi `--execute` cho bootstrap):
    `... run --rm migrate python -m app.operators.bootstrap_admin --tenant ... --user-object ... --operator ... --reason ...`
    và `python -m app.operators.manage_planner grant ...` theo [Planner access](planner-access.md).

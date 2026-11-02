@@ -73,3 +73,13 @@ it('preserves PERSON.title and excluded positions and rejects malformed diagnost
   expect(() => parseRotaPreview({ ...body, rows: [{ ...body.rows[0], candidates: [{ ...titled, title: 12 }] }] })).toThrow();
   expect(parseRotaPreview(preview).rows[0].mapping?.title).toBeUndefined();
 });
+
+it('shows why the server refused a file and stays generic for validation arrays', async () => {
+  setCookie('__Host-wos-csrf=token');
+  const file = new File(['x'], 'rota.xlsx');
+  const detail = 'Không tìm thấy sheet "ROTA_2025". File này có: ROTA_2026.';
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ detail }, 422)));
+  await expect(uploadRotaImport('pool-1', file, 'ROTA_2025', new AbortController().signal)).rejects.toThrow(detail);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ detail: [{ loc: ['query'] }] }, 422)));
+  await expect(uploadRotaImport('pool-1', file, 'ROTA_2025', new AbortController().signal)).rejects.toThrow('File rota chưa hợp lệ');
+});

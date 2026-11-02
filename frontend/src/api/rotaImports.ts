@@ -113,7 +113,10 @@ async function request(path: string, signal: AbortSignal, init?: RequestInit): P
       502: 'Không lấy được LABOR từ Maximo. Phiên staging vẫn được lưu; có thể làm mới LABOR sau.',
       503: 'Resource pool hoặc kết nối LABOR chưa sẵn sàng.',
     };
-    throw new RotaImportError(response.status, messages[response.status] ?? 'Yêu cầu chưa hoàn tất. Hãy thử lại.');
+    // A 422 explains what is wrong with this file (for example the sheets it really has); validation arrays stay generic.
+    const body: unknown = response.status === 422 ? await response.json().catch(() => null) : null;
+    const detail = isRecord(body) && typeof body.detail === 'string' ? body.detail : '';
+    throw new RotaImportError(response.status, detail || (messages[response.status] ?? 'Yêu cầu chưa hoàn tất. Hãy thử lại.'));
   }
   return response;
 }
