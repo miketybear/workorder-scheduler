@@ -52,7 +52,7 @@ Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[M
 
 - [ ] `[IT]` Staging dùng image tag local build trên server; chuyển sang registry + digest đã duyệt.
 - [ ] `[IT]` Tách cấu hình/secret test và production; secret manager. (L2603, L3498)
-- [ ] `[IT]` Backup staging RPO/RTO/offsite/encryption và diễn tập restore. (L2274, L2608, L3563)
+- [ ] `[IT]` (Ưu tiên: staging đã mở ghi) Backup staging RPO/RTO/offsite/encryption và diễn tập restore. (L2274, L2608, L3563)
 - [ ] `[IT]` Entra: nhóm được đăng nhập, single-tenant/assignment, MFA/Conditional Access, blocked account, logout URI. (L2361–L2367)
 - [ ] `[IT]` Tài khoản tích hợp riêng, chủ sở hữu key, quyền tối thiểu, vòng đời key. (L2179, L2612)
 - [ ] `[IT]` API key route cho MECHSUP, FIELDPRODSUP và các position còn lại. (L237)

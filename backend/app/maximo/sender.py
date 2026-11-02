@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 
 from app.auth.sessions import SESSION_COOKIE, resolve_session, verify_csrf
+from app.config import WRITE_APP_ENVIRONMENTS
 from app.db.models import MaximoConnection, MaximoPersonBinding, PlannerPermission, User
 from app.maximo.connections import configured_connection
 from app.maximo.contract_probe import OPERATOR_WORKTYPES, probe_contract
@@ -30,7 +31,7 @@ def write_enabled(settings, connection):
         config
         and config.collection_url.endswith(WRITE_STRUCTURES)
         and config.conditional_write_contract == "native_rowstamp_test"
-        and settings.environment in {"development", "test"}
+        and settings.environment in WRITE_APP_ENVIRONMENTS
         and connection.enabled
         and connection.system == "onshore"
         and connection.environment == "test"

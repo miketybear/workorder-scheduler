@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
+from app.config import WRITE_APP_ENVIRONMENTS
 from app.maximo.detail import code
 from app.maximo.reader import MaximoReadError, read_collection
 from app.maximo.task_sender import read_target, send_assignment, write_enabled
@@ -180,7 +181,7 @@ def reconcile_daily_intent(intent, target, persisted_mapping=None):
 
 async def send_daily_intent(client, settings, connection, intent, attempt_id, *, app_environment):
     """Exactly one audited request. An unknown outcome must use read-only reconciliation."""
-    if app_environment not in {"development", "test"} or not write_enabled(settings, connection):
+    if app_environment not in WRITE_APP_ENVIRONMENTS or not write_enabled(settings, connection):
         raise ValueError("Daily-plan writer is restricted to the existing operator Test contract")
     return await send_assignment(
         client, settings, {"resource_id": intent["resource_id"]}, intent["payload"], attempt_id

@@ -28,6 +28,8 @@ def test_bdsched_structure_uses_same_configured_connection_and_explicit_write_co
     assert configured_connection(app, connection) is settings
     assert write_enabled(app, connection)
     app.environment = "staging"
+    assert write_enabled(app, connection)
+    app.environment = "production"
     assert not write_enabled(app, connection)
     app.environment = "test"
     connection.environment = "production"
@@ -130,7 +132,7 @@ def test_workflow_route_accounts_are_secret_scoped_and_test_only(monkeypatch):
     assert "synthetic-route-key" not in repr(account)
     assert account.api_key.get_secret_value() == "synthetic-route-key"
 
-    monkeypatch.setenv("WOS_ENVIRONMENT", "staging")
+    monkeypatch.setenv("WOS_ENVIRONMENT", "production")
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
 

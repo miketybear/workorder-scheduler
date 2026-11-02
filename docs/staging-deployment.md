@@ -2,7 +2,7 @@
 
 Cập nhật: 2026-10-10. Đây là cấu hình mẫu và quy trình cho Ubuntu, chưa là bằng
 chứng triển khai trên server. Dùng [Compose staging](../compose.staging.yaml)
-độc lập, không merge với Compose local. Chỉ read và nháp; staging không mở upload.
+độc lập, không merge với Compose local. Staging mở toàn bộ chức năng cho end user thử nghiệm trên **Onshore test** (chủ dự án quyết định 2026-11-02, thay thỏa thuận read/nháp ban đầu): upload WO/task/daily plan và route BD_WO đều ghi thật vào Maximo test. Production vẫn khóa ghi.
 
 ## Cấu hình và contract
 
@@ -22,7 +22,7 @@ chứng triển khai trên server. Dùng [Compose staging](../compose.staging.ya
   phải đo trên Ubuntu, không coi310s là bảo đảm cứng cho cleanup hoặc socket gửi response.
   Connect timeout5s, send timeout30s; không retry upstream. Auth/session và remote
   upload handlers không thuộc deadline này.
-  Upload vẫn khóa; không dùng timeout này làm bằng chứng upload recovery production.
+  Không dùng timeout này làm bằng chứng upload recovery production.
 - DB không publish cổng; volume tên riêng theo project staging. Chỉ port 443 được
   publish. IT phải xác minh firewall/Docker networking trên Ubuntu thực tế.
 - Runtime và migration dùng hai env files riêng theo mẫu
@@ -61,8 +61,9 @@ chứng triển khai trên server. Dùng [Compose staging](../compose.staging.ya
    phải khác DBA `scheduler_dba`. Điền Entra đủ cho cả hai Settings processes.
 4. Điền runtime Maximo registry bằng connection UUID đã provision trong DB:
    `base_url` (vd. `https://host/maximo`; backend tự thêm `/oslc/os/BDSCHED_WO`) và key được cấp. Statuses, crew groups và PERSON domain dùng chung
-   đặt một lần trong `WOS_MAXIMO_DEFAULTS`; connection nào khác thì khai riêng để đè. Không
-   thêm `conditional_write_contract`. `WOS_MAXIMO={}` chỉ dùng để kiểm tra startup,
+   đặt một lần trong `WOS_MAXIMO_DEFAULTS`; connection nào khác thì khai riêng để đè. Để mở ghi, thêm vào connection Onshore test các contract `conditional_write_contract`,
+   `assignment_write_contract`, `assignment_daily_write_contract`, `task_load_contract` và `workflow_route_accounts`;
+   gate vẫn đòi connection enabled, system=onshore, environment=test. `WOS_MAXIMO={}` chỉ dùng để kiểm tra startup,
    không đủ để nghiệm thu WO. Cấp scope theo [PERSON](person-access.md) và
    [Planner](planner-access.md), không cấp WO access mặc định cho admin.
 5. Certificate phải khớp hostname và full chain được browser tin cậy; callback
@@ -129,8 +130,7 @@ docker compose --env-file "$staging_inputs" -f compose.staging.yaml --profile to
 
 8. Nghiệm thu từ browser/mạng người dùng: certificate, health/live và health/ready,
    Entra login/logout/callback, Secure/HttpOnly session + CSRF, scoped list/detail,
-   lưu/mở nháp và thu hồi quyền. Đăng nhập tenant sai/no grant bị từ chối. Upload
-   disabled; không dùng Entra/Maximo giả để đánh dấu live acceptance.
+   lưu/mở nháp và thu hồi quyền. Đăng nhập tenant sai/no grant bị từ chối. Không dùng Entra/Maximo giả để đánh dấu live acceptance.
 9. Chạy request read giả chậm trên 30s qua proxy và ca app budget hết hạn trước
    khi ký nghiệm thu D3. Kiểm tra log với callback query/Cookie/Authorization giả;
    chỉ lưu bằng chứng đã redaction. Restart host/DB và 10 phiên thuộc O1, vẫn pending.
@@ -179,7 +179,7 @@ không coi cancellation của coroutine là bằng chứng DB chưa commit.
 Khoảng đệm là cấu hình vận hành, không bảo đảm cứng: deadline request và cleanup
 cooperative có thể kéo dài; Uvicorn lifespan shutdown còn chạy sau drain. Proxy
 read timeout đo khoảng chờ giữa các lần đọc, không phải tổng thời gian request.
-Auth/session và remote upload không thuộc deadline WO/nháp; upload staging vẫn khóa.
+Auth/session và remote upload không thuộc deadline WO/nháp.
 Nếu hết320s, request có thể bị cancel/đứt response; nếu process còn chạy ở330s,
 Docker có thể SIGKILL. Phải đối soát receipt bằng request ID, không suy chưa commit.
 

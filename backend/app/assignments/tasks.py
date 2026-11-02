@@ -12,6 +12,7 @@ from app.assignments.incremental import metadata, receipt_metadata, revision
 from app.assignments.load import load_lock, validate_remote_capacity
 from app.assignments.models import Allocation, AssignmentEvent, AssignmentSubmission
 from app.assignments.summary import planning_summary, remember_tasks
+from app.config import WRITE_APP_ENVIRONMENTS
 from app.db.models import MaximoConnection
 from app.maximo.task_sender import write_enabled
 from app.maximo.tasks import read_tasks
@@ -203,9 +204,10 @@ def register(router):
                 db, wo_key, discipline, request.app.state.settings.assignment_summary_ttl_seconds
             )
             connection = await db.get(MaximoConnection, connection_id)
-            upload_enabled = write_enabled(
-                settings, connection
-            ) and request.app.state.settings.environment in {"test", "development"}
+            upload_enabled = (
+                write_enabled(settings, connection)
+                and request.app.state.settings.environment in WRITE_APP_ENVIRONMENTS
+            )
             from app.assignments.plan_uploads import enabled as daily_enabled
 
             daily_plan_upload_supported = daily_enabled(request, settings, connection)

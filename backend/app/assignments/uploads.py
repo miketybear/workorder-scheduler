@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.assignments.load import validate_remote_capacity
 from app.assignments.models import Allocation, AssignmentEvent, AssignmentUpload
 from app.auth.sessions import SESSION_COOKIE, resolve_session
+from app.config import WRITE_APP_ENVIRONMENTS
 from app.db.models import MaximoConnection
 from app.maximo.reader import MaximoReadError
 from app.maximo.task_sender import (
@@ -118,9 +119,10 @@ async def upload(request, allocation_id, body):
         if item.plan_id is not None:
             raise HTTPException(409, "Multi-day task plans are local only and cannot be uploaded")
         connection = await db.get(MaximoConnection, item.connection_id)
-        if not write_enabled(
-            settings, connection
-        ) or request.app.state.settings.environment not in {"test", "development"}:
+        if (
+            not write_enabled(settings, connection)
+            or request.app.state.settings.environment not in WRITE_APP_ENVIRONMENTS
+        ):
             raise HTTPException(409, "Assignment upload contract is not verified")
         if body.scheduled_start.astimezone(ZoneInfo(connection.timezone)).date() != item.date:
             raise HTTPException(422, "Scheduled start must be on the allocation day")

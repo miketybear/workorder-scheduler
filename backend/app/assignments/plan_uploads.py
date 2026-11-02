@@ -22,6 +22,7 @@ from app.assignments.models import (
 )
 from app.auth.person_access import verified_person_scope
 from app.auth.sessions import SESSION_COOKIE, resolve_session
+from app.config import WRITE_APP_ENVIRONMENTS
 from app.db.models import MaximoConnection, PlannerPermission, User
 from app.maximo.daily_plan_sender import (
     build_daily_intent,
@@ -51,7 +52,7 @@ class PlanUploadRequest(BaseModel):
 
 def enabled(request, settings, connection):
     return (
-        request.app.state.settings.environment in {"test", "development"}
+        request.app.state.settings.environment in WRITE_APP_ENVIRONMENTS
         and settings.assignment_daily_write_contract == "native_daily_assignment_rowstamp_test"
         and settings.task_load_contract == "bdsched_assignment_test"
         and write_enabled(settings, connection)

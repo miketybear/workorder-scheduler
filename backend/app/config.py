@@ -15,6 +15,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
+# Staging is the end-user test bed: owner authorized writes there on 2026-11-02. Every writer
+# still requires an explicit contract and an enabled Onshore connection with environment=test.
+WRITE_APP_ENVIRONMENTS = frozenset({"development", "test", "staging"})
+
 
 class EntraSettings(BaseModel):
     tenant_id: UUID
@@ -289,7 +293,7 @@ class Settings(BaseSettings):
     def require_production_identity(self):
         if self.environment in {"staging", "production"} and self.entra is None:
             raise ValueError("Entra configuration is required outside local development/test")
-        if self.environment not in {"development", "test"} and any(
+        if self.environment not in WRITE_APP_ENVIRONMENTS and any(
             connection.conditional_write_contract is not None
             or connection.assignment_write_contract is not None
             or connection.assignment_daily_write_contract is not None

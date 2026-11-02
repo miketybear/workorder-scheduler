@@ -83,12 +83,12 @@ def test_route_block_defaults_to_verified_contract_and_is_test_only(monkeypatch)
     assert route.nodes == {20: 427, 40: 437}
     assert route.option_text == "Route to Tech PIC for execution"
     assert route.object_structure == "MXAPIWFASSIGNMENT"
-    monkeypatch.setenv("WOS_ENVIRONMENT", "staging")
+    monkeypatch.setenv("WOS_ENVIRONMENT", "production")
     monkeypatch.setenv(
         f"WOS_MAXIMO__{identity}__WORKFLOW_ROUTE_ACCOUNTS",
         '{"E&I": {"personid": "ENISUP", "api_key": "synthetic-route-key"}}',
     )
-    with pytest.raises(ValidationError):  # accounts (and so the route) are test-only
+    with pytest.raises(ValidationError):  # accounts (and so the route) never reach production
         Settings(_env_file=None)
 
 
@@ -115,7 +115,6 @@ def test_route_block_rejects_unsafe_values(block):
         ("environment", "production"),
         ("system", "offshore"),
         ("enabled", False),
-        ("app_environment", "staging"),
         ("app_environment", "production"),
         ("no_accounts", None),
         ("no_contract", None),

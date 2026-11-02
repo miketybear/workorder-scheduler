@@ -107,7 +107,6 @@ def test_pm_cft_transport_rejects_protected_payload_or_changed_authority(case, w
         ("enabled", False),
         ("contract", None),
         ("app_environment", "production"),
-        ("app_environment", "staging"),
     ],
 )
 def test_native_gate_only_explicit_approved_nonproduction_onshore_test(field, value):
@@ -241,3 +240,15 @@ def test_sender_posts_assignedto_with_the_pic_and_refuses_the_old_field_name():
         assert "assignedtechname" not in posts[0].content.decode()
 
     asyncio.run(main())
+
+
+def test_staging_writes_only_with_contract_on_onshore_test_connection():
+    identifier = uuid4()
+    connection = SimpleNamespace(id=identifier, system="onshore", environment="test", enabled=True)
+    settings = SimpleNamespace(
+        environment="staging",
+        maximo={identifier: config(conditional_write_contract="native_rowstamp_test")},
+    )
+    assert write_enabled(settings, connection)
+    connection.environment = "production"
+    assert not write_enabled(settings, connection)

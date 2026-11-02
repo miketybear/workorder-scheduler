@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Mở toàn bộ chức năng trên staging cho user testing — 2026-11-02
+
+- [x] Chủ dự án đổi thỏa thuận ban đầu: staging được ghi Maximo. `WRITE_APP_ENVIRONMENTS` thêm `staging`;
+      vẫn đòi contract tường minh và connection enabled/onshore/test. Production bị từ chối; probe giữ dev/test.
+
 ## Deploy staging `wos.biendongpoc.vn` — 2026-10-30
 
 - [x] Ubuntu `wos.biendongpoc.vn`: source `1f88dd9` ở `~/wos-staging/src-1f88dd9` (`current` symlink),
