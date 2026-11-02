@@ -2,6 +2,10 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Thông báo sau upload rõ nghĩa — 2026-11-02
+
+- [x] Upload xong xóa thông báo "Đã lưu nháp", đổi câu thành "Đã upload N WO lên Maximo và đọc lại khớp"; dòng thông báo không còn nền sáng trên giao diện tối.
+
 ## Lỗi upload rota nêu rõ nguyên nhân — 2026-11-02
 
 - [x] Sai tên sheet: báo tên đã nhập và các sheet có trong file. UI hiện lý do server trả cho mọi lỗi 422, bỏ câu "kết quả chưa rõ" vì 422 là từ chối chắc chắn. Các lỗi cấu trúc file khác vẫn là tiếng Anh. Chưa deploy.

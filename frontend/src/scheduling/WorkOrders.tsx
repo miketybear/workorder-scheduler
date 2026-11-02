@@ -244,7 +244,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         !(record.entry.draft_id === result.draft_id && record.entry.version === result.version)));
       setRecoveryResult((current) => current?.entry.draft_id === result.draft_id && current.entry.version === result.version
         ? null : current);
-      setUploadNotice(`Đã xác nhận ${details.length} WO trong Maximo và cập nhật giá trị hiện tại.`);
+      setUploadNotice(`Đã upload ${details.length} WO lên Maximo và đọc lại khớp.`);
+      setInlineNotice('');
       draftRevision.current += 1;
       setSelection(null); setBatch(null); setRechecked(null); selected.current = null;
       dirty.current = false;
@@ -294,7 +295,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
       });
       onDraftReady({ draft_id: entry.draft_id, version: entry.version, state: 'draft', items: null });
       setUploadRecoveries((current) => current.filter((record) => record.entry.request_id !== entry.request_id));
-      setUploadNotice(`Đã xác nhận ${status.items.length} WO trong Maximo. Bấm Cập nhật để làm mới dữ liệu hiện tại.`);
+      setUploadNotice(`Đã upload ${status.items.length} WO lên Maximo và đọc lại khớp. Bấm Cập nhật để làm mới dữ liệu hiện tại.`);
+      setInlineNotice('');
       refreshSession.current?.(true);
     }
   }
@@ -962,7 +964,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, picSuggestion 
         {stagedKeys.length > 0 && <span>Lưu các thay đổi trong bảng trước khi gửi</span>}
         {sendError && <span role="alert" className={styles.error}>{sendError}</span>}
       </div>}
-      {grant?.capability === 'write' && (stagedKeys.length > 0 || inlineNotice || Object.keys(inlineErrors).length > 0) && <div className={styles.bulkBar} role="region" aria-label="Thay đổi trong bảng">
+      {grant?.capability === 'write' && (stagedKeys.length > 0 || inlineNotice || Object.keys(inlineErrors).length > 0) && <div className={styles.bulkBar} data-plain={stagedKeys.length === 0 && Object.keys(inlineErrors).length === 0 ? 'true' : undefined} role="region" aria-label="Thay đổi trong bảng">
         {stagedKeys.length > 0 && <>
           <span>{stagedKeys.length} WO có thay đổi chưa lưu</span>
           <button className={styles.primary} disabled={inlineBusy || Object.keys(stagedProblems).length > 0} onClick={() => void saveInline()}>{inlineBusy ? 'Đang lưu…' : `Lưu ${stagedKeys.length} nháp`}</button>

@@ -296,6 +296,8 @@
 .confirmActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .bulkBar { position: sticky; bottom: 16px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0; padding: 4px 10px; background: var(--ink); color: var(--layer); box-shadow: var(--shadow-overlay); }
 .bulkBar[aria-label="Gửi WO có nháp lên Maximo"] > button { min-height: 32px; padding: 5px 10px; font-size: 13px; line-height: 18px; }
+/* Only a message, no actions: reads as a quiet status line in both themes, not as an action bar. */
+.bulkBar[data-plain="true"] { position: static; background: var(--layer); color: var(--ink); box-shadow: none; border-left: 3px solid var(--accent); }
 .bulkBar .ghost { color: var(--layer); }
 .bulkBar .ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--layer) 18%, transparent); }
 .bulkBar .muted { color: color-mix(in srgb, var(--layer) 70%, transparent); }

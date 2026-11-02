@@ -905,9 +905,9 @@ it('refreshes and closes a finalized saved batch for the exact batch scope', asy
   expect(submitUpload).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText('Upload toàn bộ nhóm lên Offshore test'));
   await waitFor(() => expect(submitUpload).toHaveBeenCalledTimes(1));
-  await screen.findByText(/Đã xác nhận 1 WO trong Maximo/);
+  await screen.findByText(/Đã upload 1 WO lên Maximo/);
   expect(screen.queryByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' })).not.toBeInTheDocument();
-  expect(screen.getByText(/Đã xác nhận 1 WO trong Maximo/)).toBeVisible();
+  expect(screen.getByText(/Đã upload 1 WO lên Maximo/)).toBeVisible();
   expect(screen.queryByRole('button', { name: 'Kiểm tra kết quả upload trước' })).not.toBeInTheDocument();
   expect(getDetail).toHaveBeenCalledWith({ connection_id: 'two', discipline: 'MECH', site_id: 'SITE-A', workorder_id: '100' }, expect.any(AbortSignal));
   expect(screen.getByRole('cell', { name: '9' })).toBeInTheDocument();
@@ -949,7 +949,7 @@ it('keeps the first PM origin through date restoration, offers a duration-only s
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
   await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText('Upload lên Offshore test'));
-  await screen.findByText(/Đã xác nhận 1 WO trong Maximo/);
+  await screen.findByText(/Đã upload 1 WO lên Maximo/);
 
   fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
   await screen.findByRole('button', { name: 'Khôi phục ngày lịch gốc' });
@@ -975,7 +975,7 @@ it('keeps the first PM origin through date restoration, offers a duration-only s
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
   await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
   fireEvent.click(screen.getByText('Upload lên Offshore test'));
-  await screen.findByText(/Đã xác nhận 1 WO trong Maximo/);
+  await screen.findByText(/Đã upload 1 WO lên Maximo/);
 
   fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
   await screen.findByLabelText('Est. Duration');
@@ -992,7 +992,7 @@ it('ignores a finalized batch refresh after the connection scope changes', async
   await chooseConnection('one');
   expect(screen.queryByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' })).not.toBeInTheDocument();
   await act(async () => finish({ ...editorDetail, item: { ...row, estdur: '9' } }));
-  expect(screen.queryByText(/Đã xác nhận 1 WO trong Maximo/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Đã upload 1 WO lên Maximo/)).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Est. Duration')).not.toBeInTheDocument();
 });
 
