@@ -472,3 +472,26 @@
 .previewSummary p { margin: 0; font-weight: 600; }
 .changeList { margin: 0; padding-left: 18px; }
 td[data-code="conflict"], td[data-code="invalid_changes"] { color: var(--danger-ink); font-weight: 600; }
+.homeScope { margin: 0 0 16px; color: var(--muted); font-size: 12px; }
+.homeMetrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; }
+.homeMetric { display: flex; flex-direction: column; gap: 4px; padding: 16px 24px; border-top: 4px solid var(--tone-ink); background: color-mix(in srgb, var(--tone-bg) 35%, var(--layer)); }
+.homeMetric strong { color: var(--tone-ink); font-size: 32px; font-weight: 400; line-height: 1.2; }
+.homeMetric span { color: var(--ink); font-size: 12px; }
+.homeMetric[data-tone="blue"], .homeTasks a[data-tone="blue"] { --tone-bg: var(--tag-blue-bg); --tone-ink: var(--tag-blue-ink); }
+.homeMetric[data-tone="purple"], .homeTasks a[data-tone="purple"] { --tone-bg: var(--tag-purple-bg); --tone-ink: var(--tag-purple-ink); }
+.homeMetric[data-tone="warm"], .homeTasks a[data-tone="warm"] { --tone-bg: var(--tag-warm-bg); --tone-ink: var(--tag-warm-ink); }
+.homeMetric[data-tone="green"], .homeTasks a[data-tone="green"] { --tone-bg: var(--tag-green-bg); --tone-ink: var(--tag-green-ink); }
+.homeMetric[data-tone="red"], .homeTasks a[data-tone="red"] { --tone-bg: color-mix(in srgb, var(--error) 22%, var(--layer)); --tone-ink: var(--error); }
+.homeColumns { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-top: 16px; }
+.homePanel { padding: 24px; background: var(--layer); }
+.homePanel h2 { margin: 0 0 12px; }
+.homeTasks { margin: 0; padding: 0; list-style: none; }
+.homeTasks a { display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px; border-top: 1px solid var(--line); border-left: 4px solid var(--tone-ink); color: var(--ink); }
+.homeTasks a:hover { background: var(--hover); text-decoration: none; }
+.homeTasks strong { justify-self: start; min-width: 36px; padding: 2px 8px; border-radius: 12px; background: var(--tone-bg); color: var(--tone-ink); text-align: center; }
+.homeDone { margin: 0; padding: 12px 16px; border-left: 4px solid var(--success-border); background: var(--success-bg); color: var(--success-ink); }
+.homeContinue { background: var(--accent-tint); }
+.homeOpen { display: inline-block; margin-top: 8px; padding: 8px 16px; }
+.homeSession { margin-top: 16px; max-width: 480px; }
+.homeSession article { padding: 24px; background: var(--layer); }
+@media (max-width: 800px) { .homeMetrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .homeColumns { grid-template-columns: 1fr; } }

@@ -2,6 +2,12 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Home thành danh sách việc cần làm — 2026-11-02
+
+- [x] `GET /api/home/summary`: tổng WO mở, thiếu lịch, thiếu PIC, quá Target theo scope được cấp; nháp, upload và route chưa rõ kết quả của chính user. Kiểm tra quyền trước và sau khi đọc Maximo.
+- [x] Home hiện metric và danh sách việc xếp theo độ khẩn; Maximo lỗi thì báo chưa đọc được, không hiện số 0.
+- Giới hạn: số trong tháng hiện tại nên WO quá hạn từ tháng trước chưa tính; link chỉ mở WO Scheduler, chưa áp bộ lọc; chưa đo thời gian tải.
+
 ## Căn giữa số trang ở pager bảng WO — 2026-11-02
 
 - [x] `.pageButton` căn giữa nội dung cả hai chiều. Chỉ sửa CSS; chưa xem trên trình duyệt, chưa deploy.

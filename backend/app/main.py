@@ -16,6 +16,7 @@ from app.auth.planner import router as planner_router
 from app.auth.sessions import logout, session_info
 from app.auth.settings import router as settings_router
 from app.config import Settings
+from app.maximo.home_routes import router as home_router
 from app.maximo.page_routes import router as maximo_page_router
 from app.maximo.reader import MaximoReadError
 from app.maximo.routes import router as maximo_router
@@ -83,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(planner_router)
     app.include_router(settings_router)
     app.include_router(maximo_router)
+    app.include_router(home_router)
     app.include_router(maximo_page_router)
     app.include_router(scheduling_router)
     app.include_router(batches_router)

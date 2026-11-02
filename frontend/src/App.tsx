@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { getLiveness } from './api/client';
 import { DemoScheduler } from './scheduling/DemoScheduler';
 import styles from './App.module.css';
 import bdpocLogo from './assets/bdpoc-logo.png';
-import { SessionPanel } from './auth/SessionPanel';
+import { Home } from './home/Home';
 import { WorkOrders } from './scheduling/WorkOrders';
 import { UserMenu } from './components/UserMenu';
 import { Settings } from './components/Settings';
@@ -41,31 +40,6 @@ function PageMenu() {
       {pages.map(([to, label]) => <NavLink key={to} to={to} onClick={() => setOpen(false)}>{label}</NavLink>)}
     </nav>}
   </div>;
-}
-
-function Overview() {
-  const [status, setStatus] = useState('Đang kiểm tra…');
-  useEffect(() => {
-    const controller = new AbortController();
-    getLiveness(controller.signal).then((ok) => setStatus(ok ? 'Đang hoạt động' : 'Chưa sẵn sàng'))
-      .catch(() => { if (!controller.signal.aborted) setStatus('Chưa kết nối'); });
-    return () => controller.abort();
-  }, []);
-  return <>
-    <div className={styles.pageTitle}><h1>Tổng quan</h1></div>
-    <div className={styles.cards}>
-      <Link className={styles.actionCard} to="/work-orders"><span>Work orders</span><h2>Lập lịch WO</h2>
-        <p>Lấy WO theo phạm vi được cấp, chỉnh lịch, PIC, duration và lưu nháp trước khi upload.</p></Link>
-      <Link className={styles.actionCard} to="/resource-timeline"><span>Resource timeline</span><h2>Phân công nhân lực</h2>
-        <p>Xếp task theo ngày và capacity thật của rota.</p></Link>
-      <Link className={styles.actionCard} to="/rota-imports"><span>Rota</span><h2>Upload và kích hoạt rota</h2>
-        <p>Upload bảng rota, xem staging đã lưu rồi mới kích hoạt.</p></Link>
-    </div>
-    <div className={styles.cards}>
-      <SessionPanel />
-      <article><span>Dịch vụ</span><h2>{status}</h2><p>Trạng thái tiến trình backend; chưa xác nhận kết nối dữ liệu Maximo.</p></article>
-    </div>
-  </>;
 }
 
 export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?: boolean } = {}) {
@@ -106,7 +80,7 @@ export function App({ autoRetrieveWorkOrders = true }: { autoRetrieveWorkOrders?
     <header className={styles.header} onClickCapture={guardNavigation}><PageMenu />
       <span className={styles.brand}><img className={styles.brandLogo} src={bdpocLogo} alt="Petrovietnam Biendong POC" /><span className={styles.brandName}>{pageTitle}</span></span>
       <UserMenu><span ref={setRangeSlot} className={styles.headerRange} hidden={!workOrdersActive} /></UserMenu></header>
-    <main className={workOrdersActive ? `${styles.fullWidth} ${styles.workOrdersMain}` : resourceTimelineActive ? styles.fullWidth : undefined} onClickCapture={guardNavigation}>{navigationBlocked && resourceMutationPending && <p role="status">Đang có yêu cầu phân công chưa đối soát. Hoàn tất hoặc đối soát để chuyển trang.</p>}<Routes><Route path="/" element={<Overview />} /><Route path="/demo" element={<DemoScheduler />} />
+    <main className={workOrdersActive ? `${styles.fullWidth} ${styles.workOrdersMain}` : resourceTimelineActive ? styles.fullWidth : undefined} onClickCapture={guardNavigation}>{navigationBlocked && resourceMutationPending && <p role="status">Đang có yêu cầu phân công chưa đối soát. Hoàn tất hoặc đối soát để chuyển trang.</p>}<Routes><Route path="/" element={<Home />} /><Route path="/demo" element={<DemoScheduler />} />
       <Route path="/work-orders" element={null} />
       <Route path="/assignment-demo" element={null} />
       <Route path="/rota-staging-demo" element={null} />
