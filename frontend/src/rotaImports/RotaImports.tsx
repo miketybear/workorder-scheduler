@@ -14,7 +14,7 @@ const monthName = (month: string) => {
 // Mirrors WORK and OFF in backend/app/rota/parser.py.
 const WORK_CODES = '1, OT, M, OM, A, AM';
 const OFF_CODES = 'AF, D, DM, DF, F, AL, SL, PL, CL, O, O4, O5, O6, AB';
-const importState = (item: ImportSummary) => item.active_since ? 'Đang dùng' : item.status === 'staged' ? 'Bản nháp' : item.status === 'activated' ? 'Đã thay bằng bản mới hơn' : 'Đã hủy';
+const importState = (item: ImportSummary) => item.active_since ? 'Đang dùng' : item.status === 'staged' ? 'Bản nháp' : 'Đã thay bằng bản mới hơn';
 const roleName: Record<string, string> = {
   TECH: 'Technician', SUP: 'Supervisor', ASST_SUP: 'Assistant supervisor',
   CONTROL_RM_ENGINEER: 'Control RM Engineer', MATERIAL_CONTROLLER: 'Material Controller',
@@ -124,10 +124,11 @@ export function RotaImports({ active = true }: { active?: boolean }) {
     const controller = new AbortController();
     void listRotaImports(poolId, controller.signal).then(items => {
       if (controller.signal.aborted) return;
-      setImports(items);
-      const retained = preview?.pool_id === poolId ? items.find(item => item.id === preview.id) : undefined;
+      const live = items.filter(item => item.status !== 'cancelled');
+      setImports(live);
+      const retained = preview?.pool_id === poolId ? live.find(item => item.id === preview.id) : undefined;
       if (retained && retained.version === preview?.version && retained.status === preview.status) return;
-      const restoreItem = retained ?? items[0];
+      const restoreItem = retained ?? live[0];
       if (!restoreItem) { setPreview(null); setSelectedMonth(''); return; }
       if (!controller.signal.aborted) setBusy('restore');
       return getRotaImport(restoreItem.id, poolId, controller.signal).then(saved => {
@@ -161,7 +162,9 @@ export function RotaImports({ active = true }: { active?: boolean }) {
   };
   const installPreview = (next: RotaPreview) => {
     if (next.pool_id !== poolRef.current) return;
-    setChosenStep(null); setPreview(next); setImports(items => [{ ...items.find(item => item.id === next.id), ...next }, ...items.filter(item => item.id !== next.id)]);
+    setChosenStep(null);
+    if (next.status === 'cancelled') { setPreview(null); setSelectedMonth(''); setImports(items => items.filter(item => item.id !== next.id)); return; }
+    setPreview(next); setImports(items => [{ ...items.find(item => item.id === next.id), ...next }, ...items.filter(item => item.id !== next.id)]);
     const firstMonth = dateMonth(next.coverage_from ?? '') || dateMonth(next.rows.flatMap(row => row.days).map(day => day.date).sort()[0] ?? '');
     setSelectedMonth(current => current && next.rows.some(row => row.days.some(day => dateMonth(day.date) === current)) ? current : firstMonth);
   };
@@ -227,7 +230,7 @@ export function RotaImports({ active = true }: { active?: boolean }) {
   const laborProblems = preview?.labor_snapshot_at ? (preview.rows.map(row => ({ row, problem: laborProblem(row) })).filter((entry): entry is { row: RotaRow; problem: { reason: string; action: string } } => entry.problem !== null)) : [];
   const activeImport = imports.find(item => item.active_since);
   const step = chosenStep ?? (!preview ? 1 : preview.status === 'activated' ? 3 : 2);
-  const activationBlocked = !preview || preview.status === 'cancelled' || preview.status === 'staged' && (preview.summary.blocking_count > 0 || preview.source_errors.length > 0);
+  const activationBlocked = !preview || preview.status === 'staged' && (preview.summary.blocking_count > 0 || preview.source_errors.length > 0);
   const visibleIssues = (row: RotaRow) => row.issues.filter(issue => !laborSnapshotStale || !['mapping', 'craft', 'duplicate'].includes(issue.kind));
   const rowNeedsAttention = (row: RotaRow) => row.issues.length > 0;
   const attentionCount = preview?.rows.filter(rowNeedsAttention).length ?? 0;
@@ -322,7 +325,7 @@ export function RotaImports({ active = true }: { active?: boolean }) {
         {/* Stays mounted across steps: leaving must not lose an activation whose result is still unknown. */}
         <div hidden={step !== 3}>
         <RotaActivation key={`${preview.pool_id}:${preview.id}:${preview.version}:${preview.status}`} preview={preview} canWrite={selectedPool.capability === 'write'} busy={Boolean(busy)} resetToken={activationResetToken}
-          onActivated={() => { void restore(preview); void listRotaImports(preview.pool_id, new AbortController().signal).then(items => { if (poolRef.current === preview.pool_id) setImports(items); }).catch(() => undefined); }} onBusyChange={isBusy => { if (isBusy) setBusy('activation'); else setBusy(current => current === 'activation' ? '' : current); }}
+          onActivated={() => { void restore(preview); void listRotaImports(preview.pool_id, new AbortController().signal).then(items => { if (poolRef.current === preview.pool_id) setImports(items.filter(item => item.status !== 'cancelled')); }).catch(() => undefined); }} onBusyChange={isBusy => { if (isBusy) setBusy('activation'); else setBusy(current => current === 'activation' ? '' : current); }}
           onAccessFailure={() => { setBusy(''); setPreview(null); setImports([]); setReloadKey(key => key + 1); }} />
         </div>
         <div hidden={step !== 2}>

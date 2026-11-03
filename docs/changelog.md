@@ -7,6 +7,7 @@ Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trư�
 - [x] Có dòng cố định "Rota đang dùng" lấy từ lần kích hoạt mới nhất của nhóm nhân lực (`active_since` trong danh sách import); mỗi lần tải lên có nhãn trạng thái; bỏ số phiên kỹ thuật và huy hiệu mâu thuẫn.
 - [x] Hộp xác nhận nêu ảnh hưởng tới Resource Timeline và cách quay lại; báo rõ khi file trùng rota đang dùng. Sau tải lên có thông báo nổi bật và tự cuộn tới phần xem trước. Nút tải lên có gợi ý khi chưa đủ điều kiện.
 - [x] Đổi chữ khỏi thuật ngữ kỹ thuật, Material Controller không còn khung đỏ, có chú giải mã ngày, bỏ chữ "trống" lặp lại, có trạng thái đang tải.
+- [x] Bản đã hủy không còn hiện và không mở được trên trang; dữ liệu vẫn giữ trong database.
 - [x] Trang chia 3 bước Chọn file, Kiểm tra, Kích hoạt; lỗi chặn khóa bước 3. Bảng tháng mặc định chỉ hiện người cần xem, mỗi người một dòng, cao tối đa 60% màn hình, cột tên và tiêu đề cố định.
 - Bằng chứng: frontend vitest và `tsc`; test rota backend với PostgreSQL, gồm `active_since`.
 - Giới hạn: chưa xem trên giao diện. Kích hoạt có phạm vi ngày, nên bản cũ có thể vẫn áp dụng ngoài phạm vi của bản mới nhất.

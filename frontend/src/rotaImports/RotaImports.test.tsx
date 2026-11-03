@@ -183,13 +183,26 @@ it('reloads the latest saved version after refresh conflict and never retries up
   expect(uploadRotaImport).toHaveBeenCalledTimes(1);
 });
 
-it('does not refresh a cancelled staging session', async () => {
+it('hides cancelled imports and returns to choosing a file', async () => {
   authorize();
   const cancelled = { ...stage, status:'cancelled' };
-  vi.mocked(listRotaImports).mockResolvedValue([cancelled]); vi.mocked(getRotaImport).mockResolvedValue(cancelled as never);
+  vi.mocked(listRotaImports).mockResolvedValue([cancelled]);
   render(<RotaImports />);
-  expect(await screen.findByText('Xem trước · rota.xlsx')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name:'Làm mới LABOR' })).toBeDisabled();
+  expect(await screen.findByRole('button', { name:/^1/ })).toHaveAttribute('aria-current', 'step');
+  expect(screen.queryByText('rota.xlsx')).not.toBeInTheDocument();
+  expect(getRotaImport).not.toHaveBeenCalled();
+});
+
+it('leaves the import out of the page once it is cancelled', async () => {
+  authorize();
+  vi.mocked(listRotaImports).mockResolvedValue([stage]);
+  vi.mocked(getRotaImport).mockResolvedValue(stage as never);
+  vi.mocked(cancelRotaImport).mockResolvedValue({ ...stage, status:'cancelled' } as never);
+  render(<RotaImports />);
+  fireEvent.click(await screen.findByRole('button', { name:'Hủy bản nháp' }));
+  expect(await screen.findByText('Đã hủy bản nháp.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name:/^1/ })).toHaveAttribute('aria-current', 'step');
+  expect(screen.queryByText('rota.xlsx')).not.toBeInTheDocument();
 });
 
 it('reloads a retained import when its version/status changed while the timeline route was away', async () => {
