@@ -2,6 +2,13 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Panel + WO chặn WO chưa đủ điều kiện — 2026-11-03
+
+- [x] Panel Phân công WO hiện lý do và khóa Xác nhận lưu khi WO thiếu lịch/PIC trên Maximo hoặc ngày đang chọn nằm ngoài lịch WO. Lỗi lưu giờ hiện ngay trong panel thay vì bị che phía sau.
+- [x] Thẻ Backlog không còn nói hai lần phần thiếu lịch/PIC.
+- Bằng chứng: frontend vitest và `tsc`.
+- Giới hạn: chưa thử trên staging. Chưa có test riêng cho trường hợp ngày ngoài lịch ở panel. Kế hoạch tự chia nhiều ngày chỉ kiểm tra ngày bắt đầu ở panel; ngày sau vượt lịch do backend từ chối.
+
 ## Resource timeline chỉ phân công WO đã có lịch và PIC — 2026-11-02
 
 - [x] Backend chặn tạo, chuyển, thêm ngày và gửi task (đơn lẻ, theo ngày, hàng loạt) khi Maximo thiếu `schedstart`, `schedfinish` hoặc `assignedto`, hoặc ngày phân công nằm ngoài lịch WO (so theo ngày ở múi giờ connection, tính cả hai đầu). Đọc giá trị hiện tại trên Maximo nên WO xếp lịch trực tiếp trên Maximo vẫn hợp lệ.

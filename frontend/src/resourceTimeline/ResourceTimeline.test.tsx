@@ -801,11 +801,12 @@ it('requires saving changed hours before uploading the persisted task',async()=>
   expect(screen.getByText('Lưu thay đổi phân công trước khi gửi lên Maximo.')).toBeInTheDocument();
 });
 
-it('shows the PIC and schedule range on backlog cards, or says they are missing',async()=>{
+it('shows the PIC and schedule range on backlog cards, or names only once what is missing',async()=>{
   const withPic={...workOrder,wonum:'WO-PIC',workorderid:'wo-pic',assignedto:'HAIDQ',schedstart:'2026-10-04T15:06:00+07:00',schedfinish:'2026-10-31T15:06:00+07:00'} as unknown as typeof workOrder;
   await loaded(snapshot,[withPic,{...workOrder,schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder]);
   expect(screen.getByText('PIC HAIDQ · 04/10 → 31/10')).toBeInTheDocument();
-  expect(screen.getByText('Chưa có PIC · Chưa có lịch')).toBeInTheDocument();
+  expect(screen.getByText('Chưa có lịch và PIC trên Maximo, chưa thể phân công')).toBeInTheDocument();
+  expect(screen.queryByText(/Chưa có PIC/)).not.toBeInTheDocument();
   expect(screen.getByRole('button',{name:/WO-PIC .*PIC HAIDQ · Lịch 04\/10 → 31\/10/})).toBeInTheDocument();
 });
 
@@ -815,6 +816,15 @@ it('warns, without blocking, when assignments fall outside the WO schedule or th
   expect(screen.getByText(/1 ngày phân công ngoài lịch WO · PIC chưa nằm trong người được giao/)).toBeInTheDocument();
   expect(screen.getByRole('button',{name:/Trạng thái: .*Cảnh báo: ngày này nằm ngoài lịch WO/})).toBeEnabled();
   expect(screen.queryByRole('button',{name:/làm PIC/})).not.toBeInTheDocument();
+});
+
+it('explains and blocks saving when the panel picks a WO without a schedule or PIC',async()=>{
+  const unscheduled={...workOrder,schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder;
+  await loaded(snapshot,[unscheduled]);
+  fireEvent.click(screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-05'}));
+  fireEvent.change(await screen.findByRole('combobox',{name:'Work Order'}),{target:{value:'SITE|wo-1'}});
+  expect(await screen.findByText(/Chưa có lịch và PIC trên Maximo. Hãy upload/)).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Xác nhận lưu'})).toBeDisabled();
 });
 
 it('refuses to place a WO that Maximo has no schedule or PIC for, and says why',async()=>{

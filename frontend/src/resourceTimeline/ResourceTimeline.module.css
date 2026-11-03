@@ -296,7 +296,6 @@
 .capacity { position: relative; }
 
 .woCard .woMeta { color: var(--ink); font-weight: 600; }
-.woCard .woMeta[data-no-pic] { color: var(--warning-ink); }
 
 .icon_warning { color: var(--warning-ink); }
 .woCard .woWarn { display: flex; align-items: flex-start; gap: 6px; color: var(--warning-ink); font-weight: 600; }
