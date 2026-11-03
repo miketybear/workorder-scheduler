@@ -267,8 +267,21 @@
 .editorSection .detailFacts { margin: 0; }
 .editorSection details .detailFacts { margin-top: 8px; }
 .editorSection .detailFacts > div { grid-template-columns: minmax(100px, .8fr) minmax(0, 1.2fr); padding-bottom: 8px; border-bottom: 1px solid var(--line); }
-.editorFooter { flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; border-top: 1px solid var(--line); }
-.editorActions { display: flex; gap: 8px; margin-left: auto; }
+.editorFooter { flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: stretch; justify-content: space-between; background: var(--layer); border-top: 1px solid var(--line); }
+.editorFooter > div:not(.editorActions) { padding: 8px 16px; }
+.closeButton { width: 48px; min-height: 48px; justify-content: center; padding: 0; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.closeButton:hover:not(:disabled) { background: var(--hover); }
+.secondary { border-color: var(--secondary-button); background: var(--secondary-button); color: #ffffff; }
+.secondary:hover:not(:disabled) { background: var(--secondary-button-hover); border-color: var(--secondary-button-hover); color: #ffffff; }
+.editorSummary { flex-basis: 100%; margin: 0; color: var(--muted); }
+.editorChips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.editorChips > span { padding: 1px 8px; border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 12px; line-height: 18px; }
+.singlePanel .editedField { padding-left: 8px; border-left: 2px solid var(--link); background: transparent; }
+.editedMark { color: var(--link); }
+.fieldBaseline { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; font-weight: 400; }
+.singlePanel .readOnlyField input { background: transparent; border-bottom-color: var(--line); padding-left: 0; color: var(--ink); cursor: default; }
+.editorActions { flex: 1 1 50%; display: grid; grid-template-columns: 1fr 1fr; margin-left: auto; }
+.editorActions button { min-height: 64px; align-items: flex-start; border-radius: 0; }
 @media (max-width: 1000px) { .sidePanel.singlePanel { width: calc(100% - 32px); }.editorLayout { grid-template-columns: minmax(260px, 1fr) minmax(0, 1.5fr); gap: 16px; }.editorBody { padding: 16px; } }
 @media (max-width: 900px) { .singlePanel .filters { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .editorLayout { grid-template-columns: 1fr; }.editorSections { grid-column: 1; }.editorReference { grid-row: 2; }.singlePanel .editorHeader, .editorFooter { padding: 12px 16px; }.singlePanel .filters { grid-template-columns: 1fr; } }

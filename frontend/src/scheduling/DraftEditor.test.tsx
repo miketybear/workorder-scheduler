@@ -23,7 +23,7 @@ it.each([new Error('Network lost'), new RetrievalError(504, 'Yêu cầu xử lý
   vi.mocked(saveDraft).mockRejectedValueOnce(failure).mockResolvedValue({ draft_id: 'id', version: 1, state: 'draft' });
   render(<DraftEditor {...props} />);
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
-  expect(screen.getByRole('table')).toHaveTextContent('89');
+  expect(screen.getByText('Maximo: 8')).toBeInTheDocument();
   fireEvent.click(screen.getByText('Lưu nháp'));
   await screen.findByText(failure.message);
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
@@ -239,7 +239,7 @@ it('requires target intent, resets targets when unchecked, and validates duratio
   fireEvent.change(screen.getByLabelText('Est. Duration'), { target: { value: '-1' } });
   fireEvent.click(screen.getByText('Lưu nháp'));
   expect(await screen.findByRole('alert')).toHaveTextContent('Duration phải là số không âm');
-  fireEvent.click(screen.getByText('Reset về baseline'));
+  fireEvent.click(screen.getByText('Khôi phục giá trị Maximo'));
   setDateTime(screen.getByLabelText('Target Finish'), '2026-09-29T16:00');
   fireEvent.click(screen.getByText('Lưu nháp'));
   expect(await screen.findByRole('alert')).toHaveTextContent('kết thúc không được trước bắt đầu');
@@ -249,8 +249,8 @@ it('requires target intent, resets targets when unchecked, and validates duratio
 it.each(['PM', 'CFT'])('locks target controls for %s', async (worktype) => {
   vi.mocked(getDetail).mockResolvedValue({ ...detail, baseline: { ...baseline, worktype } });
   render(<DraftEditor {...props} />);
-  expect(await screen.findByLabelText('Change Target?')).toBeDisabled();
-  expect(groupControl(screen.getByLabelText('Target Start'))).toBeDisabled();
+  expect(await screen.findByLabelText('Target Start')).toHaveAttribute('readonly');
+  expect(screen.queryByLabelText('Change Target?')).not.toBeInTheDocument();
 });
 
 it.each(['PM', 'CFT'])('never includes target-change fields in a %s schedule draft payload', async (worktype) => {
@@ -273,7 +273,7 @@ it.each(['read-only', 'session recheck', 'missing crew'])('disables editing and 
   await screen.findByLabelText('Est. Duration');
   view.rerender(<DraftEditor {...props} writable={condition !== 'read-only'} suspended={condition === 'session recheck'} />);
   expect(screen.getByLabelText('Est. Duration')).toBeDisabled();
-  expect(screen.getByText('Reset về baseline')).toBeDisabled();
+  expect(screen.getByText('Khôi phục giá trị Maximo')).toBeDisabled();
   expect(screen.getByText('Lưu nháp')).toBeDisabled();
   expect(saveDraft).not.toHaveBeenCalled();
 });
@@ -418,7 +418,7 @@ it('uses date pickers in the connection timezone and serializes a changed date w
   setDateTime(screen.getByLabelText('Scheduled Start'), '2026-10-01T13:45');
   // 13:45 leaves 4h45 in the 06:30-18:30 window; the other 3h15 run from 06:30 the next morning.
   expect(finish).toHaveValue('02/10/2026, 09:45');
-  expect(screen.getByRole('table')).toHaveTextContent('01/10/2026, 13:45');
+  expect(getDateTime(screen.getByLabelText('Scheduled Start'))).toBe('2026-10-01T13:45');
   fireEvent.click(screen.getByText('Lưu nháp'));
   await waitFor(() => expect(saveDraft).toHaveBeenCalled());
   expect(vi.mocked(saveDraft).mock.calls[0][1]).toEqual({ schedstart: '2026-10-01T13:45:00+07:00', schedfinish: '2026-10-02T02:45:00.000Z' });
@@ -537,7 +537,7 @@ it('shows the PIC code with the person name but keeps the code as the value that
   expect(within(select).getByRole('option', { name: 'OTHER — Le Thi Other' })).toBeInTheDocument();
   fireEvent.change(select, { target: { value: 'OTHER' } });
   expect(select).toHaveValue('OTHER');
-  expect(screen.getByRole('table')).toHaveTextContent('OTHER — Le Thi Other');
+  expect(screen.getByRole('option', { name: 'OTHER — Le Thi Other', selected: true })).toBeInTheDocument();
   fireEvent.click(screen.getByText('Lưu nháp'));
   await waitFor(() => expect(saveDraft).toHaveBeenCalled());
   expect(vi.mocked(saveDraft).mock.calls[0][1]).toEqual({ assignedto: 'OTHER' });

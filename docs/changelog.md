@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Panel chi tiết WO theo Carbon — 2026-11-03
+
+- [x] Đầu panel có mô tả và nhãn WO; cột trái bỏ các dòng trùng. Trường đã sửa có viền trái và chữ Đã sửa, giá trị Maximo ghi ngay dưới trường thay cho bảng đối chiếu. Scheduled Finish và Target của PM/CFT hiện read-only, không còn disabled. Chân panel hai nút chia đều, nút đóng dùng icon Carbon.
+- Bằng chứng: frontend vitest và `tsc`. Giới hạn: chưa xem trên giao diện.
+
 ## Bảng có màu dòng xen kẽ — 2026-11-03
 
 - [x] Mọi bảng có màu dòng xen kẽ ở cả giao diện sáng và tối, trừ lưới Resource Timeline. Trạng thái hover, chọn và nháp vẫn ưu tiên.

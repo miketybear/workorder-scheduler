@@ -7,6 +7,7 @@ import { ShiftNotice } from './ShiftNotice';
 import { DateTimeInput } from '../components/DateTimeInput';
 import { picLabel } from './presentation';
 import { todayIn } from '../resourceTimeline/timelineHelpers';
+import { CloseIcon } from '../resourceTimeline/CarbonIcons';
 import styles from '../App.module.css';
 import { WorkOrderFacts } from './WorkOrderFacts';
 import { isAwareDate, localDateTime, zonedDateTime } from '../api/dates';
@@ -176,35 +177,48 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   }
   const editingDisabled = !writable || busy || suspended || blocked || uploadLocked || detail?.pics_configured === false;
   const defaultTimes: Partial<Record<EditableField, string>> = { schedstart: '06:30', targcompdate: '23:59' };
+  const shownValue = (field: EditableField, value: string | null | undefined) => field === 'assignedto' ? picLabel(value ?? null, names) || '—'
+    : field === 'estdur' ? value ?? '—' : displayDate(value ?? null, timezone);
+  function fieldNote(field: EditableField) {
+    if (!detail || !changed.includes(field)) return null;
+    return <small className={styles.fieldBaseline}>Maximo: {shownValue(field, detail.baseline[field])}
+      {blocked && <> · Maximo hiện tại: {shownValue(field, (verifiedDetail ?? detail).item[field])}</>}</small>;
+  }
   function fieldControl(field: EditableField) {
     if (!detail) return null;
-    const className = changed.includes(field) ? styles.modified : undefined;
+    const edited = changed.includes(field);
+    const className = edited ? styles.editedField : undefined;
+    const editedMark = edited && field !== 'schedfinish' ? <span className={styles.editedMark}> Đã sửa</span> : null;
+    if (target(field) && ['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase())) {
+      return <label key={field} className={styles.readOnlyField}>{labels[field]}<input aria-label={labels[field]} readOnly value={displayDate(detail.baseline[field], timezone)} /></label>;
+    }
     if (field === 'schedstart' || field === 'targstartdate' || field === 'targcompdate') {
       const current = changes[field] ?? detail.baseline[field];
       return <div key={field} className={`${styles.dateField} ${className ?? ''}`}>
-        <span>{labels[field]}</span>
+        <span>{labels[field]}{editedMark}</span>
         <DateTimeInput label={labels[field]} value={current ? localDateTime(current, timezone) : ''} defaultTime={defaultTimes[field]} today={todayIn(timezone)}
-          disabled={target(field) && ['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase())}
           onChange={(wall) => {
             try { change(field, wall ? zonedDateTime(wall, timezone) : ''); }
             catch (cause) { setError(cause instanceof Error ? cause.message : 'Ngày giờ không hợp lệ.'); }
           }} />
+        {fieldNote(field)}
       </div>;
     }
-    return <label key={field} className={className}>
-      {labels[field]}{field === 'schedfinish' ? <><input aria-label={labels[field]} readOnly value={displayDate(changes.schedfinish ?? detail.baseline.schedfinish, timezone)} /><small>Tự tính theo ca 06:30–18:30, tối đa 10,5 giờ/ngày.</small></> : field === 'assignedto' ? <select value={changes[field] ?? detail.baseline[field] ?? ''} onChange={(e) => change(field, e.target.value)}>
+    return <label key={field} className={[className, field === 'schedfinish' ? styles.readOnlyField : ''].filter(Boolean).join(' ') || undefined}>
+      <span>{labels[field]}{field === 'schedfinish' ? ' · Tự tính' : ''}{editedMark}</span>{field === 'schedfinish' ? <><input aria-label={labels[field]} readOnly value={displayDate(changes.schedfinish ?? detail.baseline.schedfinish, timezone)} /><small>Tự tính theo ca 06:30–18:30, tối đa 10,5 giờ/ngày.</small></> : field === 'assignedto' ? <select aria-label={labels[field]} value={changes[field] ?? detail.baseline[field] ?? ''} onChange={(e) => change(field, e.target.value)}>
         <option value={detail.baseline[field] ?? ''}>{picLabel(detail.baseline[field], names) || 'Chọn PIC'}</option>
         {changes.assignedto && changes.assignedto !== detail.baseline.assignedto && !pics.includes(changes.assignedto) &&
           <option value={changes.assignedto}>{picLabel(changes.assignedto, names)} (không còn trong crew)</option>}
         {pics.filter((pic) => pic !== detail.baseline[field]).map((pic) => <option key={pic} value={pic}>{picLabel(pic, names)}</option>)}
-      </select> : <input type="text" inputMode="decimal"
+      </select> : <input aria-label={labels[field]} type="text" inputMode="decimal"
         value={changes[field] ?? detail.baseline[field] ?? ''} onChange={(e) => change(field, e.target.value)} />}
+      {fieldNote(field)}
     </label>;
   }
   return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy && !uploadLocked) onClose(); }} aria-label="Chỉnh sửa nháp" role="dialog" aria-modal="false" className={`${styles.draftEditor} ${styles.sidePanel} ${styles.singlePanel}`}>
     <div className={`${styles.panelHeading} ${styles.editorHeader}`}>
-      <div><h2>{detail ? detail.item.wonum : 'Đang mở WO…'}</h2>{saved && <span className={styles.badge}>Nháp đã lưu{saved.updated_at ? ` · ${displayDate(saved.updated_at, timezone)}` : ''}</span>}{connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>}</div>
-      <button className={styles.ghost} disabled={busy || uploadLocked} onClick={onClose}>Đóng nháp</button>
+      <div><h2>{detail ? detail.item.wonum : 'Đang mở WO…'}</h2>{saved && <span className={styles.badge}>Nháp đã lưu{saved.updated_at ? ` · ${displayDate(saved.updated_at, timezone)}` : ''}</span>}{connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>}{detail && <p className={styles.editorSummary}>{detail.item.description}</p>}{detail && <span className={styles.editorChips}>{[detail.item.worktype, detail.item.status, detail.item.wopriority_description ?? detail.item.wopriority].filter(Boolean).map((text) => <span key={String(text)}>{text}</span>)}</span>}</div>
+      <button className={styles.closeButton} aria-label="Đóng nháp" title="Đóng" disabled={busy || uploadLocked} onClick={onClose}><CloseIcon /></button>
     </div>
     <div className={styles.editorBody}>
       {error && <p role="alert" className={styles.error}>{error}</p>}
@@ -228,12 +242,12 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
             </fieldset>
             <fieldset className={styles.editorSection} disabled={editingDisabled}>
               <legend>Ngày mục tiêu</legend>
-              <label><input type="checkbox" checked={!!changes.change_target} disabled={['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase())}
+              {!['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase()) && <label><input type="checkbox" checked={!!changes.change_target}
                 onChange={(event) => setChanges((previous) => {
                   const next = { ...previous }; delete next.targstartdate; delete next.targcompdate;
                   if (event.target.checked) next.change_target = true; else delete next.change_target;
                   return next;
-                })} />Change Target?</label>
+                })} />Change Target?</label>}
               {['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase()) && <p>PM/CFT không được đổi target.</p>}
               {!['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase()) && <p>Chọn ngày mục tiêu sẽ bật Change Target.</p>}
               <div className={styles.filters}>{editableFields.filter(target).map(fieldControl)}</div>
@@ -260,13 +274,6 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
                   !sameField('schedfinish', detail.baseline.schedfinish, pmRestoreOrigin?.schedfinish ?? null)) &&
                 <p>Khôi phục Duration chỉ khả dụng sau khi ngày lịch gốc đã được xác nhận trong Maximo.</p>}
             </section>}
-            {changed.length > 0 && <section className={styles.editorSection} aria-label="Đối chiếu Maximo / Nháp"><h3>Đối chiếu Maximo / Nháp</h3>
-              <div className={styles.tableWrap}><table aria-label="Thay đổi trước / sau"><thead><tr><th>Trường</th><th>Maximo khi tạo nháp</th><th>Nháp</th>{blocked && <th>Maximo hiện tại</th>}</tr></thead>
-                <tbody>{changed.map((field) => <tr key={field}><th>{labels[field]}</th>
-                  <td>{field === 'assignedto' ? picLabel(detail.baseline[field], names) || '—' : field === 'estdur' ? detail.baseline[field] ?? '—' : displayDate(detail.baseline[field], timezone)}</td>
-                  <td>{field === 'assignedto' ? picLabel(changes[field], names) : field === 'estdur' ? changes[field] : displayDate(changes[field] ?? null, timezone)}</td>
-                  {blocked && <td>{field === 'assignedto' || field === 'estdur' ? (verifiedDetail ?? detail).item[field] ?? '—' : displayDate((verifiedDetail ?? detail).item[field], timezone)}</td>}</tr>)}</tbody></table></div>
-            </section>}
             {saved && writable && <section className={styles.editorSection} aria-label="Upload nháp đã lưu">
               <UploadPreviewControls draft={saved} selection={uploadSelection} connection={connection} connectionId={scope.connection_id}
                 timezone={timezone} context={uploadContext} onDenied={onDenied} active={active}
@@ -278,9 +285,8 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
             </section>}
           </div>
           <section className={`${styles.editorSection} ${styles.editorReference}`} aria-label="Thông tin WO từ Maximo">
-            <h3>Thông tin WO</h3>
-            <p className={styles.editorHint}>Dữ liệu gốc từ Maximo</p>
-            <WorkOrderFacts row={detail.item} timezone={timezone} datesOnly={false} picNames={names} />
+            <h3>Thông tin từ Maximo</h3>
+            <WorkOrderFacts row={detail.item} timezone={timezone} datesOnly={false} picNames={names} omit={['wonum', 'description', 'worktype', 'status', 'wopriority', 'assignedto']} />
             <details><summary>Lịch Maximo và thực tế</summary><WorkOrderFacts row={detail.item} timezone={timezone} datesOnly /></details>
           </section>
         </div>
@@ -296,7 +302,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
         </div>}
       </div>}
       <div className={styles.editorActions}>
-        <button className={styles.ghost} disabled={editingDisabled} onClick={() => { setChanges({}); setError(''); setNotice(''); }}>Reset về baseline</button>
+        <button className={styles.secondary} disabled={editingDisabled} onClick={() => { setChanges({}); setError(''); setNotice(''); }}>Khôi phục giá trị Maximo</button>
         <button className={styles.primary} disabled={editingDisabled || changed.length === 0 || !unsaved || !!validation()} onClick={() => void mutate()}>{busy ? 'Đang lưu…' : 'Lưu nháp'}</button>
       </div>
     </div>}

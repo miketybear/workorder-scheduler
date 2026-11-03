@@ -9,6 +9,10 @@ export function CheckmarkFilledIcon() {
   return <svg className={styles.carbonIcon} viewBox="0 0 32 32" aria-hidden="true"><path d="M16,2A14,14,0,1,0,30,16,14,14,0,0,0,16,2ZM14,21.5908l-5-5L10.5906,15,14,18.4092,21.41,11l1.5957,1.5859Z" /><path fillOpacity={0} d="M14 21.591 9 16.591 10.591 15 14 18.409 21.41 11 23.005 12.585 14 21.591z" data-icon-path="inner-path" /></svg>;
 }
 
+export function CloseIcon() {
+  return <svg className={styles.carbonIcon} viewBox="0 0 32 32" aria-hidden="true"><path d="M17.4141 16 24 9.4141 22.5859 8 16 14.5859 9.4143 8 8 9.4141 14.5859 16 8 22.5859 9.4143 24 16 17.4141 22.5859 24 24 22.5859 17.4141 16z" /></svg>;
+}
+
 export function UploadIcon() {
   return <svg className={styles.carbonIcon} viewBox="0 0 32 32" aria-hidden="true"><path d="M6 18 7.41 19.41 15 11.83 15 30 17 30 17 11.83 24.59 19.41 26 18 16 8 6 18z" /><path d="M6,8V4H26V8h2V4a2,2,0,0,0-2-2H6A2,2,0,0,0,4,4V8Z" /></svg>;
 }

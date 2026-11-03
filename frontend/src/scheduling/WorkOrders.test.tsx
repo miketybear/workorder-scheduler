@@ -569,7 +569,7 @@ it('keeps a saved draft reachable after closing without refreshing or deleting i
   fireEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   const authCalls = vi.mocked(getAuthSummary).mock.calls.length;
-  fireEvent.click(screen.getByText('Đóng nháp'));
+  fireEvent.click(screen.getByRole('button', { name:'Đóng nháp' }));
   // Removing focused panel controls may produce focus without a real window departure.
   await act(async () => fireEvent(window, new Event('focus')));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -593,14 +593,14 @@ it('keeps a saved draft reachable after closing without refreshing or deleting i
 it('protects unsaved closing and does not treat panel focus as leaving the page', async () => {
   await editWorkOrder();
   vi.spyOn(window, 'confirm').mockReturnValue(false);
-  fireEvent.click(screen.getByText('Đóng nháp'));
+  fireEvent.click(screen.getByRole('button', { name:'Đóng nháp' }));
   await act(async () => fireEvent(window, new Event('focus')));
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
   expect(saveDraft).not.toHaveBeenCalled();
   expect(deleteDraft).not.toHaveBeenCalled();
   expect(getAuthSummary).toHaveBeenCalledTimes(1);
   vi.mocked(window.confirm).mockReturnValue(true);
-  fireEvent.click(screen.getByText('Đóng nháp'));
+  fireEvent.click(screen.getByRole('button', { name:'Đóng nháp' }));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(screen.queryByText('Mở lại nháp đã lưu')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
@@ -641,7 +641,7 @@ it('deletes a saved draft without a native dialog or resetting login, query, fil
   fireEvent.click(screen.getByText('Xóa nháp'));
   expect(deleteDraft).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Xác nhận xóa nháp' }));
-  expect(screen.getByText('Đóng nháp')).toBeDisabled();
+  expect(screen.getByRole('button', { name:'Đóng nháp' })).toBeDisabled();
   await act(async () => finish());
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
@@ -792,8 +792,8 @@ it('preserves edits during explicit updates and blocks a changed baseline', asyn
   await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Cập nhật' })));
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
   expect(screen.getByText('Lưu nháp')).toBeDisabled();
-  expect(screen.getByRole('table', { name: 'Thay đổi trước / sau' })).toHaveTextContent('Maximo hiện tại');
-  expect(screen.getByRole('table', { name: 'Thay đổi trước / sau' })).toHaveTextContent('12');
+  expect(screen.getByRole('dialog', { name: 'Chỉnh sửa nháp' })).toHaveTextContent('Maximo hiện tại');
+  expect(screen.getByRole('dialog', { name: 'Chỉnh sửa nháp' })).toHaveTextContent('12');
 });
 
 it('rechecks the session after access expires during a manual data refresh', async () => {
@@ -887,7 +887,7 @@ it('shows every business data field in the panel while hiding technical identity
   expect(panel.getByText('25%')).toBeVisible();
   expect(panel.getByText('29/09/2026, 08:00')).not.toBeVisible();
   fireEvent.click(panel.getByText('Lịch Maximo và thực tế'));
-  for (const [, label] of columns.filter(([field]) => !['systemid', 'workorderid'].includes(field))) {
+  for (const [, label] of columns.filter(([field]) => !['systemid', 'workorderid', 'wonum', 'description', 'worktype', 'status', 'wopriority', 'assignedto'].includes(field))) {
     expect(panel.getAllByText(label, { exact: true }).length).toBeGreaterThan(0);
   }
   expect(panel.getByText('29/09/2026, 08:00')).toBeVisible();
