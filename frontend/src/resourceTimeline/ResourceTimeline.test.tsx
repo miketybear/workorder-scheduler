@@ -180,7 +180,7 @@ it('paginates the sorted WO list in groups of 20 and keeps the selected WO acros
   await screen.findByText('Trang 2 · 20 WO / 45');
   expect(view.container.querySelectorAll('button[data-allocation-state]')).toHaveLength(20);
   expect(api.timeline).toHaveBeenCalledTimes(1);
-  expect(api.orders.mock.calls[1][0]).toMatchObject({cursor:'1',view:'backlog',search:''});
+  expect(api.orders.mock.calls[1][0]).toMatchObject({cursor:'1',view:'all',search:''});
   fireEvent.click(screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-05'}));
   await waitLegacyDialog();
   expect(screen.getByRole('combobox',{name:'Work Order'})).toHaveValue('SITE|wo-1');
@@ -219,7 +219,7 @@ it('searches the whole server snapshot and refreshes metadata only once after ex
   await waitFor(()=>expect(api.orders.mock.calls.some(call=>call[0].refresh===true)).toBe(true));
   await screen.findByRole('button',{name:/WO-149/});
   fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
-  await waitFor(()=>expect(api.orders.mock.calls.at(-1)?.[0].view).toBe('all'));
+  await waitFor(()=>expect(api.orders.mock.calls.at(-1)?.[0].view).toBe('backlog'));
   expect(api.orders.mock.calls.filter(call=>call[0].refresh===true)).toHaveLength(1);
 });
 
@@ -804,7 +804,6 @@ it('requires saving changed hours before uploading the persisted task',async()=>
 it('shows the PIC and schedule range on backlog cards, or names only once what is missing',async()=>{
   const withPic={...workOrder,wonum:'WO-PIC',workorderid:'wo-pic',assignedto:'HAIDQ',schedstart:'2026-10-04T15:06:00+07:00',schedfinish:'2026-10-31T15:06:00+07:00'} as unknown as typeof workOrder;
   await loaded(snapshot,[withPic,{...workOrder,schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder]);
-  fireEvent.click(screen.getByRole('button',{name:'Sẵn sàng'}));
   expect(await screen.findByText('PIC HAIDQ · 04/10 → 31/10')).toBeInTheDocument();
   expect(await screen.findByText('Chưa có lịch và PIC trên Maximo, chưa thể phân công')).toBeInTheDocument();
   expect(screen.queryByText(/Chưa có PIC/)).not.toBeInTheDocument();
@@ -822,7 +821,6 @@ it('warns, without blocking, when assignments fall outside the WO schedule or th
 it('explains and blocks saving when the panel picks a WO without a schedule or PIC',async()=>{
   const unscheduled={...workOrder,schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder;
   await loaded(snapshot,[unscheduled]);
-  fireEvent.click(screen.getByRole('button',{name:'Sẵn sàng'}));
   fireEvent.click(screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-05'}));
   fireEvent.change(await screen.findByRole('combobox',{name:'Work Order'}),{target:{value:'SITE|wo-1'}});
   expect(await screen.findByText(/Chưa có lịch và PIC trên Maximo. Hãy upload/)).toBeInTheDocument();
@@ -835,19 +833,19 @@ it('filters by chips that show their state and clear when chosen again',async()=
   await loaded(snapshot,[ready,missing]);
   expect(screen.queryByRole('button',{name:'Tất cả'})).not.toBeInTheDocument();
   const chip=screen.getByRole('button',{name:'Sẵn sàng'});
+  expect(chip).toHaveAttribute('aria-pressed','false');
+  expect(screen.getByRole('button',{name:'Chưa phân đủ'})).toHaveAttribute('aria-pressed','false');
+  expect(screen.getByRole('button',{name:/WO-MISSING/})).toBeInTheDocument();
+  fireEvent.click(chip);
+  await waitFor(()=>expect(screen.queryByRole('button',{name:/WO-MISSING/})).not.toBeInTheDocument());
   expect(chip).toHaveAttribute('aria-pressed','true');
-  expect(screen.getByRole('button',{name:/WO-READY/})).toBeInTheDocument();
-  expect(screen.queryByRole('button',{name:/WO-MISSING/})).not.toBeInTheDocument();
   fireEvent.click(chip);
   expect(await screen.findByRole('button',{name:/WO-MISSING/})).toBeInTheDocument();
   expect(chip).toHaveAttribute('aria-pressed','false');
-  fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
-  await waitFor(()=>expect(api.orders.mock.calls.at(-1)?.[0].view).toBe('all'));
 });
 it('refuses to place a WO that Maximo has no schedule or PIC for, and says why',async()=>{
   const unscheduled={...workOrder,schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder;
   await loaded(snapshot,[unscheduled]);
-  fireEvent.click(screen.getByRole('button',{name:'Sẵn sàng'}));
   expect(await screen.findByText('Chưa có lịch và PIC trên Maximo, chưa thể phân công')).toBeInTheDocument();
   expect(screen.getByRole('button',{name:/WO-1 · Pump repair/})).toHaveAttribute('data-blocked','true');
 });
@@ -920,7 +918,8 @@ describe('live Resource timeline interactions', () => {
   it('shows fully allocated WOs in Completed only while the server summary is fresh',async()=>{
     const completed={...workOrder,allocation_summary:{state:'completed' as const,remaining_minutes:0,remaining_tasks:0,total_tasks:2,verified_at:'2026-10-01T09:00:00+07:00'}};
     await loaded(snapshot,[completed]);
-    expect(screen.queryByRole('button',{name:/WO-1 · Pump repair/})).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
+    await waitFor(()=>expect(screen.queryByRole('button',{name:/WO-1 · Pump repair/})).not.toBeInTheDocument());
     fireEvent.click(screen.getByRole('button',{name:'Đã phân đủ'}));
     expect(await screen.findByRole('button',{name:/WO-1 · Pump repair.*Còn 0 task · còn 0 giờ/})).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
@@ -1196,7 +1195,7 @@ it('shows how many plans are unsent on the bulk send button and resumes an unfin
 it('offers to resume an unfinished batch from the button label',async()=>{
   api.batchLatest.mockResolvedValue({batch_id:'b',request_id:'r',confirmation_request_id:null,pool_id:pool.id,connection_id:'conn',discipline:'E&I',month:'2026-10',start_time:'06:30',state:'running',expires_at:null,counts:{total:12,pending:0,ready:0,blocked:0,skipped:0,queued:5,sending:0,confirmed:7,failed:0,conflict:0,unknown:0},next_item_id:null,items:[],has_more:false,next_cursor:null,changed_item:null});
   await loaded();
-  expect(await screen.findByRole('button',{name:'Tiếp tục gửi kế hoạch (7/12)'})).toBeEnabled();
+  expect(await screen.findByRole('button',{name:/đợt gửi dở 7\/12/})).toBeEnabled();
 });
 
 it('prepares the entire month across 20-row pages and confirms once for every ready plan',async()=>{

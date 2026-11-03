@@ -63,10 +63,7 @@ it.each([2, 50, 100, 200])('edits, pastes, previews, saves and restores a %i-WO 
   expect(screen.getByText('Lưu nháp nhóm')).toBeDisabled();
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
   const preview = within(screen.getByRole('region', { name: 'Preview nhóm' }));
-  const pmCount = Math.ceil(count / 10);
-  expect(preview.getAllByRole('row')).toHaveLength(count * 4 + pmCount + 1);
-  expect(preview.getAllByText('Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.'))
-    .toHaveLength(pmCount);
+  expect(preview.getAllByRole('row')).toHaveLength(count * 4 + 1);
   vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'monthly', version: 1, state: 'draft' });
   fireEvent.click(screen.getByText('Lưu nháp nhóm'));
   await screen.findByText(`Đã lưu nháp ${count} WO. Maximo chưa thay đổi.`);

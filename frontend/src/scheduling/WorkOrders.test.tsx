@@ -903,7 +903,7 @@ it('refreshes and closes a finalized saved batch for the exact batch scope', asy
   const latest = { ...row, estdur: '9' };
   vi.mocked(getDetail).mockResolvedValue({ ...editorDetail, item: latest });
   expect(submitUpload).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByText('Upload toàn bộ nhóm lên Offshore test'));
+  fireEvent.click(screen.getByRole('button', { name:'Upload' }));
   await waitFor(() => expect(submitUpload).toHaveBeenCalledTimes(1));
   await screen.findByText(/Đã upload 1 WO lên Maximo/);
   expect(screen.queryByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' })).not.toBeInTheDocument();
@@ -947,8 +947,8 @@ it('keeps the first PM origin through date restoration, offers a duration-only s
   fireEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
-  fireEvent.click(screen.getByText('Upload lên Offshore test'));
+  await screen.findByRole('table', { name:'Thay đổi sẽ ghi' });
+  fireEvent.click(screen.getByRole('button', { name:'Upload' }));
   await screen.findByText(/Đã upload 1 WO lên Maximo/);
 
   fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
@@ -958,8 +958,8 @@ it('keeps the first PM origin through date restoration, offers a duration-only s
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   expect(vi.mocked(saveDraft).mock.calls[1][1]).toEqual({ schedstart: original.baseline.schedstart, schedfinish: original.baseline.schedfinish });
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
-  fireEvent.click(screen.getByText('Upload lên Offshore test'));
+  await screen.findByRole('table', { name:'Thay đổi sẽ ghi' });
+  fireEvent.click(screen.getByRole('button', { name:'Upload' }));
   await screen.findByText(/Maximo đã xác nhận thay đổi, nhưng chưa làm mới được bảng/);
   fireEvent.click(screen.getByRole('button', { name: 'Đóng nháp' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Kiểm tra kết quả upload trước' }));
@@ -973,8 +973,8 @@ it('keeps the first PM origin through date restoration, offers a duration-only s
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   expect(vi.mocked(saveDraft).mock.calls[2][1]).toEqual({ estdur: '8' });
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
-  fireEvent.click(screen.getByText('Upload lên Offshore test'));
+  await screen.findByRole('table', { name:'Thay đổi sẽ ghi' });
+  fireEvent.click(screen.getByRole('button', { name:'Upload' }));
   await screen.findByText(/Đã upload 1 WO lên Maximo/);
 
   fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
@@ -987,7 +987,7 @@ it('ignores a finalized batch refresh after the connection scope changes', async
   await prepareBatchUpload();
   let finish!: (value: typeof editorDetail) => void;
   vi.mocked(getDetail).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
-  fireEvent.click(screen.getByText('Upload toàn bộ nhóm lên Offshore test'));
+  fireEvent.click(screen.getByRole('button', { name:'Upload' }));
   await waitFor(() => expect(getDetail).toHaveBeenCalledTimes(1));
   await chooseConnection('one');
   expect(screen.queryByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' })).not.toBeInTheDocument();
@@ -1008,8 +1008,8 @@ it('keeps an in-memory recovery entry after an ambiguous submit 404 unmounts the
   vi.mocked(submitUpload).mockRejectedValue(new RetrievalError(404, 'Scoped read failed after send'));
   vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000002');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
-  fireEvent.click(screen.getByText('Upload lên Offshore test'));
+  await screen.findByRole('table', { name:'Thay đổi sẽ ghi' });
+  fireEvent.click(screen.getByRole('button', { name:'Upload' }));
   await screen.findByRole('button', { name: 'Kiểm tra kết quả upload trước' });
   expect(screen.queryByLabelText('Est. Duration')).not.toBeInTheDocument();
   vi.mocked(lookupUploadRequest).mockResolvedValue({ batch_id: 'batch', source_finalized: false, counts: { sending: 1 },
@@ -1039,7 +1039,7 @@ async function prepareBatchUpload() {
   await screen.findByRole('button', { name: 'WO-SECOND' });
   fireEvent.click(screen.getByRole('button', { name: 'Gửi 1 WO lên Maximo' }));
   await screen.findByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
-  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
+  await screen.findByRole('table', { name:'Thay đổi sẽ ghi' });
 }
 
 it('shows the bulk bar only for selected rows and remembers the table density', async () => {
@@ -1452,7 +1452,7 @@ it('opens the existing group draft untouched in the send-only panel', async () =
     items: [row, second].map((order) => ({ site_id: order.siteid, workorder_id: order.workorderid, code: 'ready' as const, warnings: [], before: { estdur: '8' }, changes: { estdur: '9' } })) });
   fireEvent.click(screen.getByRole('button', { name: 'Gửi 2 WO lên Maximo' }));
   const panel = await screen.findByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
-  expect(await within(panel).findByText('2 WO · 2 thay đổi · tất cả khớp với Maximo')).toBeInTheDocument();
+  expect(await within(panel).findByText('2 WO · 2 thay đổi')).toBeInTheDocument();
   expect(within(panel).queryByText('Đối chiếu nhóm với Maximo trước upload')).not.toBeInTheDocument();
   expect(within(panel).getByRole('heading', { name: 'Gửi 2 WO lên Maximo' })).toBeVisible();
   const detail = within(panel).getByText('Xem chi tiết lịch').closest('details') as HTMLDetailsElement;
@@ -1473,7 +1473,7 @@ it('keeps the send panel across a tab return and releases the scroll lock on clo
   vi.mocked(previewUpload).mockResolvedValue({ draft_id: 'group', version: 3, preview_hash: 'd'.repeat(64), send_enabled: true, gate: null,
     items: [{ site_id: row.siteid, workorder_id: row.workorderid, code: 'ready' as const, warnings: [], before: { estdur: '8' }, changes: { estdur: '9' } }] });
   fireEvent.click(screen.getByRole('button', { name: 'Gửi 1 WO lên Maximo' }));
-  await screen.findByText('1 WO · 1 thay đổi · tất cả khớp với Maximo');
+  await screen.findByText('1 WO · 1 thay đổi');
   expect(document.documentElement).toHaveAttribute('data-wo-panel-open');
   const reads = vi.mocked(openBatch).mock.calls.length;
   await act(async () => returnToPage());

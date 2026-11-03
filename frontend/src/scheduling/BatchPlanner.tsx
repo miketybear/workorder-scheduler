@@ -21,8 +21,6 @@ const targetFields = ['targstartdate', 'targcompdate'] as const;
 const sendFields = ['estdur', 'schedstart', 'schedfinish', 'assignedto'] as const;
 const labels = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish', assignedto: 'Assigned PIC', estdur: 'Est. Duration',
   targstartdate: 'Target Start', targcompdate: 'Target Finish' };
-const pmScheduleChanged = (row: BatchRow) => row.baseline.worktype.toUpperCase() === 'PM' &&
-  (['schedstart', 'schedfinish'] as const).some((field) => (row.changes[field] ?? row.baseline[field]) !== row.baseline[field]);
 const targetForbidden = (row: BatchRow) => ['PM', 'CFT'].includes(row.baseline.worktype.toUpperCase());
 
 const groupDefaultTime = (field: EditableField) => (field === 'schedstart' ? '06:30' : field === 'targcompdate' ? '23:59' : '00:00');
@@ -256,7 +254,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
         timezone={timezone} context={uploadContext} onDenied={onDenied} active={active}
         enabled={!blocked && !dirty && changed.length > 0 && !Object.values(problems).some(Boolean)}
         previewLabel="Đối chiếu nhóm với Maximo trước upload" autoPreview={sendOnly}
-        buttonLabel={`Upload toàn bộ nhóm lên ${connection?.system === 'offshore' ? 'Offshore' : 'Onshore'} ${connection?.environment === 'production' ? 'production' : 'test'}`}
+        buttonLabel="Upload"
         onUploadFinalized={onUploadFinalized} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
         onWorkflowCreated={onUploadRequestCreated} onWorkflowRejected={onUploadRequestRejected} uploadAll permitted={writable && !suspended && active} />
     </section>;
@@ -346,8 +344,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
     {showPreview && <section aria-label="Preview nhóm"><h3>Thay đổi trước / sau</h3><table><thead><tr><th>WO</th><th>Trường</th><th>Trước</th><th>Sau</th></tr></thead><tbody>
       {changed.flatMap((row) => [...editableFields.filter((field) => row.changes[field] !== undefined).map((field) => <tr key={`${rowKey(row.item)}:${field}`}><td>{row.item.wonum}</td><td>{field in labels ? labels[field as keyof typeof labels] : field}</td>
         <td>{field.includes('start') || field.includes('finish') || field.includes('date') ? displayDate(row.baseline[field], timezone) : row.baseline[field] ?? '—'}</td>
-        <td>{field.includes('start') || field.includes('finish') || field.includes('date') ? displayDate(row.changes[field] ?? null, timezone) : row.changes[field]}</td></tr>),
-      ...(pmScheduleChanged(row) ? [<tr key={`${rowKey(row.item)}:pm-duration-warning`}><td>{row.item.wonum}</td><td colSpan={3}>Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.</td></tr>] : [])])}</tbody></table></section>}
+        <td>{field.includes('start') || field.includes('finish') || field.includes('date') ? displayDate(row.changes[field] ?? null, timezone) : row.changes[field]}</td></tr>),])}</tbody></table></section>}
     <details><summary>Dán vùng từ Excel</summary><p>Theo thứ tự WO trong bảng: Start, PIC, Duration. Ngày: YYYY-MM-DDTHH:mm; Finish tự tính, ô trống giữ nguyên. Kiểm tra và áp vào nháp trước khi lưu.</p>
       <textarea aria-label="Vùng dữ liệu Excel" disabled={blocked} value={paste} onChange={(e) => setPaste(e.target.value)} rows={4} /><button className={styles.tertiary} disabled={blocked} onClick={applyPaste}>Kiểm tra và áp dữ liệu dán</button></details>
     {saved && writable && <div className={styles.batchToolbar}><button className={styles.dangerGhost} disabled={blocked} onClick={() => setConfirmDelete(true)}>Xóa nháp nhóm</button>

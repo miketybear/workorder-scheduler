@@ -3,6 +3,7 @@ import { continueUpload, editableFields, getUploadStatus, previewUpload, reconci
   type Baseline, type Saved, type UploadPreview, type UploadPreviewItem, type UploadRecoveryEntry, type UploadStatus } from '../api/drafts';
 import { RetrievalError } from '../api/workOrders';
 import { displayDate } from './presentation';
+import { UploadIcon } from '../resourceTimeline/CarbonIcons';
 import styles from '../App.module.css';
 
 const labels: Record<typeof editableFields[number], string> = { schedstart: 'Scheduled Start', schedfinish: 'Scheduled Finish',
@@ -263,17 +264,8 @@ export function UploadPreviewControls({ draft, selection, connection, connection
       else void loadPreview();
     }}>{canRecoverRequest && !status ? 'Lấy kết quả yêu cầu trước' : viewState.open ? 'Ẩn đối chiếu' : previewLabel}</button>}
     {panelVisible && <section className={styles.editorSection} aria-label="Preview upload Maximo">
-      <h3>Đối chiếu trước khi upload</h3>
-      <ol className={styles.stepper} aria-label="Các bước upload">
-        {['Chỉnh sửa', 'Đối chiếu', 'Kết quả'].map((label, index) => {
-          const current = status || requestId ? 2 : 1;
-          return <li key={label} data-state={index < current ? 'done' : index === current ? 'current' : 'todo'}
-            aria-current={index === current ? 'step' : undefined}>{label}</li>;
-        })}
-      </ol>
-      {connection && <p className={styles.uploadTarget} data-env={connection.environment}>
-        {connection.label} · {connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'Test' : 'Production'}
-        {connection.environment === 'production' && ' — thay đổi sẽ ghi vào Maximo thật'}</p>}
+      {connection?.environment === 'production' && <p className={styles.uploadTarget} data-env={connection.environment}>
+        {connection.label} · {connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · Production — thay đổi sẽ ghi vào Maximo thật</p>}
       {busy && <p role="status">{requestId ? 'Đang xử lý yêu cầu upload và kiểm tra kết quả…' : status ? 'Đang cập nhật trạng thái…' : 'Đang đối chiếu với Maximo…'}</p>}
       {uploadAll && busy && autoContinueRef.current && <button className={styles.tertiary} onClick={() => { autoContinueRef.current = false; }}>
         Dừng sau đợt đang gửi
@@ -292,30 +284,25 @@ export function UploadPreviewControls({ draft, selection, connection, connection
           const label = missingSchedule && missingPic ? 'Thiếu lịch và PIC' : missingSchedule ? 'Thiếu lịch' : 'Thiếu PIC';
           return <>{label}<small> Hoàn tất lịch/PIC hoặc xóa WO khỏi nhóm trước khi upload.</small></>;
         };
-        const verdict = (item: typeof items[number]) => item.code === 'ready' ? 'Khớp' : item.code === 'conflict' ? 'Xung đột'
+        const verdict = (item: typeof items[number]) => item.code === 'ready' ? 'Sẵn sàng' : item.code === 'conflict' ? 'Xung đột'
           : item.code === 'invalid_changes' ? 'Thay đổi không hợp lệ' : item.code === 'incomplete_schedule' ? missingText(item) : 'Không có thay đổi';
         const show = (field: typeof editableFields[number], value: string | null | undefined) =>
           field === 'assignedto' || field === 'estdur' ? value ?? '—' : displayDate(value ?? null, timezone);
+        const changedFields = editableFields.filter((field) => items.some((item) => item.changes[field] !== undefined));
         return <>
           <div className={styles.previewSummary}>
-            <p role="status">{`${items.length} WO · ${changeCount} thay đổi · ${allReady ? 'tất cả khớp với Maximo' : `${blocked} WO cần xử lý`}`}</p>
+            <p role="status">{`${items.length} WO · ${changeCount} thay đổi${allReady ? '' : ` · ${blocked} WO cần xử lý`}`}</p>
             {currentPreview.send_enabled && allReady
-              ? <button className={styles.primary} disabled={busy} onClick={() => void submitOrRecover()}>{buttonLabel}</button>
+              ? <button className={styles.primary} disabled={busy} onClick={() => void submitOrRecover()}><UploadIcon />{buttonLabel}</button>
               : <button className={styles.primary} disabled>Upload chưa khả dụng</button>}
           </div>
-          <div className={styles.tableWrap}><table aria-label="Thay đổi sẽ ghi"><thead><tr><th>WO</th><th>Thay đổi (Maximo hiện tại → sẽ ghi)</th><th>Kết quả</th></tr></thead>
-            <tbody>{items.flatMap((item) => {
-              const fields = Object.keys(item.changes) as typeof editableFields[number][];
-              return [<tr key={`${item.site_id}:${item.workorder_id}`}><th scope="row">{wonum(item)}</th>
-                <td>{fields.length ? <ul className={styles.changeList}>{fields.map((field) => <li key={field}>{labels[field]}: {show(field, item.before[field])} → <strong className={styles.routeWrites}>{show(field, item.changes[field])}</strong></li>)}</ul>
-                  : 'Không có trường nào đủ điều kiện đối chiếu.'}</td>
-                <td data-code={item.code}>{verdict(item)}</td></tr>,
-              ...item.warnings.map((warning) => <tr key={`${item.site_id}:${item.workorder_id}:warning:${warning}`}><th scope="row">{wonum(item)}</th>
-                <td colSpan={2} role="status">Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.</td></tr>)];
-            })}</tbody></table></div>
+          <div className={styles.tableWrap}><table className={styles.changeTable} aria-label="Thay đổi sẽ ghi"><thead><tr><th>WO</th>{changedFields.map((field) => <th key={field}>{labels[field]}</th>)}<th>Trạng thái</th></tr></thead>
+            <tbody>{items.map((item) => <tr key={`${item.site_id}:${item.workorder_id}`}><th scope="row">{wonum(item)}</th>
+              {changedFields.map((field) => <td key={field}>{item.changes[field] === undefined ? <span className={styles.changeOld}>{show(field, item.before[field])}</span>
+                : <><strong>{show(field, item.changes[field])}</strong>{item.before[field] ? <small className={styles.changeOld}>Hiện tại: {show(field, item.before[field])}</small> : null}</>}</td>)}
+              <td data-code={item.code}><span className={styles.changeStatus} data-ready={item.code === 'ready' || undefined}>{verdict(item)}</span></td></tr>)}</tbody></table></div>
           {!currentPreview.send_enabled && <p role="status">Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.</p>}
-          {currentPreview.send_enabled && allReady && <p role="status">Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.</p>}
-          {currentPreview.send_enabled && !allReady && <p role="status">Maximo chưa thay đổi. Sửa các WO bị thiếu lịch/PIC, xung đột hoặc thay đổi không hợp lệ trước khi upload.</p>}
+          {currentPreview.send_enabled && !allReady && <p role="status">Sửa các WO bị thiếu lịch/PIC, xung đột hoặc thay đổi không hợp lệ trước khi upload.</p>}
         </>;
       })()}
       {showReceiptRecovery && !busy && <p role="status">Kết quả yêu cầu chưa xác định; dữ liệu nháp được giữ nguyên.</p>}

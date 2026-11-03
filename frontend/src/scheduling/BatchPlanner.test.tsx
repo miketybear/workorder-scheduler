@@ -198,7 +198,7 @@ it('drops allowed target no-ops and their intent while retaining PM/CFT duration
   expect(items.map((item) => item.changes)).toEqual([{ estdur: '9' }, { estdur: '10' }]);
 });
 
-it('warns per PM row for a duration-derived finish while a CM calendar edit stays unflagged', async () => {
+it('does not warn about PM duration recalculation in the preview', async () => {
   const rows = details.map((detail, index) => ({ ...detail, item: { ...detail.item, worktype: index === 0 ? 'PM' : 'CM',
     schedstart: '2026-10-01T08:00:00+07:00', schedfinish: '2026-10-01T16:00:00+07:00' }, baseline: { ...detail.baseline,
     worktype: index === 0 ? 'PM' : 'CM', schedstart: '2026-10-01T08:00:00+07:00', schedfinish: '2026-10-01T16:00:00+07:00' } }));
@@ -208,10 +208,7 @@ it('warns per PM row for a duration-derived finish while a CM calendar edit stay
   fireEvent.change(screen.getByLabelText('WO-100 Est. Duration'), { target: { value: '9' } });
   setDateTime(screen.getByLabelText('WO-101 Scheduled Start'), '2026-10-01T09:00');
   fireEvent.click(screen.getByText('Xem trước thay đổi'));
-  const warning = 'Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.';
-  const warningRow = screen.getByText(warning).closest('tr');
-  expect(warningRow).toHaveTextContent('WO-100');
-  expect(screen.getAllByText(warning)).toHaveLength(1);
+  expect(screen.queryByText(/tính lại Duration/)).not.toBeInTheDocument();
 });
 
 it('previews the persisted batch and disables the upload action while unsaved edits remain', async () => {
@@ -408,7 +405,7 @@ it('send-only mode shows a read-only summary and the upload section without any 
   expect(within(table).getAllByRole('row')).toHaveLength(3);
   expect(within(table).getByRole('rowheader', { name: /WO-100/ })).toBeVisible();
   expect(table).toHaveTextContent('OTHER');
-  expect(screen.getByText('2 WO · 2 thay đổi · tất cả khớp với Maximo')).toBeInTheDocument();
+  expect(screen.getByText('2 WO · 2 thay đổi')).toBeInTheDocument();
   expect(screen.queryByText('Đối chiếu nhóm với Maximo trước upload')).not.toBeInTheDocument();
   expect(screen.queryByText('Ẩn đối chiếu')).not.toBeInTheDocument();
   for (const absent of ['Áp dụng vào nháp', 'Undo', 'Xem trước thay đổi', 'Lưu nháp nhóm', 'Xóa nháp nhóm', 'Reset dòng']) {

@@ -52,7 +52,7 @@ it('previews only the saved single-WO version and hides that response as soon as
   fireEvent.click(screen.getByText('Lưu nháp'));
   await screen.findByText('Đã lưu nháp trên server. Maximo chưa thay đổi.');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  expect(await screen.findByRole('table', { name: 'Thay đổi sẽ ghi' })).toHaveTextContent('Maximo hiện tại');
+  expect(await screen.findByRole('table', { name: 'Thay đổi sẽ ghi' })).toHaveTextContent('Est. Duration');
   expect(screen.getByText(/Upload chưa mở/)).toBeInTheDocument();
   expect(screen.getByText('Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.')).toBeInTheDocument();
   expect(previewUpload).toHaveBeenCalledWith(expect.objectContaining({ draft_id: 'saved', version: 4 }),
@@ -111,8 +111,7 @@ it('shows a conflict with no changed fields instead of dropping the WO from prev
   render(<DraftEditor {...props} selection={{ draftId: 'saved' }} />);
   await screen.findByLabelText('Est. Duration');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  expect(await screen.findByText('Không có trường nào đủ điều kiện đối chiếu.')).toBeInTheDocument();
-  expect(screen.getByRole('row', { name: /WO-100/ })).toHaveTextContent('Xung đột');
+  expect(await screen.findByRole('row', { name: /WO-100/ })).toHaveTextContent('Xung đột');
 });
 
 it('shows conflicts even when the connection can upload other ready rows and keeps submit disabled', async () => {
@@ -124,7 +123,7 @@ it('shows conflicts even when the connection can upload other ready rows and kee
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
   expect(await screen.findByRole('row', { name: /WO-100/ })).toHaveTextContent('Xung đột');
   expect(screen.getByText('Upload chưa khả dụng')).toBeDisabled();
-  expect(screen.queryByText('Upload lên Onshore test')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name:'Upload' })).not.toBeInTheDocument();
   expect(submitUpload).not.toHaveBeenCalled();
 });
 
@@ -154,8 +153,8 @@ it('retains the same request ID after an uncertain server error and recovers wit
   const view = render(<DraftEditor {...props} selection={{ draftId: 'saved' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
   await screen.findByLabelText('Est. Duration');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  await screen.findByText('Maximo chưa thay đổi. Hãy kiểm tra lại các thay đổi trước khi gửi.');
-  fireEvent.click(screen.getByText('Upload lên Onshore test'));
+  await screen.findByRole('table', { name:'Thay đổi sẽ ghi' });
+  fireEvent.click(await screen.findByRole('button', { name:'Upload' }));
   await screen.findByText('Lấy kết quả yêu cầu trước');
   expect(screen.getByLabelText('Est. Duration')).toHaveValue('9');
   expect(submitUpload).toHaveBeenCalledTimes(1);
@@ -188,8 +187,7 @@ it('warns on PM schedule preview and shows the confirmed Maximo duration after u
   render(<DraftEditor {...props} selection={{ draftId: 'saved' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
   await screen.findByLabelText('Est. Duration');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  expect(await screen.findByText('Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.')).toBeInTheDocument();
-  fireEvent.click(screen.getByText('Upload lên Onshore test'));
+  fireEvent.click(await screen.findByRole('button', { name:'Upload' }));
   expect(await screen.findByText('Maximo đã tính lại Duration: 25 → 21 giờ.')).toBeInTheDocument();
   expect(screen.getByText('Đã xác nhận')).toBeInTheDocument();
 });
@@ -209,8 +207,7 @@ it('reports a readback mismatch as failed with the Maximo values and keeps the d
   render(<DraftEditor {...props} selection={{ draftId: 'saved' }} connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} />);
   const duration = await screen.findByLabelText('Est. Duration');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
-  expect(await screen.findByText('Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.')).toBeInTheDocument();
-  fireEvent.click(screen.getByText('Upload lên Onshore test'));
+  fireEvent.click(await screen.findByRole('button', { name:'Upload' }));
   expect(await screen.findByText('Maximo giữ khác giá trị đã gửi: Est. Duration 21 (gửi 25). WO đã được mở khóa; nháp giữ nguyên, kiểm tra rồi upload lại nếu cần.')).toBeInTheDocument();
   expect(duration).toHaveValue('8');
   expect(screen.getByText('Thất bại')).toBeInTheDocument();
@@ -222,7 +219,6 @@ it('warns on a PM duration-only edit when its derived finish changes', async () 
   vi.mocked(getDetail).mockResolvedValue({ ...detail, baseline: { ...detail.baseline, worktype: 'PM' }, item: { ...detail.item, worktype: 'PM' } });
   render(<DraftEditor {...props} />);
   fireEvent.change(await screen.findByLabelText('Est. Duration'), { target: { value: '9' } });
-  expect(await screen.findByText('Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.')).toBeInTheDocument();
 });
 
 it('warns for a restored PM finish-only change against the original baseline', async () => {
@@ -230,7 +226,6 @@ it('warns for a restored PM finish-only change against the original baseline', a
     draft_id: 'saved', version: 4, state: 'draft', changes: { schedfinish: '2026-10-01T17:00:00+07:00' }, baseline_changed: false, changes_valid_now: true });
   render(<DraftEditor {...props} selection={{ draftId: 'saved' }} />);
   expect(await screen.findByLabelText('Est. Duration')).toBeInTheDocument();
-  expect(await screen.findByText('Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.')).toBeInTheDocument();
 });
 
 it('requires target intent, resets targets when unchecked, and validates duration and dates before saving', async () => {
@@ -566,7 +561,7 @@ it('disables deleting the draft while an upload outcome is unknown', async () =>
   await screen.findByLabelText('Est. Duration');
   fireEvent.click(screen.getByText('\u0110\u1ed1i chi\u1ebfu v\u1edbi Maximo tr\u01b0\u1edbc upload'));
   await waitFor(() => expect(previewUpload).toHaveBeenCalledTimes(1));
-  fireEvent.click(screen.getByText('Upload l\u00ean Onshore test'));
+  fireEvent.click(await screen.findByRole('button', { name:'Upload' }));
   await waitFor(() => expect(submitUpload).toHaveBeenCalledTimes(1));
   await waitFor(() => expect(screen.getAllByRole('button')[0]).toBeDisabled());
   const remove = screen.getByRole('button', { name: 'Xóa nháp' });

@@ -473,6 +473,15 @@
 .previewSummary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; }
 .previewSummary p { margin: 0; font-weight: 600; }
 .changeList { margin: 0; padding-left: 18px; }
+.changeTable { width: 100%; border-collapse: collapse; }
+.changeTable th, .changeTable td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 13px; }
+.changeTable thead th { background: var(--ground); color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.changeTable tbody th { font-weight: 600; white-space: nowrap; background: transparent; }
+.changeTable td strong { display: block; color: var(--ink); font-weight: 600; white-space: nowrap; }
+.changeOld { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.changeStatus { color: var(--danger-ink); font-weight: 600; }
+.changeStatus[data-ready] { display: inline-block; padding: 1px 10px; border-radius: 999px; background: var(--success-bg); color: var(--success-ink); white-space: nowrap; }
+.changeStatus small { display: block; font-weight: 400; }
 td[data-code="conflict"], td[data-code="invalid_changes"] { color: var(--danger-ink); font-weight: 600; }
 .homeScope { margin: 0 0 16px; color: var(--muted); font-size: 12px; }
 .homeMetrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; }

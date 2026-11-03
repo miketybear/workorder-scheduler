@@ -58,8 +58,6 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   const blocked = restoreBlocked || versionChanged || (!!detail && !!verifiedDetail && verifiedDetail.baseline_token !== detail.baseline_token) || (!!changes.assignedto && !pics.includes(changes.assignedto));
   const changed = editableFields.filter((field) => changes[field] !== undefined && changes[field] !== detail?.baseline[field]);
   const unsaved = JSON.stringify(changes) !== committed;
-  const pmScheduleChanged = !!detail && detail.baseline.worktype.toUpperCase() === 'PM' &&
-    (['schedstart', 'schedfinish'] as const).some((field) => (changes[field] ?? detail.baseline[field]) !== detail.baseline[field]);
   const sameField = (field: EditableField, current: string | null, original: string | null) =>
     current === null || original === null ? current === original : equalField(field, current, original);
   const originSafe = !!detail && !!pmRestoreOrigin && detail.baseline.worktype === 'PM' && pmRestoreOrigin.worktype === 'PM' &&
@@ -263,7 +261,6 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
                 <p>Khôi phục Duration chỉ khả dụng sau khi ngày lịch gốc đã được xác nhận trong Maximo.</p>}
             </section>}
             {changed.length > 0 && <section className={styles.editorSection} aria-label="Đối chiếu Maximo / Nháp"><h3>Đối chiếu Maximo / Nháp</h3>
-              {pmScheduleChanged && <p role="status">Maximo có thể tính lại Duration khi đổi ngày lịch PM. Duration thực tế sẽ được đọc lại sau upload.</p>}
               <div className={styles.tableWrap}><table aria-label="Thay đổi trước / sau"><thead><tr><th>Trường</th><th>Maximo khi tạo nháp</th><th>Nháp</th>{blocked && <th>Maximo hiện tại</th>}</tr></thead>
                 <tbody>{changed.map((field) => <tr key={field}><th>{labels[field]}</th>
                   <td>{field === 'assignedto' ? picLabel(detail.baseline[field], names) || '—' : field === 'estdur' ? detail.baseline[field] ?? '—' : displayDate(detail.baseline[field], timezone)}</td>
@@ -275,7 +272,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
                 timezone={timezone} context={uploadContext} onDenied={onDenied} active={active}
                 enabled={!busy && !suspended && !blocked && !unsaved && !uploadLocked && changed.length > 0 && !validation()}
                 previewLabel="Đối chiếu với Maximo trước upload"
-                buttonLabel={`Upload lên ${connection?.system === 'offshore' ? 'Offshore' : 'Onshore'} ${connection?.environment === 'production' ? 'production' : 'test'}`}
+                buttonLabel="Upload"
                 onUploadFinalized={onUploadFinalized} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
                 onWorkflowCreated={onUploadRequestCreated} onWorkflowRejected={onUploadRequestRejected} />
             </section>}

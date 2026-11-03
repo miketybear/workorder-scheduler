@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Màn hình gửi WO lên Maximo gọn hơn — 2026-11-03
+
+- [x] Bảng mỗi WO một dòng, mỗi trường một cột, giá trị mới in đậm kèm giá trị hiện tại; trạng thái Sẵn sàng. Nút Upload có icon. Bỏ thanh bước, dòng nhắc thừa và cảnh báo Maximo có thể tính lại Duration trước khi gửi; dải tên kết nối chỉ còn hiện với production.
+- Bằng chứng: frontend vitest và `tsc`. Giới hạn: chưa xem trên giao diện. Kết quả sau upload vẫn báo khi Maximo thực sự tính lại Duration.
+
 ## Xóa tất cả phân công của một WO — 2026-11-03
 
 - [x] Panel kế hoạch task có mục "Xóa tất cả phân công của WO…", xem trước số task, số giờ, người rồi xác nhận. Xóa trong một giao dịch, có ghi vết; kế hoạch đã gửi Maximo được giữ nguyên toàn bộ; danh sách thay đổi thì từ chối. Không ghi gì lên Maximo.
@@ -10,7 +15,8 @@ Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trư�
 
 ## Thông báo sau khi phân công nói rõ đã lưu gì — 2026-11-03
 
-- [x] Backlog mặc định bật chip Sẵn sàng khi mở trang.
+- [x] Nút gửi luôn ghi Gửi kế hoạch; tiến độ đợt gửi dở nằm trong tooltip.
+- [x] Backlog mở ra không bật chip nào, hiện tất cả WO. Rê chuột vào chip để xem số WO khi kết hợp với chip đang bật.
 - [x] Thông báo ngắn "Đã lưu phân công cho <người>" ở góc trên bên phải, tự ẩn sau 3 giây, dừng đếm khi rê chuột. Nút gửi không còn hiện "Tiếp tục gửi kế hoạch (0/0)" khi đợt gửi chưa có kế hoạch nào.
 - Bằng chứng: frontend vitest và `tsc`. Giới hạn: chưa xem trên giao diện.
 
