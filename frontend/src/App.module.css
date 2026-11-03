@@ -163,6 +163,8 @@
 :global(table) { width: 100%; border-collapse: collapse; text-align: left; font: 400 14px/18px 'IBM Plex Sans', Arial, sans-serif; letter-spacing: .16px; }
 :global(th) { padding: 12px 8px; background: var(--hover); color: var(--ink); font-weight: 600; white-space: nowrap; }
 :global(td) { padding: 12px 8px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: top; }
+/* Zero specificity so hover, selected and draft states always win over the stripe. */
+:global(:where(table:not([data-no-zebra]) > tbody > tr:nth-child(even))) { background: var(--row-alt); }
 :global(td small) { display: block; margin-top: 6px; color: var(--muted); }
 /* Fill the window down to the pager and footer (header, chip row, pager and footer take about 208px; the open filter row 40px more). */
 .compactTable { max-height: max(320px, calc(100dvh - 208px)); scrollbar-gutter: stable; }

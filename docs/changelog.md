@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Bảng có màu dòng xen kẽ — 2026-11-03
+
+- [x] Mọi bảng có màu dòng xen kẽ ở cả giao diện sáng và tối, trừ lưới Resource Timeline. Trạng thái hover, chọn và nháp vẫn ưu tiên.
+- Bằng chứng: frontend build và test. Giới hạn: chưa xem trên giao diện; cột cố định của bảng lập kế hoạch giữ nền riêng.
+
 ## Màn hình gửi WO lên Maximo gọn hơn — 2026-11-03
 
 - [x] Bảng mỗi WO một dòng, mỗi trường một cột, giá trị mới in đậm kèm giá trị hiện tại; trạng thái Sẵn sàng. Nút Upload có icon. Bỏ thanh bước, dòng nhắc thừa và cảnh báo Maximo có thể tính lại Duration trước khi gửi; dải tên kết nối chỉ còn hiện với production.

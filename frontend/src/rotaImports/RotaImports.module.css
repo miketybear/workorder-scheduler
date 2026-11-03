@@ -41,6 +41,7 @@
 .card p.rowFilter { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:10px 0; color:var(--ink); }
 .page td.day[data-working] { background:var(--success-bg); color:var(--success-ink); }
 .page td.person, .page th:first-child { position:sticky; left:0; background:var(--layer); }
+.page tbody tr:nth-child(even) td.person { background:var(--row-alt); }
 .page th:first-child { z-index:2; background:var(--ground); }
 .page .reportTable th:first-child { position:static; background:var(--danger-bg); }
 .page table { width:100%; min-width:1150px; border-collapse:collapse; text-align:left; }
