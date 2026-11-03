@@ -15,7 +15,7 @@ import { RoleDonut } from './RoleDonut';
 import { restoreFocus } from './focusRestore';
 import { MonthInput } from '../components/DateTimeInput';
 import { computeLanes, monthOf, addMonth, monthDates, addCalendarDays, calendarRange, displayHours, parseHours, displayRole, capacityFor, subMonth, suggestTaskPlans, todayIn, woWarnings, type AssignedPerson, type ScheduleInfo, type WoWarnings, missingForAssign, outsideSchedule } from './timelineHelpers';
-import { RenewIcon, UploadIcon } from './CarbonIcons';
+import { CheckmarkFilledIcon, RenewIcon, UploadIcon } from './CarbonIcons';
 import styles from './ResourceTimeline.module.css';
 
 type PointerDrag = { payload: string; label: string; startX: number; startY: number; moved: boolean; context: string };
@@ -96,7 +96,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [backlogView,setBacklogView]=useState<'backlog'|'completed'|'all'>('backlog');
-  const [backlogReadiness,setBacklogReadiness]=useState<BacklogReadiness>('all');
+  const [backlogReadiness,setBacklogReadiness]=useState<BacklogReadiness>('ready');
   const [backlogCursorState,setBacklogCursorState]=useState<{context:string;cursors:Array<string|null>;index:number}>({context:'',cursors:[null],index:0});
   const [backlogWidth,setBacklogWidth]=useState(300);
   const workspaceRef=useRef<HTMLDivElement>(null);
@@ -122,6 +122,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   const [checkingSession, setCheckingSession] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [peopleSearch, setPeopleSearch] = useState('');
+  const [toastPaused,setToastPaused]=useState(false);
   const [latestBatch, setLatestBatch] = useState<{ key: string; state: string; done: number; total: number } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const scrolledMonth = useRef('');
@@ -695,7 +696,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   function resetProposalDetails(loading:boolean){setTaskData(null);setTaskError('');setTaskLoading(loading);setSelectedTasks({});setTaskMinutes({});setTaskAssignments({});setTaskPlanMode(false);setTaskPlanStart('');setTaskPlanSegments({});setTaskPlanCapacity(undefined);setUploadWall('');setUploadResult(null);setUploadUnknownRequest('');}
   async function finishPlanDays(result:AssignmentPlanMoveResult,before:Assignment[]){
     await applyConfirmedMutation(result.items,before,result.affected_days,result.planning_summary,result.assignment_revision,result.allocation_updates,result.previous_assignment_revision,result.work_order);
-    setDaysUnknown(null);setProposal(null);setMessage('Giờ các ngày của task đã lưu nội bộ; Maximo chưa được thay đổi.');
+    setDaysUnknown(null);setProposal(null);setMessage('Đã lưu giờ các ngày của task. Chưa gửi lên Maximo.');
   }
   async function savePlanDays(){
     if(!planItem||!pool||busy||!planDaysValid||daysUnknown)return;
@@ -764,7 +765,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     const followerIds=new Set((move.preview?.backfill?.plans??[]).map(plan=>plan.plan_id));
     const followerRows=(timeline?.items??[]).filter(row=>row.plan_id&&followerIds.has(row.plan_id)&&row.state==='reserved');
     await applyConfirmedMutation([...result.items,...(result.backfill_items??[])],[...(move.preview?.old_items??move.knownItems),...followerRows],result.affected_days,result.planning_summary,result.assignment_revision,result.allocation_updates,result.previous_assignment_revision,result.work_order);
-    setPlanMove(null);setMessage('Task đã được chuyển trong kế hoạch nội bộ; Maximo chưa được thay đổi.');
+    setPlanMove(null);setMessage('Đã chuyển task trong kế hoạch. Chưa gửi lên Maximo.');
   }
   async function submitPlanMove(){
     if(!planMove?.preview||!pool||busy||planMove.request)return;
@@ -843,19 +844,28 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
     if(item.task_id!==null&&item.task_id!==undefined && (item.sync_state??'local')!=='local') return false;
     return timeline?.work_orders.some(order => order.site_id === item.site_id && order.workorder_id === item.workorder_id && order.eligible) ?? false;
   }
+  useEffect(()=>{
+    if(!message||toastPaused)return;
+    const timer=setTimeout(()=>setMessage(''),3000);
+    return ()=>clearTimeout(timer);
+  },[message,toastPaused]);
+  function savedMessage(items:Assignment[]){
+    const names=[...new Set(items.map(item=>shownTimeline?.rows.find(row=>row.person_id===item.person_id)?.name).filter(Boolean))].join(', ');
+    return names?`Đã lưu phân công cho ${names}`:'Đã lưu phân công';
+  }
   async function refreshAfterMutation(saved: Assignment, previous?:Assignment) {
     await applyConfirmedMutation([saved],previous?[previous]:[],saved.affected_days,saved.planning_summary,saved.assignment_revision,saved.allocation_updates,saved.previous_assignment_revision,saved.work_order);
-    setProposal(null); setMessage('Phân công đã lưu vào kế hoạch nội bộ; Maximo chưa được thay đổi.');
+    setProposal(null); setMessage(saved.state==='released'?'Đã xóa phân công khỏi kế hoạch. Chưa gửi lên Maximo.':savedMessage([saved]));
   }
   async function refreshTaskBatch(items:Assignment[],affectedDays?:AffectedCapacityDay[],summary?:PlanningSummary,revision?:string,allocationUpdates?:Assignment[],previousRevision?:string,workOrder?:AssignmentWorkOrder) {
     await applyConfirmedMutation(items,[],affectedDays,summary,revision,allocationUpdates,previousRevision,workOrder);
-    setProposal(null); setMessage(`${items.length} phân công task đã lưu vào kế hoạch nội bộ; Maximo chưa được thay đổi.`);
+    setProposal(null); setMessage(savedMessage(items));
   }
   async function refreshTaskPlan(items:Assignment[],affectedDays?:AffectedCapacityDay[],summary?:PlanningSummary,revision?:string,allocationUpdates?:Assignment[],previousRevision?:string,workOrder?:AssignmentWorkOrder) {
     await applyConfirmedMutation(items,[],affectedDays,summary,revision,allocationUpdates,previousRevision,workOrder);
-    setProposal(null);setMessage(`${items.length} phân đoạn của kế hoạch nhiều ngày đã lưu nội bộ; Maximo chưa được thay đổi.`);
+    setProposal(null);setMessage(savedMessage(items));
   }
-  async function refreshTaskPlanBatch(result:TaskPlanBatchResult){const items=result.plans.flatMap(plan=>plan.items);await refreshTaskPlan(items,result.affected_days,result.planning_summary,result.assignment_revision,result.allocation_updates,result.previous_assignment_revision,result.work_order);setMessage(`${result.plans.length} task đã được xếp tự động thành ${items.length} phân đoạn theo rota; Maximo chưa được thay đổi.`);}
+  async function refreshTaskPlanBatch(result:TaskPlanBatchResult){const items=result.plans.flatMap(plan=>plan.items);await refreshTaskPlan(items,result.affected_days,result.planning_summary,result.assignment_revision,result.allocation_updates,result.previous_assignment_revision,result.work_order);setMessage(savedMessage(items));}
 
   async function applyConfirmedMutation(items:Assignment[],previous:Assignment[],affectedDays?:AffectedCapacityDay[],summary?:PlanningSummary,revision?:string,allocationUpdates?:Assignment[],previousRevision?:string,workOrder?:AssignmentWorkOrder){
     setError('');
@@ -1088,7 +1098,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
       .catch(() => { if (live) setLatestBatch(null); });
     return () => { live = false; controller.abort(); };
   }, [bulkAllowed, batchPoolId, batchConnectionId, discipline, month, batchKey, bulkUploadOpen]);
-  const batchInProgress = latestBatch?.key === batchKey && ['previewing', 'ready', 'running'].includes(latestBatch.state) ? latestBatch : null;
+  const batchInProgress = latestBatch?.key === batchKey && ['previewing', 'ready', 'running'].includes(latestBatch.state) && latestBatch.total > 0 ? latestBatch : null;
   const bulkBlockedReason = !shownPool || !month ? 'Đang tải dữ liệu tháng'
     : busy || pending ? 'Đang lưu phân công, chờ hoàn tất rồi gửi'
     : uploading || uploadUnknownRequest ? 'Đang chờ kết quả gửi Maximo'
@@ -1163,7 +1173,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
       </div>
       <div className={styles.headingActions}><div className={styles.monthPicker}><button type="button" aria-label="Tháng trước" disabled={!month || monthLocked} onClick={() => setMonth(subMonth(month))}>‹</button><MonthInput label="Tháng timeline" value={month} onChange={setMonth} disabled={monthLocked} /><button type="button" aria-label="Tháng sau" disabled={!month || monthLocked} onClick={() => setMonth(addMonth(month))}>›</button></div><button type="button" className={styles.refreshButton} disabled={busy || !!pending || uploading || !!uploadUnknownRequest || bulkUploadLocked || !!planMove} aria-label="Làm mới timeline" title="Làm mới timeline" onClick={refreshTimeline}><RenewIcon /></button>{bulkAllowed&&<button type="button" className={styles.bulkSendButton} disabled={!!bulkBlockedReason} title={bulkBlockedReason||(batchInProgress?'Có đợt gửi chưa hoàn tất; mở để tiếp tục':unsentPlans?`Gửi kế hoạch tháng lên Maximo: ${unsentPlans} kế hoạch mới chỉ lưu trong ứng dụng`:'Gửi kế hoạch tháng lên Maximo: mở để xem hoặc tạo đợt gửi')} aria-label={batchInProgress?undefined:`Gửi kế hoạch tháng lên Maximo${unsentPlans>0?`, ${unsentPlans} chưa gửi`:''}`} onClick={()=>setBulkUploadOpen(true)}>{batchInProgress?`Tiếp tục gửi kế hoạch (${batchInProgress.done}/${batchInProgress.total})`:<><UploadIcon />Gửi kế hoạch</>}{!batchInProgress&&unsentPlans>0&&<span className={styles.unsentBadge}>{unsentPlans} chưa gửi</span>}</button>}</div>
     </div>
-    {message && <div className={styles.toast} role="status"><span>{message}</span><button type="button" aria-label="Đóng thông báo" onClick={() => setMessage('')}>×</button></div>}{error && !proposal && <p role="alert" className={styles.error}>{error}</p>}
+    {message && <div className={styles.toast} role="status" onMouseEnter={()=>setToastPaused(true)} onMouseLeave={()=>setToastPaused(false)}><CheckmarkFilledIcon /><span>{message}</span><button type="button" aria-label="Đóng thông báo" onClick={() => setMessage('')}>×</button></div>}{error && !proposal && <p role="alert" className={styles.error}>{error}</p>}
     {bulkUploadOpen&&shownPool&&<PlanUploadBatch key={`${shownPool.id}:${shownPool.connection_id}:${discipline}:${month}`} poolId={shownPool.id} connectionId={shownPool.connection_id} discipline={discipline} month={month} timezone={shownPool.timezone} environment={shownPool.environment==='production'?'production':'test'} connectionLabel={`${shownPool.connection_label} · ${shownPool.environment==='test'?'Test':'Production'}`} writable={canWrite} verify={async()=>{await verifyMutationContext({principal,connectionId:shownPool.connection_id,discipline,poolId:shownPool.id,month});}} onLock={setBulkUploadLocked} onClose={()=>setBulkUploadOpen(false)} onConfirmed={result=>{if(result.items?.length)return applyConfirmedMutation(result.items,[],result.affected_days,result.planning_summary,result.assignment_revision,result.allocation_updates,result.previous_assignment_revision,result.work_order);}} onReconcile={entry=>{if('redacted'in entry)return;const authoritative=entry.receipt?.items?.filter(item=>item.plan_id===entry.plan_id)??[];const chosen=authoritative.find(item=>item.date.startsWith(month))??shownTimeline?.items.find(item=>item.plan_id===entry.plan_id&&item.date.startsWith(month));if(authoritative.length)setPlanRecovery({key:planRecoveryKey,items:authoritative});setBulkUploadOpen(false);if(chosen)edit(chosen);else setError('Không tìm thấy phân đoạn trong tháng để mở đối soát. Hãy làm mới timeline.');}} />}
     {pending && unknown && <div className={styles.unknown} role="alert"><p>{pending.kind==='delete'?'Xóa phân công':pending.kind==='update'?'Sửa phân công':'Lưu phân công'} · Yêu cầu {pending.requestId} chưa có kết quả xác nhận.</p><button disabled={busy} onClick={() => void execute(pending)}>Đối soát / gửi lại cùng mã yêu cầu</button></div>}
     {busy && <p role="status">Đang lưu. Không rời thao tác cho đến khi có kết quả…</p>}

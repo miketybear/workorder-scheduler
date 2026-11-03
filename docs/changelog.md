@@ -2,6 +2,12 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Thông báo sau khi phân công nói rõ đã lưu gì — 2026-11-03
+
+- [x] Backlog mặc định bật chip Sẵn sàng khi mở trang.
+- [x] Thông báo ngắn "Đã lưu phân công cho <người>" ở góc trên bên phải, tự ẩn sau 3 giây, dừng đếm khi rê chuột. Nút gửi không còn hiện "Tiếp tục gửi kế hoạch (0/0)" khi đợt gửi chưa có kế hoạch nào.
+- Bằng chứng: frontend vitest và `tsc`. Giới hạn: chưa xem trên giao diện.
+
 ## Trang tải rota dễ hiểu hơn — 2026-11-03
 
 - [x] Có dòng cố định "Rota đang dùng" lấy từ lần kích hoạt mới nhất của nhóm nhân lực (`active_since` trong danh sách import); mỗi lần tải lên có nhãn trạng thái; bỏ số phiên kỹ thuật và huy hiệu mâu thuẫn.

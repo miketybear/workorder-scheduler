@@ -409,7 +409,7 @@ it('automatically schedules every selected task in task-id order across the 10.5
   expect(screen.getByLabelText('Task 20 giờ ngày 2026-10-06')).toHaveValue(9.5);
   expect(screen.getByRole('button',{name:'Xác nhận lưu'})).toBeEnabled();
   fireEvent.click(screen.getByRole('button',{name:'Xác nhận lưu'}));
-  await screen.findByText(/2 task đã được xếp tự động/);
+  await screen.findByText(/Đã lưu phân công/);
   expect(api.planBatch).toHaveBeenCalledTimes(1);
   const input=api.planBatch.mock.calls[0][1];
   expect(input.tasks).toEqual([
@@ -442,7 +442,7 @@ it('keeps the task picker and day plan visible together and excludes out-of-scop
   expect(screen.getByRole('button',{name:'Làm mới timeline'})).toBeInTheDocument();
   expect(screen.queryByText(/Chỉ hiển thị nhóm E&I/)).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Xác nhận lưu'}));
-  await screen.findByText(/4 task đã được xếp tự động/);
+  await screen.findByText(/Đã lưu phân công/);
   expect(api.planBatch).toHaveBeenCalledTimes(1);
   expect(api.planBatch.mock.calls[0][1].tasks.map((task:TestTaskPlanPayload['tasks'][number])=>task.task_id)).toEqual([10,40,50,60]);
 });
@@ -492,7 +492,7 @@ it('recovers an uncertain batch with the same immutable request ID and exact tas
   api.planBatchReceipt.mockImplementation(async(requestId:string)=>{expect(requestId).toBe(saved.request_id);return planBatchResponse(saved);});
   await longTaskDialog();
   fireEvent.click(screen.getByRole('button',{name:'Xác nhận lưu'}));
-  await screen.findByText(/1 task đã được xếp tự động/);
+  await screen.findByText(/Đã lưu phân công/);
   expect(api.planBatch).toHaveBeenCalledTimes(1);
   expect(api.planBatchReceipt).toHaveBeenCalledTimes(1);
 });
@@ -636,7 +636,7 @@ it.each(['2026-10-31','2026-11-01'])('automatically fetches from chosen start %s
   const next=calendarTestDates(start,'2026-11-03')[1];
   expect(screen.getByLabelText(`Task 20 giờ ngày ${next}`)).toHaveValue(9.5);
   fireEvent.click(screen.getByRole('button',{name:'Xác nhận lưu'}));
-  await screen.findByText(/1 task đã được xếp tự động/);
+  await screen.findByText(/Đã lưu phân công/);
   expect(api.planBatch.mock.calls[0][1].tasks).toEqual([{task_workorder_id:'task-20',task_id:20,assignment_id:'source-20',total_minutes:1200,segments:[{date:start,minutes:630},{date:next,minutes:570}]}]);
 });
 
@@ -804,8 +804,9 @@ it('requires saving changed hours before uploading the persisted task',async()=>
 it('shows the PIC and schedule range on backlog cards, or names only once what is missing',async()=>{
   const withPic={...workOrder,wonum:'WO-PIC',workorderid:'wo-pic',assignedto:'HAIDQ',schedstart:'2026-10-04T15:06:00+07:00',schedfinish:'2026-10-31T15:06:00+07:00'} as unknown as typeof workOrder;
   await loaded(snapshot,[withPic,{...workOrder,schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder]);
-  expect(screen.getByText('PIC HAIDQ · 04/10 → 31/10')).toBeInTheDocument();
-  expect(screen.getByText('Chưa có lịch và PIC trên Maximo, chưa thể phân công')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Sẵn sàng'}));
+  expect(await screen.findByText('PIC HAIDQ · 04/10 → 31/10')).toBeInTheDocument();
+  expect(await screen.findByText('Chưa có lịch và PIC trên Maximo, chưa thể phân công')).toBeInTheDocument();
   expect(screen.queryByText(/Chưa có PIC/)).not.toBeInTheDocument();
   expect(screen.getByRole('button',{name:/WO-PIC .*PIC HAIDQ · Lịch 04\/10 → 31\/10/})).toBeInTheDocument();
 });
@@ -821,6 +822,7 @@ it('warns, without blocking, when assignments fall outside the WO schedule or th
 it('explains and blocks saving when the panel picks a WO without a schedule or PIC',async()=>{
   const unscheduled={...workOrder,schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder;
   await loaded(snapshot,[unscheduled]);
+  fireEvent.click(screen.getByRole('button',{name:'Sẵn sàng'}));
   fireEvent.click(screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-05'}));
   fireEvent.change(await screen.findByRole('combobox',{name:'Work Order'}),{target:{value:'SITE|wo-1'}});
   expect(await screen.findByText(/Chưa có lịch và PIC trên Maximo. Hãy upload/)).toBeInTheDocument();
@@ -833,22 +835,20 @@ it('filters by chips that show their state and clear when chosen again',async()=
   await loaded(snapshot,[ready,missing]);
   expect(screen.queryByRole('button',{name:'Tất cả'})).not.toBeInTheDocument();
   const chip=screen.getByRole('button',{name:'Sẵn sàng'});
-  expect(chip).toHaveAttribute('aria-pressed','false');
-  fireEvent.click(chip);
-  await waitFor(()=>expect(screen.queryByRole('button',{name:/WO-MISSING/})).not.toBeInTheDocument());
-  expect(screen.getByRole('button',{name:/WO-READY/})).toBeInTheDocument();
   expect(chip).toHaveAttribute('aria-pressed','true');
+  expect(screen.getByRole('button',{name:/WO-READY/})).toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:/WO-MISSING/})).not.toBeInTheDocument();
   fireEvent.click(chip);
   expect(await screen.findByRole('button',{name:/WO-MISSING/})).toBeInTheDocument();
   expect(chip).toHaveAttribute('aria-pressed','false');
   fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
   await waitFor(()=>expect(api.orders.mock.calls.at(-1)?.[0].view).toBe('all'));
 });
-
 it('refuses to place a WO that Maximo has no schedule or PIC for, and says why',async()=>{
   const unscheduled={...workOrder,schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder;
   await loaded(snapshot,[unscheduled]);
-  expect(screen.getByText('Chưa có lịch và PIC trên Maximo, chưa thể phân công')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Sẵn sàng'}));
+  expect(await screen.findByText('Chưa có lịch và PIC trên Maximo, chưa thể phân công')).toBeInTheDocument();
   expect(screen.getByRole('button',{name:/WO-1 · Pump repair/})).toHaveAttribute('data-blocked','true');
 });
 
@@ -859,9 +859,9 @@ describe('live Resource timeline interactions', () => {
     await waitLegacyDialog();
     fireEvent.change(screen.getByLabelText('Giờ phân công'), { target: { value: '4' } });
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận lưu' }));
-    await screen.findByText(/Phân công đã lưu vào kế hoạch nội bộ/);
+    await screen.findByText(/Đã (lưu|xóa) phân công/);
     fireEvent.click(screen.getByRole('button', { name: 'Đóng thông báo' }));
-    expect(screen.queryByText(/Phân công đã lưu vào kế hoạch nội bộ/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Đã (lưu|xóa) phân công/)).not.toBeInTheDocument();
   });
 
   it('refuses a day outside the WO schedule and dims it while placing', async () => {
@@ -881,7 +881,7 @@ describe('live Resource timeline interactions', () => {
     expect(screen.getByLabelText('Ngày phân công')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Giờ phân công'), { target: { value: '4' } });
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận lưu' }));
-    await screen.findByText(/Phân công đã lưu vào kế hoạch nội bộ/);
+    await screen.findByText(/Đã (lưu|xóa) phân công/);
     expect(api.save).toHaveBeenCalledWith(pool.id, expect.objectContaining({ connection_id: 'conn', discipline: 'E&I', site_id: 'SITE', workorder_id: 'wo-1', person_id: person.person_id, date: '2026-10-05', minutes: 240, request_id: expect.any(String) }), expect.any(AbortSignal));
     expect(api.orders).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button',{name:/Còn 1 task · còn 1 giờ/})).toBeInTheDocument();
@@ -953,7 +953,7 @@ describe('live Resource timeline interactions', () => {
     fireEvent.click(screen.getByRole('button',{name:/Phân công WO-1 · Pump repair/}));
     api.orders.mockResolvedValue([{...workOrder,allocation_summary:{state:'unallocated',remaining_minutes:120,remaining_tasks:1,total_tasks:1,verified_at:'2026-10-01T09:00:00+07:00'}}]);
     fireEvent.click(screen.getByRole('button',{name:'Xóa phân công'}));
-    await screen.findByText(/Phân công đã lưu vào kế hoạch nội bộ/);
+    await screen.findByText(/Đã (lưu|xóa) phân công/);
     await waitFor(()=>expect(screen.queryByRole('button',{name:/WO-1 · Pump repair/})).not.toBeInTheDocument());
     fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
     expect(await screen.findByRole('button',{name:/WO-1 · Pump repair.*Còn 1 task · còn 2 giờ/})).toBeInTheDocument();
@@ -981,7 +981,7 @@ describe('live Resource timeline interactions', () => {
     expect(save).not.toBeDisabled();
     fireEvent.click(save);
     await waitFor(()=>expect(api.planBatch).toHaveBeenCalled());
-    await screen.findByText(/1 task đã được xếp tự động/);
+    await screen.findByText(/Đã lưu phân công/);
     expect(api.planBatch).toHaveBeenCalledWith(pool.id,expect.objectContaining({connection_id:'conn',workorder_id:'wo-1',person_id:'person-1',tasks:[{task_workorder_id:'task-wo-10',task_id:10,assignment_id:'as-10',total_minutes:300,segments:[{date:'2026-10-05',minutes:300}]}],request_id:expect.any(String)}),expect.any(AbortSignal));
   });
 
@@ -995,7 +995,7 @@ describe('live Resource timeline interactions', () => {
     await screen.findByLabelText('Assignment Task 20');
     const save=screen.getByRole('button',{name:'Xác nhận lưu'});expect(save).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Assignment Task 20'),{target:{value:'as-20b'}});expect(save).not.toBeDisabled();fireEvent.click(save);
-    await screen.findByText(/1 task đã được xếp tự động/);
+    await screen.findByText(/Đã lưu phân công/);
     expect(api.planBatch.mock.calls[0][1]).toMatchObject({tasks:[{task_workorder_id:'tw',task_id:20,assignment_id:'as-20b',total_minutes:180,segments:[{date:'2026-10-05',minutes:180}]}]});
   });
 
@@ -1068,7 +1068,7 @@ describe('live Resource timeline interactions', () => {
     await waitLegacyDialog();
     fireEvent.change(screen.getByLabelText('Giờ phân công'),{target:{value:'2'}});
     fireEvent.click(screen.getByRole('button',{name:'Xác nhận lưu'}));
-    await screen.findByText(/Phân công đã lưu vào kế hoạch nội bộ/);
+    await screen.findByText(/Đã (lưu|xóa) phân công/);
     expect(screen.queryByRole('button',{name:/Phân công WO-1 · Pump repair, 2 giờ/})).not.toBeInTheDocument();
     expect(await screen.findByRole('button',{name:/WO-1 · Pump repair.*Còn 1 task · còn 2 giờ/})).toBeInTheDocument();
   });
@@ -1124,7 +1124,7 @@ it('does not accept a mismatched receipt after an unknown result', async () => {
   await waitLegacyDialog();
   fireEvent.click(screen.getByRole('button', {name:'Xác nhận lưu'}));
   await screen.findByRole('button', {name:'Đối soát / gửi lại cùng mã yêu cầu'});
-  expect(screen.queryByText(/Phân công đã lưu vào kế hoạch nội bộ/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Đã (lưu|xóa) phân công/)).not.toBeInTheDocument();
   expect(api.save).toHaveBeenCalledTimes(1);
 });
 
