@@ -6,7 +6,7 @@ import { AssignmentError, deleteAssignment, getLatestPlanUploadBatch, getAssignm
 import { startOfDay, zonedDateTime } from '../api/dates';
 import { getConnectionSettings } from '../api/settings';
 import { listResourcePools, type ResourcePool } from '../api/rotaImports';
-import { effectiveAllocationSummary, RetrievalError, retrieveWorkOrderPage, type WorkOrder, type WorkOrderPage } from '../api/workOrders';
+import { effectiveAllocationSummary, RetrievalError, retrieveWorkOrderPage, type WorkOrder, type WorkOrderPage, type BacklogReadiness } from '../api/workOrders';
 import { activeGrant } from '../auth/activeGrant';
 import { wouldExceedCapacity } from '../assignments/capacity';
 import { PlanUploadBatch } from './PlanUploadBatch';
@@ -95,6 +95,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [backlogView,setBacklogView]=useState<'backlog'|'completed'|'all'>('backlog');
+  const [backlogReadiness,setBacklogReadiness]=useState<BacklogReadiness>('all');
   const [backlogCursorState,setBacklogCursorState]=useState<{context:string;cursors:Array<string|null>;index:number}>({context:'',cursors:[null],index:0});
   const [backlogWidth,setBacklogWidth]=useState(300);
   const workspaceRef=useRef<HTMLDivElement>(null);
@@ -358,7 +359,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
   const confirmedCoverageMinutes=confirmedPlanItems.reduce((sum,segment)=>sum+segment.minutes,0);
   const confirmedCoverageComplete=confirmedCoverageMinutes===(confirmedPlanItem?.plan_total_minutes??-1);
   const [pageRefresh,setPageRefresh]=useState(0);
-  const backlogPageContext=JSON.stringify([currentContext,backlogView,pagedSearch]);
+  const backlogPageContext=JSON.stringify([currentContext,backlogView,backlogReadiness,pagedSearch]);
   const visibleBacklogPage=backlogCursorState.context===backlogPageContext?backlogCursorState.index:0;
   const pageCursor=backlogCursorState.context===backlogPageContext?backlogCursorState.cursors[visibleBacklogPage]:null;
   const pageRequestContext=JSON.stringify([backlogPageContext,pageCursor,pageRefresh]);
@@ -380,7 +381,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
         if(session.user.id!==principal||!grant||grant.connection_id!==pool.connection_id||grant.discipline!==discipline)throw new MutationContextError('Phiên hoặc quyền đã thay đổi.');
         const refresh=forceMetadataRefresh.current&&!pageCursor;
         if(refresh)forceMetadataRefresh.current=false;
-        const result=await retrieveWorkOrderPage({connection_id:grant.connection_id,discipline,target_from:startOfDay(first,grant.timezone),target_before:startOfDay(before,grant.timezone),view:backlogView,search:pagedSearch,...(pageCursor?{cursor:pageCursor}:{}),...(refresh?{refresh:true}:{})},controller.signal);
+        const result=await retrieveWorkOrderPage({connection_id:grant.connection_id,discipline,target_from:startOfDay(first,grant.timezone),target_before:startOfDay(before,grant.timezone),view:backlogView,readiness:backlogReadiness,search:pagedSearch,...(pageCursor?{cursor:pageCursor}:{}),...(refresh?{refresh:true}:{})},controller.signal);
         if(!current)return;setWorkOrderPage({...result,requestContext:pageRequestContext});
       }catch(reason){
         if(!current||controller.signal.aborted)return;
@@ -390,7 +391,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
       }finally{if(current)setWorkOrderPageLoading(false);}
     })();
     return()=>{current=false;controller.abort();};
-  },[active,pool,poolRevision,reload,month,principal,discipline,backlogView,pagedSearch,pageCursor,pageRequestContext,backlogPageContext]);
+  },[active,pool,poolRevision,reload,month,principal,discipline,backlogView,backlogReadiness,pagedSearch,pageCursor,pageRequestContext,backlogPageContext]);
   useEffect(()=>{
     if(backlogView==='all'||!shownWorkOrderPage)return;
     let current=true;
@@ -1169,7 +1170,7 @@ export function ResourceTimeline({ active = true, onPendingChange }: { active?: 
       {revisionNotice&&<p className={styles.revisionNotice} role="status">Phân công đã thay đổi kể từ lần tải này. <button type="button" disabled={busy||!!pending||uploading||!!uploadUnknownRequest} onClick={refreshTimeline}>Làm mới dữ liệu</button></p>}
       <p className={styles.mobileNotice} role="note">Phân công cần màn hình lớn. Trên điện thoại bạn chỉ xem được thống kê tải ở trên; mở trang này trên máy tính để xếp lịch.</p>
       <div className={styles.workspace} ref={workspaceRef} style={{gridTemplateColumns:`minmax(220px, ${backlogWidth}px) 10px minmax(0,1fr)`}}>
-        <Backlog backlogView={backlogView} setBacklogView={setBacklogView} search={search} setSearch={setSearch} workOrderPageNotice={workOrderPageNotice} workOrderPageLoading={workOrderPageLoading} workOrderPageError={workOrderPageError} setPageRefresh={setPageRefresh} backlogListRef={backlogListRef} backlog={backlog} backlogPageOrders={backlogPageOrders} summaryNow={summaryNow} summaryLoadState={summaryLoadState} backlogSummaryScope={backlogSummaryScope} warningsByWo={warningsByWo} shownPool={shownPool} backlogCardRefFor={backlogCardRefFor} nameByCode={nameByCode} selectedWoKey={selectedWoKey} beginDrag={beginDrag} moveDrag={moveDrag} finishDrag={finishDrag} cancelDrag={cancelDrag} clickWorkOrder={clickWorkOrder} backlogSummaryScheduler={backlogSummaryScheduler} discipline={discipline} shownWorkOrderPage={shownWorkOrderPage} visibleBacklogPage={visibleBacklogPage} changeBacklogPage={changeBacklogPage} />
+        <Backlog backlogView={backlogView} setBacklogView={setBacklogView} backlogReadiness={backlogReadiness} setBacklogReadiness={setBacklogReadiness} search={search} setSearch={setSearch} workOrderPageNotice={workOrderPageNotice} workOrderPageLoading={workOrderPageLoading} workOrderPageError={workOrderPageError} setPageRefresh={setPageRefresh} backlogListRef={backlogListRef} backlog={backlog} backlogPageOrders={backlogPageOrders} summaryNow={summaryNow} summaryLoadState={summaryLoadState} backlogSummaryScope={backlogSummaryScope} warningsByWo={warningsByWo} shownPool={shownPool} backlogCardRefFor={backlogCardRefFor} nameByCode={nameByCode} selectedWoKey={selectedWoKey} beginDrag={beginDrag} moveDrag={moveDrag} finishDrag={finishDrag} cancelDrag={cancelDrag} clickWorkOrder={clickWorkOrder} backlogSummaryScheduler={backlogSummaryScheduler} discipline={discipline} shownWorkOrderPage={shownWorkOrderPage} visibleBacklogPage={visibleBacklogPage} changeBacklogPage={changeBacklogPage} />
         <div className={styles.splitter} role="separator" aria-label="Điều chỉnh độ rộng Backlog" aria-orientation="vertical" aria-valuemin={220} aria-valuemax={maxBacklogWidth()} aria-valuenow={backlogWidth} tabIndex={0} onKeyDown={adjustSplitter} onPointerDown={beginSplitterDrag} onPointerMove={moveSplitterDrag} onPointerUp={endSplitterDrag} onPointerCancel={endSplitterDrag} />
       <Grid dateOutside={dateOutside} month={month} peopleSearch={peopleSearch} setPeopleSearch={setPeopleSearch} dates={dates} today={today} scrollToToday={scrollToToday} gridRef={gridRef} discipline={discipline} roster={roster} totalMinutes={totalMinutes} roleGroups={roleGroups} timelineRoleOf={timelineRoleOf} shownTimeline={shownTimeline} setCollapsed={setCollapsed} collapsed={collapsed} roleTitle={roleTitle} rotaLeftText={rotaLeftText} lanes={lanes} workOrderLabel={workOrderLabel} segmentOf={segmentOf} hoverPlan={hoverPlan} canEditItem={canEditItem} setHoverPlan={setHoverPlan} cardWarning={cardWarning} beginDrag={beginDrag} planDayCount={planDayCount} moveDrag={moveDrag} finishDrag={finishDrag} cancelDrag={cancelDrag} clickAssignment={clickAssignment} taskOfPlan={taskOfPlan} canWrite={canWrite} beginCreate={beginCreate} /></div>
     </>}

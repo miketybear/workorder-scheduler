@@ -4,8 +4,10 @@ Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trư�
 
 ## Panel + WO chặn WO chưa đủ điều kiện — 2026-11-03
 
-- [x] Panel Phân công WO hiện lý do và khóa Xác nhận lưu khi WO thiếu lịch/PIC trên Maximo hoặc ngày đang chọn nằm ngoài lịch WO. Lỗi lưu giờ hiện ngay trong panel thay vì bị che phía sau.
+- [x] Panel Phân công WO hiện lý do bằng khung cảnh báo nổi bật và làm mờ, khóa Xác nhận lưu khi WO thiếu lịch/PIC trên Maximo hoặc ngày đang chọn nằm ngoài lịch WO. Lỗi lưu giờ hiện ngay trong panel thay vì bị che phía sau.
 - [x] Thẻ Backlog không còn nói hai lần phần thiếu lịch/PIC.
+- [x] Bộ lọc Backlog thành chip có trạng thái và số đếm: Chưa phân đủ, Đã phân đủ, Sẵn sàng, Thiếu lịch/PIC. Bấm lại để tắt lọc; bỏ nút Tất cả. Backend lọc trên toàn bộ danh sách qua `readiness`.
+- [x] Backlog sắp xếp như bảng Work orders: ưu tiên cao trước, lịch sớm trước (chưa có lịch xếp sau), rồi số WO.
 - Bằng chứng: frontend vitest và `tsc`.
 - Giới hạn: chưa thử trên staging. Chưa có test riêng cho trường hợp ngày ngoài lịch ở panel. Kế hoạch tự chia nhiều ngày chỉ kiểm tra ngày bắt đầu ở panel; ngày sau vượt lịch do backend từ chối.
 

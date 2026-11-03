@@ -20,9 +20,9 @@ vi.mock('../api/workOrders', async importOriginal => {
   return {...actual,retrieveWorkOrderPage:async(filter:import('../api/workOrders').WorkOrderPageFilter,signal:AbortSignal)=>{
     const result=await api.orders(filter,signal);
     if(!Array.isArray(result))return result;
-    const items=result.filter(row=>{const complete=actual.effectiveAllocationSummary(row,Date.now()).state==='completed';return (filter.view==='all'||complete===(filter.view==='completed'))&&`${row.wonum} ${row.siteid} ${row.description??''}`.toLowerCase().includes(filter.search.toLowerCase());}).sort((a,b)=>(b.wopriority??-Infinity)-(a.wopriority??-Infinity));
+    const items=result.filter(row=>{const complete=actual.effectiveAllocationSummary(row,Date.now()).state==='completed';return (filter.view==='all'||complete===(filter.view==='completed'))&&(!filter.readiness||filter.readiness==='all'||(!!row.schedstart&&!!row.schedfinish&&!!row.assignedto)===(filter.readiness==='ready'))&&`${row.wonum} ${row.siteid} ${row.description??''}`.toLowerCase().includes(filter.search.toLowerCase());}).sort((a,b)=>(b.wopriority??-Infinity)-(a.wopriority??-Infinity));
     const index=Number(filter.cursor??0),page=items.slice(index*20,index*20+20);
-    return {connection_id:filter.connection_id,discipline:filter.discipline,items:page,count:page.length,page_size:20,view:filter.view,search:filter.search,total_count:items.length,next_cursor:items.length>(index+1)*20?String(index+1):null,has_more:items.length>(index+1)*20,filter_revision:'filter1'};
+    return {connection_id:filter.connection_id,discipline:filter.discipline,items:page,count:page.length,page_size:20,view:filter.view,readiness:filter.readiness,search:filter.search,total_count:items.length,next_cursor:items.length>(index+1)*20?String(index+1):null,has_more:items.length>(index+1)*20,filter_revision:'filter1'};
   }};
 });
 
@@ -200,7 +200,7 @@ it('ignores an aborted page response after switching the server filter',async()=
   fireEvent.click(screen.getByRole('button',{name:'Trang sau danh sách WO'}));
   await waitFor(()=>expect(api.orders).toHaveBeenCalledTimes(2));
   const signal=api.orders.mock.calls[1][1] as AbortSignal;
-  fireEvent.click(screen.getByRole('button',{name:'Tất cả'}));
+  fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
   expect(await screen.findByRole('button',{name:/WO-001/})).toBeInTheDocument();
   expect(signal.aborted).toBe(true);
   finish(orders);
@@ -218,7 +218,7 @@ it('searches the whole server snapshot and refreshes metadata only once after ex
   fireEvent.click(screen.getByRole('button',{name:'Làm mới timeline'}));
   await waitFor(()=>expect(api.orders.mock.calls.some(call=>call[0].refresh===true)).toBe(true));
   await screen.findByRole('button',{name:/WO-149/});
-  fireEvent.click(screen.getByRole('button',{name:'Tất cả'}));
+  fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
   await waitFor(()=>expect(api.orders.mock.calls.at(-1)?.[0].view).toBe('all'));
   expect(api.orders.mock.calls.filter(call=>call[0].refresh===true)).toHaveLength(1);
 });
@@ -827,6 +827,24 @@ it('explains and blocks saving when the panel picks a WO without a schedule or P
   expect(screen.getByRole('button',{name:'Xác nhận lưu'})).toBeDisabled();
 });
 
+it('filters by chips that show their state and clear when chosen again',async()=>{
+  const ready={...workOrder,wonum:'WO-READY',workorderid:'ready',assignedto:'HAIDQ',schedstart:'2026-10-04T15:06:00+07:00',schedfinish:'2026-10-31T15:06:00+07:00'} as unknown as typeof workOrder;
+  const missing={...workOrder,wonum:'WO-MISSING',workorderid:'missing',schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder;
+  await loaded(snapshot,[ready,missing]);
+  expect(screen.queryByRole('button',{name:'Tất cả'})).not.toBeInTheDocument();
+  const chip=screen.getByRole('button',{name:'Sẵn sàng'});
+  expect(chip).toHaveAttribute('aria-pressed','false');
+  fireEvent.click(chip);
+  await waitFor(()=>expect(screen.queryByRole('button',{name:/WO-MISSING/})).not.toBeInTheDocument());
+  expect(screen.getByRole('button',{name:/WO-READY/})).toBeInTheDocument();
+  expect(chip).toHaveAttribute('aria-pressed','true');
+  fireEvent.click(chip);
+  expect(await screen.findByRole('button',{name:/WO-MISSING/})).toBeInTheDocument();
+  expect(chip).toHaveAttribute('aria-pressed','false');
+  fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
+  await waitFor(()=>expect(api.orders.mock.calls.at(-1)?.[0].view).toBe('all'));
+});
+
 it('refuses to place a WO that Maximo has no schedule or PIC for, and says why',async()=>{
   const unscheduled={...workOrder,schedstart:null,schedfinish:null,assignedto:null} as unknown as typeof workOrder;
   await loaded(snapshot,[unscheduled]);
@@ -903,14 +921,14 @@ describe('live Resource timeline interactions', () => {
     const completed={...workOrder,allocation_summary:{state:'completed' as const,remaining_minutes:0,remaining_tasks:0,total_tasks:2,verified_at:'2026-10-01T09:00:00+07:00'}};
     await loaded(snapshot,[completed]);
     expect(screen.queryByRole('button',{name:/WO-1 · Pump repair/})).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button',{name:'Completed'}));
+    fireEvent.click(screen.getByRole('button',{name:'Đã phân đủ'}));
     expect(await screen.findByRole('button',{name:/WO-1 · Pump repair.*Còn 0 task · còn 0 giờ/})).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button',{name:'Backlog'}));
+    fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
     expect(screen.queryByRole('button',{name:/WO-1 · Pump repair/})).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button',{name:'Completed'}));
+    fireEvent.click(screen.getByRole('button',{name:'Đã phân đủ'}));
     await vi.advanceTimersByTimeAsync(5*60_000);
     await waitFor(()=>expect(screen.queryByRole('button',{name:/WO-1 · Pump repair/})).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button',{name:'Backlog'}));
+    fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
     expect(await screen.findByRole('button',{name:/WO-1 · Pump repair.*Còn 0 task · còn 0 giờ/})).toBeInTheDocument();
   });
 
@@ -922,7 +940,7 @@ describe('live Resource timeline interactions', () => {
     fireEvent.click(screen.getByRole('button',{name:'Thêm phân công cho Nguyen A ngày 2026-10-05'}));
     await waitFor(()=>expect(api.tasks).toHaveBeenCalled());
     api.orders.mockResolvedValue([{...workOrder,allocation_summary:{state:'completed',remaining_minutes:0,remaining_tasks:0,total_tasks:2,verified_at:'2026-10-01T09:00:01+07:00'}}]);
-    fireEvent.click(screen.getByRole('button',{name:'Completed'}));
+    fireEvent.click(screen.getByRole('button',{name:'Đã phân đủ'}));
     expect(await screen.findByRole('button',{name:/WO-1 · Pump repair.*Còn 0 task · còn 0 giờ/})).toBeInTheDocument();
   });
 
@@ -930,14 +948,14 @@ describe('live Resource timeline interactions', () => {
     const completedOrder={...workOrder,allocation_summary:{state:'completed' as const,remaining_minutes:0,remaining_tasks:0,total_tasks:1,verified_at:'2026-10-01T09:00:00+07:00'}};
     api.remove.mockResolvedValue({...item,state:'released',version:2,affected_days:[{pool_id:pool.id,person_id:person.person_id,craft:'E&I',laborcode:'LAB-1',date:item.date,code:'D',capacity_minutes:630,allocated_minutes:0,remaining_minutes:630,local_minutes:0,external_minutes:0,synced_minutes:0,load_complete:true}],planning_summary:{state:'unallocated',remaining_minutes:120,remaining_tasks:1,total_tasks:1,verified_at:'2026-10-01T09:00:00+07:00'},assignment_revision:'r2'});
     await loaded(rowItem(item),[completedOrder]);
-    fireEvent.click(screen.getByRole('button',{name:'Completed'}));
+    fireEvent.click(screen.getByRole('button',{name:'Đã phân đủ'}));
     expect(await screen.findByRole('button',{name:/WO-1 · Pump repair.*Còn 0 task · còn 0 giờ/})).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button',{name:/Phân công WO-1 · Pump repair/}));
     api.orders.mockResolvedValue([{...workOrder,allocation_summary:{state:'unallocated',remaining_minutes:120,remaining_tasks:1,total_tasks:1,verified_at:'2026-10-01T09:00:00+07:00'}}]);
     fireEvent.click(screen.getByRole('button',{name:'Xóa phân công'}));
     await screen.findByText(/Phân công đã lưu vào kế hoạch nội bộ/);
     await waitFor(()=>expect(screen.queryByRole('button',{name:/WO-1 · Pump repair/})).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button',{name:'Backlog'}));
+    fireEvent.click(screen.getByRole('button',{name:'Chưa phân đủ'}));
     expect(await screen.findByRole('button',{name:/WO-1 · Pump repair.*Còn 1 task · còn 2 giờ/})).toBeInTheDocument();
   });
 

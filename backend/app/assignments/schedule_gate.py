@@ -14,8 +14,8 @@ class ScheduleGateError(HTTPException):
     """Lets a batch report this reason instead of a generic scope failure."""
 
 
-def schedule_problem(order, dates, timezone):
-    missing = [
+def missing_for_assign(order):
+    return [
         label
         for label, absent in (
             ("Scheduled Start", not order.schedstart),
@@ -24,6 +24,10 @@ def schedule_problem(order, dates, timezone):
         )
         if absent
     ]
+
+
+def schedule_problem(order, dates, timezone):
+    missing = missing_for_assign(order)
     if missing:
         return f"WO chưa có {', '.join(missing)} trên Maximo; hãy upload trước khi phân công."
     zone = ZoneInfo(timezone)

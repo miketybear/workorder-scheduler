@@ -12,6 +12,7 @@ from pydantic import AwareDatetime
 from sqlalchemy import select, tuple_
 
 from app.assignments.models import Allocation, PlanningSnapshot
+from app.assignments.schedule_gate import missing_for_assign
 from app.assignments.summary import calculate, list_summaries
 from app.auth.person_access import sync_person_access
 from app.auth.sessions import SESSION_COOKIE, resolve_session
@@ -23,6 +24,28 @@ from app.request_deadline import ReadDraftDeadlineRoute
 from app.scheduling.markers import planning_markers
 
 router = APIRouter(prefix="/api", route_class=ReadDraftDeadlineRoute)
+
+
+def backlog_order(order):
+    """Same order as the Work orders table: priority, earliest schedule, then WO number."""
+    start = order.schedstart
+    return (
+        order.wopriority is None,
+        -(order.wopriority or 0),
+        start is None,
+        start.timestamp() if start else 0,
+        order.wonum,
+        order.siteid,
+        order.workorderid,
+    )
+
+
+def in_view(order, view, complete):
+    return view == "all" or ((order.siteid, order.workorderid) in complete) == (view == "completed")
+
+
+def in_readiness(order, readiness):
+    return readiness == "all" or (not missing_for_assign(order)) == (readiness == "ready")
 
 
 def digest(value):
@@ -109,6 +132,7 @@ async def work_order_page(
     search: Annotated[str, Query(max_length=200)] = "",
     cursor: Annotated[str | None, Query(min_length=1, max_length=4096)] = None,
     refresh: bool = False,
+    readiness: Literal["all", "ready", "missing"] = "all",
 ):
     response.headers["Cache-Control"] = "no-store"
     allowed = {
@@ -120,6 +144,7 @@ async def work_order_page(
         "search",
         "cursor",
         "refresh",
+        "readiness",
     }
     if any(
         k not in allowed or len(request.query_params.getlist(k)) != 1 for k in request.query_params
@@ -158,7 +183,7 @@ async def work_order_page(
             settings_fingerprint,
         ]
     )
-    query = digest([str(actor.user_id), cache_key, view, search])
+    query = digest([str(actor.user_id), cache_key, view, search, readiness])
     state = decode_cursor(cursor, settings.max_rows) if cursor else None
     if state and (state["query"] != query or state["revision"] != revision):
         raise HTTPException(409, "Page filters or planning membership changed; restart paging")
@@ -182,17 +207,7 @@ async def work_order_page(
             )
         # Never publish a retrieval whose initiating identity/configuration was revoked.
         await authority_after_io()
-        return sorted(
-            orders,
-            key=lambda o: (
-                o.wopriority is None,
-                -(o.wopriority or 0),
-                o.siteid,
-                (0, int(o.workorderid))
-                if o.workorderid.isascii() and o.workorderid.isdigit()
-                else (1, o.workorderid),
-            ),
-        )
+        return sorted(orders, key=backlog_order)
 
     try:
         if state:
@@ -201,16 +216,13 @@ async def work_order_page(
                 raise HTTPException(409, "WO snapshot expired or refreshed; restart paging")
         else:
             snapshot, _ = await cache.acquire(cache_key, load_snapshot, refresh=refresh)
-        matches = [
+        searched = [
             o
             for o in snapshot.orders
-            if (view == "all" or ((o.siteid, o.workorderid) in complete) == (view == "completed"))
-            and (
-                not search
-                or search.casefold()
-                in " ".join([o.wonum, o.siteid, o.description or ""]).casefold()
-            )
+            if not search
+            or search.casefold() in " ".join([o.wonum, o.siteid, o.description or ""]).casefold()
         ]
+        matches = [o for o in searched if in_view(o, view, complete) and in_readiness(o, readiness)]
         offset = state["offset"] if state else 0
         if offset > len(matches):
             raise HTTPException(409, "Page membership changed; restart paging")
@@ -234,6 +246,22 @@ async def work_order_page(
         )
         if digest(sorted(current_complete)) != revision:
             raise HTTPException(409, "Planning membership changed; restart paging")
+        # Each chip counts what choosing it would show, keeping the other row's selection.
+        counted = (
+            current_complete
+            if view != "all"
+            else await completed_keys(db, connection_id, discipline, ttl)
+        )
+        counts = {
+            **{
+                v: sum(in_view(o, v, counted) and in_readiness(o, readiness) for o in searched)
+                for v in ("backlog", "completed")
+            },
+            **{
+                r: sum(in_view(o, view, counted) and in_readiness(o, r) for o in searched)
+                for r in ("ready", "missing")
+            },
+        }
         markers = await planning_markers(db, actor.user_id, connection_id, discipline, orders)
         summaries = await list_summaries(db, connection_id, discipline, orders, ttl)
         if view != "all" and any(
@@ -268,6 +296,8 @@ async def work_order_page(
         total_count=len(matches),
         page_size=PAGE_SIZE,
         view=view,
+        readiness=readiness,
+        counts=counts,
         search=search,
         filter_revision=revision,
         snapshot_id=snapshot.id,

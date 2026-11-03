@@ -14,9 +14,11 @@
 .backlog { padding:14px; }
 .splitter { align-self:stretch; min-height:220px; cursor:col-resize; touch-action:none; background:linear-gradient(90deg,transparent 3px,var(--line) 3px,var(--line) 7px,transparent 7px); outline-offset:-2px; }
 .splitter:hover,.splitter:focus-visible { background:linear-gradient(90deg,transparent 2px,var(--link) 2px,var(--link) 8px,transparent 8px); }
-.backlogFilters { display:flex; gap:4px; margin:10px 0; }
-.backlogFilters button { flex:1; border:1px solid var(--line); border-radius:5px; padding:6px 4px; background:var(--layer); color:var(--ink); cursor:pointer; }
-.backlogFilters button[aria-pressed="true"] { border-color:var(--link); background:var(--accent-tint); font-weight:700; }
+.backlogFilters { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
+.backlogFilters .filterChip { display:inline-flex; align-items:center; gap:4px; min-height:28px; border:1px solid var(--line); border-radius:999px; padding:2px 10px; background:transparent; color:var(--ink); font-size:12px; cursor:pointer; white-space:nowrap; }
+.backlogFilters .filterChip:hover { background:var(--hover); }
+.backlogFilters .filterChip[aria-pressed="true"] { border-color:var(--accent); background:var(--accent); color:#ffffff; font-weight:600; }
+.chipCount { opacity:.8; font-variant-numeric:tabular-nums; }
 .allocationSummary { display:block; margin-top:3px; color:var(--ink); font-weight:650; }
 .woCard[data-allocation-state="completed"] .allocationSummary { color:var(--success-ink); }
 .woCard[data-allocation-state="partial"] .allocationSummary { color:var(--warning-ink); }
@@ -210,6 +212,8 @@
 .drawer:has(.taskWorkspace) { width: min(980px, 100%); }
 .drawer .actions { bottom: 0; margin: 0 -24px; padding: 12px 24px; border-top: 1px solid var(--line); }
 .drawer .actions button:last-child { border-color: var(--accent); background: var(--accent); }
+.drawer .actions button:last-child:disabled { background: var(--surface); border-color: var(--line); color: var(--muted); cursor: not-allowed; }
+.dialog p.error { color: var(--danger-ink); font-weight: 600; }
 .drawer .taskWorkspace { max-height: none; min-height: 0; }
 @media (max-width: 760px) { .drawer { padding: 16px 16px 0; } .drawer .actions { margin: 0 -16px; padding: 12px 16px; } }
 .drawer { display: flex; flex-direction: column; gap: 12px; }

@@ -18,8 +18,10 @@ export const columns = [
 type Field = typeof columns[number][0];
 export type WorkOrder = Record<Field, string | null> & { siteid: string; wonum: string; workorderid: string; worktype: string; status: string; targcompdate: string; wopriority: number | null; drafts?: PlanningMarker[]; allocation_summary?:AllocationSummary };
 export type WorkOrderFilter = { connection_id: string; discipline: string; target_from: string; target_before: string };
-export type WorkOrderPageFilter = WorkOrderFilter & { view:'all'|'backlog'|'completed'; search:string; cursor?:string; refresh?:boolean };
-export type WorkOrderPage = { connection_id:string; discipline:string; count:number; items:WorkOrder[]; next_cursor:string|null; has_more:boolean; total_count:number; page_size:20; view:'all'|'backlog'|'completed'; search:string; filter_revision:string; snapshot_id:string; expires_at:string };
+export type BacklogReadiness = 'all'|'ready'|'missing';
+export type BacklogCounts = { backlog:number; completed:number; ready:number; missing:number };
+export type WorkOrderPageFilter = WorkOrderFilter & { view:'all'|'backlog'|'completed'; readiness?:BacklogReadiness; search:string; cursor?:string; refresh?:boolean };
+export type WorkOrderPage = { connection_id:string; discipline:string; count:number; items:WorkOrder[]; next_cursor:string|null; has_more:boolean; total_count:number; page_size:20; view:'all'|'backlog'|'completed'; readiness?:BacklogReadiness; counts?:BacklogCounts; search:string; filter_revision:string; snapshot_id:string; expires_at:string };
 
 export class RetrievalError extends Error {
   constructor(public readonly status: number, message: string) { super(message); }
@@ -68,13 +70,14 @@ export async function retrieveWorkOrderPage(filter:WorkOrderPageFilter,signal:Ab
   const query=new URLSearchParams({connection_id:filter.connection_id,discipline:filter.discipline,target_from:filter.target_from,target_before:filter.target_before,view:filter.view,search:filter.search});
   if(filter.cursor!==undefined)query.set('cursor',filter.cursor);
   if(filter.refresh)query.set('refresh','true');
+  if(filter.readiness&&filter.readiness!=='all')query.set('readiness',filter.readiness);
   const response=await fetch(`${config.apiBase}/work-orders/page?${query}`,{signal,credentials:'same-origin',cache:'no-store'});
   if(!response.ok){
     const messages:Record<number,string>={401:'Phiên đã hết hạn. Vui lòng đăng nhập lại.',403:'Không có quyền xem danh sách Work Order.',404:'Phạm vi không còn được cấp quyền. Hãy kiểm tra lại phiên đăng nhập.',409:'Danh sách Work Order đã thay đổi. Đang tải lại trang đầu.',422:'Bộ lọc chưa hợp lệ. Kiểm tra khoảng ngày và múi giờ.',502:'Không lấy được đầy đủ dữ liệu Maximo. Thử thu hẹp khoảng ngày hoặc liên hệ IT.',503:'Kết nối dữ liệu chưa sẵn sàng hoặc chưa được cấu hình.',504:'Yêu cầu xử lý quá thời gian. Thử thu hẹp khoảng ngày rồi tải lại.'};
     throw new RetrievalError(response.status,messages[response.status]??'Không lấy được danh sách Work Order. Hãy thử lại.');
   }
   const body:unknown=await response.json();
-  if(!isRecord(body)||body.connection_id!==filter.connection_id||body.discipline!==filter.discipline||body.view!==filter.view||body.search!==filter.search||
+  if(!isRecord(body)||body.connection_id!==filter.connection_id||body.discipline!==filter.discipline||body.view!==filter.view||(body.readiness??'all')!==(filter.readiness??'all')||body.search!==filter.search||
     !Array.isArray(body.items)||body.items.length>20||body.count!==body.items.length||body.page_size!==20||typeof body.has_more!=='boolean'||
     body.has_more&&body.items.length!==20||
     !(body.next_cursor===null||typeof body.next_cursor==='string'&&body.next_cursor.length>0&&body.next_cursor.length<=4096)||body.has_more!==(body.next_cursor!==null)||

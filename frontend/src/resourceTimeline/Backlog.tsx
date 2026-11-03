@@ -1,6 +1,6 @@
 ﻿// Owns the Backlog presentation; state and operations remain in ResourceTimeline.
 import { type ResourcePool } from '../api/rotaImports';
-import { effectiveAllocationSummary, type WorkOrder, type WorkOrderPage } from '../api/workOrders';
+import { effectiveAllocationSummary, type BacklogReadiness, type WorkOrder, type WorkOrderPage } from '../api/workOrders';
 import { BacklogFilters } from './BacklogFilters';
 import { StatusIcon } from './StatusIcons';
 import { picLabel } from '../scheduling/presentation';
@@ -12,6 +12,8 @@ type LoadedWorkOrderPage=WorkOrderPage&{requestContext:string};
 type Props = {
   backlogView: "backlog" | "completed" | "all";
   setBacklogView: Dispatch<SetStateAction<"backlog" | "completed" | "all">>;
+  backlogReadiness: BacklogReadiness;
+  setBacklogReadiness: Dispatch<SetStateAction<BacklogReadiness>>;
   search: string;
   setSearch: Dispatch<SetStateAction<string>>;
   workOrderPageNotice: string;
@@ -41,10 +43,10 @@ type Props = {
   changeBacklogPage: (page: number) => void;
 };
 
-export function Backlog({ backlogView, setBacklogView, search, setSearch, workOrderPageNotice, workOrderPageLoading, workOrderPageError, setPageRefresh, backlogListRef, backlog, backlogPageOrders, summaryNow, summaryLoadState, backlogSummaryScope, warningsByWo, shownPool, backlogCardRefFor, nameByCode, selectedWoKey, beginDrag, moveDrag, finishDrag, cancelDrag, clickWorkOrder, backlogSummaryScheduler, discipline, shownWorkOrderPage, visibleBacklogPage, changeBacklogPage }: Props) {
+export function Backlog({ backlogView, setBacklogView, backlogReadiness, setBacklogReadiness, search, setSearch, workOrderPageNotice, workOrderPageLoading, workOrderPageError, setPageRefresh, backlogListRef, backlog, backlogPageOrders, summaryNow, summaryLoadState, backlogSummaryScope, warningsByWo, shownPool, backlogCardRefFor, nameByCode, selectedWoKey, beginDrag, moveDrag, finishDrag, cancelDrag, clickWorkOrder, backlogSummaryScheduler, discipline, shownWorkOrderPage, visibleBacklogPage, changeBacklogPage }: Props) {
   return <aside className={styles.backlog} aria-label="WO backlog">
-          <BacklogFilters view={backlogView} onChange={setBacklogView} />
-          <label className={styles.search}>Tìm WO, site<input value={search} onChange={event => setSearch(event.target.value)} placeholder="WO, site hoặc mô tả" /></label><p>Completed: đã phân bổ đủ.</p>{workOrderPageNotice&&<p role="status">{workOrderPageNotice}</p>}{workOrderPageLoading&&<p role="status">Đang tải trang WO…</p>}{workOrderPageError&&<p role="alert">{workOrderPageError}<button onClick={()=>setPageRefresh(value=>value+1)}>Thử lại</button></p>}<div className={styles.woList} ref={backlogListRef} aria-label="Danh sách WO hiện tại">{backlog.length ? backlogPageOrders.map(order => {
+          <BacklogFilters view={backlogView} onChange={setBacklogView} readiness={backlogReadiness} onReadinessChange={setBacklogReadiness} counts={shownWorkOrderPage?.counts} />
+          <label className={styles.search}>Tìm WO, site<input value={search} onChange={event => setSearch(event.target.value)} placeholder="WO, site hoặc mô tả" /></label>{workOrderPageNotice&&<p role="status">{workOrderPageNotice}</p>}{workOrderPageLoading&&<p role="status">Đang tải trang WO…</p>}{workOrderPageError&&<p role="alert">{workOrderPageError}<button onClick={()=>setPageRefresh(value=>value+1)}>Thử lại</button></p>}<div className={styles.woList} ref={backlogListRef} aria-label="Danh sách WO hiện tại">{backlog.length ? backlogPageOrders.map(order => {
           const summary=effectiveAllocationSummary(order,summaryNow);
           const key = `${order.siteid}|${order.workorderid}`;
           const counts=order.allocation_summary;

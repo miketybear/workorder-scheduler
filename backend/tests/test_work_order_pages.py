@@ -179,7 +179,7 @@ def test_snapshot_first_load_is_complete_and_next_page_only_guards_scope(monkeyp
         assert calls == [1, 2, 3, 4, 5, "guard"] and page["has_more"]
         second = await fetch(page["next_cursor"])
         assert (
-            calls == [1, 2, 3, 4, 5, "guard", "guard"] and second["items"][0]["workorderid"] == "20"
+            calls == [1, 2, 3, 4, 5, "guard", "guard"] and second["items"][0]["workorderid"] == "27"
         )
 
     run(scenario())
