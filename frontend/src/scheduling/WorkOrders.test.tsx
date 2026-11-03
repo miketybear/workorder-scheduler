@@ -885,12 +885,9 @@ it('shows every business data field in the panel while hiding technical identity
   await screen.findByText('ONSHORE');
   const panel = within(screen.getByRole('dialog', { name: 'Chỉnh sửa nháp' }));
   expect(panel.getByText('25%')).toBeVisible();
-  expect(panel.getByText('29/09/2026, 08:00')).not.toBeVisible();
-  fireEvent.click(panel.getByText('Lịch Maximo và thực tế'));
-  for (const [, label] of columns.filter(([field]) => !['systemid', 'workorderid', 'wonum', 'description', 'worktype', 'status', 'wopriority', 'assignedto'].includes(field))) {
+  for (const [, label] of columns.filter(([field]) => !['systemid', 'workorderid', 'wonum', 'description', 'worktype', 'status', 'wopriority', 'assignedto', 'schedstart', 'schedfinish', 'targstartdate', 'targcompdate'].includes(field))) {
     expect(panel.getAllByText(label, { exact: true }).length).toBeGreaterThan(0);
   }
-  expect(panel.getByText('29/09/2026, 08:00')).toBeVisible();
   expect(panel.getByText('25%')).toBeVisible();
   expect(panel.queryByText('Site')).not.toBeInTheDocument();
   expect(panel.queryByText('WOID')).not.toBeInTheDocument();

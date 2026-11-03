@@ -250,7 +250,7 @@
 .cards span { color: var(--muted); font-size: 12px; }
 .cards h2 { margin: 16px 0; }
 .cards p { color: var(--muted); }
-.sidePanel.singlePanel { top: 50%; left: 50%; bottom: auto; right: auto; transform: translate(-50%, -50%); width: min(1320px, calc(100% - 48px)); height: calc(100dvh - 96px); display: flex; flex-direction: column; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 0 0 100vmax var(--scrim), var(--shadow-overlay); }
+.sidePanel.singlePanel { top: 50%; left: 50%; bottom: auto; right: auto; transform: translate(-50%, -50%); width: min(1120px, calc(100% - 48px)); height: auto; max-height: calc(100dvh - 96px); display: flex; flex-direction: column; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 0 0 100vmax var(--scrim), var(--shadow-overlay); }
 .singlePanel .editorHeader { flex-shrink: 0; margin: 0; padding: 12px 24px; border-bottom: 1px solid var(--line); }
 .editorHeader > div { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .editorBody { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; background: var(--ground); }
@@ -281,7 +281,7 @@
 .fieldBaseline { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; font-weight: 400; }
 .singlePanel .readOnlyField input { background: transparent; border-bottom-color: var(--line); padding-left: 0; color: var(--ink); cursor: default; }
 .editorActions { flex: 1 1 50%; display: grid; grid-template-columns: 1fr 1fr; margin-left: auto; }
-.editorActions button { min-height: 64px; align-items: flex-start; border-radius: 0; }
+.editorActions button { min-height: 48px; border-radius: 0; }
 @media (max-width: 1000px) { .sidePanel.singlePanel { width: calc(100% - 32px); }.editorLayout { grid-template-columns: minmax(260px, 1fr) minmax(0, 1.5fr); gap: 16px; }.editorBody { padding: 16px; } }
 @media (max-width: 900px) { .singlePanel .filters { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .editorLayout { grid-template-columns: 1fr; }.editorSections { grid-column: 1; }.editorReference { grid-row: 2; }.singlePanel .editorHeader, .editorFooter { padding: 12px 16px; }.singlePanel .filters { grid-template-columns: 1fr; } }

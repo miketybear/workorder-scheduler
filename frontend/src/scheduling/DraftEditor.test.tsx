@@ -239,7 +239,7 @@ it('requires target intent, resets targets when unchecked, and validates duratio
   fireEvent.change(screen.getByLabelText('Est. Duration'), { target: { value: '-1' } });
   fireEvent.click(screen.getByText('Lưu nháp'));
   expect(await screen.findByRole('alert')).toHaveTextContent('Duration phải là số không âm');
-  fireEvent.click(screen.getByText('Khôi phục giá trị Maximo'));
+  fireEvent.click(screen.getByText('Khôi phục'));
   setDateTime(screen.getByLabelText('Target Finish'), '2026-09-29T16:00');
   fireEvent.click(screen.getByText('Lưu nháp'));
   expect(await screen.findByRole('alert')).toHaveTextContent('kết thúc không được trước bắt đầu');
@@ -273,7 +273,7 @@ it.each(['read-only', 'session recheck', 'missing crew'])('disables editing and 
   await screen.findByLabelText('Est. Duration');
   view.rerender(<DraftEditor {...props} writable={condition !== 'read-only'} suspended={condition === 'session recheck'} />);
   expect(screen.getByLabelText('Est. Duration')).toBeDisabled();
-  expect(screen.getByText('Khôi phục giá trị Maximo')).toBeDisabled();
+  expect(screen.getByText('Khôi phục')).toBeDisabled();
   expect(screen.getByText('Lưu nháp')).toBeDisabled();
   expect(saveDraft).not.toHaveBeenCalled();
 });

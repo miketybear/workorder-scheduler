@@ -286,8 +286,8 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
           </div>
           <section className={`${styles.editorSection} ${styles.editorReference}`} aria-label="Thông tin WO từ Maximo">
             <h3>Thông tin từ Maximo</h3>
-            <WorkOrderFacts row={detail.item} timezone={timezone} datesOnly={false} picNames={names} omit={['wonum', 'description', 'worktype', 'status', 'wopriority', 'assignedto']} />
-            <details><summary>Lịch Maximo và thực tế</summary><WorkOrderFacts row={detail.item} timezone={timezone} datesOnly /></details>
+            <WorkOrderFacts row={detail.item} timezone={timezone} picNames={names} omit={['wonum', 'description', 'worktype', 'status', 'wopriority', 'assignedto', 'schedstart', 'schedfinish', 'targstartdate', 'targcompdate']} />
+            
           </section>
         </div>
       </>}
@@ -302,7 +302,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
         </div>}
       </div>}
       <div className={styles.editorActions}>
-        <button className={styles.secondary} disabled={editingDisabled} onClick={() => { setChanges({}); setError(''); setNotice(''); }}>Khôi phục giá trị Maximo</button>
+        <button className={styles.secondary} disabled={editingDisabled} onClick={() => { setChanges({}); setError(''); setNotice(''); }}>Khôi phục</button>
         <button className={styles.primary} disabled={editingDisabled || changed.length === 0 || !unsaved || !!validation()} onClick={() => void mutate()}>{busy ? 'Đang lưu…' : 'Lưu nháp'}</button>
       </div>
     </div>}
