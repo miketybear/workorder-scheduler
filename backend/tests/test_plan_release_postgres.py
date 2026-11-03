@@ -77,6 +77,9 @@ REJECTED = {
         "rollback",
         "concurrent_same_request",
         "already_released",
+        "wo_release",
+        "wo_stale",
+        "wo_csrf",
     ],
 )
 def test_plan_release_is_atomic_scoped_and_local(monkeypatch, mode):
@@ -201,6 +204,43 @@ def test_plan_release_is_atomic_scoped_and_local(monkeypatch, mode):
                         i.sync_state = mode
                 if mode == "remote_id":
                     items[0].remote_assignment_id = "999"
+                sent_plan_id = sent_id = None
+                if mode.startswith("wo_"):
+                    sent_plan = AssignmentPlan(
+                        actor_id=user.id,
+                        pool_id=pool.id,
+                        connection_id=connection.id,
+                        assignment_id="301",
+                        person_id=person.id,
+                        laborcode=labor,
+                        demand_minutes=60,
+                        state="reserved",
+                        sync_state="synced",
+                    )
+                    db.add(sent_plan)
+                    await db.flush()
+                    sent = Allocation(
+                        pool_id=pool.id,
+                        person_id=person.id,
+                        connection_id=connection.id,
+                        site_id="TEST",
+                        workorder_id="100",
+                        discipline="MECH",
+                        craft=day.craft,
+                        role=day.role,
+                        laborcode=labor,
+                        date=D1 + timedelta(days=1),
+                        minutes=60,
+                        plan=sent_plan,
+                        task_workorder_id="201",
+                        task_id=20,
+                        assignment_id="301",
+                        upstream_baseline=baseline,
+                        sync_state="synced",
+                    )
+                    db.add(sent)
+                    await db.flush()
+                    sent_plan_id, sent_id = sent_plan.id, sent.id
             app = create_app(settings)
             app.state.sessions = sessions
             requests = []
@@ -262,6 +302,43 @@ def test_plan_release_is_atomic_scoped_and_local(monkeypatch, mode):
             ) as client:
                 client.cookies.set(SESSION_COOKIE, token)
                 headers = {"x-csrf-token": csrf}
+                if mode.startswith("wo_"):
+                    base = f"/api/resource-pools/{pool.id}/assignments/{ids[D1]}/work-order-release"
+                    shown = (await client.get(base)).json()
+                    assert set(shown["allocation_ids"]) == {str(i) for i in ids.values()}
+                    assert shown["task_count"] == 1 and shown["kept_task_count"] == 1
+                    assert shown["total_minutes"] == 1200
+                    payload = dict(
+                        request_id=str(uuid4()),
+                        expected_allocation_ids=shown["allocation_ids"][:1]
+                        if mode == "wo_stale"
+                        else shown["allocation_ids"],
+                    )
+                    response = await client.post(
+                        base, json=payload, headers={} if mode == "wo_csrf" else headers
+                    )
+                    if mode != "wo_release":
+                        assert response.status_code == (409 if mode == "wo_stale" else 403)
+                        assert await snapshot() == before
+                        return
+                    assert response.status_code == 200, response.text
+                    assert response.json()["released_task_count"] == 1
+                    assert response.json()["kept_task_count"] == 1
+                    plan_after, rows_after = await snapshot()
+                    assert plan_after[1] == "released"
+                    assert all(row[4] == "released" for row in rows_after)
+                    async with sessions() as db:
+                        kept = await db.get(Allocation, sent_id, populate_existing=True)
+                        kept_plan = await db.get(AssignmentPlan, sent_plan_id)
+                        assert kept.state == "reserved" and kept_plan.state == "reserved"
+                        events = list(await db.scalars(select(AssignmentEvent)))
+                        assert {e.event for e in events} == {"work_order_release"}
+                        assert len(events) == 2
+                    assert all(r.method == "GET" for r in requests)
+                    repeated = await client.post(base, json=payload, headers=headers)
+                    assert repeated.status_code == 200
+                    assert repeated.json()["items"] == response.json()["items"]
+                    return
                 body = dict(request_id=str(uuid4()), expected_version=2 if mode == "stale" else 1)
                 pool_id = uuid4() if mode == "wrong_pool" else pool.id
                 url = f"/api/resource-pools/{pool_id}/assignment-plans/{plan.id}/release"

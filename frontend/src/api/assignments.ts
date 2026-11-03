@@ -340,6 +340,30 @@ export async function releasePlan(poolId:string,planId:string,input:PlanReleaseI
 export async function lookupPlanReleaseRequest(poolId:string,planId:string,input:PlanReleaseInput,signal:AbortSignal):Promise<AssignmentPlanMoveResult|null>{
   try{return await json(`/assignment-submissions/${encodeURIComponent(input.request_id)}`,signal,undefined,value=>parsePlanReleaseResult(value,poolId,planId,input));}catch(error){if(error instanceof AssignmentError&&error.status===404)return null;throw error;}
 }
+export type WorkOrderReleasePreview={allocation_ids:string[];task_count:number;total_minutes:number;person_ids:string[];kept_task_count:number};
+export type WorkOrderReleaseInput={request_id:string;expected_allocation_ids:string[]};
+export type WorkOrderReleaseResult=Omit<AssignmentPlanMoveResult,'plan_id'|'plan_version'>&{released_task_count:number;kept_task_count:number};
+const workOrderReleasePath=(poolId:string,allocationId:string)=>`/resource-pools/${encodeURIComponent(poolId)}/assignments/${encodeURIComponent(allocationId)}/work-order-release`;
+function parseWorkOrderReleaseResult(value:unknown,poolId:string,input:WorkOrderReleaseInput):WorkOrderReleaseResult{
+  const body=record(value)&&record(value.result)?value.result:value;
+  if(!record(body)||body.request_id!==input.request_id||!Array.isArray(body.items))throw new Error('Biên nhận xóa phân công không hợp lệ.');
+  const items=body.items.map(item=>parseAssignment(item));const expected=new Set(input.expected_allocation_ids);
+  if(items.length!==expected.size||items.some(item=>!expected.has(item.id)||item.pool_id!==poolId||item.state!=='released'))throw new Error('Kết quả xóa phân công không khớp yêu cầu.');
+  return {request_id:input.request_id,items,released_task_count:Number(body.released_task_count),kept_task_count:Number(body.kept_task_count),...mutationMetadata({...value as Record<string,unknown>,...body})};
+}
+export async function getWorkOrderRelease(poolId:string,allocationId:string,signal:AbortSignal):Promise<WorkOrderReleasePreview>{
+  return json(workOrderReleasePath(poolId,allocationId),signal,undefined,value=>{
+    if(!record(value)||!Array.isArray(value.allocation_ids)||!Array.isArray(value.person_ids)||![value.task_count,value.total_minutes,value.kept_task_count].every(Number.isInteger))throw new Error('Danh sách phân công của WO không hợp lệ.');
+    return value as unknown as WorkOrderReleasePreview;
+  });
+}
+/** Releases the WO's local assignments in one transaction; rows already sent to Maximo are kept. */
+export async function releaseWorkOrder(poolId:string,allocationId:string,input:WorkOrderReleaseInput,signal:AbortSignal):Promise<WorkOrderReleaseResult>{
+  return json(workOrderReleasePath(poolId,allocationId),signal,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)},value=>parseWorkOrderReleaseResult(value,poolId,input));
+}
+export async function lookupWorkOrderRelease(poolId:string,input:WorkOrderReleaseInput,signal:AbortSignal):Promise<WorkOrderReleaseResult|null>{
+  try{return await json(`/assignment-submissions/${encodeURIComponent(input.request_id)}`,signal,undefined,value=>parseWorkOrderReleaseResult(value,poolId,input));}catch(error){if(error instanceof AssignmentError&&error.status===404)return null;throw error;}
+}
 export async function previewAssignmentPlanMove(poolId:string,planId:string,input:AssignmentPlanMoveRequest,knownItems:Assignment[],signal:AbortSignal):Promise<AssignmentPlanMovePreview>{
   validatePlanMoveRequest(poolId,planId,input);
   return json(`${planMovePath(poolId,planId)}/move-preview`,signal,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...input,backfill:true})},value=>parsePlanMovePreview(value,poolId,planId,input,knownItems));

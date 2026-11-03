@@ -21,6 +21,7 @@ from app.assignments.schedule_gate import require_schedule
 from app.assignments.summary import remember_tasks
 from app.assignments.tasks import register
 from app.assignments.uploads import register as register_uploads
+from app.assignments.work_order_release import register as register_work_order_release
 from app.auth.person_access import sync_person_access
 from app.auth.sessions import SESSION_COOKIE, resolve_session
 from app.db.models import MaximoConnection
@@ -662,3 +663,4 @@ register_bulk_uploads(router)
 register_plan_moves(router)
 register_plan_segments(router)
 register_plan_release(router)
+register_work_order_release(router)

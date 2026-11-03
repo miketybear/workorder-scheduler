@@ -2,6 +2,12 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Xóa tất cả phân công của một WO — 2026-11-03
+
+- [x] Panel kế hoạch task có mục "Xóa tất cả phân công của WO…", xem trước số task, số giờ, người rồi xác nhận. Xóa trong một giao dịch, có ghi vết; kế hoạch đã gửi Maximo được giữ nguyên toàn bộ; danh sách thay đổi thì từ chối. Không ghi gì lên Maximo.
+- Bằng chứng: test PostgreSQL cho xóa, giữ task đã gửi, gửi lại cùng yêu cầu, danh sách cũ, CSRF; frontend vitest và `tsc`.
+- Giới hạn: chỉ mở được từ panel của kế hoạch task; chưa thử trên giao diện.
+
 ## Thông báo sau khi phân công nói rõ đã lưu gì — 2026-11-03
 
 - [x] Backlog mặc định bật chip Sẵn sàng khi mở trang.

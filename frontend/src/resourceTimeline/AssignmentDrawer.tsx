@@ -5,14 +5,18 @@ import { type WorkOrder } from '../api/workOrders';
 import { PlanUpload } from './PlanUpload';
 import { DateTimeInput } from '../components/DateTimeInput';
 import { taskHue, dayNames, addCalendarDays, displayHours, displayDate, formatMaximoDateTime, expectedFinish, parseHours, capacityFor, missingForAssign, outsideSchedule } from './timelineHelpers';
+import { WorkOrderRelease } from './WorkOrderRelease';
+import type { WorkOrderReleaseResult } from '../api/assignments';
 import styles from './ResourceTimeline.module.css';
-import type { Dispatch, SetStateAction, RefObject } from 'react';
+import { useState, type Dispatch, type SetStateAction, type RefObject } from 'react';
 type TimelinePerson = ResourcePerson & { dayMetadata: Record<string, string[]> };
 type Cell = { person: ResourcePerson; date: string };
 type Proposal = { item?: Assignment; workOrder?: AssignmentWorkOrder; cell: Cell; minutes: number; hours: string };
 type Pending = { requestId: string; kind: 'create' | 'update' | 'delete' | 'task-batch' | 'task-plan-batch'; assignmentId?: string; input?: AssignmentInput; taskInput?: TaskAllocationInput; planBatchInput?:TaskPlanBatchInput; version?: number; item?: Assignment; context: { principal: string; connectionId: string; discipline: string; poolId: string; month: string } };
 
 type Props = {
+  onWorkOrderReleased: (result: WorkOrderReleaseResult) => Promise<void>;
+  setBusy: (busy: boolean) => void;
   error: string;
   verifyPlan: React.ComponentProps<typeof PlanUpload>["verify"];
   onPlanConfirmed: React.ComponentProps<typeof PlanUpload>["onConfirmed"];
@@ -118,7 +122,8 @@ type Props = {
   chosenTaskKeys: string[];
 };
 
-export function AssignmentDrawer({ error, verifyPlan, onPlanConfirmed, dialogRef, busy, pending, uploading, uploadUnknownRequest, planUploadCloseLocked, setProposal, confirmedReadOnly, proposal, canEditItem, planItem, workOrderLabel, shownTimeline, planMenu, setPlanMenu, planUploadLocked, beginPlanMove, canWrite, setConfirmRelease, roster, planDaysOfItem, planDaysChanged, planDayMinutes, planDayLoad, planDayRoom, dayHours, daysUnknown, setDayHours, planDaysTotal, reconcilePlanDays, confirmRelease, releaseUnknown, reconcilePlanRelease, releaseWholePlan, confirmedPlanItem, confirmedTask, confirmedLaborcode, shownPool, taskLoading, taskError, confirmedPlanItems, confirmedCoverageComplete, confirmedCoverageMinutes, displayedProposalDate, taskData, selectedTaskTotal, dialogWorkOrders, resetProposalDetails, setTaskPlanStart, taskPlanMode, setTaskPlanSegments, taskPlanStart, taskPlanCapacityLoading, dates, taskOrder, foreignOnlyTasks, discipline, selectedTasks, setSelectedTasks, taskMinutes, setTaskMinutes, taskAssignments, setTaskAssignments, assignableTasks, planDates, planTasks, planTaskTotals, visibleTaskPlans, availableByDate, taskPlanCapacityDays, planDayTotals, taskPlanCapacityMatches, taskPlanCapacity, setTaskPlanCapacity, taskPlanContextKey, planPlaced, planUnplaced, taskPlanDates, automaticPlans, planOverallocated, planValid, planEditLimit, displayedProposalDay, proposalDirty, uploadWall, uploadResult, setUploadWall, submitUpload, reconcileUpload, pool, planRecovery, planRecoveryKey, setPlanUploadLocked, setPlanUploadCloseLocked, submit, unknown, planDaysValid, savePlanDays, proposalDay, chosenTaskKeys }: Props) {
+export function AssignmentDrawer({ onWorkOrderReleased, setBusy, error, verifyPlan, onPlanConfirmed, dialogRef, busy, pending, uploading, uploadUnknownRequest, planUploadCloseLocked, setProposal, confirmedReadOnly, proposal, canEditItem, planItem, workOrderLabel, shownTimeline, planMenu, setPlanMenu, planUploadLocked, beginPlanMove, canWrite, setConfirmRelease, roster, planDaysOfItem, planDaysChanged, planDayMinutes, planDayLoad, planDayRoom, dayHours, daysUnknown, setDayHours, planDaysTotal, reconcilePlanDays, confirmRelease, releaseUnknown, reconcilePlanRelease, releaseWholePlan, confirmedPlanItem, confirmedTask, confirmedLaborcode, shownPool, taskLoading, taskError, confirmedPlanItems, confirmedCoverageComplete, confirmedCoverageMinutes, displayedProposalDate, taskData, selectedTaskTotal, dialogWorkOrders, resetProposalDetails, setTaskPlanStart, taskPlanMode, setTaskPlanSegments, taskPlanStart, taskPlanCapacityLoading, dates, taskOrder, foreignOnlyTasks, discipline, selectedTasks, setSelectedTasks, taskMinutes, setTaskMinutes, taskAssignments, setTaskAssignments, assignableTasks, planDates, planTasks, planTaskTotals, visibleTaskPlans, availableByDate, taskPlanCapacityDays, planDayTotals, taskPlanCapacityMatches, taskPlanCapacity, setTaskPlanCapacity, taskPlanContextKey, planPlaced, planUnplaced, taskPlanDates, automaticPlans, planOverallocated, planValid, planEditLimit, displayedProposalDay, proposalDirty, uploadWall, uploadResult, setUploadWall, submitUpload, reconcileUpload, pool, planRecovery, planRecoveryKey, setPlanUploadLocked, setPlanUploadCloseLocked, submit, unknown, planDaysValid, savePlanDays, proposalDay, chosenTaskKeys }: Props) {
+  const [woRelease,setWoRelease]=useState(false);
   const chosenOrder=proposal.item?undefined:dialogWorkOrders.find(order=>order.siteid===proposal.workOrder?.site_id&&order.workorderid===proposal.workOrder?.workorder_id);
   const chosenSchedule=chosenOrder&&{schedstart:chosenOrder.schedstart,schedfinish:chosenOrder.schedfinish,pic:chosenOrder.assignedto};
   const chosenMissing=chosenSchedule?missingForAssign(chosenSchedule):'';
@@ -134,6 +139,7 @@ export function AssignmentDrawer({ error, verifyPlan, onPlanConfirmed, dialogRef
             {planMenu&&<div role="menu" className={styles.menuList}>
               {(planItem.plan_sync_state??planItem.sync_state??'local')==='local'&&<button type="button" role="menuitem" disabled={busy||!!pending||planUploadLocked} onClick={()=>{setPlanMenu(false);beginPlanMove(planItem,proposal.cell.person,proposal.cell.date,true);}}>Đổi người / ngày bắt đầu…</button>}
               <button type="button" role="menuitem" data-danger disabled={!canWrite||!canEditItem(planItem)||planUploadLocked||busy||(planItem.plan_sync_state??planItem.sync_state??'local')!=='local'} onClick={()=>{setPlanMenu(false);setConfirmRelease(true);}}>Xóa cả kế hoạch…</button>
+              <button type="button" role="menuitem" data-danger disabled={!canWrite||planUploadLocked||busy} onClick={()=>{setPlanMenu(false);setConfirmRelease(false);setWoRelease(true);}}>Xóa tất cả phân công của WO…</button>
             </div>}
           </div>
         </header>
@@ -156,6 +162,7 @@ export function AssignmentDrawer({ error, verifyPlan, onPlanConfirmed, dialogRef
         {planDaysChanged&&planDaysTotal!==(planItem.plan_total_minutes??planItem.minutes)&&<p role="alert">Tổng giờ các ngày phải bằng {displayHours(planItem.plan_total_minutes??planItem.minutes)} giờ của task (hiện {displayHours(planDaysTotal)} giờ). Để 0 để bỏ một ngày.</p>}
         {planDaysOfItem.some(day=>planDayMinutes(day)!==day.minutes&&planDayRoom(day)<0)&&<p role="alert">Có ngày vượt rota còn lại; giảm giờ ngày đó hoặc chuyển bớt sang ngày khác.</p>}
         {daysUnknown&&<div className={styles.planMore}><button type="button" disabled={busy} onClick={()=>void reconcilePlanDays()}>Kiểm tra kết quả</button></div>}
+        {woRelease&&shownPool&&<WorkOrderRelease poolId={shownPool.id} allocationId={planItem.id} label={workOrderLabel(planItem,shownTimeline)} personName={id=>roster.find(person=>person.person_id===id)?.name} verify={verifyPlan} onReleased={onWorkOrderReleased} onClose={()=>setWoRelease(false)} onBusyChange={setBusy} />}
         {(confirmRelease||releaseUnknown)&&<div role="alertdialog" aria-label="Xác nhận xóa cả kế hoạch" className={styles.releaseConfirm}>
           <p><strong>Xóa cả kế hoạch này?</strong> {planDaysOfItem.length} ngày, {displayHours(planItem.plan_total_minutes??planItem.minutes)} giờ sẽ được trả lại rota của {roster.find(person=>person.person_id===planItem.person_id)?.name??'nhân lực'}. Maximo không bị thay đổi.</p>
           <div>{releaseUnknown?<button type="button" disabled={busy} onClick={()=>void reconcilePlanRelease()}>Kiểm tra kết quả</button>:<><button type="button" disabled={busy} onClick={()=>setConfirmRelease(false)}>Giữ lại</button><button type="button" data-danger disabled={busy} onClick={()=>void releaseWholePlan()}>Xóa cả kế hoạch</button></>}</div>

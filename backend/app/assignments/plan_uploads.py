@@ -100,13 +100,19 @@ def segment_set(plan, items):
 async def scoped_plan(
     request, plan_id, *, write=False, csrf=False, eligible=False, any_state=False, gated=False
 ):
-    from app.assignments.routes import existing, key, read_scope
+    from app.assignments.routes import existing
 
     async with request.app.state.sessions() as db:
         await resolve_session(db, request.cookies.get(SESSION_COOKIE))
         _, items = await plan_items(db, plan_id, any_state=any_state)
     item = await existing(request, items[0].id)
     dates = [i.date for i in items] if gated else None
+    return await scoped_item(request, item, write=write, csrf=csrf, eligible=eligible, dates=dates)
+
+
+async def scoped_item(request, item, *, write=False, csrf=False, eligible=False, dates=None):
+    from app.assignments.routes import key, read_scope
+
     # Preview requires Planner but GET does not require CSRF.
     if write and not csrf:
         identity, settings = await checked_settings(request, key(item), item.discipline, write=True)
