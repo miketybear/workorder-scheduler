@@ -13,7 +13,13 @@ from app.db.models import LoginSession, MaximoConnection, PlannerPermission, Use
 from app.maximo.connections import configured_connection
 from app.maximo.labor import read_labor
 from app.maximo.reader import MaximoReadError
-from app.rota.models import ResourcePool, ResourcePoolGrant, RotaEvent, RotaImport
+from app.rota.models import (
+    ResourcePool,
+    ResourcePoolGrant,
+    RotaActivation,
+    RotaEvent,
+    RotaImport,
+)
 from app.rota.parser import MAX_UPLOAD, RotaParseError, eligible_rows, parse_rota
 from app.rota.preview import eligible_candidates, preview, proposals, summary
 
@@ -234,7 +240,23 @@ async def imports(request: Request, response: Response, pool_id: UUID):
                 .limit(100)
             )
         ).all()
-        return {"items": [summary(stage) for stage in stages]}
+        latest = await db.scalar(
+            select(RotaActivation)
+            .where(RotaActivation.pool_id == pool_id)
+            .order_by(RotaActivation.pool_version.desc())
+            .limit(1)
+        )
+        return {
+            "items": [
+                {
+                    **summary(stage),
+                    "active_since": latest.activated_at.isoformat()
+                    if latest and latest.import_id == stage.id
+                    else None,
+                }
+                for stage in stages
+            ]
+        }
 
 
 @router.get("/rota-imports/{import_id}")

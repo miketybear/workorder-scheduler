@@ -13,7 +13,7 @@ import { RotaStagingPreview } from './rotaStaging/RotaStagingPreview';
 import { RotaImports } from './rotaImports/RotaImports';
 import { ResourceTimeline } from './resourceTimeline/ResourceTimeline';
 
-const pages = [['/work-orders', 'WO Scheduler'], ['/resource-timeline', 'Resource Timeline'], ['/rota-imports', 'Rota Upload']] as const;
+const pages = [['/work-orders', 'WO Scheduler'], ['/resource-timeline', 'Resource Timeline'], ['/rota-imports', 'Tải rota']] as const;
 
 /** The three app pages behind one menu button at the far left of the header. */
 function PageMenu() {

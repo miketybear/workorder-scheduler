@@ -8,6 +8,7 @@ export interface ResourcePool {
 export interface ImportSummary {
   id: string; pool_id: string; version: number; status: string; file_name: string; sheet: string;
   created_at: string; coverage_from: string | null; coverage_before: string | null;
+  active_since?: string | null;
 }
 export interface RotaIssue {
   kind: string; message: string; source_row: number | null; date: string | null; cell: string | null;

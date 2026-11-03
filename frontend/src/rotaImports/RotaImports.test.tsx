@@ -49,9 +49,10 @@ it('shows excluded Material Controller separately and does not report title-reso
     rows: [{ ...stage.rows[0], mapping: titleMatch, candidates: [titleMatch, other] }],
   } as never);
   render(<RotaImports />);
-  await screen.findByText('Không tính Labor / capacity · 1 dòng');
+  await screen.findByText('Không tính vào nhân lực · 1 dòng');
   expect(screen.getByRole('region', { name: 'Chức danh không tính Labor' })).toHaveTextContent('Dòng 96 · Nguyen Manh Hung · Material controller');
-  expect(screen.getByText('Person P1 · Position: E&I Technician')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name:/^Tất cả \d+ người$/ }));
+  expect(screen.getByTitle(/Person P1 · Position: E&I Technician/)).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: /Báo cáo lỗi LABOR/ })).not.toBeInTheDocument();
 });
 
@@ -80,9 +81,9 @@ it('keeps a read-only pool usable for restores but disables upload, refresh and 
   vi.mocked(listRotaImports).mockResolvedValue([{ ...stage }]);
   vi.mocked(getRotaImport).mockResolvedValue(stage as never);
   render(<RotaImports />);
-  expect(await screen.findByText('Preview đã lưu · rota.xlsx')).toBeInTheDocument();
+  expect(await screen.findByText('Xem trước · rota.xlsx')).toBeInTheDocument();
   expect(screen.getByRole('button', { name:'Làm mới LABOR' })).toBeDisabled();
-  expect(screen.getByRole('button', { name:'Hủy phiên staging' })).toBeDisabled();
+  expect(screen.getByRole('button', { name:'Hủy bản nháp' })).toBeDisabled();
   expect(screen.getByLabelText(/File rota/)).toBeDisabled();
 });
 
@@ -91,8 +92,8 @@ it('stores the upload and reports all matching LABOR details and Maximo fixes wi
   render(<RotaImports />);
   const file = new File(['rota'], 'rota.xlsx');
   fireEvent.change(await screen.findByLabelText(/File rota/), { target:{ files:[file] } });
-  fireEvent.click(screen.getByRole('button', { name:'Upload và tạo staging' }));
-  await screen.findByText('Preview đã lưu · rota.xlsx');
+  fireEvent.click(screen.getByRole('button', { name:'Tải lên và xem trước' }));
+  await screen.findByText('Xem trước · rota.xlsx');
   expect(uploadRotaImport).toHaveBeenCalledWith('pool-1', file, 'ROTA_2026', expect.any(AbortSignal));
   expect(await screen.findByRole('heading', { name:'Báo cáo lỗi LABOR / craft · 4 dòng' })).toBeInTheDocument();
   expect(screen.getByText(/Không tìm thấy LABOR có tên khớp chính xác/)).toBeInTheDocument();
@@ -100,7 +101,7 @@ it('stores the upload and reports all matching LABOR details and Maximo fixes wi
   expect(screen.getByText(/Có 2 LABOR cùng tên/)).toBeInTheDocument();
   expect(screen.getByText(/Craft Maximo “MECH” không khớp craft rota “E&I”/)).toBeInTheDocument();
   expect(screen.getByText(/chưa có default craft/i)).toBeInTheDocument();
-  expect(screen.getAllByText(/Maximo admin xử lý trên Maximo/).length).toBeGreaterThan(1);
+  expect(screen.getAllByText(/Maximo admin xử lý trên Maximo/).length).toBeGreaterThan(0);
   expect(screen.queryByRole('combobox', { name:/LABOR mapping/ })).not.toBeInTheDocument();
   expect(refreshRotaLabor).not.toHaveBeenCalled(); expect(cancelRotaImport).not.toHaveBeenCalled();
 });
@@ -111,10 +112,10 @@ it('refreshes after Maximo fixes and installs the server-calculated preview', as
   vi.mocked(refreshRotaLabor).mockResolvedValue(corrected as never);
   render(<RotaImports />);
   fireEvent.change(await screen.findByLabelText(/File rota/), { target:{ files:[new File(['rota'], 'rota.xlsx')] } });
-  fireEvent.click(screen.getByRole('button', { name:'Upload và tạo staging' }));
+  fireEvent.click(screen.getByRole('button', { name:'Tải lên và xem trước' }));
   await screen.findByRole('heading', { name:'Báo cáo lỗi LABOR / craft · 4 dòng' });
   fireEvent.click(screen.getByRole('button', { name:'Làm mới LABOR' }));
-  expect(await screen.findByRole('status')).toHaveTextContent('Đã cập nhật snapshot LABOR và tính lại preview.');
+  expect(await screen.findByRole('status')).toHaveTextContent('Đã cập nhật dữ liệu LABOR và tính lại preview.');
   expect(refreshRotaLabor).toHaveBeenCalledWith(blockedStage(), expect.any(AbortSignal));
   expect(screen.queryByRole('heading', { name:'Báo cáo lỗi LABOR / craft · 4 dòng' })).not.toBeInTheDocument();
 });
@@ -128,14 +129,14 @@ it('keeps the staged upload after LABOR REST failure and hides outdated error ro
   const input = await screen.findByLabelText(/File rota/);
   const file = new File(['rota'], 'rota.xlsx');
   fireEvent.change(input, { target:{ files:[file] } });
-  fireEvent.click(screen.getByRole('button', { name:'Upload và tạo staging' }));
-  expect(await screen.findByText('Preview đã lưu · rota.xlsx')).toBeInTheDocument();
-  expect(screen.getByText(/Chưa có snapshot LABOR cho phiên này\. Maximo REST timeout/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name:'Tải lên và xem trước' }));
+  expect(await screen.findByText('Xem trước · rota.xlsx')).toBeInTheDocument();
+  expect(screen.getByText(/Chưa có dữ liệu LABOR cho phiên này\. Maximo REST timeout/)).toBeInTheDocument();
   expect(screen.getAllByText('LABOR chưa đối chiếu').length).toBeGreaterThan(0);
   expect(screen.queryByRole('heading', { name:/Báo cáo lỗi LABOR/ })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name:'Làm mới LABOR' }));
   expect(await screen.findByText(/Không làm mới được LABOR: Maximo REST vẫn không phản hồi/)).toBeInTheDocument();
-  expect(screen.getByText('Preview đã lưu · rota.xlsx')).toBeInTheDocument();
+  expect(screen.getByText('Xem trước · rota.xlsx')).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name:/Báo cáo lỗi LABOR/ })).not.toBeInTheDocument();
   expect(uploadRotaImport).toHaveBeenCalledTimes(1);
   expect(refreshRotaLabor).toHaveBeenCalledTimes(1);
@@ -149,12 +150,12 @@ it('does not claim a new snapshot when refresh returns the retained old snapshot
   vi.mocked(refreshRotaLabor).mockResolvedValue(retained as never);
   render(<RotaImports />);
   fireEvent.change(await screen.findByLabelText(/File rota/), { target:{ files:[new File(['rota'], 'rota.xlsx')] } });
-  fireEvent.click(screen.getByRole('button', { name:'Upload và tạo staging' }));
+  fireEvent.click(screen.getByRole('button', { name:'Tải lên và xem trước' }));
   await screen.findByRole('heading', { name:'Báo cáo lỗi LABOR / craft · 4 dòng' });
   fireEvent.click(screen.getByRole('button', { name:'Làm mới LABOR' }));
-  expect(await screen.findByRole('status')).toHaveTextContent('Đã lưu kết quả kiểm tra; chưa lấy được snapshot LABOR mới.');
+  expect(await screen.findByRole('status')).toHaveTextContent('Đã lưu kết quả kiểm tra; chưa lấy được dữ liệu LABOR mới.');
   expect(screen.queryByRole('heading', { name:/Báo cáo lỗi LABOR/ })).not.toBeInTheDocument();
-  expect(screen.getByText(/Snapshot LABOR cũ vẫn được giữ/)).toBeInTheDocument();
+  expect(screen.getByText(/Dữ liệu LABOR cũ vẫn được giữ/)).toBeInTheDocument();
   expect(refreshRotaLabor).toHaveBeenCalledTimes(1);
 });
 
@@ -169,15 +170,15 @@ it('reloads the latest saved version after refresh conflict and never retries up
   vi.mocked(getRotaImport).mockResolvedValue(latest as never);
   render(<RotaImports />);
   fireEvent.change(await screen.findByLabelText(/File rota/), { target:{ files:[new File(['rota'], 'rota.xlsx')] } });
-  fireEvent.click(screen.getByRole('button', { name:'Upload và tạo staging' }));
+  fireEvent.click(screen.getByRole('button', { name:'Tải lên và xem trước' }));
   await screen.findByRole('heading', { name:'Báo cáo lỗi LABOR / craft · 4 dòng' });
   fireEvent.click(screen.getByRole('button', { name:'Làm mới LABOR' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(/Preview đã được cập nhật ở nơi khác/);
   fireEvent.click(screen.getByRole('button', { name:'Tải lại phiên đã lưu' }));
-  await screen.findByText('Preview đã lưu · rota.xlsx');
+  await screen.findByText('Xem trước · rota.xlsx');
   expect(getRotaImport).toHaveBeenCalledWith('stage-1', 'pool-1', expect.any(AbortSignal));
   fireEvent.click(screen.getByRole('button', { name:'Làm mới LABOR' }));
-  expect(await screen.findByRole('status')).toHaveTextContent('Đã cập nhật snapshot LABOR và tính lại preview.');
+  expect(await screen.findByRole('status')).toHaveTextContent('Đã cập nhật dữ liệu LABOR và tính lại preview.');
   expect(refreshRotaLabor).toHaveBeenLastCalledWith(latest, expect.any(AbortSignal));
   expect(uploadRotaImport).toHaveBeenCalledTimes(1);
 });
@@ -187,7 +188,7 @@ it('does not refresh a cancelled staging session', async () => {
   const cancelled = { ...stage, status:'cancelled' };
   vi.mocked(listRotaImports).mockResolvedValue([cancelled]); vi.mocked(getRotaImport).mockResolvedValue(cancelled as never);
   render(<RotaImports />);
-  expect(await screen.findByText('Preview đã lưu · rota.xlsx')).toBeInTheDocument();
+  expect(await screen.findByText('Xem trước · rota.xlsx')).toBeInTheDocument();
   expect(screen.getByRole('button', { name:'Làm mới LABOR' })).toBeDisabled();
 });
 
@@ -196,17 +197,19 @@ it('reloads a retained import when its version/status changed while the timeline
   const activated = { ...stage, version:2, status:'activated' };
   vi.mocked(listRotaImports)
     .mockResolvedValueOnce([{ ...stage }])
-    .mockResolvedValueOnce([{ ...activated }]);
+    .mockResolvedValueOnce([{ ...activated, active_since:'2026-11-03T06:03:02Z' }]);
   vi.mocked(getRotaImport).mockResolvedValueOnce(stage as never).mockResolvedValueOnce(activated as never);
   const view = render(<RotaImports />);
-  expect(await screen.findByText('Preview đã lưu · rota.xlsx')).toBeInTheDocument();
+  expect(await screen.findByText('Xem trước · rota.xlsx')).toBeInTheDocument();
   view.rerender(<RotaImports active={false} />);
   view.rerender(<RotaImports active />);
-  expect(await screen.findByText('Roster đã kích hoạt')).toBeInTheDocument();
+  expect(await screen.findByText(/Rota đang dùng: rota.xlsx/)).toBeInTheDocument();
   expect(getRotaImport).toHaveBeenCalledTimes(2);
   expect(getRotaImport).toHaveBeenLastCalledWith(stage.id, pool.id, expect.any(AbortSignal));
+  expect(screen.getByRole('button', { name:/Kích hoạt$/ })).toHaveAttribute('aria-current','step');
+  fireEvent.click(screen.getByRole('button', { name:/Kiểm tra$/ }));
   expect(screen.getByRole('button', { name:'Làm mới LABOR' })).toBeDisabled();
-  expect(screen.getByRole('button', { name:'Phiên không còn ở staging' })).toBeDisabled();
+  expect(screen.getByRole('button', { name:'Bản nháp đã đóng' })).toBeDisabled();
 });
 
 it('ignores a late refresh result after switching A to B and back to A', async () => {
@@ -222,12 +225,26 @@ it('ignores a late refresh result after switching A to B and back to A', async (
   render(<RotaImports />);
   fireEvent.click(await screen.findByRole('button', { name:'Làm mới LABOR' }));
   await waitFor(() => expect(refreshRotaLabor).toHaveBeenCalledTimes(1));
-  fireEvent.change(screen.getByLabelText('Resource pool'), { target:{ value:poolB.id } });
+  fireEvent.change(screen.getByLabelText('Nhóm nhân lực'), { target:{ value:poolB.id } });
   await waitFor(() => expect(listRotaImports).toHaveBeenCalledWith(poolB.id, expect.any(AbortSignal)));
-  fireEvent.change(screen.getByLabelText('Resource pool'), { target:{ value:pool.id } });
-  await screen.findByText('Preview đã lưu · latest-v3.xlsx');
+  fireEvent.change(screen.getByLabelText('Nhóm nhân lực'), { target:{ value:pool.id } });
+  await screen.findByText('Xem trước · latest-v3.xlsx');
   fireEvent.click(screen.getByRole('button', { name:'Làm mới LABOR' }));
-  await screen.findByText('Preview đã lưu · saved-v4.xlsx');
+  await screen.findByText('Xem trước · saved-v4.xlsx');
   finishStale({ ...stage, version:2, file_name:'stale-v2.xlsx' } as RotaPreview);
-  await waitFor(() => expect(screen.getByText('Preview đã lưu · saved-v4.xlsx')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText('Xem trước · saved-v4.xlsx')).toBeInTheDocument());
+});
+
+it('walks through the steps and locks activation while blocking errors remain', async () => {
+  authorize();
+  vi.mocked(listRotaImports).mockResolvedValue([stage]);
+  vi.mocked(getRotaImport).mockResolvedValue({ ...stage, summary:{ ...stage.summary, blocking_count:1 } } as never);
+  render(<RotaImports />);
+  const checking = await screen.findByRole('button', { name:/Kiểm tra$/ });
+  await waitFor(() => expect(checking).toHaveAttribute('aria-current', 'step'));
+  expect(screen.getByRole('button', { name:/^3/ })).toBeDisabled();
+  expect(screen.getByText(/Còn lỗi chặn nên chưa thể kích hoạt/)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name:/Chọn file$/ }));
+  expect(screen.getByRole('button', { name:'Tải lên và xem trước' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name:'Làm mới LABOR' })).not.toBeInTheDocument();
 });

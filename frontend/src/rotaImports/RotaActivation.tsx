@@ -6,7 +6,7 @@ import styles from './RotaImports.module.css';
 const hours = (value: number) => `${value.toLocaleString('vi-VN')} giờ`;
 const roleLabel = (value: string) => ({ TECH:'Technician', SUP:'Supervisor', ASST_SUP:'Assistant supervisor', CONTROL_RM_ENGINEER:'Control RM Engineer', MATERIAL_CONTROLLER:'Material Controller' }[value] ?? value);
 const dayText = (value: { code: string; capacity_hours: number | null; craft: string | null; role: string | null } | null) => value ?
-  `${value.code || 'trống'} · ${value.capacity_hours === null ? 'giờ chưa rõ' : hours(value.capacity_hours)} · ${value.craft ?? 'chưa có craft'} · ${value.role ? roleLabel(value.role) : 'chưa có role'}` : 'Không có trong roster';
+  `${value.code || 'trống'} · ${value.capacity_hours === null ? 'giờ chưa rõ' : hours(value.capacity_hours)} · ${value.craft ?? 'chưa có craft'} · ${value.role ? roleLabel(value.role) : 'chưa có role'}` : 'Không có trong rota';
 
 interface Props { preview: RotaPreview; canWrite: boolean; busy: boolean; resetToken: number; onActivated: (receipt: RotaActivationReceipt) => void; onAccessFailure: () => void; onBusyChange: (busy: boolean) => void }
 export function RotaActivation({ preview, canWrite, busy: parentBusy, resetToken, onActivated, onAccessFailure, onBusyChange }: Props) {
@@ -56,7 +56,7 @@ export function RotaActivation({ preview, canWrite, busy: parentBusy, resetToken
     try {
       const saved = await activateRota(comparison, true, controller.signal);
       if (current !== epoch.current) return;
-      setReceipt(saved); setAcknowledgedFor(null); setNote('Roster đã được kích hoạt và có biên nhận lưu trong PostgreSQL.'); onActivated(saved);
+      setReceipt(saved); setAcknowledgedFor(null); setNote('Rota đã được kích hoạt và có biên nhận lưu .'); onActivated(saved);
     } catch (reason) {
       if (current !== epoch.current) return;
       setError(reason instanceof Error ? reason.message : 'Không hoàn tất được yêu cầu kích hoạt.'); setAcknowledgedFor(null);
@@ -67,8 +67,8 @@ export function RotaActivation({ preview, canWrite, busy: parentBusy, resetToken
     } finally { if (current === epoch.current) { setBusy(false); onBusyChange(false); } }
   };
 
-  return <section className={styles.activation} aria-label="Kích hoạt roster">
-    <div className={styles.activationHeading}><div><h3>Kích hoạt roster</h3><p>Xem thay đổi trong toàn bộ phạm vi ngày trước khi tạo phiên roster chính thức.</p></div>
+  return <section className={styles.activation} aria-label="Kích hoạt rota">
+    <div className={styles.activationHeading}><div><h3>{preview.status === 'activated' ? 'Đã kích hoạt' : 'Kích hoạt rota'}</h3><p>{preview.status === 'activated' ? 'Bản này đã được kích hoạt; có thể xem lại biên nhận.' : 'Xem thay đổi so với rota đang dùng trước khi kích hoạt.'}</p></div>
       <button className={styles.button} onClick={() => void loadComparison()} disabled={busy || unknown || parentBusy || !canWrite || !['staged','activated'].includes(preview.status)}>
         {busy ? 'Đang tải…' : preview.status === 'activated' ? 'Xem biên nhận kích hoạt' : 'Xem thay đổi để kích hoạt'}
       </button>
@@ -81,7 +81,7 @@ export function RotaActivation({ preview, canWrite, busy: parentBusy, resetToken
     {comparison && <>
       <dl className={styles.activationMeta}>
         <div><dt>Phạm vi áp dụng</dt><dd>{comparison.coverage_from ?? 'Chưa xác định'} đến trước {comparison.coverage_before ?? 'chưa xác định'}</dd></div>
-        <div><dt>Thay roster</dt><dd>{comparison.diff.added_people} thêm · {comparison.diff.removed_people} gỡ · {comparison.diff.changed_people} đổi</dd></div>
+        <div><dt>Thay rota</dt><dd>{comparison.diff.added_people} thêm · {comparison.diff.removed_people} gỡ · {comparison.diff.changed_people} đổi</dd></div>
         <div><dt>Ngày thay đổi</dt><dd>{comparison.diff.changed_days}</dd></div>
         <div><dt>Tổng giờ</dt><dd>{hours(comparison.diff.before_hours)} → {hours(comparison.diff.after_hours)}</dd></div>
       </dl>
@@ -95,13 +95,13 @@ export function RotaActivation({ preview, canWrite, busy: parentBusy, resetToken
       </tbody></table>
       {comparison.changes.some(change => change.day_changes.length > 0) && <details className={styles.dayDetails}><summary>Chi tiết mã ngày và giờ theo người</summary>
         {comparison.changes.filter(change => change.day_changes.length > 0).map(change => <div key={change.person_key}><strong>{change.name}</strong><ul>{change.day_changes.map(day => <li key={day.date}>{day.date}: {dayText(day.before)} → {dayText(day.after)}</li>)}</ul>{change.day_changes_truncated && <small>Chỉ hiển thị mẫu ngày do server giới hạn.</small>}</div>)}
-      </details>}</div> : !comparison.activation_receipt && <p>Không có thay đổi roster trong phạm vi này.</p>}
+      </details>}</div> : !comparison.activation_receipt && <p>File này trùng với rota đang dùng; kích hoạt sẽ không làm đổi số liệu.</p>}
       {(receipt ?? comparison.activation_receipt) && <ActivationReceipt receipt={(receipt ?? comparison.activation_receipt)!} />}
       {!comparison.activation_receipt && preview.status === 'staged' && <>
         <label className={styles.activationAck}><input type="checkbox" checked={acknowledged} disabled={unknown || !comparison.can_activate || !canWrite || parentBusy || busy}
-          onChange={event => setAcknowledgedFor(event.target.checked ? resetToken : null)} /> Tôi xác nhận thay thế toàn bộ roster hiện hành trong khoảng {comparison.coverage_from ?? 'chưa xác định'} đến trước {comparison.coverage_before ?? 'chưa xác định'}. Lịch và giờ rota ngoài khoảng này được giữ nguyên.</label>
+          onChange={event => setAcknowledgedFor(event.target.checked ? resetToken : null)} /> Tôi xác nhận thay thế toàn bộ rota hiện hành trong khoảng {comparison.coverage_from ?? 'chưa xác định'} đến trước {comparison.coverage_before ?? 'chưa xác định'}. Lịch và giờ rota ngoài khoảng này được giữ nguyên. Resource Timeline sẽ dùng rota mới ngay; bản cũ không kích hoạt lại được, muốn quay lại phải tải lại file cũ.</label>
         <button className={styles.primary} onClick={() => void confirm()} disabled={unknown || !comparison.can_activate || !acknowledged || !canWrite || parentBusy || busy}>
-          {busy ? 'Đang kích hoạt…' : 'Xác nhận kích hoạt roster'}
+          {busy ? 'Đang kích hoạt…' : 'Xác nhận kích hoạt rota'}
         </button>
       </>}
     </>}
@@ -109,8 +109,8 @@ export function RotaActivation({ preview, canWrite, busy: parentBusy, resetToken
 }
 
 function ActivationReceipt({ receipt }: { receipt: RotaActivationReceipt }) {
-  return <div className={styles.activationReceipt} role="status"><strong>Roster đã kích hoạt</strong><dl>
+  return <div className={styles.activationReceipt} role="status"><strong>Rota đã kích hoạt</strong><dl>
     <div><dt>Thời điểm</dt><dd>{new Date(receipt.activated_at).toLocaleString('vi-VN')}</dd></div><div><dt>Phạm vi</dt><dd>{receipt.coverage_from} đến trước {receipt.coverage_before}</dd></div>
-    <div><dt>Số người</dt><dd>{receipt.person_count.toLocaleString('vi-VN')}</dd></div><div><dt>Bản ghi người/ngày</dt><dd>{receipt.day_count.toLocaleString('vi-VN')}</dd></div><div><dt>Tổng giờ</dt><dd>{hours(receipt.total_hours)}</dd></div><div><dt>Mã biên nhận</dt><dd>{receipt.id}</dd></div>
+    <div><dt>Số người</dt><dd>{receipt.person_count.toLocaleString('vi-VN')}</dd></div><div><dt>Số dòng người × ngày</dt><dd>{receipt.day_count.toLocaleString('vi-VN')}</dd></div><div><dt>Tổng giờ</dt><dd>{hours(receipt.total_hours)}</dd></div><div><dt>Mã biên nhận</dt><dd>{receipt.id}</dd></div>
   </dl><p>Mỗi bản ghi tương ứng một người trong một ngày, gồm cả ngày làm việc, ngày nghỉ và ô trống; không phải số ngày công.</p></div>;
 }

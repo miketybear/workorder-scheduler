@@ -311,6 +311,13 @@ def test_activation_postgres(case, monkeypatch):
                         assert (await db.get(RotaImport, stage.id)).status == "staged"
                     return
                 response = await client.post(url + "/activate", json=body, headers=headers)
+                if case == "lifecycle":
+                    listed = (
+                        await client.get("/api/rota-imports", params={"pool_id": str(pool.id)})
+                    ).json()
+                    assert [i["id"] for i in listed["items"] if i["active_since"]] == [
+                        str(stage.id)
+                    ]
                 if case not in {"lifecycle", "runtime"}:
                     assert response.status_code == (
                         422

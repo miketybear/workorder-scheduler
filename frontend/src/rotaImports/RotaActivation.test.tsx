@@ -19,10 +19,10 @@ it('requires full replacement acknowledgment and submits once, then displays the
   const fetcher = vi.fn().mockResolvedValueOnce(respond(savedDiff)).mockResolvedValueOnce(respond(receipt)); vi.stubGlobal('fetch', fetcher);
   const activated = vi.fn(); render(<RotaActivation preview={stage} canWrite busy={false} resetToken={0} onActivated={activated} onAccessFailure={vi.fn()} onBusyChange={vi.fn()} />);
   fireEvent.click(screen.getByRole('button', { name:'Xem thay đổi để kích hoạt' }));
-  expect(await screen.findByText(/thay roster/i)).toBeInTheDocument();
+  expect(await screen.findByText(/thay rota/i)).toBeInTheDocument();
   expect(screen.getAllByText(/MECH/).length).toBeGreaterThan(0); expect(screen.getAllByText(/E&I/).length).toBeGreaterThan(0);
-  const confirm = screen.getByRole('button', { name:'Xác nhận kích hoạt roster' }); expect(confirm).toBeDisabled();
-  fireEvent.click(screen.getByRole('checkbox', { name:/thay thế toàn bộ roster/i })); expect(confirm).toBeEnabled();
+  const confirm = screen.getByRole('button', { name:'Xác nhận kích hoạt rota' }); expect(confirm).toBeDisabled();
+  fireEvent.click(screen.getByRole('checkbox', { name:/thay thế toàn bộ rota/i })); expect(confirm).toBeEnabled();
   fireEvent.click(confirm);
   expect(await screen.findByText('receipt-1')).toBeInTheDocument();
   expect(fetcher).toHaveBeenCalledTimes(2); expect(activated).toHaveBeenCalledWith(receipt);
@@ -35,7 +35,7 @@ it('shows blockers and never enables activation when the server rejects the diff
   render(<RotaActivation preview={stage} canWrite busy={false} resetToken={0} onActivated={vi.fn()} onAccessFailure={vi.fn()} onBusyChange={vi.fn()} />);
   fireEvent.click(screen.getByRole('button', { name:'Xem thay đổi để kích hoạt' }));
   expect(await screen.findByText('LABOR craft mismatch on row 12')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name:'Xác nhận kích hoạt roster' })).toBeDisabled();
+  expect(screen.getByRole('button', { name:'Xác nhận kích hoạt rota' })).toBeDisabled();
 });
 
 it('does not retry an unknown activation and reconciles it with GET receipt only', async () => {
@@ -43,16 +43,16 @@ it('does not retry an unknown activation and reconciles it with GET receipt only
   const fetcher = vi.fn().mockResolvedValueOnce(respond(savedDiff)).mockRejectedValueOnce(new TypeError('network lost')).mockResolvedValueOnce(respond({ ...savedDiff, can_activate:false, activation_receipt:receipt }));
   vi.stubGlobal('fetch', fetcher);
   const activated = vi.fn(); render(<RotaActivation preview={stage} canWrite busy={false} resetToken={0} onActivated={activated} onAccessFailure={vi.fn()} onBusyChange={vi.fn()} />);
-  fireEvent.click(screen.getByRole('button', { name:'Xem thay đổi để kích hoạt' })); await screen.findByText(/thay roster/i);
-  fireEvent.click(screen.getByRole('checkbox', { name:/thay thế toàn bộ roster/i }));
-  fireEvent.click(screen.getByRole('button', { name:'Xác nhận kích hoạt roster' }));
+  fireEvent.click(screen.getByRole('button', { name:'Xem thay đổi để kích hoạt' })); await screen.findByText(/thay rota/i);
+  fireEvent.click(screen.getByRole('checkbox', { name:/thay thế toàn bộ rota/i }));
+  fireEvent.click(screen.getByRole('button', { name:'Xác nhận kích hoạt rota' }));
   expect(await screen.findByText(/chưa rõ kết quả gửi yêu cầu/i)).toBeInTheDocument();
   expect(fetcher).toHaveBeenCalledTimes(2);
-  expect(screen.getByRole('checkbox', { name:/thay thế toàn bộ roster/i })).toBeDisabled();
-  expect(screen.getByRole('button', { name:'Xác nhận kích hoạt roster' })).toBeDisabled();
+  expect(screen.getByRole('checkbox', { name:/thay thế toàn bộ rota/i })).toBeDisabled();
+  expect(screen.getByRole('button', { name:'Xác nhận kích hoạt rota' })).toBeDisabled();
   expect(screen.getByRole('button', { name:'Xem thay đổi để kích hoạt' })).toBeDisabled();
-  fireEvent.click(screen.getByRole('checkbox', { name:/thay thế toàn bộ roster/i }));
-  fireEvent.click(screen.getByRole('button', { name:'Xác nhận kích hoạt roster' }));
+  fireEvent.click(screen.getByRole('checkbox', { name:/thay thế toàn bộ rota/i }));
+  fireEvent.click(screen.getByRole('button', { name:'Xác nhận kích hoạt rota' }));
   expect(fetcher).toHaveBeenCalledTimes(2);
   fireEvent.click(screen.getByRole('button', { name:'Kiểm tra kết quả kích hoạt' }));
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
@@ -81,8 +81,8 @@ it('shows an existing receipt without the "already activated" blocking reason', 
 it('clears acknowledgment when another parent operation starts', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respond(savedDiff)));
   const { rerender } = render(<RotaActivation preview={stage} canWrite busy={false} resetToken={0} onActivated={vi.fn()} onAccessFailure={vi.fn()} onBusyChange={vi.fn()} />);
-  fireEvent.click(screen.getByRole('button', { name:'Xem thay đổi để kích hoạt' })); await screen.findByText(/thay roster/i);
-  const checkbox = screen.getByRole('checkbox', { name:/thay thế toàn bộ roster/i });
+  fireEvent.click(screen.getByRole('button', { name:'Xem thay đổi để kích hoạt' })); await screen.findByText(/thay rota/i);
+  const checkbox = screen.getByRole('checkbox', { name:/thay thế toàn bộ rota/i });
   fireEvent.click(checkbox); expect(checkbox).toBeChecked();
   rerender(<RotaActivation preview={stage} canWrite busy={false} resetToken={1} onActivated={vi.fn()} onAccessFailure={vi.fn()} onBusyChange={vi.fn()} />);
   expect(checkbox).not.toBeChecked();
@@ -94,5 +94,5 @@ it('accepts blocked previews with unknown date coverage and explains it without 
   fireEvent.click(screen.getByRole('button', { name:'Xem thay đổi để kích hoạt' }));
   expect(await screen.findByText('Invalid source date coverage')).toBeInTheDocument();
   expect(screen.getByText(/chưa xác định đến trước chưa xác định/)).toBeInTheDocument();
-  expect(screen.getByRole('checkbox', { name:/thay thế toàn bộ roster/i })).toBeDisabled();
+  expect(screen.getByRole('checkbox', { name:/thay thế toàn bộ rota/i })).toBeDisabled();
 });

@@ -1600,17 +1600,17 @@ it('opens the page menu from the header button and closes it on Esc or after cho
   expect(screen.queryByRole('navigation', { name: 'Điều hướng chính' })).not.toBeInTheDocument();
   fireEvent.click(button);
   const menu = screen.getByRole('navigation', { name: 'Điều hướng chính' });
-  expect(within(menu).getAllByRole('link').map((link) => link.textContent)).toEqual(['WO Scheduler', 'Resource Timeline', 'Rota Upload']);
+  expect(within(menu).getAllByRole('link').map((link) => link.textContent)).toEqual(['WO Scheduler', 'Resource Timeline', 'Tải rota']);
   expect(within(menu).getByRole('link', { name: 'WO Scheduler' })).toHaveAttribute('aria-current', 'page');
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(screen.queryByRole('navigation', { name: 'Điều hướng chính' })).not.toBeInTheDocument();
   fireEvent.click(button);
-  fireEvent.click(within(screen.getByRole('navigation', { name: 'Điều hướng chính' })).getByRole('link', { name: 'Rota Upload' }));
+  fireEvent.click(within(screen.getByRole('navigation', { name: 'Điều hướng chính' })).getByRole('link', { name: 'Tải rota' }));
   expect(screen.queryByRole('navigation', { name: 'Điều hướng chính' })).not.toBeInTheDocument();
   expect(button).toHaveAttribute('aria-expanded', 'false');
   // The header and the browser tab name the current page; Home sits next to the menu button.
-  expect(document.querySelector('header')).toHaveTextContent('Rota Upload');
-  expect(document.title).toBe('Rota Upload · Work Order Scheduler');
+  expect(document.querySelector('header')).toHaveTextContent('Tải rota');
+  expect(document.title).toBe('Tải rota · Work Order Scheduler');
   expect(screen.getByRole('link', { name: 'Trang chủ' })).toHaveAttribute('href', '/');
 });
 

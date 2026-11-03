@@ -11,6 +11,10 @@ const monthName = (month: string) => {
   const [year, number] = month.split('-').map(Number);
   return new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(year, number - 1, 1)));
 };
+// Mirrors WORK and OFF in backend/app/rota/parser.py.
+const WORK_CODES = '1, OT, M, OM, A, AM';
+const OFF_CODES = 'AF, D, DM, DF, F, AL, SL, PL, CL, O, O4, O5, O6, AB';
+const importState = (item: ImportSummary) => item.active_since ? 'Đang dùng' : item.status === 'staged' ? 'Bản nháp' : item.status === 'activated' ? 'Đã thay bằng bản mới hơn' : 'Đã hủy';
 const roleName: Record<string, string> = {
   TECH: 'Technician', SUP: 'Supervisor', ASST_SUP: 'Assistant supervisor',
   CONTROL_RM_ENGINEER: 'Control RM Engineer', MATERIAL_CONTROLLER: 'Material Controller',
@@ -40,6 +44,8 @@ export function RotaImports({ active = true }: { active?: boolean }) {
   const [imports, setImports] = useState<ImportSummary[]>([]);
   const [preview, setPreview] = useState<RotaPreview | null>(null);
   const [selectedMonth, setSelectedMonth] = useState('');
+  const [chosenStep, setChosenStep] = useState<1 | 2 | 3 | null>(null);
+  const [showAllRows, setShowAllRows] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [sheet, setSheet] = useState('ROTA_2026');
   const [busy, setBusy] = useState('');
@@ -54,7 +60,15 @@ export function RotaImports({ active = true }: { active?: boolean }) {
   const permissionRef = useRef('');
   const restoreControllerRef = useRef<AbortController | null>(null);
   const operationRef = useRef(0);
+  const previewRef = useRef<HTMLElement | null>(null);
+  const scrollToPreview = useRef(false);
   const selectedPool = pools.find(pool => pool.id === poolId) ?? null;
+
+  useEffect(() => {
+    if (!scrollToPreview.current || !preview) return;
+    scrollToPreview.current = false;
+    previewRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  }, [preview]);
 
   useEffect(() => {
     if (!active) return;
@@ -147,7 +161,7 @@ export function RotaImports({ active = true }: { active?: boolean }) {
   };
   const installPreview = (next: RotaPreview) => {
     if (next.pool_id !== poolRef.current) return;
-    setPreview(next); setImports(items => [next, ...items.filter(item => item.id !== next.id)]);
+    setChosenStep(null); setPreview(next); setImports(items => [{ ...items.find(item => item.id === next.id), ...next }, ...items.filter(item => item.id !== next.id)]);
     const firstMonth = dateMonth(next.coverage_from ?? '') || dateMonth(next.rows.flatMap(row => row.days).map(day => day.date).sort()[0] ?? '');
     setSelectedMonth(current => current && next.rows.some(row => row.days.some(day => dateMonth(day.date) === current)) ? current : firstMonth);
   };
@@ -162,8 +176,8 @@ export function RotaImports({ active = true }: { active?: boolean }) {
       if (operationRef.current !== operation || poolRef.current !== targetPool || currentUserRef.current !== targetUser) return;
       if (label === 'refresh') setLaborRefreshError('');
       installPreview(next); setStatus(label === 'refresh'
-        ? next.labor_error ? 'Đã lưu kết quả kiểm tra; chưa lấy được snapshot LABOR mới.' : 'Đã cập nhật snapshot LABOR và tính lại preview.'
-        : 'Đã hủy phiên staging.');
+        ? next.labor_error ? 'Đã lưu kết quả kiểm tra; chưa lấy được dữ liệu LABOR mới.' : 'Đã cập nhật dữ liệu LABOR và tính lại preview.'
+        : 'Đã hủy bản nháp.');
     } catch (reason) {
       if (operationRef.current !== operation || poolRef.current !== targetPool || currentUserRef.current !== targetUser) return;
       setError(errorMessage(reason));
@@ -184,7 +198,7 @@ export function RotaImports({ active = true }: { active?: boolean }) {
     try {
       const saved = await uploadRotaImport(targetPool, file, sheet, controller.signal);
       if (operationRef.current !== operation || poolRef.current !== targetPool || currentUserRef.current !== targetUser) return;
-      installPreview(saved); setStatus(saved.labor_error ? 'Đã lưu file và phiên staging; snapshot LABOR chưa làm mới được. Có thể làm mới LABOR khi kết nối sẵn sàng.' : 'Đã lưu file và phiên staging. Xem báo cáo lỗi LABOR/craft bên dưới; Maximo admin xử lý trên Maximo rồi làm mới LABOR.');
+      installPreview(saved); scrollToPreview.current = true; setStatus(saved.labor_error ? `Đã tải lên ${saved.file_name} thành bản nháp, nhưng chưa lấy được LABOR từ Maximo. Có thể làm mới LABOR khi kết nối sẵn sàng.` : `Đã tải lên ${saved.file_name} thành bản nháp. Kiểm tra bên dưới rồi kích hoạt.`);
       setFile(null);
       const input = document.getElementById('rota-file') as HTMLInputElement | null; if (input) input.value = '';
     } catch (reason) {
@@ -202,7 +216,7 @@ export function RotaImports({ active = true }: { active?: boolean }) {
     try {
       const saved = await getRotaImport(item.id, targetPool, controller.signal);
       if (operationRef.current !== operation || poolRef.current !== targetPool) return;
-      installPreview(saved); setStatus('Đã mở phiên staging đã lưu.');
+      installPreview(saved); setStatus('Đã mở bản nháp đã lưu.');
     } catch (reason) {
       if (controller.signal.aborted) return;
       if (operationRef.current !== operation || poolRef.current !== targetPool) return;
@@ -211,21 +225,37 @@ export function RotaImports({ active = true }: { active?: boolean }) {
     } finally { if (restoreControllerRef.current === controller) restoreControllerRef.current = null; if (operationRef.current === operation && !controller.signal.aborted) setBusy(''); }
   };
   const laborProblems = preview?.labor_snapshot_at ? (preview.rows.map(row => ({ row, problem: laborProblem(row) })).filter((entry): entry is { row: RotaRow; problem: { reason: string; action: string } } => entry.problem !== null)) : [];
+  const activeImport = imports.find(item => item.active_since);
+  const step = chosenStep ?? (!preview ? 1 : preview.status === 'activated' ? 3 : 2);
+  const activationBlocked = !preview || preview.status === 'cancelled' || preview.status === 'staged' && (preview.summary.blocking_count > 0 || preview.source_errors.length > 0);
+  const visibleIssues = (row: RotaRow) => row.issues.filter(issue => !laborSnapshotStale || !['mapping', 'craft', 'duplicate'].includes(issue.kind));
+  const rowNeedsAttention = (row: RotaRow) => row.issues.length > 0;
+  const attentionCount = preview?.rows.filter(rowNeedsAttention).length ?? 0;
+  const shownRows = preview?.rows.filter(row => showAllRows || rowNeedsAttention(row)) ?? [];
+  const previewState = preview && importState(imports.find(item => item.id === preview.id) ?? preview);
+  const uploadHint = selectedPool?.capability !== 'write' || busy ? '' : !file ? 'Chọn file rota để tiếp tục.' : !sheet.trim() ? 'Nhập tên sheet để tiếp tục.' : '';
   const laborSnapshotStale = Boolean(preview?.labor_error || laborRefreshError);
 
   if (!active) return null;
   return <section className={styles.page} aria-labelledby="rota-imports-title">
-    <header className={styles.header}><div><p className={styles.eyebrow}>ROTA / POSTGRESQL STAGING</p><h1 id="rota-imports-title">Import rota</h1>
-      <p>Tải rota lên để đối chiếu LABOR qua REST và xem các vấn đề cần Maximo admin xử lý.</p></div><span className={preview?.status === 'activated' ? styles.activeBadge : styles.badge}>{preview?.status === 'activated' ? 'Roster đã kích hoạt' : 'Đang staging · chưa kích hoạt'}</span></header>
-    <div className={styles.notice}><strong>Phiên staging chưa phải roster hoạt động.</strong> Không có thao tác nào ghi lên Maximo. Tên, chức danh, craft và mã ngày lấy từ file nguồn; nếu sai, sửa file rồi upload phiên mới. Working hiển thị 10,5 giờ/ngày; ô trống/known-off là 0, unknown chưa xác định.</div>
+    <header className={styles.header}><div><h1 id="rota-imports-title">Tải rota</h1>
+      <p>Tải file rota lên, kiểm tra đối chiếu với LABOR trên Maximo, rồi kích hoạt để Resource Timeline sử dụng.</p></div></header>
+    {session && pools.length > 0 && <p className={activeImport ? styles.activeRota : styles.noActiveRota}>{activeImport ? <><strong>Rota đang dùng: {activeImport.file_name}</strong> · kích hoạt {new Date(activeImport.active_since!).toLocaleString('vi-VN')} · áp dụng {activeImport.coverage_from ?? '—'} đến trước {activeImport.coverage_before ?? '—'}</> : <strong>Chưa thấy rota nào được kích hoạt trong danh sách.</strong>}</p>}
+    <div className={styles.notice}>Trang này không ghi gì lên Maximo. Bản nháp chỉ được dùng sau khi kích hoạt. Tên, chức danh, craft và mã ngày lấy từ file; nếu sai, hãy sửa file rồi tải lên lại.</div>
+    {!session && !authError && <p role="status" className={styles.status}>Đang tải…</p>}
     {authError && <div className={styles.card}><p>{authError}</p>{!session && <a href={loginUrl}>Đăng nhập</a>}<button className={styles.button} onClick={() => setReloadKey(key => key + 1)}>Kiểm tra lại phiên</button></div>}
     {session && pools.length === 0 && !authError && <div className={styles.card}><p>Tài khoản chưa có vai trò Planner hoặc Admin cho rota trên resource pool.</p></div>}
     {session && pools.length > 0 && <>
-      <section className={styles.card} aria-label="Chọn pool và upload rota">
+      <ol className={styles.steps} aria-label="Các bước tải rota">
+        {([[1, 'Chọn file', false], [2, 'Kiểm tra', !preview], [3, 'Kích hoạt', activationBlocked]] as const).map(([number, label, locked]) => <li key={number}>
+          <button type="button" aria-current={step === number ? 'step' : undefined} disabled={locked || !!busy} onClick={() => setChosenStep(number)}><span>{number}</span>{label}</button>
+        </li>)}
+      </ol>
+      <section className={styles.card} hidden={step !== 1} aria-label="Chọn pool và upload rota">
         <div className={styles.toolbar}>
-          <label className={styles.field}>Resource pool
-            <select value={poolId} onChange={event => choosePool(event.target.value)} aria-label="Resource pool">
-              {pools.map(pool => <option key={pool.id} value={pool.id}>{pool.label} · {pool.connection_label} · {pool.environment} · {pool.orgid}</option>)}
+          <label className={styles.field}>Nhóm nhân lực
+            <select value={poolId} onChange={event => choosePool(event.target.value)} aria-label="Nhóm nhân lực">
+              {pools.map(pool => <option key={pool.id} value={pool.id}>{[...new Set([pool.label, pool.connection_label, pool.environment, pool.orgid])].join(' · ')}</option>)}
             </select>
           </label>
           <form onSubmit={event => void submitFile(event)} className={styles.toolbar}>
@@ -233,43 +263,45 @@ export function RotaImports({ active = true }: { active?: boolean }) {
               <input id="rota-file" type="file" accept=".xlsx,.ods" onChange={event => { setFile(event.target.files?.[0] ?? null); setError(''); }} disabled={selectedPool?.capability !== 'write' || !!busy} />
             </label>
             <label className={styles.field}>Sheet<input value={sheet} onChange={event => setSheet(event.target.value)} maxLength={80} disabled={selectedPool?.capability !== 'write' || !!busy} /></label>
-            <button className={styles.primary} disabled={!file || !sheet.trim() || selectedPool?.capability !== 'write' || !!busy}>{busy === 'upload' ? 'Đang upload…' : 'Upload và tạo staging'}</button>
+            <button className={styles.primary} disabled={!file || !sheet.trim() || selectedPool?.capability !== 'write' || !!busy}>{busy === 'upload' ? 'Đang tải lên…' : 'Tải lên và xem trước'}</button>
           </form>
         </div>
+        {uploadHint && <p>{uploadHint}</p>}
         {selectedPool && <dl className={styles.meta}>
-          <div><dt>Connection</dt><dd>{selectedPool.connection_label}</dd></div><div><dt>Môi trường</dt><dd>{selectedPool.environment}</dd></div>
-          <div><dt>Organization</dt><dd>{selectedPool.orgid}</dd></div><div><dt>Timezone</dt><dd>{selectedPool.timezone}</dd></div>
+          <div><dt>Kết nối</dt><dd>{selectedPool.connection_label}</dd></div><div><dt>Môi trường</dt><dd>{selectedPool.environment}</dd></div>
+          <div><dt>Tổ chức</dt><dd>{selectedPool.orgid}</dd></div><div><dt>Múi giờ</dt><dd>{selectedPool.timezone}</dd></div>
         </dl>}
-        {selectedPool?.capability === 'read' && <p>Pool chỉ có quyền đọc. Upload, refresh LABOR và hủy bị khóa.</p>}
+        {selectedPool?.capability === 'read' && <p>Pool chỉ có quyền đọc. Không thể tải lên, làm mới LABOR hoặc hủy.</p>}
       </section>
       {error && <div role="alert" className={styles.error}>{error} {error.includes('được cập nhật ở nơi khác') && preview && <button className={styles.button} onClick={() => void restore(preview)}>Tải lại phiên đã lưu</button>}</div>}
-      {status && <p role="status" className={styles.status}>{status}</p>}
-      {imports.length > 0 && <section className={styles.card}><h2>Phiên đã lưu</h2><div className={styles.history}>
+      {status && <p role="status" className={styles.statusBanner}>{status}</p>}
+      {step === 1 && imports.length > 0 && <section className={styles.card}><h2>Các lần tải lên</h2><div className={styles.history}>
         {imports.map(item => <button key={item.id} aria-current={preview?.id === item.id} onClick={() => void restore(item)} disabled={!!busy}>
-          <strong>{item.file_name}</strong><small>{item.sheet} · v{item.version} · {new Date(item.created_at).toLocaleString('vi-VN')}</small>
+          <strong>{item.file_name}</strong><small>{importState(item)} · {item.sheet} · {new Date(item.created_at).toLocaleString('vi-VN')}</small>
         </button>)}
       </div></section>}
-      {preview && selectedPool && preview.pool_id === selectedPool.id && <section className={styles.card} aria-label="Preview staging rota">
-        <h2>Preview đã lưu · {preview.file_name}</h2>
+      {preview && selectedPool && preview.pool_id === selectedPool.id && <section className={styles.card} aria-label="Xem trước rota" ref={previewRef} hidden={step === 1}>
+        <h2>Xem trước · {preview.file_name} <span className={preview.status === 'staged' ? styles.badge : styles.activeBadge}>{previewState}</span></h2>
+        <div hidden={step !== 2}>
         <dl className={styles.meta}>
-          <div><dt>Sheet / policy</dt><dd>{preview.sheet} · {preview.policy_version}</dd></div>
+          <div><dt>Sheet</dt><dd>{preview.sheet}</dd></div>
           <div><dt>Phạm vi ngày</dt><dd>{preview.coverage_from ?? '—'} đến trước {preview.coverage_before ?? '—'}</dd></div>
-          <div><dt>Snapshot LABOR</dt><dd>{preview.labor_snapshot_at ? new Date(preview.labor_snapshot_at).toLocaleString('vi-VN') : 'Chưa có'}</dd></div>
-          <div><dt>LABOR ngoài rota</dt><dd>{preview.excluded_labor_count} labor được bỏ qua</dd></div>
+          <div><dt>LABOR lấy từ Maximo lúc</dt><dd>{preview.labor_snapshot_at ? new Date(preview.labor_snapshot_at).toLocaleString('vi-VN') : 'Chưa có'}</dd></div>
+          <div><dt>LABOR không có trong rota</dt><dd>{preview.excluded_labor_count} labor được bỏ qua</dd></div>
         </dl>
         <div className={styles.summary}>
           <span>Người trong rota <b>{preview.summary.rota_people}</b></span><span>Đã map <b>{preview.summary.mapped_people}</b></span>
-          <span>Lỗi chặn <b>{preview.summary.blocking_count}</b></span><span title="Giờ tổng gồm cả dòng chưa map và chỉ dùng để tham khảo; chưa phải capacity assignment">Giờ rota tổng · chưa dùng làm capacity assignment <b>{preview.summary.capacity_hours.toLocaleString('vi-VN')} giờ</b></span>
+          <span>Lỗi chặn <b>{preview.summary.blocking_count}</b></span><span title="Giờ tổng gồm cả dòng chưa map và chỉ dùng để tham khảo; chưa phải capacity assignment">Tổng giờ rota (tham khảo) <b>{preview.summary.capacity_hours.toLocaleString('vi-VN')} giờ</b></span>
         </div>
-        {!!preview.excluded_position_count && <section aria-label="Chức danh không tính Labor" className={styles.report}>
-          <h3>Không tính Labor / capacity · {preview.excluded_position_count} dòng</h3>
-          <p>Material Controller được loại khỏi số người, giờ rota và danh sách phân công theo policy hiện tại.</p>
+        {!!preview.excluded_position_count && <section aria-label="Chức danh không tính Labor" className={styles.notice}>
+          <h3>Không tính vào nhân lực · {preview.excluded_position_count} dòng</h3>
+          <p>Đây là hành vi bình thường: Material Controller không được tính vào số người, giờ rota và danh sách phân công.</p>
           <ul>{preview.excluded_positions?.map(item => <li key={item.source_row}>Dòng {item.source_row} · {item.name} · {item.position}</li>)}</ul>
         </section>}
         {laborRefreshError && <div className={styles.error}>Không làm mới được LABOR: {laborRefreshError}. Phiên staging và snapshot cũ vẫn được giữ; các lỗi bên dưới thuộc snapshot cũ, chưa xác nhận trạng thái Maximo hiện tại.</div>}
         {laborProblems.length > 0 && !preview.labor_error && !laborRefreshError && <section className={styles.report} aria-labelledby="rota-labor-errors-title">
           <h3 id="rota-labor-errors-title">Báo cáo lỗi LABOR / craft · {laborProblems.length} dòng</h3>
-          <p>Phiên upload đã được lưu. Không cần sửa mapping trên giao diện. Gửi các dòng này cho Maximo admin xử lý trên Maximo, rồi bấm “Làm mới LABOR” để lấy snapshot mới.</p>
+          <p>File đã được lưu. Không cần sửa mapping trên giao diện. Gửi các dòng này cho Maximo admin xử lý trên Maximo, rồi bấm “Làm mới LABOR” để lấy snapshot mới.</p>
           <div className={styles.reportWrap}><table className={styles.reportTable}><thead><tr><th>Dòng rota</th><th>Craft rota</th><th>LABOR tìm thấy trên Maximo</th><th>Lỗi</th><th>Hướng xử lý</th></tr></thead><tbody>
             {laborProblems.map(({ row, problem }) => <tr key={row.source_row}>
               <td><strong>{row.name}</strong><small>Dòng {row.source_row} · {row.position || 'Chưa có chức danh'}</small></td>
@@ -282,41 +314,49 @@ export function RotaImports({ active = true }: { active?: boolean }) {
           </tbody></table></div>
         </section>}
         {laborProblems.length === 0 && !preview.labor_error && !laborRefreshError && <p className={styles.success}>Không có lỗi LABOR/craft cần Maximo admin xử lý.</p>}
-        {preview.labor_error && <div className={styles.error}>{preview.labor_snapshot_at ? 'Snapshot LABOR cũ vẫn được giữ, nhưng chưa xác nhận tình trạng Maximo hiện tại.' : 'Chưa có snapshot LABOR cho phiên này.'} {preview.labor_error}</div>}
+        {preview.labor_error && <div className={styles.error}>{preview.labor_snapshot_at ? 'Dữ liệu LABOR cũ vẫn được giữ, nhưng chưa xác nhận tình trạng Maximo hiện tại.' : 'Chưa có dữ liệu LABOR cho phiên này.'} {preview.labor_error}</div>}
         {preview.source_errors.length > 0 && <div className={styles.error}><strong>Lỗi dữ liệu nguồn</strong><ul>{preview.source_errors.map((issue, index) => <li key={`${issue.source_row}-${issue.cell}-${index}`}>
           {issue.source_row ? `Dòng ${issue.source_row}` : ''}{issue.cell ? ` · ô ${issue.cell}` : ''}{issue.date ? ` · ${issue.date}` : ''}: {issue.message}
         </li>)}</ul><p>Sửa file rota và upload lại.</p></div>}
+        </div>
+        {/* Stays mounted across steps: leaving must not lose an activation whose result is still unknown. */}
+        <div hidden={step !== 3}>
         <RotaActivation key={`${preview.pool_id}:${preview.id}:${preview.version}:${preview.status}`} preview={preview} canWrite={selectedPool.capability === 'write'} busy={Boolean(busy)} resetToken={activationResetToken}
-          onActivated={() => { void restore(preview); }} onBusyChange={isBusy => { if (isBusy) setBusy('activation'); else setBusy(current => current === 'activation' ? '' : current); }}
+          onActivated={() => { void restore(preview); void listRotaImports(preview.pool_id, new AbortController().signal).then(items => { if (poolRef.current === preview.pool_id) setImports(items); }).catch(() => undefined); }} onBusyChange={isBusy => { if (isBusy) setBusy('activation'); else setBusy(current => current === 'activation' ? '' : current); }}
           onAccessFailure={() => { setBusy(''); setPreview(null); setImports([]); setReloadKey(key => key + 1); }} />
+        </div>
+        <div hidden={step !== 2}>
         <div className={styles.toolbar}>
           <label className={styles.field}>Tháng hiển thị
             <select value={selectedMonth} onChange={event => setSelectedMonth(event.target.value)}>{months.map(month => <option key={month} value={month}>{monthName(month)}</option>)}</select>
           </label>
-          <span className={styles.status}>Đang xem {daysInMonth.length} ngày trong tháng. Ngày hiển thị capacity theo giờ.</span>
+          <span className={styles.status}>Ô xanh là ngày làm, rê chuột để xem giờ; — là chưa rõ. Mã làm việc: {WORK_CODES}. Mã nghỉ: {OFF_CODES}.</span>
         </div>
-        <div className={styles.tableWrap}><table><thead><tr><th>Dòng / người / chức danh</th><th>Craft / role</th>
+        <p className={styles.rowFilter}>{attentionCount ? `${attentionCount} / ${preview.rows.length} người cần xem` : `${preview.rows.length} người, không có lỗi`} <button type="button" className={styles.button} aria-pressed={showAllRows} onClick={() => setShowAllRows(value => !value)}>{showAllRows ? 'Chỉ người cần xem' : `Tất cả ${preview.rows.length} người`}</button></p>
+        {shownRows.length > 0 && <div className={styles.tableWrap}><table><thead><tr><th>Người</th>
           {daysInMonth.map(date => <th className={styles.day} key={date}>{date.slice(-2)}<small>{new Intl.DateTimeFormat('vi-VN', { weekday:'short', timeZone:'UTC' }).format(new Date(`${date}T00:00:00Z`))}</small></th>)}<th>Lỗi</th></tr></thead>
-          <tbody>{preview.rows.map(row => {
+          <tbody>{shownRows.map(row => {
             return <tr key={row.source_row}>
-              <td className={styles.person}><strong>{row.name}</strong><small>Dòng {row.source_row} · {row.position}</small>{row.mapping && <small>Person {row.mapping.personid} · Position: {row.mapping.title || 'Chưa có trong snapshot'}</small>}</td>
-              <td><strong>{row.craft ?? 'Chưa xác định'}</strong><small>{row.role ? roleName[row.role] ?? row.role : 'Role chưa xác định'}</small></td>
-              {daysInMonth.map(date => { const day = row.days.find(item => item.date === date); return <td className={styles.day} key={date} title={`${date} · mã rota ${day?.code ?? '—'} · ${day?.capacity_hours === null || !day ? 'chưa rõ' : `${day.capacity_hours} giờ`}`}>
-                {day?.capacity_hours === null || !day ? '—' : day.capacity_hours.toLocaleString('vi-VN')}<small>{day?.code || 'trống'}</small>
+              <td className={styles.person} title={`Dòng ${row.source_row} · ${row.position} · ${row.craft ?? 'Craft chưa xác định'} · ${row.role ? roleName[row.role] ?? row.role : 'Role chưa xác định'}${row.mapping ? ` · Person ${row.mapping.personid} · Position: ${row.mapping.title || 'Chưa có trong dữ liệu LABOR'}` : ''}`}><strong>{row.name}</strong></td>
+              {daysInMonth.map(date => { const day = row.days.find(item => item.date === date); return <td className={styles.day} data-working={day?.capacity_hours ? 'true' : undefined} key={date} title={`${date} · mã rota ${day?.code ?? '—'} · ${day?.capacity_hours === null || !day ? 'chưa rõ' : `${day.capacity_hours} giờ`}`}>
+                {day?.capacity_hours === null || !day ? '—' : day.code}
               </td>; })}
-              <td className={styles.issues}>{row.issues.filter(issue => !laborSnapshotStale || !['mapping', 'craft', 'duplicate'].includes(issue.kind)).length ? <ul>{row.issues.filter(issue => !laborSnapshotStale || !['mapping', 'craft', 'duplicate'].includes(issue.kind)).map((issue, index) => <li key={`${issue.kind}-${index}`}>
+              <td className={styles.issues}>{visibleIssues(row).length ? <ul>{visibleIssues(row).map((issue, index) => <li key={`${issue.kind}-${index}`}>
                 {issue.cell ? `${issue.cell}: ` : ''}{issue.date ? `${issue.date}: ` : ''}{issue.message}
-              </li>)}</ul> : laborSnapshotStale && row.issues.some(issue => ['mapping', 'craft', 'duplicate'].includes(issue.kind)) ? <span>{preview.labor_snapshot_at ? 'LABOR snapshot cũ · chưa xác minh' : 'LABOR chưa đối chiếu'}</span> : <span className={styles.success}>Không có lỗi</span>}</td>
+              </li>)}</ul> : laborSnapshotStale && row.issues.some(issue => ['mapping', 'craft', 'duplicate'].includes(issue.kind)) ? <span>{preview.labor_snapshot_at ? 'Dữ liệu LABOR cũ · chưa xác minh' : 'LABOR chưa đối chiếu'}</span> : <span className={styles.success}>Không có lỗi</span>}</td>
             </tr>;
           })}</tbody>
-        </table></div>
+        </table></div>}
         <div className={styles.actions}>
           <button className={styles.button} onClick={() => void runMutation('refresh', signal => refreshRotaLabor(preview, signal))} disabled={selectedPool.capability !== 'write' || !!busy || preview.status !== 'staged'}>
             {busy === 'refresh' ? 'Đang đọc LABOR…' : 'Làm mới LABOR'}
           </button>
           <button className={styles.button} onClick={() => void runMutation('cancel', signal => cancelRotaImport(preview, signal))} disabled={selectedPool.capability !== 'write' || !!busy || preview.status !== 'staged'}>
-            {busy === 'cancel' ? 'Đang hủy…' : preview.status !== 'staged' ? 'Phiên không còn ở staging' : 'Hủy phiên staging'}
+            {busy === 'cancel' ? 'Đang hủy…' : preview.status !== 'staged' ? 'Bản nháp đã đóng' : 'Hủy bản nháp'}
           </button>
+          {preview.status === 'staged' && <button className={styles.primary} disabled={activationBlocked || !!busy} title={activationBlocked ? 'Sửa lỗi chặn trong file rồi tải lên lại.' : undefined} onClick={() => setChosenStep(3)}>Tiếp: Kích hoạt</button>}
+        </div>
+        {preview.status === 'staged' && activationBlocked && <p>Còn lỗi chặn nên chưa thể kích hoạt. Sửa file rồi tải lên lại.</p>}
         </div>
       </section>}
     </>}
