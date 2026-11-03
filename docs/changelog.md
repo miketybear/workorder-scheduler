@@ -6,6 +6,7 @@ Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trư�
 
 - [x] Panel Phân công WO hiện lý do bằng khung cảnh báo nổi bật và làm mờ, khóa Xác nhận lưu khi WO thiếu lịch/PIC trên Maximo hoặc ngày đang chọn nằm ngoài lịch WO. Lỗi lưu giờ hiện ngay trong panel thay vì bị che phía sau.
 - [x] Thẻ Backlog không còn nói hai lần phần thiếu lịch/PIC.
+- [x] Làm mới timeline thành nút icon có tooltip; nút gửi rút gọn thành Gửi kế hoạch kèm icon (Renew, Upload của Carbon), tooltip và tên trợ năng vẫn nói rõ Maximo.
 - [x] Bộ lọc Backlog thành chip có trạng thái và số đếm: Chưa phân đủ, Đã phân đủ, Sẵn sàng, Thiếu lịch/PIC. Bấm lại để tắt lọc; bỏ nút Tất cả. Backend lọc trên toàn bộ danh sách qua `readiness`.
 - [x] Backlog sắp xếp như bảng Work orders: ưu tiên cao trước, lịch sớm trước (chưa có lịch xếp sau), rồi số WO.
 - Bằng chứng: frontend vitest và `tsc`.
