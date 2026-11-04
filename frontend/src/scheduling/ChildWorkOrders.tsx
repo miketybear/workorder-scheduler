@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { getChildren, type ChildWorkOrder, type Identity } from '../api/drafts';
 import { RetrievalError } from '../api/workOrders';
+import { CheckmarkFilledIcon } from '../resourceTimeline/CarbonIcons';
 import styles from '../App.module.css';
 
-const sce = (value: boolean | null) => (value === null ? '—' : value ? 'Có' : 'Không');
+const duration = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
+// Carbon status indicators: an icon alone is acceptable when it has a text equivalent.
+function Sce({ value }: { value: boolean | null }) {
+  if (value === null) return <>—</>;
+  return value
+    ? <span role="img" aria-label="Là SCE" title="Là SCE" className={styles.childSce}><CheckmarkFilledIcon /></span>
+    : <span role="img" aria-label="Không phải SCE" title="Không phải SCE" />;
+}
 
 /** Read-only reference. Loads only when opened, as Carbon advises for expandable supplementary data. */
 export function ChildWorkOrders({ identity, onDenied }: { identity: Identity; onDenied: () => void }) {
@@ -30,7 +38,7 @@ export function ChildWorkOrders({ identity, onDenied }: { identity: Identity; on
     }
   }
 
-  return <details className={styles.childOrders} onToggle={(event) => { if (event.currentTarget.open && !rows && !loading) void load(); }}>
+  return <details className={`${styles.editorSection} ${styles.childOrders}`} onToggle={(event) => { if (event.currentTarget.open && !rows && !loading) void load(); }}>
     <summary>WO con{rows ? ` (${rows.length})` : ''}</summary>
     {loading && <p role="status">Đang đọc WO con từ Maximo…</p>}
     {error && <p role="alert" className={styles.error}>{error} <button type="button" onClick={() => void load()}>Thử lại</button></p>}
@@ -38,7 +46,7 @@ export function ChildWorkOrders({ identity, onDenied }: { identity: Identity; on
     {rows && rows.length > 0 && <table>
       <thead><tr><th scope="col">WO</th><th scope="col">Tag Number</th><th scope="col" className={styles.numeric}>Est. Duration</th><th scope="col">SCE</th></tr></thead>
       <tbody>{rows.map((row) => <tr key={row.workorderid}>
-        <td>{row.wonum}</td><td>{row.location ?? '—'}</td><td className={styles.numeric}>{row.estdur ?? '—'}</td><td>{sce(row.plusgsafetycrit)}</td>
+        <td>{row.wonum}</td><td>{row.location ?? '—'}</td><td className={styles.numeric}>{row.estdur === null ? '—' : duration.format(row.estdur)}</td><td><Sce value={row.plusgsafetycrit} /></td>
       </tr>)}</tbody>
     </table>}
   </details>;

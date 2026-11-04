@@ -522,9 +522,11 @@ td[data-code="conflict"], td[data-code="invalid_changes"] { color: var(--danger-
 .homeSession article { padding: 24px; background: var(--layer); }
 @media (max-width: 800px) { .homeMetrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .homeColumns { grid-template-columns: 1fr; } }
 
-.childOrders { border-top: 1px solid var(--line); padding-top: 8px; }
+.childOrders { grid-column: 1 / -1; }
+.childSce { display: inline-flex; color: var(--ink); }
 .childOrders > summary { cursor: pointer; font-weight: 600; line-height: 32px; }
 .childOrders > summary:hover { background: var(--hover); }
 .childOrders table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-.childOrders th, .childOrders td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.childOrders th, .childOrders td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.childOrders { overflow-x: auto; }
 .childOrders .numeric { text-align: right; }

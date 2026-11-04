@@ -15,16 +15,19 @@ const open = (container: HTMLElement) => {
 
 it('reads nothing until opened, then shows read-only rows and the count', async () => {
   vi.mocked(getChildren).mockResolvedValue([
-    { workorderid: '1', wonum: 'P1', location: 'HT-1', estdur: 5, plusgsafetycrit: true },
+    { workorderid: '1', wonum: 'P1', location: 'HT-1', estdur: 1.6333333333333333, plusgsafetycrit: true },
+    { workorderid: '3', wonum: 'P3', location: 'HT-3', estdur: 5, plusgsafetycrit: false },
     { workorderid: '2', wonum: 'P2', location: null, estdur: null, plusgsafetycrit: null },
   ]);
   const { container } = render(<ChildWorkOrders identity={identity} onDenied={vi.fn()} />);
   expect(getChildren).not.toHaveBeenCalled();
   open(container);
-  expect(await screen.findByText('WO con (2)')).toBeInTheDocument();
+  expect(await screen.findByText('WO con (3)')).toBeInTheDocument();
   const row = screen.getByText('P1').closest('tr') as HTMLElement;
   expect(within(row).getByText('HT-1')).toBeInTheDocument();
-  expect(within(row).getByText('Có')).toBeInTheDocument();
+  expect(within(row).getByText('1.63')).toBeInTheDocument();
+  expect(within(row).getByRole('img', { name: 'Là SCE' })).toBeInTheDocument();
+  expect(within(screen.getByText('P3').closest('tr') as HTMLElement).getByRole('img', { name: 'Không phải SCE' })).toBeInTheDocument();
   expect(container.querySelectorAll('input, select, button')).toHaveLength(0);
 });
 
