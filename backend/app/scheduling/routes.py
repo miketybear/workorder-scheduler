@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app.auth.person_access import sync_person_access
 from app.auth.sessions import SESSION_COOKIE, resolve_session, verify_csrf
 from app.db.models import AccessGrant, Draft, DraftItem, DraftSubmission
+from app.maximo.children import read_children
 from app.maximo.detail import current_snapshot, read_detail, read_pic_names, read_pics
 from app.maximo.routes import authorized_connection, configured_connection
 from app.request_deadline import ReadDraftDeadlineRoute
@@ -130,6 +131,34 @@ async def detail(
         "baseline_token": snapshot_token(current),
         "baseline": current.baseline.model_dump(mode="json"),
     }
+
+
+@router.get("/work-orders/children")
+async def children(
+    request: Request,
+    response: Response,
+    connection_id: UUID,
+    site_id: Annotated[str, Query(min_length=1, max_length=50)],
+    workorder_id: Annotated[str, Query(pattern=r"^[0-9]{1,30}$")],
+    discipline: Annotated[str, Query(min_length=1, max_length=50)],
+):
+    """Reference only. Child WOs carry no discipline, so access follows the parent."""
+    response.headers["Cache-Control"] = "no-store"
+    allowed = {"connection_id", "site_id", "workorder_id", "discipline"}
+    if any(
+        key not in allowed or len(request.query_params.getlist(key)) != 1
+        for key in request.query_params
+    ):
+        raise HTTPException(422, "Unsupported or duplicate query parameter")
+    key = WorkOrderKey(connection_id, site_id, workorder_id)
+    _, settings = await checked_settings(request, key, discipline)
+    async with request.app.state.maximo_client_factory() as client:
+        order = await read_detail(client, settings, key, discipline)
+        if order is None:
+            raise HTTPException(404, "Work order not found")
+        rows = await read_children(client, settings, site_id, order.wonum)
+    await checked_settings(request, key, discipline)
+    return {"items": [row.model_dump(mode="json") for row in rows]}
 
 
 def digest(value):

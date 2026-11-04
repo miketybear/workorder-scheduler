@@ -10,6 +10,7 @@ import { todayIn } from '../resourceTimeline/timelineHelpers';
 import { CloseIcon } from '../resourceTimeline/CarbonIcons';
 import styles from '../App.module.css';
 import { WorkOrderFacts } from './WorkOrderFacts';
+import { ChildWorkOrders } from './ChildWorkOrders';
 import { isAwareDate, localDateTime, zonedDateTime } from '../api/dates';
 import { displayDate } from './presentation';
 import { UploadPreviewControls, type UploadConnection } from './UploadPreviewPanel';
@@ -289,6 +290,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
             <WorkOrderFacts row={detail.item} timezone={timezone} picNames={names} omit={['wonum', 'description', 'worktype', 'status', 'wopriority', 'assignedto', 'schedstart', 'schedfinish', 'targstartdate', 'targcompdate']} />
             
           </section>
+          <ChildWorkOrders key={`${scope.connection_id}/${detail.item.siteid}/${detail.item.workorderid}`} identity={{ ...scope, site_id: detail.item.siteid, workorder_id: detail.item.workorderid }} onDenied={onDenied} />
         </div>
       </>}
     </div>

@@ -43,6 +43,13 @@ Compact table and batch panels support up to 200 WOs, group changes, per-row edi
 paste and undo. Local Onshore E&I list/detail/crew reads are verified; broader live
 scopes, monthly-load usability and uploads remain pending.
 
+## Carbon Design reference
+
+- Before designing or changing any UI, consult the Carbon Design System guidance for the component
+  or pattern (usage, style, accessibility), and follow it unless a project rule here overrides it.
+  Use the Carbon docs search tool when the client has one, otherwise carbondesignsystem.com.
+- Say which guidance was used when reporting the change, and name any deliberate deviation.
+
 ## API and authentication
 
 - Same-origin JSON API under /api; backend owns Entra redirects and session cookies.

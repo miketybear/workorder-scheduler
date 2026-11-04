@@ -521,3 +521,10 @@ td[data-code="conflict"], td[data-code="invalid_changes"] { color: var(--danger-
 .homeSession { margin-top: 16px; max-width: 480px; }
 .homeSession article { padding: 24px; background: var(--layer); }
 @media (max-width: 800px) { .homeMetrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .homeColumns { grid-template-columns: 1fr; } }
+
+.childOrders { border-top: 1px solid var(--line); padding-top: 8px; }
+.childOrders > summary { cursor: pointer; font-weight: 600; line-height: 32px; }
+.childOrders > summary:hover { background: var(--hover); }
+.childOrders table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.childOrders th, .childOrders td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.childOrders .numeric { text-align: right; }

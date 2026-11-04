@@ -121,6 +121,12 @@ export async function getDetail(key: Identity, signal: AbortSignal): Promise<Det
   if (result.item.siteid !== key.site_id || result.item.workorderid !== key.workorder_id) return invalid();
   return result;
 }
+export type ChildWorkOrder = { workorderid: string; wonum: string; location: string | null; estdur: number | null; plusgsafetycrit: boolean | null };
+export async function getChildren(key: Identity, signal: AbortSignal): Promise<ChildWorkOrder[]> {
+  const raw = await call(`/work-orders/children?${new URLSearchParams(key)}`, signal);
+  if (!isRecord(raw) || !Array.isArray(raw.items) || raw.items.some((row) => !isRecord(row) || typeof row.wonum !== 'string' || typeof row.workorderid !== 'string')) return invalid();
+  return raw.items as ChildWorkOrder[];
+}
 export async function saveDraft(key: Identity, changes: Changes, token: string, requestId: string,
   existing: Saved | null, signal: AbortSignal, rebase = false): Promise<Saved> {
   // rebase asks the server to adopt the current Maximo values as the draft's baseline while keeping these changes.

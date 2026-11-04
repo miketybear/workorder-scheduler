@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Mục WO con chỉ đọc trong chi tiết WO — 2026-11-04
+
+- [x] Thêm `GET /api/work-orders/children` và mục thu gọn WO con (WO, Tag Number, Est. Duration, SCE) trong chi tiết WO; chỉ tải khi mở, quyền theo WO cha, không sửa hay giao việc. Theo Carbon: Data table (hoãn query phần mở rộng), Accordion (không cuộn riêng). frontend/AGENTS.md thêm quy tắc tham khảo Carbon trước khi làm giao diện.
+- Bằng chứng: pytest toàn bộ 1501 passed, vitest 626 passed, `tsc`; GET thật qua `BDSCHED_WO` trên Onshore test trả 10 WO con của P13471625. Giới hạn: chỉ lấy con trực tiếp; chưa thử mục này trên giao diện staging.
+
 ## Nháp nhóm có WO đã đóng không còn bị kẹt — 2026-11-04
 
 - [x] Khi một WO trong nháp nhóm đã đóng trên Maximo, Gửi kế hoạch báo rõ lý do và có nút Xóa nháp nhóm này; sửa ô trong bảng cũng báo rõ. API báo mã `closed` riêng với `unavailable`, và cho xóa nháp có WO đã đóng.

@@ -92,6 +92,25 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                         200,
                         json={"member": [{"personid": "TECH", "displayname": "Tech Person"}]},
                     )
+                if "parent=" in request.url.params.get("oslc.where", ""):
+                    parent = record()
+                    child = {"siteid": parent["siteid"], "parent": parent["wonum"], "istask": False}
+                    return httpx.Response(
+                        200,
+                        json={
+                            "member": [
+                                {
+                                    **child,
+                                    "workorderid": 201,
+                                    "wonum": "CHILD1",
+                                    "location": "TAG-1",
+                                    "estdur": 5.0,
+                                    "plusgsafetycrit": True,
+                                },
+                                {**child, "workorderid": 202, "wonum": "CHILD2"},
+                            ]
+                        },
+                    )
                 return httpx.Response(
                     200,
                     json={
@@ -175,6 +194,31 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                         "/api/work-orders/detail", params={**key, "discipline": "OTHER"}
                     )
                     assert denied.status_code == 404
+                    rows = await client.get("/api/work-orders/children", params=key)
+                    assert rows.status_code == 200
+                    assert rows.headers["cache-control"] == "no-store"
+                    assert rows.json()["items"] == [
+                        {
+                            "workorderid": "201",
+                            "wonum": "CHILD1",
+                            "location": "TAG-1",
+                            "estdur": 5.0,
+                            "plusgsafetycrit": True,
+                        },
+                        {
+                            "workorderid": "202",
+                            "wonum": "CHILD2",
+                            "location": None,
+                            "estdur": None,
+                            "plusgsafetycrit": None,
+                        },
+                    ]
+                    wheres = [c.url.params.get("oslc.where", "") for c in calls]
+                    assert any("parent=" in w and "istask=0" in w for w in wheres)
+                    outside = await client.get(
+                        "/api/work-orders/children", params={**key, "discipline": "OTHER"}
+                    )
+                    assert outside.status_code == 404
                 if case not in {"success", "http-test"}:
                     return
                 url = "/api/drafts/" + response.json()["draft_id"]
