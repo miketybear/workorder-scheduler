@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Chip khóa route và checklist production — 2026-11-04
+
+- [x] Chip đổi thành "Workflow rev cũ, khóa route". Thêm checklist từ các sai lệch đọc được sau khi restore production sang Maximo test.
+- Bằng chứng: frontend vitest và `tsc`. Giới hạn: chưa đọc trực tiếp production; chưa deploy lên staging.
+
 ## Panel chi tiết WO theo Carbon — 2026-11-03
 
 - [x] Đầu panel có mô tả và nhãn WO; cột trái bỏ các dòng trùng. Trường đã sửa có viền trái và chữ Đã sửa, giá trị Maximo ghi ngay dưới trường thay cho bảng đối chiếu. Scheduled Finish và Target của PM/CFT hiện read-only, không còn disabled. Chân panel hai nút chia đều cao 48px, nút đóng dùng icon Carbon. Bỏ mục lịch trùng lặp, Actual Start/Finish chuyển vào thông tin WO; panel rộng tối đa 1120px và cao theo nội dung.

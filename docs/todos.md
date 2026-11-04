@@ -5,6 +5,11 @@ phạm vi và bằng chứng ở đầu [changelog.md](changelog.md). Số dòng
 
 Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[Maximo admin]`, `[sự kiện thật]`.
 
+## 0. Trước khi deploy production
+
+- [ ] `[chủ dự án]` `[Maximo admin]` Đi hết [production-deploy-checklist.md](production-deploy-checklist.md): BD_WO, discipline và tài khoản PERSON.
+- [ ] `[Maximo admin]` Trên Maximo test (vừa restore từ production): kích hoạt BD_WO không có điều kiện ở node 34 để mở lại route.
+
 ## 1. Làm được ngay
 
 - [ ] `[chủ dự án]` Nghiệm thu popup và route lưu đăng nhập trên staging với Maximo test, đo số phiên `maxauth` khi preview nhiều WO.
