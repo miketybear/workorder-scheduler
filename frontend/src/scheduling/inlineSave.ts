@@ -1,6 +1,7 @@
 import { BatchError, openBatch, prepareBatch, saveBatch, saveDraft, type BatchRow, type Changes, type Detail, type DraftNotice, type Scope } from '../api/drafts';
 import type { PlanningMarker, WorkOrder } from '../api/workOrders';
 import { deriveChanges, hasChanges, problemOf, type Staged } from './inlineEdit';
+import { hasClosedMember } from './consolidateDrafts';
 import { rowKey } from './presentation';
 
 export type InlineRow = { order: WorkOrder; marker?: PlanningMarker; staged: Staged };
@@ -61,6 +62,10 @@ export async function saveInlineEdits(scope: Scope, timeZone: string, rows: Inli
         signal, latest.items.some((item) => item.baseline_changed));
       notices.push({ ...saved, items });
     } catch (cause) {
+      if (hasClosedMember(cause)) {
+        for (const row of members) failed[rowKey(row.order)] = 'Nháp nhóm có WO đã đóng trên Maximo. Bấm Gửi kế hoạch để xóa nháp nhóm này.';
+        continue;
+      }
       const issues = cause instanceof BatchError ? new Map(cause.issues.map((issue) => [JSON.stringify([issue.site_id, issue.workorder_id]), issue.code])) : null;
       for (const row of members) failed[rowKey(row.order)] = issues?.get(rowKey(row.order)) ? 'WO hoặc nháp vừa đổi; mở lại để đối chiếu.' : message(cause);
     }

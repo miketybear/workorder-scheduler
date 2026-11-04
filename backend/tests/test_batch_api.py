@@ -165,6 +165,8 @@ def test_batch_atomic_validation_and_lifecycle(case):
                     )
                 if case != "success":
                     assert created.json()["detail"]["errors"][0]["workorder_id"] == "101"
+                    if case == "closed":
+                        assert created.json()["detail"]["errors"][0]["code"] == "closed"
                     return
                 result = created.json()
                 replay = await client.post("/api/draft-batches", json=payload, headers=headers)

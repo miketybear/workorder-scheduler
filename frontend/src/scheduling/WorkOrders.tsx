@@ -12,7 +12,7 @@ import { continueUpload, deleteDraft, editableFields, getDetail, prepareBatch, l
 import type { FinalizedUpload } from './UploadPreviewPanel';
 import { currentMonthRange, startOfDay } from '../api/dates';
 import { BatchPlanner } from './BatchPlanner';
-import { consolidateDrafts } from './consolidateDrafts';
+import { ClosedMemberDraft, consolidateDrafts } from './consolidateDrafts';
 import { displayDate, rowKey } from './presentation';
 import { chosenPlan, effectiveOrder, updatePlans } from './planning';
 import type { PlanningMarker } from '../api/workOrders';
@@ -113,6 +113,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
   const [batch, setBatch] = useState<{ selection: { draftId: string }; notes: string[] } | null>(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
+  const [closedDraft, setClosedDraft] = useState<{ draft_id: string; version: number } | null>(null);
   // Changing the date range while WOs still have drafts asks first; this holds the pending change.
   const [rangeChange, setRangeChange] = useState<{ value: string; field: 'start' | 'end' } | { open: true } | null>(null);
   const [rangeBusy, setRangeBusy] = useState(false);
@@ -571,7 +572,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
   async function sendAll() {
     if (!grant || sending || !discard()) return;
     const controller = new AbortController();
-    setSending(true); setSendError('');
+    setSending(true); setSendError(''); setClosedDraft(null);
     try {
       const result = await consolidateDrafts(editorScope, rows ?? [], controller.signal, onDraftReady);
       const notes = [...result.dropped.length ? [`Bỏ khỏi nhóm ${result.dropped.join(', ')} vì thay đổi đã trùng Maximo hoặc PIC không còn hợp lệ.`] : [], ...result.warnings];
@@ -580,8 +581,22 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
       setBatch({ selection: { draftId: result.draftId }, notes });
       setEditorGeneration((previous) => previous + 1);
     } catch (cause) {
+      if (cause instanceof ClosedMemberDraft) setClosedDraft(cause.draft);
       if (cause instanceof RetrievalError && [401, 403].includes(cause.status)) onDenied();
       else setSendError(cause instanceof Error ? cause.message : 'Không gom được nháp để gửi.');
+    } finally { setSending(false); }
+  }
+  async function deleteClosedDraft() {
+    if (!closedDraft || sending) return;
+    setSending(true);
+    try {
+      const gone = { ...closedDraft, state: 'draft' as const };
+      await deleteDraft(gone, new AbortController().signal);
+      onDraftReady({ ...gone, items: null });
+      setClosedDraft(null); setSendError('');
+    } catch (cause) {
+      if (cause instanceof RetrievalError && [401, 403].includes(cause.status)) onDenied();
+      else setSendError(cause instanceof Error ? cause.message : 'Không xóa được nháp nhóm.');
     } finally { setSending(false); }
   }
   function closePanel() {
@@ -937,6 +952,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
         <button className={styles.primary} disabled={busy || sending || inlineBusy || stagedKeys.length > 0} onClick={() => void sendAll()}>{sending ? 'Đang gom nháp…' : `Gửi ${draftedCount} WO lên Maximo`}</button>
         {stagedKeys.length > 0 && <span>Lưu các thay đổi trong bảng trước khi gửi</span>}
         {sendError && <span role="alert" className={styles.error}>{sendError}</span>}
+        {closedDraft && <button type="button" disabled={sending} onClick={() => void deleteClosedDraft()}>Xóa nháp nhóm này</button>}
       </div>}
       {grant?.capability === 'write' && (stagedKeys.length > 0 || inlineNotice || Object.keys(inlineErrors).length > 0) && <div className={styles.bulkBar} data-plain={stagedKeys.length === 0 && Object.keys(inlineErrors).length === 0 ? 'true' : undefined} role="region" aria-label="Thay đổi trong bảng">
         {stagedKeys.length > 0 && <>

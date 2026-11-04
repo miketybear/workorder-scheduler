@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Nháp nhóm có WO đã đóng không còn bị kẹt — 2026-11-04
+
+- [x] Khi một WO trong nháp nhóm đã đóng trên Maximo, Gửi kế hoạch báo rõ lý do và có nút Xóa nháp nhóm này; sửa ô trong bảng cũng báo rõ. API báo mã `closed` riêng với `unavailable`, và cho xóa nháp có WO đã đóng.
+- Bằng chứng: pytest và vitest. Giới hạn: nháp có WO đã ra khỏi phạm vi quyền vẫn không xóa được; danh sách /drafts vẫn ẩn nhóm này; chưa thử trên staging.
+
 ## Chip khóa route và checklist production — 2026-11-04
 
 - [x] Chip đổi thành "Workflow rev cũ, khóa route". Thêm checklist từ các sai lệch đọc được sau khi restore production sang Maximo test.

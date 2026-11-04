@@ -1,4 +1,4 @@
-import { deleteDraft, editableFields, openBatch, prepareBatch, saveBatch, type BatchRow, type Changes, type DraftNotice, type Scope } from '../api/drafts';
+import { BatchError, deleteDraft, editableFields, openBatch, prepareBatch, saveBatch, type BatchRow, type Changes, type DraftNotice, type Scope } from '../api/drafts';
 import type { PlanningMarker, WorkOrder } from '../api/workOrders';
 import { equalField } from './editing';
 import { rowKey } from './presentation';
@@ -7,6 +7,12 @@ export const MAX_SEND = 200;
 export type Consolidated = { draftId: string; dropped: string[]; warnings: string[] };
 type Entry = { key: string; site_id: string; workorder_id: string; changes: Changes; updatedAt: number };
 type Involved = { draft_id: string; version: number; is_batch: boolean; updatedAt: number };
+
+export const hasClosedMember = (cause: unknown) => cause instanceof BatchError && cause.issues.some((issue) => issue.code === 'closed');
+/** A group draft holding a WO that closed in Maximo can no longer be opened; only deleting it unblocks its other WOs. */
+export class ClosedMemberDraft extends Error {
+  constructor(public readonly draft: { draft_id: string; version: number }) { super('Nháp nhóm có WO đã đóng trên Maximo nên không mở được. Xóa nháp nhóm này rồi nhập lại thay đổi cho các WO còn lại.'); }
+}
 
 const stamp = (marker: PlanningMarker) => Date.parse(marker.updated_at) || 0;
 const identity = (key: string) => { const [site_id, workorder_id] = JSON.parse(key) as [string, string]; return { site_id, workorder_id }; };
@@ -52,7 +58,9 @@ export async function consolidateDrafts(scope: Scope, rows: WorkOrder[], signal:
   for (const draft of [...involved.values()].sort((a, b) => a.updatedAt - b.updatedAt)) {
     versions.set(draft.draft_id, draft.version);
     if (draft.is_batch) {
-      const opened = await openBatch(draft.draft_id, scope, signal);
+      const opened = await openBatch(draft.draft_id, scope, signal).catch((cause: unknown) => {
+        throw hasClosedMember(cause) ? new ClosedMemberDraft(draft) : cause;
+      });
       versions.set(draft.draft_id, opened.version);
       if (involved.size === 1 && opened.items.length === wanted.size && opened.items.every((item) => wanted.has(rowKey(item.item)))) {
         return { draftId: draft.draft_id, dropped: [], warnings: [] };

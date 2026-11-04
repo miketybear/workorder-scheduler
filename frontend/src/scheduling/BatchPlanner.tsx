@@ -67,7 +67,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   useEffect(() => { current.current = rows; existing.current = saved; }, [rows, saved]);
   const fail = useCallback((cause: unknown) => {
     if ((cause instanceof RetrievalError && [401, 403, 404].includes(cause.status)) ||
-        (cause instanceof BatchError && cause.issues.some((issue) => issue.code === 'unavailable'))) onDenied();
+        (cause instanceof BatchError && cause.issues.some((issue) => issue.code === 'unavailable' || issue.code === 'closed'))) onDenied();
     else {
       setError(cause instanceof Error ? cause.message : 'Không kiểm tra được nhóm WO.');
       if (cause instanceof RetrievalError && cause.status === 409) {

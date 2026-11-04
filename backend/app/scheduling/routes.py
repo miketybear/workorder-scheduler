@@ -399,7 +399,12 @@ async def remove(request: Request, draft_id: UUID, version: Annotated[int, Query
             for item in items
         ]
     for key, discipline in scopes:
-        await retrieve_snapshot(request, key, discipline, write=True)
+        try:
+            await retrieve_snapshot(request, key, discipline, write=True)
+        except HTTPException as error:
+            # A WO closed in Maximo stays in scope; its draft must stay deletable.
+            if error.status_code != 409:
+                raise
     async with request.app.state.sessions() as db, db.begin():
         await actor_after_io(request, db, actor)
         for key, discipline in scopes:

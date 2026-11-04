@@ -72,6 +72,7 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
             app = create_app(settings)
             app.state.sessions = sessions
             moved = False
+            closed_now = False
             calls = []
 
             def upstream(request):
@@ -98,7 +99,7 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                             record(
                                 bdpocdiscipline="OTHER" if moved or case == "moved" else "MECH",
                                 worktype="PM" if case == "pm" else "CM",
-                                status="CLOSE" if case == "closed" else "APPR",
+                                status="CLOSE" if case == "closed" or closed_now else "APPR",
                                 estdur=10 if case == "stale" else 8,
                             )
                         ]
@@ -271,9 +272,11 @@ def test_draft_creation_uses_current_upstream_and_permissions(case):
                             capability="write",
                         )
                     )
+                closed_now = True
                 assert (
                     await client.delete(url, params={"version": 2}, headers=headers)
                 ).status_code == 204
+                closed_now = False
                 assert (await client.get(url)).status_code == 404
                 assert (
                     await client.post("/api/drafts", json=payload, headers=headers)

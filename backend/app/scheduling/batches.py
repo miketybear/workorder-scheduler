@@ -85,12 +85,14 @@ async def snapshots(request, payload, *, write=True, csrf=True, names=False):
                     if order.status not in config.open_statuses or order.istask or order.parent:
                         raise HTTPException(409, "Work order no longer eligible")
                     return order, current_snapshot(key, order, pics, pic_names)
-                except (MaximoReadError, HTTPException):
+                except (MaximoReadError, HTTPException) as error:
                     # Never echo upstream values or disclose a guessed record outside scope.
+                    # A closed WO is still in scope, and the planner must be able to tell it apart.
+                    closed = isinstance(error, HTTPException) and error.status_code == 409
                     return {
                         "site_id": item.site_id,
                         "workorder_id": item.workorder_id,
-                        "code": "unavailable",
+                        "code": "closed" if closed else "unavailable",
                     }
 
         # Bound the entire batch as well as each HTTP call; cancel children on timeout.

@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { deleteDraft, openBatch, prepareBatch, saveBatch, type BatchRow, type Detail, type DraftNotice } from '../api/drafts';
+import { BatchError, deleteDraft, openBatch, prepareBatch, saveBatch, type BatchRow, type Detail, type DraftNotice } from '../api/drafts';
 import { columns, RetrievalError, type PlanningMarker, type WorkOrder } from '../api/workOrders';
-import { consolidateDrafts } from './consolidateDrafts';
+import { ClosedMemberDraft, consolidateDrafts } from './consolidateDrafts';
 
 vi.mock('../api/drafts', async (original) => ({ ...await original<object>(), prepareBatch: vi.fn(), saveBatch: vi.fn(), openBatch: vi.fn(), deleteDraft: vi.fn() }));
 afterEach(() => vi.resetAllMocks());
@@ -124,4 +124,13 @@ it('keeps deleting after a failed delete and reports a warning', async () => {
   expect(result.warnings[0]).toContain('Máy chủ lỗi');
   expect(deleteDraft).toHaveBeenCalledTimes(2);
   expect(notices.filter((notice) => notice.items === null).map((notice) => notice.draft_id)).toEqual(['b']);
+});
+
+it('names the group draft to delete when one of its members closed in Maximo', async () => {
+  const group = marker('group', { is_batch: true, version: 3 });
+  vi.mocked(openBatch).mockRejectedValue(new BatchError(409, [{ site_id: 'S', workorder_id: '1', code: 'closed' }]));
+  const failure = await consolidateDrafts(scope, [order('1', [group]), order('2', [group])], signal).catch((cause: unknown) => cause);
+  expect(failure).toBeInstanceOf(ClosedMemberDraft);
+  expect((failure as ClosedMemberDraft).draft).toMatchObject({ draft_id: 'group', version: 3 });
+  expect(deleteDraft).not.toHaveBeenCalled();
 });
