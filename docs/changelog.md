@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Đóng chi tiết WO không còn hỏi khi chưa sửa gì — 2026-11-04
+
+- [x] Giá trị mang từ bảng hoặc nháp nhóm vào chi tiết WO không còn bị tính là thay đổi chưa lưu; chỉ hỏi khi người dùng sửa thêm.
+- Bằng chứng: vitest và `tsc`. Giới hạn: chưa thử trên staging.
+
 ## Mục WO con chỉ đọc trong chi tiết WO — 2026-11-04
 
 - [x] Thêm `GET /api/work-orders/children` và mục thu gọn WO con (WO, Tag Number, Est. Duration, SCE) trong chi tiết WO; chỉ tải khi mở, quyền theo WO cha, không sửa hay giao việc. Theo Carbon: Data table (hoãn query phần mở rộng), Accordion (không cuộn riêng). frontend/AGENTS.md thêm quy tắc tham khảo Carbon trước khi làm giao diện.

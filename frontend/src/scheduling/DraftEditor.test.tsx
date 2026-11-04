@@ -41,6 +41,17 @@ it.each([new Error('Network lost'), new RetrievalError(504, 'Yêu cầu xử lý
   expect(vi.mocked(saveDraft).mock.calls[2][3]).not.toBe(vi.mocked(saveDraft).mock.calls[0][3]);
 });
 
+it('does not count values carried from the table as unsaved edits until the planner edits', async () => {
+  vi.mocked(getDetail).mockResolvedValue(detail);
+  const onDirty = vi.fn();
+  render(<DraftEditor {...props} onDirty={onDirty} seed={{ site_id: 'TEST', workorder_id: '100', changes: { assignedto: 'OTHER' } }} />);
+  expect(await screen.findByLabelText('Assigned PIC')).toHaveValue('OTHER');
+  expect(onDirty).toHaveBeenLastCalledWith(false);
+  expect(onDirty).not.toHaveBeenCalledWith(true);
+  fireEvent.change(screen.getByLabelText('Est. Duration'), { target: { value: '9' } });
+  expect(onDirty).toHaveBeenLastCalledWith(true);
+});
+
 it('previews only the saved single-WO version and hides that response as soon as edits become unsaved', async () => {
   vi.mocked(getDetail).mockResolvedValue(detail);
   vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'saved', version: 4, state: 'draft' });

@@ -36,6 +36,8 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
 }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [changes, setChanges] = useState<Changes>({});
+  // Values carried from the table are kept there or in a group draft, so closing unedited loses nothing.
+  const [carriedChanges, setCarriedChanges] = useState<string | null>(null);
   const [saved, setSaved] = useState<Saved | null>(null);
   const [restoreBlocked, setBlocked] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -84,7 +86,8 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
     verifiedDetail && 'baseline_token' in verifiedDetail ? verifiedDetail.baseline_token : null,
     verifiedDetail && 'version' in verifiedDetail ? verifiedDetail.version : null, verifiedDetail?.allowed_pics, changes, committed]);
   const uploadSelection = useMemo(() => detail ? [{ site_id: detail.item.siteid, workorder_id: detail.item.workorderid, wonum: detail.item.wonum }] : [], [detail]);
-  useEffect(() => { onDirty(unsaved); }, [unsaved, onDirty]);
+  const edited = unsaved && JSON.stringify(changes) !== carriedChanges;
+  useEffect(() => { onDirty(edited); }, [edited, onDirty]);
   useEffect(() => {
     if (suspended || loaded) return;
     const controller = new AbortController();
@@ -102,7 +105,8 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
       const carried = seedRef.current;
       if (carried && carried.site_id === value.item.siteid && carried.workorder_id === value.item.workorderid) {
         const existing = 'changes' in value ? value.changes : {};
-        setChanges({ ...existing, ...carried.changes });
+        const merged = { ...existing, ...carried.changes };
+        setChanges(merged); setCarriedChanges(JSON.stringify(merged));
         seedConsumedRef.current?.();
       }
     }).catch((cause: unknown) => {
