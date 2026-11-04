@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## System ID của WO cha trong chi tiết WO — 2026-11-04
+
+- [x] Thông tin từ Maximo hiện System ID của WO; reader đọc qua `rel.LOCHIERARCHY{systemid}` thay cho `lochierarchy{systemid}`.
+- Bằng chứng: GET thật trên Onshore test trả `HT-77-ELECT-SYS` cho P13471625 và `MT1-55-CLOSED-DRAIN` cho H14311073; pytest và vitest. Giới hạn: chưa thử trên staging; location thuộc nhiều system vẫn báo lỗi như trước.
+
 ## Đóng chi tiết WO không còn hỏi khi chưa sửa gì — 2026-11-04
 
 - [x] Giá trị mang từ bảng hoặc nháp nhóm vào chi tiết WO không còn bị tính là thay đổi chưa lưu; chỉ hỏi khi người dùng sửa thêm.

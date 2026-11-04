@@ -873,7 +873,7 @@ it('keeps the verified snapshot visible after a failed explicit update and prese
   expect(getDate(screen.getByLabelText('Target Finish từ'))).toBe('2026-09-01');
 });
 
-it('shows every business data field in the panel while hiding technical identity and system', async () => {
+it('shows every business data field in the panel including System ID while hiding technical identity', async () => {
   await setup();
   const rich = { ...row, lead: 'ONSHORE', wolo10: '25', systemid: 'HT-98-MISC-SYSTEM',
     actstart: '2026-09-29T01:00:00Z', actfinish: '2026-09-29T02:00:00Z',
@@ -891,7 +891,7 @@ it('shows every business data field in the panel while hiding technical identity
   expect(panel.getByText('25%')).toBeVisible();
   expect(panel.queryByText('Site')).not.toBeInTheDocument();
   expect(panel.queryByText('WOID')).not.toBeInTheDocument();
-  expect(panel.queryByText('HT-98-MISC-SYSTEM')).not.toBeInTheDocument();
+  expect(panel.getByText('HT-98-MISC-SYSTEM')).toBeVisible();
   expect(vi.mocked(getDetail).mock.calls[0][0]).toMatchObject({ site_id: 'SITE-A', workorder_id: '100' });
 });
 

@@ -52,7 +52,7 @@ class WorkOrder(BaseModel):
 
 SELECT = (
     "siteid,workorderid,wonum,bdpocdiscipline,description,worktype,wolo10,location,"
-    "lochierarchy{systemid},schedstart,schedfinish,actstart,actfinish,status,"
+    "rel.LOCHIERARCHY{systemid},schedstart,schedfinish,actstart,actfinish,status,"
     "wopriority,wopriority_description,lead,assignedto,estdur,targstartdate,"
     "targcompdate,istask,parent"
 )
