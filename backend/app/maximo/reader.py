@@ -109,16 +109,13 @@ def next_page_url(link: str, settings: MaximoSettings, original: dict[str, str])
 
 def map_work_order(raw: dict) -> WorkOrder:
     hierarchy = raw.get("lochierarchy")
-    if isinstance(hierarchy, list):
-        if len(hierarchy) > 1:
-            raise MaximoReadError("Ambiguous System ID")
-        hierarchy = hierarchy[0] if hierarchy else None
-    if hierarchy is not None and not isinstance(hierarchy, dict):
+    rows = hierarchy if isinstance(hierarchy, list) else [] if hierarchy is None else [hierarchy]
+    if any(not isinstance(row, dict) for row in rows):
         raise MaximoReadError("Invalid System ID")
+    # A location may sit in several systems. This is display data: one such WO must not fail the list.
+    systems = sorted({str(row["systemid"]) for row in rows if row.get("systemid")})
     try:
-        return WorkOrder.model_validate(
-            {**raw, "systemid": hierarchy.get("systemid") if hierarchy else None}
-        )
+        return WorkOrder.model_validate({**raw, "systemid": ", ".join(systems) or None})
     except ValidationError:
         raise MaximoReadError("Invalid work order response") from None
 

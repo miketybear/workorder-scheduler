@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Danh sách WO không còn lỗi khi location thuộc nhiều system — 2026-11-05
+
+- [x] Sửa lỗi 502 từ `51b94f4`: `rel.LOCHIERARCHY` trả nhiều dòng cho location thuộc nhiều system nên cả danh sách bị từ chối. Nay hiện tất cả System ID, ngăn bằng dấu phẩy.
+- Bằng chứng: mẫu 1000 WO thật trên Onshore test có 2 WO thuộc 2 system (P13468756, P13439333); pytest.
+
 ## Thời hạn phiên đăng nhập 12 tiếng — 2026-11-05
 
 - [x] Chủ dự án chọn 12 tiếng thay cho 8 tiếng để giảm số lần đăng nhập Entra trên đường vệ tinh.

@@ -129,7 +129,6 @@ def test_unsafe_next_page_never_receives_credentials(link):
         {"workorderid": True},
         {"wolo10": 101},
         {"estdur": "NaN"},
-        {"lochierarchy": [{"systemid": "A"}, {"systemid": "B"}]},
     ],
 )
 def test_invalid_or_out_of_scope_records_fail_whole_result(overrides):
@@ -173,6 +172,8 @@ def test_incomplete_results_are_never_returned_as_success(kind):
 def test_empty_response_and_optional_relationship():
     assert run_reader(lambda request: httpx.Response(200, json={"member": []})) == []
     assert map_work_order(record(lochierarchy=[])).systemid is None
+    several = [{"systemid": "B"}, {"systemid": "A"}, {"systemid": "A"}]
+    assert map_work_order(record(lochierarchy=several)).systemid == "A, B"
 
 
 def test_filter_injection_is_rejected_before_request():
