@@ -671,3 +671,122 @@ async def finalize_confirmed(sessions, actor_id, batch_id, reader: ReadCurrent):
             )
         await db.delete(draft)
         return True
+
+
+def remaining_changes(evidence, member, mismatch, current):
+    """What a partly applied write still has to send, or None if it cannot be proven.
+
+    Only fields that were part of this draft and read back differently stay. Any other
+    difference means someone else changed the WO, so the member keeps its old baseline
+    and the normal conflict check asks the planner to review it.
+    """
+    fields = {entry["field"] for entry in mismatch}
+    if not fields <= member.changes.keys():
+        return None
+    expected = WorkOrderBaseline.model_validate({**evidence.before, **evidence.changes})
+    explained = expected.model_copy(
+        update={field: getattr(current.baseline, field) for field in fields}
+    )
+    if explained != current.baseline:
+        return None
+    kept = {field: member.changes[field] for field in fields}
+    if "change_target" in member.changes and fields & {"targstartdate", "targcompdate"}:
+        kept["change_target"] = member.changes["change_target"]
+    return kept
+
+
+async def settle_source(sessions, actor_id, batch_id, reader: ReadCurrent):
+    """After every item reached a known outcome, keep only unfinished work in the draft.
+
+    Confirmed members leave the draft. A failed readback keeps just the fields Maximo did
+    not take, on the current baseline, so it can be uploaded again. Anything else stays
+    untouched. Nothing is sent to Maximo here.
+    """
+    from app.maximo.reader import MaximoReadError
+
+    async with sessions.begin() as db:
+        await db.scalar(select(User.id).where(User.id == actor_id).with_for_update())
+        items = list(
+            (
+                await db.scalars(
+                    select(UploadItem)
+                    .join(UploadBatch)
+                    .where(UploadItem.batch_id == batch_id, UploadBatch.actor_id == actor_id)
+                    .with_for_update(of=UploadItem)
+                )
+            ).all()
+        )
+        if not items or any(
+            item.state not in {"confirmed", "failed", "conflict"} for item in items
+        ):
+            return False
+        ids = [item.id for item in items]
+        events = list(
+            (
+                await db.scalars(
+                    select(AuditEvent).where(
+                        AuditEvent.upload_item_id.in_(ids),
+                        AuditEvent.event.in_(
+                            ["prepared", "readback_mismatch", "source_finalized", "source_retained"]
+                        ),
+                    )
+                )
+            ).all()
+        )
+        if any(event.event in {"source_finalized", "source_retained"} for event in events):
+            return False
+        prepared = {e.upload_item_id: e.details for e in events if e.event == "prepared"}
+        mismatches = {
+            e.upload_item_id: e.details["fields"] for e in events if e.event == "readback_mismatch"
+        }
+        if set(prepared) != set(ids):
+            return False
+        first = next(iter(prepared.values()))
+        draft = await db.scalar(
+            select(Draft)
+            .where(Draft.id == UUID(first["draft_id"]), Draft.owner_id == actor_id)
+            .with_for_update()
+        )
+        if draft is None:
+            return False
+        draft, members = await owned_draft(db, actor_id, draft.id)
+        # An edit made since the upload started wins: never rewrite a newer draft.
+        if (
+            draft.version != first["draft_version"]
+            or member_hash(members) != first["membership_hash"]
+        ):
+            return False
+        by_id = {str(member.id): member for member in members}
+        if any(details["member_id"] not in by_id for details in prepared.values()):
+            return False
+        remaining = len(members)
+        for item in items:
+            member = by_id[prepared[item.id]["member_id"]]
+            event, details = "source_retained", {"draft_id": str(draft.id)}
+            if item.state == "confirmed":
+                if await readback_state(db, actor_id, item, reader) == "confirmed":
+                    event = "source_finalized"
+                    await db.delete(member)
+                    remaining -= 1
+            elif item.state == "failed" and item.id in mismatches:
+                key = WorkOrderKey(item.connection_id, item.site_id, item.workorder_id)
+                evidence = await immutable_item(db, item)
+                try:
+                    current = await reader(key)
+                    kept = remaining_changes(evidence, member, mismatches[item.id], current)
+                except (MaximoReadError, HTTPException, ValueError, TimeoutError, OSError):
+                    kept = None
+                if kept is not None:
+                    member.baseline = current.baseline.model_dump(mode="json")
+                    member.upstream_revision = current.revision
+                    member.changes = kept
+                    details["kept_fields"] = sorted(kept)
+            db.add(
+                AuditEvent(upload_item_id=item.id, actor_id=actor_id, event=event, details=details)
+            )
+        await db.flush()
+        if remaining == 0:
+            await db.delete(draft)
+        else:
+            draft.version += 1
+        return True

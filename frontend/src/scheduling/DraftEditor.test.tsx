@@ -219,7 +219,7 @@ it('reports a readback mismatch as failed with the Maximo values and keeps the d
   const duration = await screen.findByLabelText('Est. Duration');
   fireEvent.click(screen.getByText('Đối chiếu với Maximo trước upload'));
   fireEvent.click(await screen.findByRole('button', { name:'Upload' }));
-  expect(await screen.findByText('Maximo giữ khác giá trị đã gửi: Est. Duration 21 (gửi 25). WO đã được mở khóa; nháp giữ nguyên, kiểm tra rồi upload lại nếu cần.')).toBeInTheDocument();
+  expect(await screen.findByText('Maximo giữ khác giá trị đã gửi: Est. Duration 21 (gửi 25). Maximo đã nhận các trường khác; nháp chỉ giữ phần chưa ghi được để gửi lại.')).toBeInTheDocument();
   expect(duration).toHaveValue('8');
   expect(screen.getByText('Thất bại')).toBeInTheDocument();
   expect(screen.queryByText('Đối chiếu WO chưa xác định')).not.toBeInTheDocument();

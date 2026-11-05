@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 
 from app.auth.sessions import SESSION_COOKIE, resolve_session, verify_csrf
-from app.db.models import AuditEvent, MaximoConnection, UploadBatch, UploadItem
+from app.db.models import AuditEvent, Draft, MaximoConnection, UploadBatch, UploadItem
 from app.maximo.contract_probe import OPERATOR_WORKTYPES
 from app.maximo.detail import read_detail
 from app.maximo.sender import NativeTestTransport, write_enabled
@@ -29,6 +29,7 @@ from app.scheduling.upload_service import (
     preview_warnings,
     reconcile_unknown,
     send_pending,
+    settle_source,
 )
 
 
@@ -358,6 +359,21 @@ async def status(request: Request, response: Response, batch_id: UUID):
                 )
             ).all()
         )
+        retained = set(
+            (
+                await db.scalars(
+                    select(AuditEvent.upload_item_id).where(
+                        AuditEvent.upload_item_id.in_([item.id for item in rows]),
+                        AuditEvent.event == "source_retained",
+                    )
+                )
+            ).all()
+        )
+        # A member can leave its draft while the draft still holds other members.
+        draft_ids = {UUID(details["draft_id"]) for details in sources.values()}
+        draft_gone = not (
+            draft_ids and await db.scalar(select(Draft.id).where(Draft.id.in_(draft_ids)).limit(1))
+        )
         duration_results = {
             event.upload_item_id: {
                 field: event.details[field] for field in ("code", "expected", "actual")
@@ -391,6 +407,23 @@ async def status(request: Request, response: Response, batch_id: UUID):
                 )
             ).all()
         }
+        rejections = {
+            event.upload_item_id: {
+                "code": event.details.get("ibm_reason_code"),
+                "message": event.details.get("ibm_message"),
+            }
+            for event in (
+                await db.scalars(
+                    select(AuditEvent)
+                    .where(
+                        AuditEvent.upload_item_id.in_([item.id for item in rows]),
+                        AuditEvent.event == "conditional_response",
+                    )
+                    .order_by(AuditEvent.created_at, AuditEvent.id)
+                )
+            ).all()
+            if event.details.get("status", 0) >= 400
+        }
         restore_sources = {}
         for item in rows:
             if item.state != "confirmed" or item.id not in sources:
@@ -413,7 +446,10 @@ async def status(request: Request, response: Response, batch_id: UUID):
                     )
                 }
         return {
-            "source_finalized": bool(rows) and all(item.id in finalized for item in rows),
+            "source_finalized": bool(rows)
+            and all(item.id in finalized for item in rows)
+            and draft_gone,
+            "source_settled": bool(rows) and all(item.id in finalized | retained for item in rows),
             "batch_id": str(batch_id),
             "counts": dict(Counter(item.state for item in rows)),
             "items": [
@@ -428,6 +464,7 @@ async def status(request: Request, response: Response, batch_id: UUID):
                     "readback_mismatch": mismatches.get(item.id)
                     if item.state == "failed"
                     else None,
+                    "rejection": rejections.get(item.id) if item.state == "failed" else None,
                     "restore_source": restore_sources.get(item.id),
                     "source": {
                         field: sources[item.id][field]
@@ -482,23 +519,25 @@ async def execute_batch(request, actor_id, batch_id, *, reconcile=False):
             request, actor_id, first.connection_id, first.discipline, client
         )
         await transport.authorize()
+        # A failed WO does not stop the others, but an unknown outcome stops further sends:
+        # it usually means Maximo or the link is unwell, and the result must be checked first.
+        unresolved = any(item.state in {"unknown", "sending"} for item in items)
         selected = [
             item for item in items if item.state == ("unknown" if reconcile else "pending")
         ][:10]
-        for item in selected:
-            if reconcile:
-                await reconcile_unknown(
-                    request.app.state.sessions, actor_id, item.id, transport.read
-                )
-            else:
-                await send_pending(
+        if reconcile or not unresolved:
+            for item in selected:
+                if reconcile:
+                    await reconcile_unknown(
+                        request.app.state.sessions, actor_id, item.id, transport.read
+                    )
+                elif await send_pending(
                     request.app.state.sessions, actor_id, item.id, transport.read, transport
-                )
-        if (
-            all(item.state == "confirmed" for item in items if item not in selected)
-            and len(selected) <= 10
-        ):
-            await finalize_confirmed(request.app.state.sessions, actor_id, batch_id, transport.read)
+                ) in {"unknown", "sending"}:
+                    break
+        sessions = request.app.state.sessions
+        if not await finalize_confirmed(sessions, actor_id, batch_id, transport.read):
+            await settle_source(sessions, actor_id, batch_id, transport.read)
 
 
 async def command_actor(request):

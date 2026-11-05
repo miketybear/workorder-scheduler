@@ -1451,7 +1451,7 @@ it('opens the existing group draft untouched in the send-only panel', async () =
   const panel = await screen.findByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
   expect(await within(panel).findByText('2 WO · 2 thay đổi')).toBeInTheDocument();
   expect(within(panel).queryByText('Đối chiếu nhóm với Maximo trước upload')).not.toBeInTheDocument();
-  expect(within(panel).getByRole('heading', { name: 'Gửi 2 WO lên Maximo' })).toBeVisible();
+  expect(within(panel).getByRole('heading', { name: 'Gửi nháp lên Maximo' })).toBeVisible();
   const detail = within(panel).getByText('Xem chi tiết lịch').closest('details') as HTMLDetailsElement;
   expect(detail.open).toBe(false);
   expect(within(panel).queryByRole('alert')).not.toBeInTheDocument();
@@ -1490,7 +1490,7 @@ it('merges several drafts into one new group, deleting the old ones only after i
   vi.mocked(openBatch).mockResolvedValue({ ...merged, items: [member(row), member(second)] });
   fireEvent.click(screen.getByRole('button', { name: 'Gửi 2 WO lên Maximo' }));
   const panel = await screen.findByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
-  expect(await within(panel).findByRole('heading', { name: 'Gửi 2 WO lên Maximo' })).toBeVisible();
+  expect(await within(panel).findByRole('heading', { name: 'Gửi nháp lên Maximo' })).toBeVisible();
   expect(saveBatch).toHaveBeenCalledTimes(1);
   expect(vi.mocked(saveBatch).mock.calls[0][1]).toHaveLength(2);
   expect(vi.mocked(saveBatch).mock.calls[0][3]).toBeNull();
@@ -1509,7 +1509,7 @@ it('reports WOs dropped from the merged group and old drafts that could not be d
   vi.mocked(openBatch).mockResolvedValue({ ...merged, items: [member(second)] });
   fireEvent.click(screen.getByRole('button', { name: 'Gửi 2 WO lên Maximo' }));
   const panel = await screen.findByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
-  expect(await within(panel).findByRole('heading', { name: 'Gửi 1 WO lên Maximo' })).toBeVisible();
+  expect(await within(panel).findByRole('heading', { name: 'Gửi nháp lên Maximo' })).toBeVisible();
   expect(within(panel).getByText(/Bỏ khỏi nhóm WO-REAL/)).toBeVisible();
   expect(within(panel).getByText(/Chưa xóa được một nháp cũ/)).toBeVisible();
   expect(vi.mocked(saveBatch).mock.calls[0][1]).toHaveLength(1);

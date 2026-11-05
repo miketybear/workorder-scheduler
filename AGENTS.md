@@ -185,8 +185,10 @@ Additional domain modules in component instructions remain planned.
 - Allowed changes: schedstart, schedfinish, assignedto (the PIC; assignedtechname is no longer used), estdur; targstartdate and
   targcompdate only with explicit target-change intent and never for PM or CFT.
   Upload requires non-empty schedstart, schedfinish and assignedto after applying draft changes
-  to current Maximo values. Incomplete drafts may be saved; any incomplete WO blocks the whole
-  group upload, with missing schedule/PIC reported per WO in preview and checked again before send.
+  to current Maximo values. Incomplete drafts may be saved. Owner decision 2026-11-05: a WO that cannot
+  be sent does not block the others. Preview names each skipped WO and why, the planner confirms the
+  count, a failed or conflicting WO does not stop later sends, and an unknown outcome stops them.
+  Confirmed WOs leave the draft; a WO Maximo only partly took keeps just the fields it did not take.
 - A task may be assigned on the Resource timeline only when Maximo already holds schedstart, schedfinish and
   assignedto, on days inside that schedule in the connection timezone. Rechecked before saving and before send.
   The PIC need not be an assignee: it only warns.

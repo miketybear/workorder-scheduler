@@ -2,6 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from uuid import uuid4
 
 import httpx
@@ -42,6 +43,7 @@ from app.scheduling.upload_service import (
     prepare_upload,
     reconcile_unknown,
     send_pending,
+    settle_source,
 )
 
 pytestmark = pytest.mark.integration
@@ -484,6 +486,116 @@ def test_finalizer_only_removes_exact_complete_confirmed_source(case):
                     == batch_id
                 )
                 assert not await finalize_confirmed(sessions, user.id, batch_id, reader)
+
+    run(scenario())
+
+
+@pytest.mark.parametrize("case", ["partial-write", "someone-else", "unknown", "edited"])
+def test_settling_keeps_only_unfinished_work_in_the_draft(case):
+    async def scenario():
+        async with database() as sessions:
+            user, _, connections = await seed(sessions)
+            first = snapshot(connections[0])
+            second = replace(first, key=replace(first.key, workorder_id="101"))
+            fakes = {first.key: FakeTransport(first), second.key: FakeTransport(second)}
+            changes = ScheduleChanges(estdur=Decimal("12"), assignedto="PIC")
+            async with sessions.begin() as db:
+                draft = await create_draft(db, user.id, first, changes)
+                member = DraftItem(
+                    draft_id=draft.id,
+                    site_id=second.key.site_id,
+                    workorder_id=second.key.workorder_id,
+                    wonum="WO-101",
+                    discipline=second.discipline,
+                    upstream_revision=second.revision,
+                    baseline=second.baseline.model_dump(mode="json"),
+                    changes=changes.model_dump(mode="json", exclude_unset=True),
+                )
+                db.add(member)
+
+            async def reader(key):
+                return await fakes[key].read(key)
+
+            async with sessions.begin() as db:
+                prepared = await prepare_upload(
+                    db, user.id, draft.id, 1, [first.key, second.key], reader
+                )
+            batch_id = await create_upload(
+                sessions, user.id, uuid4(), prepared, prepared.preview_hash
+            )
+            async with sessions() as db:
+                items = list(
+                    (
+                        await db.scalars(select(UploadItem).where(UploadItem.batch_id == batch_id))
+                    ).all()
+                )
+            failing = next(item for item in items if item.workorder_id == "101")
+            fake = fakes[second.key]
+            original_write = fake.write
+
+            async def drops_duration(key, revision, values):
+                await original_write(key, revision, values)
+                fake.current = replace(
+                    fake.current,
+                    baseline=fake.current.baseline.model_copy(update={"estdur": Decimal("8")}),
+                )
+
+            if case == "unknown":
+                fake.mode = "timeout-before"
+            else:
+                fake.write = drops_duration
+            for item in items:
+                fixture = fakes[WorkOrderKey(item.connection_id, item.site_id, item.workorder_id)]
+                await send_pending(sessions, user.id, item.id, reader, fixture)
+            async with sessions() as db:
+                state = (await db.get(UploadItem, failing.id)).state
+            assert state == ("unknown" if case == "unknown" else "failed")
+            if case == "someone-else":
+                fake.current = replace(
+                    fake.current,
+                    baseline=fake.current.baseline.model_copy(update={"assignedto": "OTHER"}),
+                )
+            if case == "edited":
+                async with sessions.begin() as db:
+                    (await db.get(Draft, draft.id)).version += 1
+
+            settled = await settle_source(sessions, user.id, batch_id, reader)
+
+            assert settled == (case in {"partial-write", "someone-else"})
+            async with sessions() as db:
+                members = list(
+                    (
+                        await db.scalars(select(DraftItem).where(DraftItem.draft_id == draft.id))
+                    ).all()
+                )
+                saved = await db.get(Draft, draft.id)
+                events = list(
+                    (
+                        await db.scalars(
+                            select(AuditEvent.event).where(
+                                AuditEvent.upload_item_id == failing.id,
+                                AuditEvent.event == "source_retained",
+                            )
+                        )
+                    ).all()
+                )
+            if case in {"unknown", "edited"}:
+                assert len(members) == 2 and not events
+                return
+            assert saved.version == 2 and events == ["source_retained"]
+            assert [item.workorder_id for item in members] == ["101"]
+            if case == "partial-write":
+                assert members[0].changes == {"estdur": "12"}
+                assert members[0].baseline["assignedto"] == "PIC"
+                assert members[0].upstream_revision == fake.current.revision
+            else:
+                # Another person changed the WO: keep the old baseline so the conflict shows.
+                assert "assignedto" in members[0].changes
+                assert members[0].baseline == second.baseline.model_dump(mode="json")
+            # Settling is once only and sends nothing.
+            sent = len(fake.calls)
+            assert not await settle_source(sessions, user.id, batch_id, reader)
+            assert len(fake.calls) == sent
 
     run(scenario())
 

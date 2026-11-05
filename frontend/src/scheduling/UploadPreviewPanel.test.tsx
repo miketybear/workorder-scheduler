@@ -237,7 +237,28 @@ it('requires a status lookup after context changes during an in-flight chunk', a
   expect(continueUpload).toHaveBeenCalledTimes(1);
 });
 
-it.each(['failed', 'conflict', 'sending'] as const)('does not auto-continue when the first receipt contains %s work', async (state) => {
+it.each(['failed', 'conflict'] as const)('keeps sending the other WOs after a %s WO', async (state) => {
+  vi.mocked(previewUpload).mockResolvedValue(preview);
+  const first = receipt(9);
+  first.counts = { confirmed: 9, pending: 190, [state]: 1 };
+  first.items[9] = { ...first.items[9]!, state };
+  const last = receipt(199);
+  last.counts = { confirmed: 199, [state]: 1 };
+  last.items = last.items.map((item, index) => index === 9 ? { ...item, state } : { ...item, state: 'confirmed' });
+  last.source_settled = true;
+  vi.mocked(submitUpload).mockResolvedValue(first);
+  vi.mocked(continueUpload).mockResolvedValue(last);
+  const onUploadSettled = vi.fn();
+  render(<UploadPreviewControls {...baseProps} onUploadSettled={onUploadSettled} />);
+  fireEvent.click(screen.getByText('Đối chiếu nhóm'));
+  await screen.findByRole('table', { name:'Thay đổi sẽ ghi' });
+  fireEvent.click(screen.getByText(baseProps.buttonLabel));
+  await screen.findByText(/WO chưa xong vẫn ở trong nháp/);
+  expect(continueUpload).toHaveBeenCalledTimes(1);
+  expect(onUploadSettled).toHaveBeenCalled();
+});
+
+it.each(['unknown', 'sending'] as const)('does not auto-continue when the first receipt contains %s work', async (state) => {
   vi.mocked(previewUpload).mockResolvedValue(preview);
   const partial = receipt(9);
   partial.counts = { confirmed: 9, pending: 200 - 10, [state]: 1 };
@@ -361,15 +382,19 @@ it('blocks the Upload button and counts the WOs to fix when one has a conflict',
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
   await screen.findByText('2 WO · 2 thay đổi · 1 WO cần xử lý');
   expect(screen.getByText('Xung đột')).toBeInTheDocument();
-  expect(screen.getByText('Upload chưa khả dụng')).toBeDisabled();
   expect(screen.queryByText(baseProps.buttonLabel)).not.toBeInTheDocument();
+  vi.mocked(submitUpload).mockResolvedValue({ ...receipt(1), counts: { confirmed: 1 }, items: [{ ...receipt(1).items[0]!, site_id: 'BD1', workorder_id: '1', state: 'confirmed' }] });
+  vi.mocked(previewUpload).mockImplementation(async (_draft, requested) => ({ ...preview, items: items.filter((item) => requested.some((key) => key.workorder_id === item.workorder_id)) }));
+  fireEvent.click(screen.getByText('Gửi 1 WO, bỏ qua 1 WO'));
+  await waitFor(() => expect(submitUpload).toHaveBeenCalled());
+  expect(vi.mocked(submitUpload).mock.calls[0]![2].items.map((item) => item.workorder_id)).toEqual(['1']);
 });
 
 it.each([
   { missing: ['schedule'] as ('schedule' | 'pic')[], label: 'Thiếu lịch' },
   { missing: ['pic'] as ('schedule' | 'pic')[], label: 'Thiếu PIC' },
   { missing: ['schedule', 'pic'] as ('schedule' | 'pic')[], label: 'Thiếu lịch và PIC' },
-])('blocks a $label upload for both single and group drafts and explains the fix', async ({ missing, label }) => {
+])('skips a $label WO in a group, blocks it alone and explains the fix', async ({ missing, label }) => {
   const incomplete: UploadPreview['items'][number] = { site_id: 'BD1', workorder_id: '1', code: 'incomplete_schedule', missing,
     before: {}, changes: {}, warnings: [] };
   const complete: UploadPreview['items'][number] = { site_id: 'BD1', workorder_id: '2', code: 'ready',
@@ -379,8 +404,8 @@ it.each([
   const view = render(<UploadPreviewControls {...baseProps} selection={wonumFor(groupItems)} />);
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
   expect(await screen.findByText((_, element) => element?.tagName === 'TD' && element.textContent?.includes(label) === true)).toHaveTextContent(label);
-  expect(screen.getByText(/Hoàn tất lịch\/PIC hoặc xóa WO khỏi nhóm trước khi upload/)).toBeInTheDocument();
-  expect(screen.getByText('Upload chưa khả dụng')).toBeDisabled();
+  expect(screen.getByText(/Hoàn tất lịch\/PIC rồi gửi lại/)).toBeInTheDocument();
+  expect(screen.getByText('Gửi 1 WO, bỏ qua 1 WO')).toBeEnabled();
   expect(submitUpload).not.toHaveBeenCalled();
 
   view.unmount();

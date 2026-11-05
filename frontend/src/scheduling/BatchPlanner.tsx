@@ -25,13 +25,13 @@ const targetForbidden = (row: BatchRow) => ['PM', 'CFT'].includes(row.baseline.w
 
 const groupDefaultTime = (field: EditableField) => (field === 'schedstart' ? '06:30' : field === 'targcompdate' ? '23:59' : '00:00');
 
-export function BatchPlanner({ selection, scope, timezone, writable, suspended, active = true, refreshVersion = 0, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, onUploadRequestRejected, connection, sendOnly = false, sendNotes = [] }: {
+export function BatchPlanner({ selection, scope, timezone, writable, suspended, active = true, refreshVersion = 0, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadSettled, onUploadRequestCreated, onUploadRequestRejected, connection, sendOnly = false, sendNotes = [] }: {
   selection: BatchSelection; scope: Scope; timezone: string; writable: boolean; suspended: boolean;
   active?: boolean;
   connection?: UploadConnection;
   onDirty: (value: boolean) => void; onDenied: () => void; onClose: () => void;
   onDraftReady?: (draft: DraftNotice) => void;
-  onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>;
+  onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>; onUploadSettled?: () => void;
   onUploadRequestCreated?: (entry: UploadRecoveryEntry) => void;
   onUploadRequestRejected?: (requestId: string) => void;
   refreshVersion?: number;
@@ -114,7 +114,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
       }
       if (loaded.some((row) => row.baseline_changed || row.changes_valid_now === false)) {
         setIssues(Object.fromEntries(loaded.filter((row) => row.baseline_changed || row.changes_valid_now === false)
-          .map((row) => [rowKey(row.item), 'Baseline hoặc crew đã đổi; tạo nháp mới sau đối chiếu.'])));
+          .map((row) => [rowKey(row.item), 'Maximo hoặc danh sách PIC đã đổi sau khi lưu nháp. Mở WO để cập nhật nháp.'])));
       }
       setVerified(true);
       if (!Array.isArray(result)) onDraftReady?.({ ...result, items: loaded });
@@ -252,19 +252,18 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
   const uploadSection = saved && writable && <section className={styles.editorSection} aria-label="Upload nháp nhóm đã lưu">
       <UploadPreviewControls draft={saved} selection={uploadSelection} connection={connection} connectionId={scope.connection_id}
         timezone={timezone} context={uploadContext} onDenied={onDenied} active={active}
-        enabled={!blocked && !dirty && changed.length > 0 && !Object.values(problems).some(Boolean)}
+        enabled={!blocked && !dirty && changed.length > 0 && (sendOnly || !Object.values(problems).some(Boolean))}
         previewLabel="Đối chiếu nhóm với Maximo trước upload" autoPreview={sendOnly}
         buttonLabel="Upload"
-        onUploadFinalized={onUploadFinalized} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
+        onUploadFinalized={onUploadFinalized} onUploadSettled={onUploadSettled} onWorkflowLock={setUploadLocked} discipline={scope.discipline}
         onWorkflowCreated={onUploadRequestCreated} onWorkflowRejected={onUploadRequestRejected} uploadAll permitted={writable && !suspended && active} />
     </section>;
   const envChip = connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>;
   if (sendOnly) return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy) onClose(); }} className={`${styles.sidePanel} ${styles.batchPanel}`} role="dialog" aria-label="Gửi nhóm WO lên Maximo" aria-modal="false">
-    <div className={styles.panelHeading}><h2>Gửi {rows.length || ''} WO lên Maximo</h2>{envChip}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng</button></div>
+    <div className={styles.panelHeading}><h2>Gửi nháp lên Maximo</h2>{envChip}<button className={styles.ghost} disabled={busy} onClick={onClose}>Đóng</button></div>
     <p>{scope.discipline} · Các thay đổi dưới đây chỉ được gửi khi bạn bấm upload.</p>
     {sendNotes.length > 0 && <ul role="status">{sendNotes.map((note) => <li key={note}>{note}</li>)}</ul>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
-    {saved && Object.keys(issues).length > 0 && !uploadLocked && <p role="alert">Maximo hoặc nháp này vừa đổi ở nơi khác. Đóng bảng này, bấm Cập nhật rồi Gửi lại để đồng bộ.</p>}
     {busy && <p role="status">Đang kiểm tra từng WO…</p>}
     {uploadSection}
     {Object.values(problems).some(Boolean) && <ul role="alert" className={styles.error}>{rows.filter((row) => problems[rowKey(row.item)]).map((row) =>

@@ -2,6 +2,19 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## WO lỗi không còn chặn WO khác khi upload — 2026-11-05
+
+- [x] Quyết định của chủ dự án: bỏ qua WO chưa gửi được, lỗi một WO không dừng các WO khác, kết quả chưa rõ vẫn dừng. WO đã xác nhận ra khỏi nháp; WO Maximo nhận một phần chỉ còn phần chưa ghi.
+- [x] Thông báo trong bảng Gửi nêu rõ lý do và việc cần làm; nút Xóa nháp cao bằng các nút cạnh bên.
+- [x] WO bị Maximo từ chối hiện mã và câu lỗi của Maximo (bỏ URL, tối đa 300 ký tự), lưu trong audit theo quyết định của chủ dự án.
+- Bằng chứng: pytest (`settle_source` 4 tình huống), vitest; browser local trên Onshore test: bỏ qua WO thiếu PIC, WO bị từ chối hiện đúng lỗi và ở lại nháp.
+- Giới hạn: Maximo từ chối (BMXAA4589E, 2 lần, WO không đổi) khi Start mới 03/11 vượt Finish cũ 02/11 của H14311007, dù cặp mới hợp lệ; đổi thứ tự JSON không giải quyết, đã gỡ. Nhánh Maximo nhận một phần và nguyên nhân giữ `estdur` chưa kiểm chứng live; nháp kẹt từ trước khi sửa cần xóa tay.
+
+## Nút Xóa nháp theo footer của modal — 2026-11-05
+
+- [x] Nút Xóa nháp bỏ khoảng đệm, cao bằng các nút cạnh bên, theo footer modal của Carbon.
+- Bằng chứng: vitest. Giới hạn: chưa xem trên trình duyệt đã đăng nhập.
+
 ## Khóa ngày mục tiêu đến khi tick Change Target — 2026-11-05
 
 - [x] Target Start/Finish chỉ đọc khi chưa tick Change Target, giống PM/CFT; khung Thông tin từ Maximo cao bằng cột bên phải.

@@ -255,8 +255,8 @@ chỉ chạy sau khi xác nhận worker cũ không còn quyền sở hữu; mố
 
 Theo quyết định retention, receipts/upload/audit không purge theo tuổi. Finalizer
 chỉ được xóa nháp nếu toàn bộ thành viên của đúng phiên bản nguồn đã confirmed và
-nháp không bị chỉnh sửa tiếp. Partial selection, partial success, conflict, unknown
-hoặc nháp mới hơn phải giữ. Không đánh đồng HTTP success với read-back confirmed.
+nháp không bị chỉnh sửa tiếp. Unknown hoặc nháp mới hơn phải giữ; partial selection,
+partial success và conflict xử lý theo `settle_source` ở trên. Không đánh đồng HTTP success với read-back confirmed.
 
 ## Hợp đồng API của mốc đầu
 
@@ -336,10 +336,20 @@ cho phép thử đọc lại, không gửi lại thay đổi đã xác nhận.
 **Dừng sau đợt đang gửi** giữ kết quả đợt hiện tại và không bắt đầu đợt kế tiếp.
 Rời trang cũng dừng chuỗi; quay lại không tự gửi tiếp. Đổi scope/ngữ cảnh hoặc
 đóng panel hủy thao tác phía UI; hủy request không chứng minh Maximo chưa ghi.
-Lỗi, timeout, WO failed/conflict/unknown/sending hoặc kết quả không tiến triển
-dừng gửi tự động. Kiểm tra trạng thái hoặc đối chiếu kết quả chưa xác định trước
-khi tiếp tục; không tự retry mutation. Khi trạng thái an toàn, người dùng bấm
-**Tiếp tục upload toàn bộ nhóm** để gửi phần còn chờ xử lý.
+Từ 2026-11-05, WO failed/conflict không dừng các WO khác. Lỗi request, timeout,
+WO unknown/sending hoặc kết quả không tiến triển vẫn dừng gửi tự động; backend cũng
+không gửi thêm khi batch còn unknown/sending. Kiểm tra trạng thái hoặc đối chiếu kết
+quả chưa xác định trước khi tiếp tục; không tự retry mutation. Khi trạng thái an toàn,
+người dùng bấm **Tiếp tục upload toàn bộ nhóm** để gửi phần còn chờ xử lý.
+
+Trước khi gửi, WO không ở trạng thái `ready` bị bỏ qua và nêu lý do; nút ghi rõ
+"Gửi N WO, bỏ qua M WO". Nếu tập WO gửi được đổi so với màn hình thì dừng để xem lại.
+
+Khi mọi WO đã có kết quả biết rõ, `settle_source` cập nhật nháp, không gọi Maximo:
+WO đọc lại khớp ra khỏi nháp; WO failed do read-back chỉ giữ các trường Maximo chưa
+nhận, trên baseline hiện tại; WO có thay đổi khác không giải thích được hoặc conflict
+giữ nguyên để người dùng đối chiếu. Nháp đã được sửa trong lúc upload thì không đổi.
+Audit ghi `source_finalized` hoặc `source_retained`; status trả thêm `source_settled`.
 
 Bằng chứng: 12 tests hành vi cho luồng nhóm, full frontend218 tests/17files,
 TypeScript/ESLint/production build qua ngày2026-10-10. Review phát hiện context

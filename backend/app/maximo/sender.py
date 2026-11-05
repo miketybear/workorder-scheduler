@@ -1,5 +1,6 @@
 """Explicit native JSON rowstamp sender, restricted to verified Onshore TEST configuration."""
 
+import json
 import math
 import re
 from decimal import Decimal
@@ -36,6 +37,23 @@ def write_enabled(settings, connection):
         and connection.system == "onshore"
         and connection.environment == "test"
     )
+
+
+def rejection_message(payload):
+    """Maximo's own reason for a rejected write, for the planner who sent it.
+
+    Owner decision 2026-11-05. Bounded, with URLs and control characters removed.
+    """
+    try:
+        body = json.loads(payload)
+    except (ValueError, UnicodeError):
+        return None
+    error = body.get("Error") if isinstance(body, dict) else None
+    message = error.get("message") if isinstance(error, dict) else None
+    if not isinstance(message, str):
+        return None
+    cleaned = re.sub(r"https?://\S+", "", message)
+    return " ".join("".join(c if c.isprintable() else " " for c in cleaned).split())[:300] or None
 
 
 class NativeTestTransport:
@@ -237,5 +255,9 @@ class NativeTestTransport:
         ):
             raise ConditionalConflict()
         if status in {400, 401, 403, 404}:
+            # Only Maximo's own coded business rejection; anything else may carry private text.
+            message = rejection_message(error) if status == 400 and reason else None
+            if message and message.startswith(reason):
+                self.outcome["ibm_message"] = message
             raise WriteRejected()
         raise UncertainWrite()

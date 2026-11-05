@@ -11,6 +11,8 @@ Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[M
 - [ ] `[Maximo admin]` Trên Maximo test (vừa restore từ production): kích hoạt BD_WO không có điều kiện ở node 34 để mở lại route.
 
 ## 1. Làm được ngay
+- [ ] Dời lịch vượt Finish hiện tại: Maximo từ chối BMXAA4589E dù cặp ngày mới hợp lệ (H14311007, 03/11 so với Finish 02/11). Đổi thứ tự JSON không giải quyết; thử tách request Finish rồi Start, cần duyệt ghi.
+- [ ] Kiểm chứng live nhánh Maximo nhận một phần (nháp chỉ còn trường chưa ghi) và lý do `estdur` bị giữ khi gửi cùng lịch.
 
 - [ ] `[chủ dự án]` Nghiệm thu popup và route lưu đăng nhập trên staging với Maximo test, đo số phiên `maxauth` khi preview nhiều WO.
 - [ ] Hiệu năng `assignment-timeline` B2: song song hóa có giới hạn các lần đọc WO/PERSON, giữ thứ tự kiểm tra quyền, không cache số tải. (L204)

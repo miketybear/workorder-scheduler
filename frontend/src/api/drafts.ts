@@ -26,8 +26,9 @@ export type ReadbackMismatch = { field: string; expected: string | null; actual:
 export type UploadStatusItem = { item_id: string; connection_id: string; site_id: string; workorder_id: string; state: UploadState; updated_at: string;
   source: { draft_id: string; draft_version: number; member_id: string } | null; duration_result: DurationResult | null;
   readback_mismatch?: ReadbackMismatch | null;
+  rejection?: { code: string | null; message: string | null } | null;
   restore_source: { before: Baseline } | null };
-export type UploadStatus = { batch_id: string; counts: Partial<Record<UploadState, number>>; items: UploadStatusItem[]; source_finalized: boolean };
+export type UploadStatus = { batch_id: string; counts: Partial<Record<UploadState, number>>; items: UploadStatusItem[]; source_finalized: boolean; source_settled?: boolean };
 export type UploadRecoveryEntry = { request_id: string; draft_id: string; version: number; preview_hash: string;
   connection_id: string; discipline: string; items: { site_id: string; workorder_id: string }[] };
 export class UploadRequestNotFoundError extends Error {}
@@ -309,19 +310,22 @@ function parseUploadStatus(raw: unknown, expected: { batchId: string | null; dra
           typeof entry.field === 'string' && text(entry.expected) && text(entry.actual))) return invalid();
       readbackMismatch = fields.map((entry) => ({ field: entry.field, expected: entry.expected, actual: entry.actual }));
     }
+    const rawRejection = item.rejection;
+    const rejectionText = (value: unknown) => typeof value === 'string' ? value : null;
+    const rejection = isRecord(rawRejection) ? { code: rejectionText(rawRejection.code), message: rejectionText(rawRejection.message) } : null;
     if (!selected.has(key) || seen.has(key) || item.connection_id !== expected.connectionId || !isRecord(source) ||
         source.draft_id !== expected.draft.draft_id || source.draft_version !== expected.draft.version ||
         typeof source.member_id !== 'string') return invalid();
     seen.add(key);
     parsed.push({ item_id: item.item_id, connection_id: item.connection_id, site_id: item.site_id, workorder_id: item.workorder_id,
       state: item.state as UploadState, updated_at: item.updated_at, source: { draft_id: source.draft_id,
-        draft_version: Number(source.draft_version), member_id: source.member_id }, duration_result: durationResult, readback_mismatch: readbackMismatch, restore_source: restoreSource });
+        draft_version: Number(source.draft_version), member_id: source.member_id }, duration_result: durationResult, readback_mismatch: readbackMismatch, rejection, restore_source: restoreSource });
   }
   const actualCounts: Partial<Record<UploadState, number>> = {};
   for (const item of parsed) actualCounts[item.state] = (actualCounts[item.state] ?? 0) + 1;
   if (states.some((state) => (counts[state] ?? 0) !== (actualCounts[state] ?? 0))) return invalid();
   if (raw.source_finalized && (parsed.some((item) => item.state !== 'confirmed') || parsed.length !== expected.items.length)) return invalid();
-  return { batch_id: raw.batch_id, counts, items: parsed, source_finalized: raw.source_finalized };
+  return { batch_id: raw.batch_id, counts, items: parsed, source_finalized: raw.source_finalized, source_settled: raw.source_settled === true };
 }
 
 export async function prepareBatch(scope: Scope, keys: { site_id: string; workorder_id: string }[], signal: AbortSignal): Promise<Detail[]> {

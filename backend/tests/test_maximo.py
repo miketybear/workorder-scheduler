@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import datetime
 
 import httpx
@@ -196,3 +197,14 @@ def test_filter_injection_is_rejected_before_request():
 def test_connection_requires_explicit_safe_https_collection(url):
     with pytest.raises(ValidationError):
         config(collection_url=url)
+
+
+def test_rejection_message_is_bounded_and_drops_urls():
+    from app.maximo.sender import rejection_message
+
+    body = {"Error": {"message": "BMXAA4589E Not allowed\nsee http://host/x " + "a" * 400}}
+    message = rejection_message(json.dumps(body))
+    assert message.startswith("BMXAA4589E Not allowed see a")
+    assert "http" not in message and len(message) == 300
+    assert rejection_message("not json") is None
+    assert rejection_message('{"Error": {"reasonCode": "X"}}') is None

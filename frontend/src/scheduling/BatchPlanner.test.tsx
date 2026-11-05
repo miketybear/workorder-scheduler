@@ -397,7 +397,7 @@ async function setupSend(notes: string[] = [], preview = sendPreview(true, null)
 it('send-only mode shows a read-only summary and the upload section without any editing control', async () => {
   await setupSend(['Bỏ khỏi nhóm WO-102 vì thay đổi đã trùng Maximo hoặc PIC không còn hợp lệ.']);
   const panel = screen.getByRole('dialog', { name: 'Gửi nhóm WO lên Maximo' });
-  expect(within(panel).getByRole('heading', { name: 'Gửi 2 WO lên Maximo' })).toBeVisible();
+  expect(within(panel).getByRole('heading', { name: 'Gửi nháp lên Maximo' })).toBeVisible();
   expect(within(panel).getByText('Onshore · TEST')).toBeVisible();
   expect(within(panel).getByText(/Bỏ khỏi nhóm WO-102/)).toBeVisible();
   (within(panel).getByText('Xem chi tiết lịch').closest('details') as HTMLDetailsElement).open = true;

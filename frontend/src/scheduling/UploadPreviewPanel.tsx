@@ -16,10 +16,10 @@ export type UploadConnection ={ label: string; system: 'onshore' | 'offshore'; e
 export type FinalizedUpload = { draft_id: string; version: number; items: { site_id: string; workorder_id: string; restore_source: { before: Baseline } | null }[] };
 
 export function UploadPreviewControls({ draft, selection, connection, connectionId, timezone, context, onDenied, enabled, buttonLabel, previewLabel,
-  active = true, onUploadFinalized, onWorkflowLock, discipline, onWorkflowCreated, onWorkflowRejected, uploadAll = false, permitted = true, autoPreview = false }: {
+  active = true, onUploadFinalized, onUploadSettled, onWorkflowLock, discipline, onWorkflowCreated, onWorkflowRejected, uploadAll = false, permitted = true, autoPreview = false }: {
   draft: Saved; selection: { site_id: string; workorder_id: string; wonum: string }[]; connection?: UploadConnection;
   connectionId: string; timezone: string; context: string; onDenied: () => void; enabled: boolean; buttonLabel: string; previewLabel: string; active?: boolean;
-  onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>; onWorkflowLock?: (locked: boolean) => void;
+  onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>; onUploadSettled?: () => void; onWorkflowLock?: (locked: boolean) => void;
   discipline: string; onWorkflowCreated?: (entry: UploadRecoveryEntry) => void;
   onWorkflowRejected?: (requestId: string) => void;
   uploadAll?: boolean;
@@ -117,6 +117,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
     finally { if (operationController.current === controller) { operationController.current = null; setBusy(false); } }
   }
   async function finalize(next: UploadStatus) {
+    if (next.source_settled && !next.source_finalized) onUploadSettled?.();
     if (!next.source_finalized || !onUploadFinalized) return;
     const refreshed = await onUploadFinalized({ draft_id: draft.draft_id, version: draft.version,
       items: next.items.map(({ site_id, workorder_id, restore_source }) => ({ site_id, workorder_id, restore_source })) });
@@ -137,14 +138,25 @@ export function UploadPreviewControls({ draft, selection, connection, connection
       let submittedDraft = workflow?.draft ?? draft;
       let submittedConnection = workflow?.connectionId ?? connectionId;
       if (!id) {
-        const fresh = await previewUpload(draft, apiItems, controller.signal);
+        let fresh = await previewUpload(draft, apiItems, controller.signal);
         if (controller.signal.aborted) return;
         if (!activeRef.current || !permittedRef.current || hiddenStopRef.current || signatureRef.current !== startedSignature ||
           (uploadAll && !autoContinueRef.current)) return;
-        setPreview(fresh); verified = fresh;
-        if (!fresh.send_enabled || fresh.gate !== null || fresh.items.some((item) => item.code !== 'ready')) {
-          setError('Maximo chưa thay đổi. Dữ liệu cần được đối chiếu trước khi gửi.'); return;
+        setPreview(fresh);
+        const readyKeys = (value: UploadPreview) => value.items.filter((item) => item.code === 'ready').map(({ site_id, workorder_id }) => JSON.stringify([site_id, workorder_id])).join();
+        const ready = fresh.items.filter((item) => item.code === 'ready').map(({ site_id, workorder_id }) => ({ site_id, workorder_id }));
+        // The planner agreed to send exactly the WOs on screen: a changed set needs another look.
+        if (!fresh.send_enabled || fresh.gate !== null || !ready.length || !currentPreview || readyKeys(fresh) !== readyKeys(currentPreview)) {
+          setError('Maximo chưa thay đổi. Danh sách WO gửi được vừa đổi, xem lại rồi bấm gửi.'); return;
         }
+        if (ready.length < fresh.items.length) {
+          fresh = await previewUpload(draft, ready, controller.signal);
+          if (controller.signal.aborted) return;
+          if (fresh.items.length !== ready.length || fresh.items.some((item) => item.code !== 'ready')) {
+            setError('Maximo chưa thay đổi. Danh sách WO gửi được vừa đổi, xem lại rồi bấm gửi.'); return;
+          }
+        }
+        verified = fresh;
         id = crypto.randomUUID(); setRequestId(id);
         submittedRequestId = id;
         submittedDraft = draft; submittedConnection = connectionId;
@@ -207,24 +219,20 @@ export function UploadPreviewControls({ draft, selection, connection, connection
   const pending = counts.pending ?? 0;
   const unknown = counts.unknown ?? 0;
   const sending = counts.sending ?? 0;
-  const safeToContinue = pending > 0 && unknown === 0 && sending === 0 && (counts.failed ?? 0) === 0 &&
-    (counts.conflict ?? 0) === 0 && !needsStatusCheck && !statusCheckRequiredRef.current;
+  const safeToContinue = pending > 0 && unknown === 0 && sending === 0 && !needsStatusCheck && !statusCheckRequiredRef.current;
   const needsExplicitStatus = pending > 0 || sending > 0 || unknown > 0 || statusCheckRequiredRef.current;
   const showReceiptRecovery = canRecoverRequest && !status;
 
   function safeAutoAdvance(value: UploadStatus, total: number) {
     return !value.source_finalized && total > 0 && value.items.length === total &&
       (value.counts.pending ?? 0) > 0 && (value.counts.sending ?? 0) === 0 &&
-      (value.counts.unknown ?? 0) === 0 && (value.counts.failed ?? 0) === 0 &&
-      (value.counts.conflict ?? 0) === 0 && (value.counts.confirmed ?? 0) < total;
+      (value.counts.unknown ?? 0) === 0;
   }
   function safeAutoProgress(before: UploadStatus, after: UploadStatus, total: number) {
-    const complete = after.source_finalized && (after.counts.confirmed ?? 0) === total &&
-      (after.counts.pending ?? 0) === 0 && (after.counts.sending ?? 0) === 0 &&
-      (after.counts.unknown ?? 0) === 0 && (after.counts.failed ?? 0) === 0 && (after.counts.conflict ?? 0) === 0;
-    return after.items.length === total && (complete || safeAutoAdvance(after, total)) &&
-      (after.counts.confirmed ?? 0) > (before.counts.confirmed ?? 0) &&
-      (after.counts.confirmed ?? 0) <= total;
+    // One WO failing does not stop the rest; an unknown outcome or no progress does.
+    const complete = (after.counts.pending ?? 0) === 0 && (after.counts.sending ?? 0) === 0 && (after.counts.unknown ?? 0) === 0;
+    const finished = (value: UploadStatus) => (value.counts.confirmed ?? 0) + (value.counts.failed ?? 0) + (value.counts.conflict ?? 0);
+    return after.items.length === total && (complete || safeAutoAdvance(after, total)) && finished(after) > finished(before);
   }
   async function resumeAll() {
     if (!status || !workflow || submittingRef.current || needsStatusCheck || statusCheckRequiredRef.current || !activeRef.current || !permittedRef.current ||
@@ -277,14 +285,15 @@ export function UploadPreviewControls({ draft, selection, connection, connection
         const changeCount = items.reduce((sum, item) => sum + Object.keys(item.changes).length, 0);
         const blocked = items.filter((item) => item.code !== 'ready').length;
         const allReady = blocked === 0;
+        const readyCount = items.length - blocked;
         const missingText = (item: typeof items[number]) => {
           if (item.code !== 'incomplete_schedule') return null;
           const missingSchedule = item.missing?.includes('schedule') ?? false;
           const missingPic = item.missing?.includes('pic') ?? false;
           const label = missingSchedule && missingPic ? 'Thiếu lịch và PIC' : missingSchedule ? 'Thiếu lịch' : 'Thiếu PIC';
-          return <>{label}<small> Hoàn tất lịch/PIC hoặc xóa WO khỏi nhóm trước khi upload.</small></>;
+          return <>{label}<small> Hoàn tất lịch/PIC rồi gửi lại.</small></>;
         };
-        const verdict = (item: typeof items[number]) => item.code === 'ready' ? 'Sẵn sàng' : item.code === 'conflict' ? 'Xung đột'
+        const verdict = (item: typeof items[number]) => item.code === 'ready' ? 'Sẵn sàng' : item.code === 'conflict' ? <>Xung đột<small> Maximo đã đổi sau khi lưu nháp. Mở WO để cập nhật nháp.</small></>
           : item.code === 'invalid_changes' ? 'Thay đổi không hợp lệ' : item.code === 'incomplete_schedule' ? missingText(item) : 'Không có thay đổi';
         const show = (field: typeof editableFields[number], value: string | null | undefined) =>
           field === 'assignedto' || field === 'estdur' ? value ?? '—' : displayDate(value ?? null, timezone);
@@ -292,8 +301,8 @@ export function UploadPreviewControls({ draft, selection, connection, connection
         return <>
           <div className={styles.previewSummary}>
             <p role="status">{`${items.length} WO · ${changeCount} thay đổi${allReady ? '' : ` · ${blocked} WO cần xử lý`}`}</p>
-            {currentPreview.send_enabled && allReady
-              ? <button className={styles.primary} disabled={busy} onClick={() => void submitOrRecover()}><UploadIcon />{buttonLabel}</button>
+            {currentPreview.send_enabled && readyCount > 0
+              ? <button className={styles.primary} disabled={busy} onClick={() => void submitOrRecover()}><UploadIcon />{allReady ? buttonLabel : `Gửi ${readyCount} WO, bỏ qua ${blocked} WO`}</button>
               : <button className={styles.primary} disabled>Upload chưa khả dụng</button>}
           </div>
           <div className={styles.tableWrap}><table className={styles.changeTable} aria-label="Thay đổi sẽ ghi"><thead><tr><th>WO</th>{changedFields.map((field) => <th key={field}>{labels[field]}</th>)}<th>Trạng thái</th></tr></thead>
@@ -302,7 +311,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
                 : <><strong>{show(field, item.changes[field])}</strong>{item.before[field] ? <small className={styles.changeOld}>Hiện tại: {show(field, item.before[field])}</small> : null}</>}</td>)}
               <td data-code={item.code}><span className={styles.changeStatus} data-ready={item.code === 'ready' || undefined}>{verdict(item)}</span></td></tr>)}</tbody></table></div>
           {!currentPreview.send_enabled && <p role="status">Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.</p>}
-          {currentPreview.send_enabled && !allReady && <p role="status">Sửa các WO bị thiếu lịch/PIC, xung đột hoặc thay đổi không hợp lệ trước khi upload.</p>}
+          {currentPreview.send_enabled && !allReady && <p role="status">{readyCount > 0 ? `${blocked} WO cần xử lý sẽ không được gửi và vẫn ở trong nháp.` : 'Chưa có WO nào gửi được. Sửa các WO cần xử lý rồi đối chiếu lại.'}</p>}
         </>;
       })()}
       {showReceiptRecovery && !busy && <p role="status">Kết quả yêu cầu chưa xác định; dữ liệu nháp được giữ nguyên.</p>}
@@ -320,13 +329,15 @@ export function UploadPreviewControls({ draft, selection, connection, connection
           <tbody>{status.items.map((item) => <tr key={item.item_id}><th>{selection.find((row) => row.site_id === item.site_id && row.workorder_id === item.workorder_id)?.wonum ?? '—'}</th>
             <td>{stateLabels[item.state]}</td><td>{item.readback_mismatch?.length
               ? `Maximo giữ khác giá trị đã gửi: ${item.readback_mismatch.map((entry) =>
-                `${fieldLabel(entry.field)} ${shownValue(entry.field, entry.actual, timezone)} (gửi ${shownValue(entry.field, entry.expected, timezone)})`).join('; ')}. WO đã được mở khóa; nháp giữ nguyên, kiểm tra rồi upload lại nếu cần.`
+                `${fieldLabel(entry.field)} ${shownValue(entry.field, entry.actual, timezone)} (gửi ${shownValue(entry.field, entry.expected, timezone)})`).join('; ')}. Maximo đã nhận các trường khác; nháp chỉ giữ phần chưa ghi được để gửi lại.`
               : item.duration_result?.code === 'pm_duration_recalculated'
                 ? `Maximo đã tính lại Duration: ${item.duration_result.expected ?? '—'} → ${item.duration_result.actual ?? '—'} giờ.`
-                : '—'}</td><td>{new Intl.DateTimeFormat('vi-VN', { timeZone: timezone, dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.updated_at))}</td></tr>)}</tbody></table></div>
+                : item.rejection
+                  ? `Maximo từ chối, chưa ghi gì: ${item.rejection.message ?? 'không có mô tả'}${item.rejection.code ? ` (${item.rejection.code})` : ''}. WO vẫn ở trong nháp.`
+                  : '—'}</td><td>{new Intl.DateTimeFormat('vi-VN', { timeZone: timezone, dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.updated_at))}</td></tr>)}</tbody></table></div>
         {status.source_finalized ? <p role="status">Các thay đổi đã được xác nhận trong Maximo; đang cập nhật dữ liệu trên bảng.</p>
           : status.items.every((item) => ['confirmed', 'failed', 'conflict'].includes(item.state))
-            ? <p role="status">Nháp được giữ lại vì dữ liệu hiện tại hoặc nháp chưa đủ điều kiện hoàn tất.</p>
+            ? <p role="status">{status.source_settled ? `${(counts.confirmed ?? 0) > 0 ? `${counts.confirmed} WO đã xác nhận đã ra khỏi nháp. ` : ''}WO chưa xong vẫn ở trong nháp; đóng bảng này để xem lại.` : 'Nháp vừa được sửa trong lúc upload nên chưa được cập nhật; mở lại nháp để kiểm tra.'}</p>
             : <p role="status">Kết quả chưa hoàn tất. Kiểm tra trạng thái để quyết định bước tiếp theo.</p>}
         {(needsStatusCheck || error || needsExplicitStatus) && <button className={styles.tertiary} disabled={busy || !active || !permitted} onClick={() => void refreshStatus()}>Kiểm tra trạng thái</button>}
         {safeToContinue && <button className={styles.primary} disabled={busy || !active || !permitted} onClick={() => uploadAll

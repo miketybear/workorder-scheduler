@@ -187,6 +187,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
       ...draft.items?.map((item) => [rowKey(item.item), draft.draft_id]) ?? [],
     ]));
   }, []);
+  const uploadSettled = useRef(false);
+  const onUploadSettled = useCallback(() => { uploadSettled.current = true; }, []);
   const onUploadFinalized = useCallback(async (result: FinalizedUpload): Promise<boolean> => {
     const startedPanel = panelGuardToken;
     const startedConnection = editorScope.connection_id;
@@ -295,6 +297,9 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
       setUploadRecoveries((current) => current.filter((record) => record.entry.request_id !== entry.request_id));
       setUploadNotice(`Đã upload ${status.items.length} WO lên Maximo và đọc lại khớp. Bấm Cập nhật để làm mới dữ liệu hiện tại.`);
       setInlineNotice('');
+      refreshSession.current?.(true);
+    } else if (status.source_settled) {
+      setUploadRecoveries((current) => current.filter((record) => record.entry.request_id !== entry.request_id));
       refreshSession.current?.(true);
     }
   }
@@ -603,6 +608,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
     if (!discard()) return;
     selected.current = null;
     setSelection(null); setBatch(null); setChooser(null); setRechecked(null); dirty.current = false;
+    // Part of an upload landed, so the table and draft counts are out of date.
+    if (uploadSettled.current) { uploadSettled.current = false; refreshSession.current?.(true); }
   }
   // A selection must never include rows the planner can no longer see, so any filter change clears it.
   function filterChanged() { setSelectedKeys([]); setPage(0); }
@@ -850,7 +857,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
         <ul>{Object.entries(recoveryResult.status.counts).filter(([, count]) => (count ?? 0) > 0).map(([state, count]) =>
           <li key={state}>{({ pending: 'Chờ xử lý', sending: 'Đang gửi', confirmed: 'Đã xác nhận', failed: 'Thất bại', conflict: 'Xung đột', unknown: 'Chưa xác định' } as Record<string, string>)[state] ?? 'Trạng thái khác'}: {count}</li>)}</ul>
         {recoveryResult.status.source_finalized ? <p role="status">Các thay đổi đã được xác nhận trong Maximo. Bấm Cập nhật để làm mới dữ liệu hiện tại.</p>
-          : <p role="status">Kết quả chưa hoàn tất. Kiểm tra trạng thái trước khi tiếp tục.</p>}
+          : <p role="status">{recoveryResult.status.source_settled ? 'WO đã xác nhận đã ra khỏi nháp; WO chưa xong vẫn ở trong nháp.' : 'Kết quả chưa hoàn tất. Kiểm tra trạng thái trước khi tiếp tục.'}</p>}
         {(recoveryResult.status.counts.pending ?? 0) > 0 && !(recoveryResult.status.counts.sending ?? 0) && !(recoveryResult.status.counts.unknown ?? 0) &&
           <button className={styles.primary} disabled={recoveryBusy} onClick={() => void recoverUpload(recoveryResult.entry, 'continue')}>Tiếp tục gửi tối đa 10 WO</button>}
         {(recoveryResult.status.counts.unknown ?? 0) > 0 && <button className={styles.tertiary} disabled={recoveryBusy} onClick={() => void recoverUpload(recoveryResult.entry, 'reconcile')}>Đối chiếu WO chưa xác định</button>}
@@ -890,7 +897,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
         onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onUploadRequestRejected={onUploadRequestRejected} onClose={closePanel} />}
       {batch && grant && <BatchPlanner key={editorGeneration} sendOnly sendNotes={batch.notes} selection={batch.selection} scope={editorScope} timezone={grant.timezone} active={active}
         connection={{ label: grant.label, system: grant.system, environment: grant.environment }}
-        writable={grant.capability === 'write'} suspended={checking} refreshVersion={batchRefresh} onDirty={onDirty} onDenied={onDenied} onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onUploadRequestRejected={onUploadRequestRejected} onClose={closePanel} />}
+        writable={grant.capability === 'write'} suspended={checking} refreshVersion={batchRefresh} onDirty={onDirty} onDenied={onDenied} onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadSettled={onUploadSettled} onUploadRequestCreated={onUploadRequestCreated} onUploadRequestRejected={onUploadRequestRejected} onClose={closePanel} />}
       {busy && <p role="status" className={rows === null ? undefined : styles.srOnly}>Đang lấy và kiểm tra đầy đủ các trang dữ liệu…</p>}
       {busy && rows === null && <div className={styles.skeleton} aria-hidden="true">{[0, 1, 2, 3, 4, 5].map((index) => <div key={index} />)}</div>}
       {grant && <div className={styles.woToolbar}>
