@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from test_entra import entra_settings
 
+from app.auth.sessions import SESSION_LIFETIME
 from app.auth import entra, photos
 from app.auth.sessions import SESSION_COOKIE, token_hash
 from app.config import Settings
@@ -150,7 +151,7 @@ def test_photo_store_is_bounded_expires_and_drops_logout_data(monkeypatch):
     assert store.get("one") is None
     store.drop_session("two")
     assert store.get("two") is None
-    now += timedelta(hours=8)
+    now += SESSION_LIFETIME
     assert store.get("three") is None
 
 

@@ -2,6 +2,10 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Thời hạn phiên đăng nhập 12 tiếng — 2026-11-05
+
+- [x] Chủ dự án chọn 12 tiếng thay cho 8 tiếng để giảm số lần đăng nhập Entra trên đường vệ tinh.
+
 ## Giảm dung lượng tải giao diện trên staging — 2026-11-05
 
 - [x] nginx trong container nén JS/CSS và cache dài hạn `/assets/*`; `index.html` vẫn `no-store`, để đăng nhập trên đường vệ tinh không tải lại giao diện.

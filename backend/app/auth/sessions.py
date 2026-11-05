@@ -13,7 +13,7 @@ from app.db.models import AccessGrant, LoginSession, MaximoConnection, User, Use
 
 SESSION_COOKIE = "__Host-wos-session"
 CSRF_COOKIE = "__Host-wos-csrf"
-SESSION_LIFETIME = timedelta(hours=8)
+SESSION_LIFETIME = timedelta(hours=12)
 
 
 def token_hash(value: str) -> str:
