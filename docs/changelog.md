@@ -2,6 +2,10 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Giảm dung lượng tải giao diện trên staging — 2026-11-05
+
+- [x] nginx trong container nén JS/CSS và cache dài hạn `/assets/*`; `index.html` vẫn `no-store`, để đăng nhập trên đường vệ tinh không tải lại giao diện.
+
 ## System ID của WO cha trong chi tiết WO — 2026-11-04
 
 - [x] Thông tin từ Maximo hiện System ID của WO; reader đọc qua `rel.LOCHIERARCHY{systemid}` thay cho `lochierarchy{systemid}`.
