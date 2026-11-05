@@ -242,15 +242,17 @@ it('warns for a restored PM finish-only change against the original baseline', a
 it('requires target intent, resets targets when unchecked, and validates duration and dates before saving', async () => {
   vi.mocked(getDetail).mockResolvedValue({ ...detail, baseline: { ...baseline, targstartdate: '2026-09-30T08:00:00+07:00', targcompdate: '2026-09-30T16:00:00+07:00' } });
   render(<DraftEditor {...props} />);
-  expect(await screen.findByLabelText('Target Finish')).toBeEnabled();
-  setDateTime(screen.getByLabelText('Target Finish'), '2026-10-01T16:00');
-  expect(screen.getByLabelText('Change Target?')).toBeChecked();
+  expect(await screen.findByLabelText('Target Finish')).toHaveAttribute('readonly');
   fireEvent.click(screen.getByLabelText('Change Target?'));
-  expect(getDateTime(screen.getByLabelText('Target Finish'))).toBe('2026-09-30T16:00');
+  setDateTime(screen.getByLabelText('Target Finish'), '2026-10-01T16:00');
+  fireEvent.click(screen.getByLabelText('Change Target?'));
+  expect(screen.getByLabelText('Target Finish')).toHaveAttribute('readonly');
+  expect(screen.getByLabelText('Target Finish')).toHaveValue('30/09/2026, 16:00');
   fireEvent.change(screen.getByLabelText('Est. Duration'), { target: { value: '-1' } });
   fireEvent.click(screen.getByText('Lưu nháp'));
   expect(await screen.findByRole('alert')).toHaveTextContent('Duration phải là số không âm');
   fireEvent.click(screen.getByText('Khôi phục'));
+  fireEvent.click(screen.getByLabelText('Change Target?'));
   setDateTime(screen.getByLabelText('Target Finish'), '2026-09-29T16:00');
   fireEvent.click(screen.getByText('Lưu nháp'));
   expect(await screen.findByRole('alert')).toHaveTextContent('kết thúc không được trước bắt đầu');
@@ -420,10 +422,12 @@ it('uses date pickers in the connection timezone and serializes a changed date w
   vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'id', version: 1, state: 'draft' });
   render(<DraftEditor {...props} />);
   const finish = await screen.findByLabelText('Scheduled Finish');
+  fireEvent.click(screen.getByLabelText('Change Target?'));
   for (const label of ['Scheduled Start', 'Target Start', 'Target Finish']) {
     expect(within(screen.getByLabelText(label)).getByLabelText(/\(nhập\)$/)).toHaveAttribute('type', 'text');
     expect(within(screen.getByLabelText(label)).getByRole('button', { name: /Chọn ngày giờ/ })).toBeInTheDocument();
   }
+  fireEvent.click(screen.getByLabelText('Change Target?'));
   expect(finish).toHaveAttribute('readonly');
   expect(finish).toHaveValue('30/09/2026, 16:00');
   setDateTime(screen.getByLabelText('Scheduled Start'), '2026-10-01T13:45');
@@ -435,14 +439,14 @@ it('uses date pickers in the connection timezone and serializes a changed date w
   expect(vi.mocked(saveDraft).mock.calls[0][1]).toEqual({ schedstart: '2026-10-01T13:45:00+07:00', schedfinish: '2026-10-02T02:45:00.000Z' });
 });
 
-it('enables both target pickers and sends explicit intent after selecting a target date', async () => {
+it('locks target dates until Change Target is ticked and then sends explicit intent', async () => {
   vi.mocked(getDetail).mockResolvedValue(detail);
   vi.mocked(saveDraft).mockResolvedValue({ draft_id: 'id', version: 1, state: 'draft' });
   render(<DraftEditor {...props} />);
-  expect(await screen.findByLabelText('Target Start')).toBeEnabled();
-  expect(screen.getByLabelText('Target Finish')).toBeEnabled();
+  expect(await screen.findByLabelText('Target Start')).toHaveAttribute('readonly');
+  expect(screen.getByLabelText('Target Finish')).toHaveAttribute('readonly');
+  fireEvent.click(screen.getByLabelText('Change Target?'));
   setDateTime(screen.getByLabelText('Target Finish'), '2026-10-01T16:00');
-  expect(screen.getByLabelText('Change Target?')).toBeChecked();
   expect(screen.queryByText(/Lập lịch ·/)).not.toBeInTheDocument();
   fireEvent.click(screen.getByText('Lưu nháp'));
   await waitFor(() => expect(saveDraft).toHaveBeenCalled());

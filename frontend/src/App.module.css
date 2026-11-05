@@ -256,7 +256,8 @@
 .editorBody { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; background: var(--ground); }
 .editorLayout { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(0, 1.8fr); align-items: start; gap: 24px; }
 .editorSections { display: grid; grid-column: 2; grid-row: 1; gap: 12px; min-width: 0; }
-.editorReference { grid-column: 1; grid-row: 1; }
+.editorReference { grid-column: 1; grid-row: 1; align-self: stretch; display: flex; flex-direction: column; }
+.editorReference .detailFacts { flex: 1; align-content: space-between; }
 .singlePanel .editorSection { min-width: 0; margin: 0; padding: 16px; border: 0; background: var(--layer); }
 .singlePanel .editorSection h3 { margin: 0 0 12px; }
 .singlePanel .editorSection legend { float: left; width: 100%; padding: 0; margin: 0 0 16px; }
@@ -302,7 +303,6 @@
 /* The toolbar copy of the loaded range, used while the header is hidden (full screen). */
 .fullscreenRange { display: inline-flex; color: var(--muted); font-size: 12px; line-height: 16px; }
 .statusLine { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 4px 0; color: var(--muted); font-size: 12px; line-height: 18px; }
-.statusLineStale { color: var(--warning-ink); }
 .statusUpdated { margin-left: 10px; color: var(--muted); }
 .footerStatus { color: var(--muted); }
 .confirmOverlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; background: var(--scrim); }
@@ -318,7 +318,7 @@
 .bulkBar .muted { color: color-mix(in srgb, var(--layer) 70%, transparent); }
 .denseTable td, .denseTable th { padding-top: 4px; padding-bottom: 4px; }
 .denseTable td small { margin-top: 2px; }
-.staleNotice { padding: 0 6px; background: var(--warning-bg); color: var(--warning-ink); border-left: 2px solid var(--warning-border); font-size: 12px; }
+.staleNotice { white-space: nowrap; padding: 0 6px; background: var(--warning-bg); color: var(--warning-ink); border-left: 2px solid var(--warning-border); font-size: 12px; }
 .stepper { display: flex; gap: 0; margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
 .stepper li { flex: 1; counter-increment: step; display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 3px solid var(--line); color: var(--muted); font-size: 12px; line-height: 16px; }
 .stepper li::before { content: counter(step); display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); color: var(--ink); font-weight: 600; }

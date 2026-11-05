@@ -2,6 +2,12 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Khóa ngày mục tiêu đến khi tick Change Target — 2026-11-05
+
+- [x] Target Start/Finish chỉ đọc khi chưa tick Change Target, giống PM/CFT; khung Thông tin từ Maximo cao bằng cột bên phải.
+- [x] Thông báo "Dữ liệu có thể đã thay đổi" chuyển lên cạnh nút Cập nhật, không còn đẩy bảng WO xuống.
+- Bằng chứng: vitest và `tsc`. Giới hạn: chưa xem trên trình duyệt đã đăng nhập.
+
 ## Danh sách WO không còn lỗi khi location thuộc nhiều system — 2026-11-05
 
 - [x] Sửa lỗi 502 từ `51b94f4`: `rel.LOCHIERARCHY` trả nhiều dòng cho location thuộc nhiều system nên cả danh sách bị từ chối. Nay hiện tất cả System ID, ngăn bằng dấu phẩy.

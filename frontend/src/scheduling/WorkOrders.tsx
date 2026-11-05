@@ -801,6 +801,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
       <button type="button" className={styles.iconButton} aria-pressed={dense} aria-label={dense ? 'Bảng thoáng' : 'Bảng gọn'}
         title={dense ? 'Bảng thoáng' : 'Bảng gọn'} onClick={toggleDensity}>{dense ? <RowExpandIcon size={16} /> : <RowCollapseIcon size={16} />}</button>
     </span>}
+    {/* Beside refresh, which clears it; a row above the table would push the table down mid-work. */}
+    {stale && rows !== null && <span role="status" className={styles.staleNotice}>Dữ liệu có thể đã thay đổi.</span>}
     <span className={styles.iconGroup}>
       {updatedAt !== null && rows !== null && <button type="button" className={styles.iconButton} aria-label="Cập nhật" title="Cập nhật dữ liệu từ Maximo"
         aria-busy={busy || verifying} disabled={busy || verifying || checking} onClick={() => refreshSession.current?.(true)}>
@@ -916,10 +918,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
         {!hasRows && iconBar}
       </div>}
       {/* Warnings stay above the table; the routine count and update time go to the footer when there is one. */}
-      {rows !== null && (stale || rows.length === 0) && <p role="status" className={`${styles.statusLine}${stale ? ` ${styles.statusLineStale}` : ''}`}>
-        {stale && <span className={styles.staleNotice}>Dữ liệu có thể đã thay đổi.</span>}
-        {rows.length === 0 && 'Không có WO trong phạm vi và khoảng ngày đã chọn.'}
-      </p>}
+      {rows !== null && rows.length === 0 && <p role="status" className={styles.statusLine}>Không có WO trong phạm vi và khoảng ngày đã chọn.</p>}
       {rows !== null && (footerSlot && !fullScreen ? createPortal(rowSummary, footerSlot) : <p className={styles.statusLine}>{rowSummary}</p>)}
       {rows !== null && rows.length > 0 && <>
         <div className={styles.chipRow}>

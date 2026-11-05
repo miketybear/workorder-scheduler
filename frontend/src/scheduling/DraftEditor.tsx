@@ -194,7 +194,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
     const edited = changed.includes(field);
     const className = edited ? styles.editedField : undefined;
     const editedMark = edited && field !== 'schedfinish' ? <span className={styles.editedMark}> Đã sửa</span> : null;
-    if (target(field) && ['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase())) {
+    if (target(field) && (['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase()) || !changes.change_target)) {
       return <label key={field} className={styles.readOnlyField}>{labels[field]}<input aria-label={labels[field]} readOnly value={displayDate(detail.baseline[field], timezone)} /></label>;
     }
     if (field === 'schedstart' || field === 'targstartdate' || field === 'targcompdate') {
@@ -254,7 +254,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
                   return next;
                 })} />Change Target?</label>}
               {['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase()) && <p>PM/CFT không được đổi target.</p>}
-              {!['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase()) && <p>Chọn ngày mục tiêu sẽ bật Change Target.</p>}
+              {!['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase()) && <p>Tick Change Target để sửa ngày mục tiêu.</p>}
               <div className={styles.filters}>{editableFields.filter(target).map(fieldControl)}</div>
             </fieldset>
             {detail.baseline.worktype === 'PM' && pmRestoreOrigin && <section className={styles.editorSection} aria-label="Khôi phục lịch PM gốc">
