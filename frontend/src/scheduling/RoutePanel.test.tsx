@@ -42,9 +42,11 @@ it('asks for the position account password once, never keeps it, then routes aft
   expect(document.body.innerHTML).not.toContain('secret-pw');
   expect(screen.getByText('Sẽ điền NHATNH')).toBeInTheDocument();
   expect(routeWorkOrders).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText(/^Memo/), { target: { value: 'Kiểm tra trước ca' } });
   fireEvent.click(screen.getByRole('button', { name: 'Route 1 WO' }));
   await screen.findByText('Đã route 1 WO.');
   const call = vi.mocked(routeWorkOrders).mock.calls[0];
+  expect(call[4]).toBe('Kiểm tra trước ca');
   expect(call[2]).toEqual([{ site_id: 'BD1', workorder_id: '1' }]);
   expect(call[1]).toMatch(/^[0-9a-f-]{36}$/);
   expect(onResult).toHaveBeenCalledOnce();

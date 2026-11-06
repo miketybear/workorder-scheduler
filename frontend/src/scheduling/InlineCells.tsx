@@ -23,7 +23,8 @@ export function PicSelect({ label, value, pics, names, disabled, onChange }:
   </span>;
 }
 
-export function DurationInput({ label, value, disabled, title, onChange }:
-  { label: string; value: string; disabled: boolean; title?: string; onChange: (hours: string) => void }) {
-  return <input type="text" inputMode="decimal" aria-label={label} value={value} disabled={disabled} title={title} onChange={(event) => onChange(event.target.value.trim())} />;
+export function DurationInput({ label, value, disabled, locked, title, onChange }:
+  { label: string; value: string; disabled: boolean; locked?: boolean; title?: string; onChange: (hours: string) => void }) {
+  // Locked is read-only, not disabled: the value stays fully legible.
+  return <input type="text" inputMode="decimal" aria-label={label} value={value} disabled={disabled} readOnly={locked} title={title} onChange={(event) => onChange(event.target.value.trim())} />;
 }

@@ -7,7 +7,7 @@ import { getAuthSummary, loginUrl, type Session } from '../api/client';
 import { RetrievalError, retrieveWorkOrders, type WorkOrder, type WorkOrderFilter } from '../api/workOrders';
 import styles from '../App.module.css';
 import { DraftEditor, type EditorSelection } from './DraftEditor';
-import { continueUpload, deleteDraft, editableFields, getDetail, prepareBatch, lookupUploadRequest, openDraft, reconcileUpload, type Baseline, type Changes, type Detail, type DraftNotice,
+import { BatchError, continueUpload, deleteDraft, editableFields, getDetail, openBatch, prepareBatch, saveBatch, lookupUploadRequest, openDraft, reconcileUpload, type Baseline, type Changes, type Detail, type DraftNotice,
   type Scope, type UploadRecoveryEntry, type UploadStatus, type UploadStatusItem, UploadRequestNotFoundError } from '../api/drafts';
 import type { FinalizedUpload } from './UploadPreviewPanel';
 import { currentMonthRange, startOfDay } from '../api/dates';
@@ -29,6 +29,7 @@ import { RoutePanel } from './RoutePanel';
 import { RouteLogin } from './RouteLogin';
 import { ATTENTION_CODES, chipText, mergeFreshRows, routeCategory, routeChips, infoFromLocal, infoFromPreview, localRouteCode, MAX_ROUTE_BATCH, reasonText, routeFingerprint, type RouteInfo } from './routeRules';
 import { outsideShift } from './ShiftNotice';
+import { Toast } from '../components/Toast';
 import { usePanelFocus } from './usePanelFocus';
 
 function sameBaseline(left: Baseline, right: Baseline): boolean {
@@ -121,6 +122,9 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [uploadNotice, setUploadNotice] = useState('');
+  const [groupDraft, setGroupDraft] = useState<string | null>(null);
+  const clearUploadNotice = useCallback(() => setUploadNotice(''), []);
+  const clearInlineNotice = useCallback(() => setInlineNotice(''), []);
   const [uploadRecoveries, setUploadRecoveries] = useState<{ principal_id: string; entry: UploadRecoveryEntry }[]>([]);
   const [recoveryResult, setRecoveryResult] = useState<{ principal_id: string; entry: UploadRecoveryEntry; status: UploadStatus } | null>(null);
   const [recoveryError, setRecoveryError] = useState('');
@@ -519,6 +523,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
   function choose(next: EditorSelection) {
     if (!discard()) return;
     dirty.current = false;
+    setGroupDraft(null);
     setBatch(null);
     setChooser(null);
     setRechecked(null);
@@ -592,6 +597,35 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
       else setSendError(cause instanceof Error ? cause.message : 'Không gom được nháp để gửi.');
     } finally { setSending(false); }
   }
+  // Takes one WO out of a group draft; the group's other WOs keep their saved changes.
+  async function removeFromGroup(draftId: string, siteId: string, workorderId: string) {
+    const controller = new AbortController();
+    const restored = await openBatch(draftId, editorScope, controller.signal);
+    let rest = restored.items.filter((item) => item.item.siteid !== siteId || item.item.workorderid !== workorderId);
+    // A member whose changes now equal Maximo has nothing left to keep; the server refuses
+    // to save it (empty_changes), so it leaves the group too. Any other problem stops here.
+    for (let attempt = 0; rest.length; attempt += 1) {
+      try {
+        const result = await saveBatch(editorScope, rest, crypto.randomUUID(), restored, controller.signal);
+        onDraftReady({ ...result, items: rest });
+        break;
+      } catch (cause) {
+        if (!(cause instanceof BatchError) || attempt > 0) throw cause;
+        const issues = cause.issues;
+        if (issues.some((issue) => issue.code !== 'empty_changes')) {
+          const name = (issue: { site_id: string; workorder_id: string }) => rest.find((item) => item.item.siteid === issue.site_id && item.item.workorderid === issue.workorder_id)?.item.wonum ?? issue.workorder_id;
+          throw new Error(`nháp nhóm có WO cần xem lại (${issues.map((issue) => `${name(issue)}: ${issue.code}`).join(', ')}). Mở nháp nhóm bằng nút Gửi để sửa hoặc xóa cả nhóm`);
+        }
+        const empty = new Set(issues.map((issue) => `${issue.site_id}/${issue.workorder_id}`));
+        rest = rest.filter((item) => !empty.has(`${item.item.siteid}/${item.item.workorderid}`));
+      }
+    }
+    if (!rest.length) {
+      await deleteDraft(restored, controller.signal);
+      onDraftReady({ ...restored, items: null });
+    }
+    selected.current = null; setSelection(null); setGroupDraft(null); setRechecked(null); dirty.current = false;
+  }
   async function deleteClosedDraft() {
     if (!closedDraft || sending) return;
     setSending(true);
@@ -628,7 +662,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
     setChoices((previous) => ({ ...previous, [rowKey(row)]: plan.draft_id }));
     carryToEditor(row, plan);
     // A group draft has no single-WO editor; its rows are edited in the table and sent together.
-    if (plan.is_batch) choose({ key: { ...editorScope, site_id: row.siteid, workorder_id: row.workorderid } });
+    if (plan.is_batch) { choose({ key: { ...editorScope, site_id: row.siteid, workorder_id: row.workorderid } }); setGroupDraft(plan.draft_id); }
     else choose({ draftId: plan.draft_id });
   }
   function openRow(row: WorkOrder) {
@@ -839,7 +873,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
 
   return <div ref={workspace} tabIndex={-1} className={fullScreen ? styles.workOrdersFullscreen : undefined} data-filters-open={filtersVisible || undefined}>
     <h1 className={styles.srOnly}>Work Orders</h1>
-    {uploadNotice && <p role="status" className={styles.notice}>{uploadNotice}</p>}
+    <Toast message={uploadNotice} onClose={clearUploadNotice} />
+    <Toast message={inlineNotice} onClose={clearInlineNotice} />
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {error && <button className={styles.tertiary} onClick={() => refreshSession.current?.()}>Kiểm tra lại phiên</button>}
     {checking && <p role="status">Đang kiểm tra quyền truy cập…</p>}
@@ -895,7 +930,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
           editorScope.discipline, selection.key.site_id, selection.key.workorder_id])) ?? null : null}
         connection={{ label: grant.label, system: grant.system, environment: grant.environment }}
         verifiedDetail={rechecked} writable={grant.capability === 'write'} suspended={checking} onDirty={onDirty} onDenied={onDenied}
-        onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onUploadRequestRejected={onUploadRequestRejected} onClose={closePanel} />}
+        onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadRequestCreated={onUploadRequestCreated} onUploadRequestRejected={onUploadRequestRejected} onClose={closePanel}
+        onRemoveFromGroup={groupDraft && 'key' in selection ? () => removeFromGroup(groupDraft, selection.key.site_id, selection.key.workorder_id) : undefined} />}
       {batch && grant && <BatchPlanner key={editorGeneration} sendOnly sendNotes={batch.notes} selection={batch.selection} scope={editorScope} timezone={grant.timezone} active={active}
         connection={{ label: grant.label, system: grant.system, environment: grant.environment }}
         writable={grant.capability === 'write'} suspended={checking} refreshVersion={batchRefresh} onDirty={onDirty} onDenied={onDenied} onDraftReady={onDraftReady} onUploadFinalized={onUploadFinalized} onUploadSettled={onUploadSettled} onUploadRequestCreated={onUploadRequestCreated} onUploadRequestRejected={onUploadRequestRejected} onClose={closePanel} />}
@@ -968,7 +1004,6 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
           <button className={styles.ghost} disabled={inlineBusy} onClick={() => { setInline({}); setInlineErrors({}); }}>Hủy thay đổi</button>
           {Object.keys(stagedProblems).length > 0 && <span role="alert" className={styles.error}>{Object.keys(stagedProblems).length} dòng chưa hợp lệ; xem ghi chú đỏ trên dòng.</span>}
         </>}
-        {inlineNotice && <span role="status">{inlineNotice}</span>}
         {Object.keys(inlineErrors).length > 0 && <span role="alert" className={styles.error}>{Object.keys(inlineErrors).length} dòng chưa lưu được; xem ghi chú đỏ trên dòng.</span>}
       </div>}
       {rows !== null && <>
@@ -996,7 +1031,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
                   {plan?.baseline_changed && ' · Cần đối chiếu'}</small>}
               </td>
               <td className={styles.descriptionCell} data-label="Công việc">{row.description ?? '—'}<small>{row.location ?? 'Chưa có Tag Name'}</small></td>
-              <td data-label="Status"><span className={styles.statusBadge} data-status={row.status}>{row.status}</span><small>{row.wopriority_description ?? '—'} ({row.wopriority ?? '—'})</small></td>
+              <td data-label="Status"><span className={styles.statusBadge} data-status={row.status}>{row.status}</span><div className={styles.priorityLine}><span className={styles.priorityBadge} data-priority={row.wopriority ?? 'unknown'}>{row.wopriority_description ?? '—'} ({row.wopriority ?? '—'})</span></div></td>
               {(() => {
                 const key = rowKey(row);
                 const raw = rawByKey.get(key) ?? row;
@@ -1019,7 +1054,7 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
                 };
                 return <>
                   <td data-nav="estdur" data-label="Duration (giờ)" data-draft={touched('estdur') || changed(['estdur'])} onKeyDown={onKey('estdur')}>
-                    <DurationInput label={`Sửa nhanh ${row.wonum} Est. Duration${pending('estdur')}`} value={stagedRow.estdur ?? view.estdur ?? ''} disabled={inlineBusy || !!raw.haschildren}
+                    <DurationInput label={`Sửa nhanh ${row.wonum} Est. Duration${pending('estdur')}`} value={stagedRow.estdur ?? view.estdur ?? ''} disabled={inlineBusy} locked={!!raw.haschildren}
                       title={raw.haschildren ? 'WO có WO con: Maximo tự tính Duration.' : undefined}
                       onChange={(hours) => stageCell(key, 'estdur', hours, shown(raw, marker && !marker.baseline_changed ? marker.changes : {}, {}, grant.timezone).estdur)} />
                     {(touched('estdur') || changed(['estdur'])) && <small>Nháp</small>}

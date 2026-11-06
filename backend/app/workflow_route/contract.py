@@ -159,6 +159,8 @@ def expected_option_offered(body, route: WorkflowRouteSettings, action_id: int) 
     return len(named) == 1 and named[0][0] == action_id
 
 
-def memo_for(name: str) -> str:
+def memo_for(name: str, custom: str | None = None) -> str:
+    if custom and custom.strip():
+        return custom.strip()
     clean = re.sub(r"[^\w .,'-]", "", name, flags=re.UNICODE).strip()[:100] or "Planner"
     return f"Route by {clean} via Work Order Scheduler"

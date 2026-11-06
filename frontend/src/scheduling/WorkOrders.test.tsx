@@ -5,7 +5,7 @@ import { getAuthSummary, getLiveness, type Session } from '../api/client';
 import { columns, RetrievalError, retrieveWorkOrders, type WorkOrder } from '../api/workOrders';
 import { mergePmOrigin, WorkOrders } from './WorkOrders';
 import { App } from '../App';
-import { deleteDraft, getDetail, lookupUploadRequest, openBatch, openDraft, prepareBatch, previewUpload, saveBatch, saveDraft, submitUpload } from '../api/drafts';
+import { BatchError, deleteDraft, getDetail, lookupUploadRequest, openBatch, openDraft, prepareBatch, previewUpload, saveBatch, saveDraft, submitUpload } from '../api/drafts';
 import { getConnectionSettings, saveConnectionSetting } from '../api/settings';
 import { getDate, setDate, setDateTime } from '../testDateTime';
 
@@ -56,7 +56,8 @@ it('exits fullscreen on Escape while preserving search and loaded rows', async (
 it('locks inline Duration on a WO with child WOs', async () => {
   await inlineSetup([orderWith({ haschildren: true })]);
   const input = screen.getByLabelText(/^Sửa nhanh WO-REAL Est. Duration/);
-  expect(input).toBeDisabled();
+  expect(input).toBeEnabled();
+  expect(input).toHaveAttribute('readonly');
   expect(input).toHaveAttribute('title', 'WO có WO con: Maximo tự tính Duration.');
 });
 
@@ -1632,4 +1633,31 @@ it('shows a refresh as a busy table with a progress bar, keeping the loading tex
   expect(status.className).toMatch(/srOnly/);
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
   await act(async () => finish({ available: true, session: { ...session, preferred_connection_id: 'two' } }));
+});
+
+it('takes one WO out of a group draft and keeps the others', async () => {
+  vi.mocked(getDetail).mockResolvedValue(editorDetail);
+  vi.mocked(openBatch).mockResolvedValue({ draft_id: 'group', version: 3, state: 'draft', items: [member(row), member(second)] });
+  vi.mocked(saveBatch).mockResolvedValue({ draft_id: 'group', version: 4, state: 'draft' });
+  await loadDrafted([{ ...row, drafts: [groupMarker] }, { ...second, drafts: [groupMarker] }]);
+  fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Bỏ WO khỏi nháp nhóm' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Xác nhận bỏ khỏi nháp' }));
+  await waitFor(() => expect(saveBatch).toHaveBeenCalledOnce());
+  const kept = vi.mocked(saveBatch).mock.calls[0][1];
+  expect(kept.map((item) => item.item.wonum)).toEqual([second.wonum]);
+  expect(deleteDraft).not.toHaveBeenCalled();
+});
+
+it('drops a group member whose draft now equals Maximo and deletes the emptied group', async () => {
+  vi.mocked(getDetail).mockResolvedValue(editorDetail);
+  vi.mocked(openBatch).mockResolvedValue({ draft_id: 'group', version: 3, state: 'draft', items: [member(row), member(second)] });
+  vi.mocked(saveBatch).mockRejectedValueOnce(new BatchError(409, [{ site_id: second.siteid, workorder_id: second.workorderid, code: 'empty_changes' }]));
+  vi.mocked(deleteDraft).mockResolvedValue();
+  await loadDrafted([{ ...row, drafts: [groupMarker] }, { ...second, drafts: [groupMarker] }]);
+  fireEvent.click(screen.getByRole('button', { name: 'WO-REAL' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Bỏ WO khỏi nháp nhóm' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Xác nhận bỏ khỏi nháp' }));
+  await waitFor(() => expect(deleteDraft).toHaveBeenCalledOnce());
+  expect(saveBatch).toHaveBeenCalledOnce();
 });

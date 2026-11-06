@@ -176,7 +176,7 @@ it('retains the same request ID after an uncertain server error and recovers wit
   view.rerender(<DraftEditor {...props} selection={{ draftId: 'saved' }} active={true}
     connection={{ label: 'Onshore test', system: 'onshore', environment: 'test' }} timezone="UTC" />);
   fireEvent.click(screen.getByText('Lấy kết quả yêu cầu trước'));
-  await screen.findByText('Kết quả từng WO');
+  await screen.findByRole('table', { name: 'Kết quả từng WO' });
   expect(submitUpload).toHaveBeenCalledTimes(2);
   expect(vi.mocked(submitUpload).mock.calls[1][1]).toBe(requestId);
   expect(vi.mocked(submitUpload).mock.calls[1][2]).toBe(firstCall[2]);

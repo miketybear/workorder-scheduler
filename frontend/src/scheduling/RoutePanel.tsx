@@ -25,6 +25,7 @@ export function RoutePanel({ scope, status, rows, onSession, onResult, onClose, 
   const [preview, setPreview] = useState<PreviewItem[]>([]);
   const [message, setMessage] = useState('');
   const [password, setPassword] = useState('');
+  const [memo, setMemo] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<RouteResult | null>(null);
   const requestId = useRef('');
@@ -94,7 +95,7 @@ export function RoutePanel({ scope, status, rows, onSession, onResult, onClose, 
     requestId.current = crypto.randomUUID();
     setBusy(true); setMessage(''); setStage('running');
     try {
-      const value = await routeWorkOrders(scope, requestId.current, ready.map(({ site_id, workorder_id }) => ({ site_id, workorder_id })), new AbortController().signal);
+      const value = await routeWorkOrders(scope, requestId.current, ready.map(({ site_id, workorder_id }) => ({ site_id, workorder_id })), new AbortController().signal, memo);
       setResult(value); onResult(value.items); setStage('done');
     } catch (cause) {
       if (cause instanceof RouteApiError && cause.code === 'route_session_required') { onSession({ active: false, expires_at: null }); setMessage('Phiên tài khoản route đã hết. Nhập lại mật khẩu.'); setStage('login'); }
@@ -153,6 +154,7 @@ export function RoutePanel({ scope, status, rows, onSession, onResult, onClose, 
         <thead><tr><th scope="col">WO</th><th scope="col">PIC nhận việc</th><th scope="col">Supervisor</th></tr></thead>
         <tbody>{ready.map((item) => <tr key={keyOf(item)}><td>{label(item)}</td><td>{item.assigned_to ?? '—'}</td>
           <td>{item.supervisor?.current ?? (item.supervisor?.will_set ? <strong className={styles.routeWrites}>{`Sẽ điền ${item.supervisor.will_set}`}</strong> : '—')}</td></tr>)}</tbody></table></div>
+      <label className={styles.routeMemo}>Memo (không bắt buộc)<input value={memo} maxLength={250} disabled={busy} placeholder="Route by <tên bạn> via Work Order Scheduler" onChange={(event) => setMemo(event.target.value)} /></label>
       {ready.some((item) => item.supervisor?.will_set) && <p className={styles.routeIntro}>Các giá trị <strong className={styles.routeWrites}>Sẽ điền</strong> được ghi vào WO trên Maximo trước khi route.</p>}
       <div className={styles.confirmActions}>
         <button className={styles.ghost} onClick={() => void forget()} disabled={busy}>Quên đăng nhập tài khoản route</button>

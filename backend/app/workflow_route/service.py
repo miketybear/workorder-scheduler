@@ -62,6 +62,7 @@ class RouteContext:
     credential: RouteCredential | None = None
     drop_credential: Callable[[], Awaitable[None]] | None = None
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep
+    memo: str | None = None
     readback_attempts: int = 3
     readback_delay: float = 1.0
     supervisors: frozenset[str] | None = field(default=None, init=False)
@@ -390,7 +391,7 @@ async def mutate(ctx, attempt, key, evaluation, held, action_id, evidence) -> It
         return await finish(
             ctx, attempt, ("sending",), "failed", "route_session_required", evidence
         )
-    maxauth, memo = credential.maxauth.reveal(), memo_for(ctx.actor_name)
+    maxauth, memo = credential.maxauth.reveal(), memo_for(ctx.actor_name, ctx.memo)
     order = evaluation.order
     if evaluation.supname:
         stopped = await write_supname(ctx, attempt, key, evaluation, evidence)

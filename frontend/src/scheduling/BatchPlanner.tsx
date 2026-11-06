@@ -323,7 +323,7 @@ export function BatchPlanner({ selection, scope, timezone, writable, suspended, 
             {field === 'schedfinish' ? <input aria-label={`${row.item.wonum} ${labels[field]}`} readOnly value={displayDate(value || null, timezone)} /> :
               field === 'assignedto' ? <select aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked} value={value} onChange={(e) => edit(index, field, e.target.value)}>
                 <option value={row.baseline[field] ?? ''}>{picLabel(row.baseline[field], row.pic_names) || 'Chưa có PIC'}</option>{row.allowed_pics.filter((pic) => pic !== row.baseline[field]).map((pic) => <option key={pic} value={pic}>{picLabel(pic, row.pic_names)}</option>)}</select> :
-                field === 'estdur' ? <input aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked || !!row.item.haschildren} title={row.item.haschildren ? 'WO có WO con: Maximo tự tính Duration.' : undefined} type="text" inputMode="decimal" value={value}
+                field === 'estdur' ? <input aria-label={`${row.item.wonum} ${labels[field]}`} disabled={blocked} readOnly={!!row.item.haschildren} title={row.item.haschildren ? 'WO có WO con: Maximo tự tính Duration.' : undefined} type="text" inputMode="decimal" value={value}
                   onChange={(e) => edit(index, field, e.target.value)} />
                   : <DateTimeInput label={`${row.item.wonum} ${labels[field]}`} disabled={blocked || (isTarget && targetForbidden(row))} defaultTime={groupDefaultTime(field)} today={todayIn(timezone)}
                     value={value ? localDateTime(value, timezone) : ''} onChange={(wall) => { try {

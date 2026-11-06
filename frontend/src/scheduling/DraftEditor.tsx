@@ -22,7 +22,7 @@ const labels: Record<EditableField, string> = { schedstart: 'Scheduled Start', s
 const target = (field: EditableField) => field === 'targstartdate' || field === 'targcompdate';
 export type EditorSelection = { key: Identity } | { draftId: string };
 
-export function DraftEditor({ selection, scope, writable, suspended, active = true, verifiedDetail, pmRestoreOrigin = null, seed = null, onSeedConsumed, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, onUploadRequestRejected, timezone, connection }: {
+export function DraftEditor({ selection, scope, writable, suspended, active = true, verifiedDetail, pmRestoreOrigin = null, seed = null, onSeedConsumed, onDirty, onDenied, onClose, onDraftReady, onUploadFinalized, onUploadRequestCreated, onUploadRequestRejected, onRemoveFromGroup, timezone, connection }: {
   timezone: string;
   active?: boolean;
   connection?: UploadConnection;
@@ -30,6 +30,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   verifiedDetail?: Detail | Restored | null; pmRestoreOrigin?: Baseline | null; selection: EditorSelection; scope: Scope; writable: boolean; suspended: boolean;
   onDirty: (dirty: boolean) => void; onDenied: () => void; onClose: () => void;
   onDraftReady?: (draft: DraftNotice) => void;
+  onRemoveFromGroup?: () => Promise<void>;
   onUploadFinalized?: (result: FinalizedUpload) => Promise<boolean>;
   onUploadRequestCreated?: (entry: UploadRecoveryEntry) => void;
   onUploadRequestRejected?: (requestId: string) => void;
@@ -226,7 +227,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
   }
   return <section ref={panel} tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !busy && !uploadLocked) onClose(); }} aria-label="Chỉnh sửa nháp" role="dialog" aria-modal="false" className={`${styles.draftEditor} ${styles.sidePanel} ${styles.singlePanel}`}>
     <div className={`${styles.panelHeading} ${styles.editorHeader}`}>
-      <div><h2>{detail ? detail.item.wonum : 'Đang mở WO…'}</h2>{saved && <span className={styles.badge}>Nháp đã lưu{saved.updated_at ? ` · ${displayDate(saved.updated_at, timezone)}` : ''}</span>}{connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>}{detail && <p className={styles.editorSummary}>{detail.item.description}</p>}{detail && <span className={styles.editorChips}>{[detail.item.worktype, detail.item.status, detail.item.wopriority_description ?? detail.item.wopriority].filter(Boolean).map((text) => <span key={String(text)}>{text}</span>)}</span>}</div>
+      <div><h2>{detail ? detail.item.wonum : 'Đang mở WO…'}</h2>{saved && <span className={styles.badge}>Nháp đã lưu{saved.updated_at ? ` · ${displayDate(saved.updated_at, timezone)}` : ''}</span>}{connection && <span className={styles.envChip} data-env={connection.environment}>{connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · {connection.environment === 'test' ? 'TEST' : 'PROD'}</span>}{detail && <p className={styles.editorSummary}>{detail.item.description}</p>}{detail && <span className={styles.editorChips}>{detail.item.worktype && <span>{detail.item.worktype}</span>}{detail.item.status && <span className={styles.statusBadge} data-status={detail.item.status}>{detail.item.status}</span>}{(detail.item.wopriority_description || detail.item.wopriority !== null) && <span className={styles.priorityBadge} data-priority={detail.item.wopriority ?? 'unknown'}>{detail.item.wopriority_description ?? detail.item.wopriority}</span>}</span>}</div>
       <button className={styles.closeButton} aria-label="Đóng nháp" title="Đóng" disabled={busy || uploadLocked} onClick={onClose}><CloseIcon /></button>
     </div>
     <div className={styles.editorBody}>
@@ -303,6 +304,17 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
       </>}
     </div>
     {detail && <div className={styles.editorFooter}>
+      {!saved && writable && onRemoveFromGroup && <div>
+        <button className={styles.dangerGhost} disabled={busy || suspended || uploadLocked || confirmDelete} onClick={() => setConfirmDelete(true)}>Bỏ WO khỏi nháp nhóm</button>
+        {confirmDelete && <div role="group" aria-label="Xác nhận bỏ WO khỏi nháp nhóm">
+          <p>Bỏ thay đổi đã lưu của WO này khỏi nháp nhóm? Các WO khác trong nhóm và Maximo giữ nguyên.</p>
+          <button className={styles.danger} disabled={busy || suspended || uploadLocked} onClick={() => {
+            setBusy(true); setError('');
+            onRemoveFromGroup().catch((cause) => { setError(`Chưa bỏ được WO khỏi nháp nhóm: ${cause instanceof Error ? cause.message : 'lỗi không rõ'}`); setBusy(false); setConfirmDelete(false); });
+          }}>Xác nhận bỏ khỏi nháp</button>
+          <button className={styles.ghost} disabled={busy} onClick={() => setConfirmDelete(false)}>Hủy</button>
+        </div>}
+      </div>}
       {saved && writable && <div>
         <button className={styles.dangerGhost} disabled={busy || suspended || uploadLocked || confirmDelete} onClick={() => setConfirmDelete(true)}>Xóa nháp</button>
         {confirmDelete && <div role="group" aria-label="Xác nhận xóa nháp">

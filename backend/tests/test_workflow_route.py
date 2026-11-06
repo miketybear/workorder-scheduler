@@ -1017,3 +1017,31 @@ def test_supname_is_the_only_field_written_before_the_route():
     _, result = route_once(fake)
     assert result.state == "confirmed"
     assert [fake.kind(call) for call in fake.writes] == ["supname", "complete", "choose"]
+
+
+def test_planner_memo_replaces_the_default_and_blank_keeps_it():
+    from app.workflow_route.contract import memo_for
+
+    assert memo_for("Pat Planner", "  Check before shift ") == "Check before shift"
+    assert memo_for("Pat Planner", "   ") == "Route by Pat Planner via Work Order Scheduler"
+    assert memo_for("Pat Planner") == "Route by Pat Planner via Work Order Scheduler"
+
+
+def test_route_request_rejects_control_characters_and_long_memo():
+    from uuid import uuid4
+
+    import pytest
+    from pydantic import ValidationError
+
+    from app.workflow_route.routes import RouteRequest
+
+    base = {
+        "connection_id": str(uuid4()),
+        "discipline": "E&I",
+        "items": [{"site_id": "BD1", "workorder_id": "1"}],
+        "request_id": str(uuid4()),
+    }
+    assert RouteRequest.model_validate({**base, "memo": "ok"}).memo == "ok"
+    for bad in ("ab", "x" * 251):
+        with pytest.raises(ValidationError):
+            RouteRequest.model_validate({**base, "memo": bad})

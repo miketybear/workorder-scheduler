@@ -533,3 +533,41 @@ td[data-code="conflict"], td[data-code="invalid_changes"] { color: var(--danger-
 .childOrders th, .childOrders td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .childOrders { overflow-x: auto; }
 .childOrders .numeric { text-align: right; }
+
+.routeMemo { display: grid; gap: 4px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+.routeMemo input { font-size: 14px; color: var(--ink); }
+
+/* Priority uses the Resource timeline colours: 4 urgent red, 3 high warm, 2 medium blue, others neutral. */
+.priorityBadge { display: inline-block; border-radius: 12px; padding: 2px 8px; font: 400 12px/18px 'IBM Plex Sans', Arial, sans-serif; letter-spacing: .16px; white-space: nowrap; background: var(--tag-neutral-bg); color: var(--tag-neutral-ink); }
+.priorityBadge[data-priority="4"] { background: var(--danger-button); color: var(--tooltip-ink); }
+.priorityBadge[data-priority="3"] { background: var(--tag-warm-bg); color: var(--tag-warm-ink); }
+.priorityBadge[data-priority="2"] { background: var(--tag-blue-bg); color: var(--tag-blue-ink); }
+.editorChips > .statusBadge, .editorChips > .priorityBadge { padding: 1px 8px; border-radius: 10px; }
+td input[readonly] { cursor: not-allowed; }
+
+/* Toast (Carbon): fixed top-right, above panels; closes itself after five seconds. */
+.toast { position: fixed; top: 56px; right: 16px; z-index: 9000; display: flex; align-items: flex-start; gap: 12px; max-width: min(480px, calc(100vw - 32px)); padding: 12px 8px 12px 16px; background: var(--layer); color: var(--ink); border-left: 3px solid var(--link); box-shadow: 0 2px 6px rgba(0,0,0,.3); font-size: 14px; line-height: 20px; }
+.toastClose { border: 0; background: transparent; color: var(--ink); width: 32px; height: 32px; font-size: 20px; line-height: 1; cursor: pointer; flex: none; }
+.priorityLine { margin-top: 4px; }
+
+/* Upload dialog: progress line, one table with a status chip and current -> new values per WO. */
+.uploadProgress { display: grid; gap: 8px; padding: 8px 0 12px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.uploadProgressLine { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.uploadProgressLine > p { margin: 0; }
+.uploadProgressLine > button { margin-left: auto; }
+.uploadCounts { display: inline-flex; flex-wrap: wrap; gap: 4px 16px; font-size: 14px; }
+.uploadCounts [data-tone="success"] { color: var(--tag-green-ink); }
+.uploadCounts [data-tone="danger"] { color: var(--error); }
+.uploadCounts [data-tone="warning"] { color: var(--tag-warm-ink); }
+.progressTrack { height: 4px; background: var(--surface); }
+.progressTrack > div { height: 4px; background: var(--link); transition: width .3s; }
+.uploadTable { width: 100%; border-collapse: collapse; }
+.uploadTable th, .uploadTable td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.uploadTable thead th { background: var(--surface); font-weight: 600; }
+.changeList { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.changeField { color: var(--muted); font-size: 12px; }
+.uploadState { display: inline-block; border-radius: 12px; padding: 2px 8px; font-size: 12px; line-height: 18px; white-space: nowrap; background: var(--tag-neutral-bg); color: var(--tag-neutral-ink); }
+.uploadState[data-state="confirmed"] { background: var(--tag-green-bg); color: var(--tag-green-ink); }
+.uploadState[data-state="sending"] { background: var(--tag-blue-bg); color: var(--tag-blue-ink); }
+.uploadState[data-state="failed"], .uploadState[data-state="conflict"] { background: color-mix(in srgb, var(--error) 14%, transparent); color: var(--error); }
+.uploadState[data-state="unknown"] { background: var(--tag-warm-bg); color: var(--tag-warm-ink); }

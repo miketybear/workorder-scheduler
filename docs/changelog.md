@@ -2,6 +2,21 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Làm lại dialog Gửi nháp lên Maximo — 2026-11-06
+
+- [x] Một bảng duy nhất: WO, chip trạng thái, thay đổi dạng hiện tại → mới, ghi chú (lỗi Maximo, đọc lại khớp, phần Maximo giữ khác). Bỏ bảng kết quả và danh sách đếm riêng.
+- [x] Dòng tiến độ có số đã xác nhận / lỗi / cần đối chiếu và thanh tiến độ; nút "Dừng sau WO đang gửi" là nút phụ cạnh tiến độ; "Lấy kết quả yêu cầu trước" ẩn trong lúc đang gửi.
+- Bằng chứng: vitest 633 passed. Giới hạn: chưa xem trên browser vì local không còn nháp; logic gửi không đổi.
+
+## Chip Priority, Memo khi Route, thông báo tự tắt — 2026-11-06
+
+- [x] Duration của WO có con khóa dạng chỉ đọc (không làm mờ) ở bảng list và Batch planner.
+- [x] Priority hiển thị dạng chip như Status, màu khớp Resource timeline (4 đỏ, 3 cam, 2 xanh, còn lại xám), giữ nguyên tên; chip Status/Priority trong header chi tiết WO dùng cùng màu.
+- [x] Dialog Route có trường Memo không bắt buộc (tối đa 250 ký tự, không ký tự điều khiển); để trống thì dùng memo mặc định.
+- [x] Thông báo đã upload/đã lưu nháp hiện dạng toast góc phải, tự tắt sau 5 giây.
+- [x] WO thuộc nháp nhóm mở theo WO nên không có nút Xóa nháp; panel chi tiết giờ có "Bỏ WO khỏi nháp nhóm" (có xác nhận), giữ nguyên các WO khác của nhóm, xóa cả nháp nếu đó là WO cuối.
+- Bằng chứng: pytest 1516 passed; vitest (Toast, RoutePanel memo, khóa Duration); xem trên browser local. Giới hạn: memo tùy chỉnh chưa route thử trên Maximo thật.
+
 ## Khóa Duration của WO có con trên bảng list — 2026-11-06
 
 - [x] Ô Duration sửa nhanh trên bảng list bị khóa với WO có WO con, và Ctrl+D không điền xuống các WO đó; trước đây chỉ panel chi tiết và Batch planner khóa. Backend vẫn từ chối.

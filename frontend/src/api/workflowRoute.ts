@@ -120,8 +120,9 @@ export async function previewRoute(scope: RouteScope, items: RouteTarget[], sign
   return parsePreview(await call('/workflow/route/preview', signal, 'POST', { ...scope, items }));
 }
 
-export async function routeWorkOrders(scope: RouteScope, requestId: string, items: RouteTarget[], signal: AbortSignal): Promise<RouteResult> {
-  return parseResult(await call('/workflow/route', signal, 'POST', { ...scope, request_id: requestId, items }));
+export async function routeWorkOrders(scope: RouteScope, requestId: string, items: RouteTarget[], signal: AbortSignal, memo = ''): Promise<RouteResult> {
+  const note = memo.trim();
+  return parseResult(await call('/workflow/route', signal, 'POST', { ...scope, request_id: requestId, items, ...(note ? { memo: note } : {}) }));
 }
 
 export async function getRouteSubmission(requestId: string, signal: AbortSignal): Promise<RouteResult> {

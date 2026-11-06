@@ -106,7 +106,7 @@ Không nên làm màn hình để Planner nhập mật khẩu Maximo của tài 
 Cấu hình (đã có trong `app/config.py`, chưa có code dùng): trong `backend/.env`, mỗi kết nối một dòng
 
 ```text
-WOS_MAXIMO__<connection-uuid>__WORKFLOW_ROUTE_ACCOUNTS={"E&I":{"personid":"ENISUP","api_key":"..."}}
+WOS_MAXIMO__<connection-uuid>__WORKFLOW_ROUTE_ACCOUNTS={"E&I":{"personid":"ENISUP"}}
 ```
 
 (Đã thay thế 2026-11-02: không còn key position; xem [workflow-route-design.md](workflow-route-design.md).

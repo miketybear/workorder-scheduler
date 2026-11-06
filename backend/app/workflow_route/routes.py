@@ -54,6 +54,14 @@ class PreviewRequest(Scope):
 
 class RouteRequest(PreviewRequest):
     request_id: UUID
+    # Planner's own note for the workflow transaction; blank keeps the default memo.
+    memo: str | None = Field(default=None, max_length=250)
+
+    @model_validator(mode="after")
+    def printable_memo(self):
+        if self.memo is not None and any(ord(c) < 32 or ord(c) == 127 for c in self.memo):
+            raise ValueError("Invalid memo")
+        return self
 
 
 class LoginRequest(Scope):
@@ -316,6 +324,7 @@ async def preview(request: Request, payload: PreviewRequest):
 @router.post("/route")
 async def route(request: Request, payload: RouteRequest):
     identity, ctx = await build_context(request, payload, with_credential=True)
+    ctx.memo = payload.memo
     state = request.app.state
     keys = [ctx.key(item.site_id, item.workorder_id) for item in payload.items]
     existing = await ctx.ledger.for_request(identity.user_id, payload.request_id)

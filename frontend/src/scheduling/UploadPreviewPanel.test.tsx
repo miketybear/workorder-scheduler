@@ -192,7 +192,7 @@ it('does not write when stopped during the fresh preflight and ignores a duplica
   const send = screen.getByText(baseProps.buttonLabel);
   fireEvent.click(send); fireEvent.click(send);
   expect(previewUpload).toHaveBeenCalledTimes(2);
-  fireEvent.click(screen.getByText('Dừng sau đợt đang gửi'));
+  fireEvent.click(screen.getByText('Dừng sau WO đang gửi'));
   resolveFresh(preview);
   view.rerender(<UploadPreviewControls {...baseProps} />);
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -208,7 +208,7 @@ it('stops after the in-flight chunk when the group is hidden, even if it becomes
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
   await screen.findByRole('table', { name:'Thay đổi sẽ ghi' });
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
-  await screen.findByRole('button', { name: 'Dừng sau đợt đang gửi' });
+  await screen.findByRole('button', { name: 'Dừng sau WO đang gửi' });
   view.rerender(<UploadPreviewControls {...baseProps} active={false} />);
   view.rerender(<UploadPreviewControls {...baseProps} active />);
   resolveChunk(receipt(20));
@@ -226,7 +226,7 @@ it('requires a status lookup after context changes during an in-flight chunk', a
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
   await screen.findByRole('table', { name:'Thay đổi sẽ ghi' });
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
-  await screen.findByRole('button', { name: 'Dừng sau đợt đang gửi' });
+  await screen.findByRole('button', { name: 'Dừng sau WO đang gửi' });
   view.rerender(<UploadPreviewControls {...baseProps} context="new-scope-context" />);
   resolveChunk(receipt(20));
   await screen.findByText('Tiến độ: 10/200 WO đã xác nhận.');
@@ -296,7 +296,7 @@ it('keeps the current chunk but stops future chunks after permission is lost and
   fireEvent.click(screen.getByText('Đối chiếu nhóm'));
   await screen.findByRole('table', { name:'Thay đổi sẽ ghi' });
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
-  await screen.findByRole('button', { name: 'Dừng sau đợt đang gửi' });
+  await screen.findByRole('button', { name: 'Dừng sau WO đang gửi' });
   view.rerender(<UploadPreviewControls {...baseProps} permitted={false} />);
   view.rerender(<UploadPreviewControls {...baseProps} permitted />);
   resolveChunk(receipt(20));
@@ -332,9 +332,11 @@ it('shows a production warning and grouped result counts', async () => {
   expect(screen.getByText(/thay đổi sẽ ghi vào Maximo thật/)).toHaveAttribute('data-env', 'production');
   fireEvent.click(screen.getByText(baseProps.buttonLabel));
   const summary = await screen.findByLabelText('Tóm tắt kết quả');
-  expect(summary).toHaveTextContent('Hoàn tất 9');
-  expect(summary).toHaveTextContent('Lỗi / xung đột 1');
-  expect(summary).toHaveTextContent('Cần đối chiếu 190');
+  expect(summary).toHaveTextContent('✓ 9 đã xác nhận');
+  expect(summary).toHaveTextContent('✕ 1 lỗi');
+  expect(summary).toHaveTextContent('190 cần đối chiếu');
+  const results = within(screen.getByRole('table', { name: 'Kết quả từng WO' }));
+  expect(results.getAllByText('Thất bại')).toHaveLength(1);
 });
 
 const wonumFor = (items: UploadPreview['items']) => items.map((item, index) => ({ ...item, wonum: `WO-${index + 1}` }));
@@ -364,10 +366,11 @@ it('shows one table with before → after per WO, a summary beside the Upload bu
   const table = within(await screen.findByRole('table', { name: 'Thay đổi sẽ ghi' }));
   expect(screen.getByText('2 WO · 2 thay đổi')).toBeInTheDocument();
   expect(table.getByRole('rowheader', { name: 'WO-1' })).toBeInTheDocument();
-  expect(table.getByRole('columnheader', { name:'Assigned PIC' })).toBeInTheDocument();
+  expect(table.getByRole('columnheader', { name: 'Thay đổi (hiện tại → mới)' })).toBeInTheDocument();
+  expect(table.getByText('Assigned PIC')).toBeInTheDocument();
   expect(table.getByText('LAMTH')).toBeInTheDocument();
   expect(table.getByText('9')).toBeInTheDocument();
-  expect(table.getByText('Hiện tại: 8')).toBeInTheDocument();
+  expect(table.getByText('8')).toBeInTheDocument();
   expect(table.getAllByText('Sẵn sàng')).toHaveLength(2);
   expect(screen.getByText(baseProps.buttonLabel)).toBeEnabled();
 });

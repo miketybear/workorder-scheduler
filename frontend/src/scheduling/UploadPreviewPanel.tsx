@@ -12,6 +12,13 @@ const stateLabels = { pending: 'Chờ xử lý', sending: 'Đang gửi', confirm
 const fieldLabel = (field: string) => labels[field as keyof typeof labels] ?? field;
 const shownValue = (field: string, value: string | null, timezone: string) =>
   value === null ? 'trống' : field === 'estdur' || field === 'assignedto' ? value : displayDate(value, timezone);
+function ChangeList({ item, timezone }: { item: Pick<UploadPreviewItem, 'before' | 'changes'>; timezone: string }) {
+  const fields = editableFields.filter((field) => item.changes[field] !== undefined);
+  if (!fields.length) return <span className={styles.changeOld}>—</span>;
+  return <ul className={styles.changeList}>{fields.map((field) => <li key={field}>
+    <span className={styles.changeField}>{labels[field]}</span> <span className={styles.changeOld}>{shownValue(field, item.before[field] ?? null, timezone)}</span>
+    {' → '}<strong>{shownValue(field, item.changes[field] ?? null, timezone)}</strong></li>)}</ul>;
+}
 export type UploadConnection ={ label: string; system: 'onshore' | 'offshore'; environment: 'test' | 'production' };
 export type FinalizedUpload = { draft_id: string; version: number; items: { site_id: string; workorder_id: string; restore_source: { before: Baseline } | null }[] };
 
@@ -266,7 +273,7 @@ export function UploadPreviewControls({ draft, selection, connection, connection
   loadPreviewRef.current = loadPreview;
   const manualButton = !autoPreview || (canRecoverRequest && !status);
   return <>
-    {manualButton && (!workflow || panelVisible) && <button className={styles.tertiary} disabled={!active || busy || (!!status && !status.source_finalized) || (!canRecoverRequest && !status && !enabled)} onClick={() => {
+    {manualButton && !(busy && requestId) && (!workflow || panelVisible) && <button className={styles.tertiary} disabled={!active || busy || (!!status && !status.source_finalized) || (!canRecoverRequest && !status && !enabled)} onClick={() => {
       if (canRecoverRequest && !status) { void submitOrRecover(); return; }
       if (viewState.open) { previewController.current?.abort(); setBusy(false); setViewState({ active, open: false }); }
       else void loadPreview();
@@ -274,10 +281,19 @@ export function UploadPreviewControls({ draft, selection, connection, connection
     {panelVisible && <section className={styles.editorSection} aria-label="Preview upload Maximo">
       {connection?.environment === 'production' && <p className={styles.uploadTarget} data-env={connection.environment}>
         {connection.label} · {connection.system === 'onshore' ? 'Onshore' : 'Offshore'} · Production — thay đổi sẽ ghi vào Maximo thật</p>}
-      {busy && <p role="status">{requestId ? 'Đang xử lý yêu cầu upload và kiểm tra kết quả…' : status ? 'Đang cập nhật trạng thái…' : 'Đang đối chiếu với Maximo…'}</p>}
-      {uploadAll && busy && autoContinueRef.current && <button className={styles.tertiary} onClick={() => { autoContinueRef.current = false; }}>
-        Dừng sau đợt đang gửi
-      </button>}
+      {(busy || status) && <div className={styles.uploadProgress}>
+        <div className={styles.uploadProgressLine}>
+          {busy && <p role="status">{requestId ? 'Đang xử lý yêu cầu upload và kiểm tra kết quả…' : status ? 'Đang cập nhật trạng thái…' : 'Đang đối chiếu với Maximo…'}</p>}
+          {status && <span className={styles.uploadCounts} aria-label="Tóm tắt kết quả">
+            {uploadAll && <span role="status">Tiến độ: {counts.confirmed ?? 0}/{status.items.length} WO đã xác nhận.</span>}
+            <span data-tone="success">✓ {counts.confirmed ?? 0} đã xác nhận</span>
+            <span data-tone="danger">✕ {(counts.failed ?? 0) + (counts.conflict ?? 0)} lỗi</span>
+            {pending + sending + unknown > 0 && <span data-tone="warning">{pending + sending + unknown} cần đối chiếu</span>}
+          </span>}
+          {uploadAll && busy && autoContinueRef.current && <button className={styles.ghost} onClick={() => { autoContinueRef.current = false; }}>Dừng sau WO đang gửi</button>}
+        </div>
+        {status && <div className={styles.progressTrack} aria-hidden="true"><div style={{ width: `${Math.round(100 * status.items.filter((item) => ['confirmed', 'failed', 'conflict'].includes(item.state)).length / Math.max(status.items.length, 1))}%` }} /></div>}
+      </div>}
       {error && <p role="alert" className={styles.error}>{error}</p>}
       {autoPreview && error && !busy && !currentPreview && !status && !requestId && <button className={styles.tertiary} disabled={!active || !enabled} onClick={() => void loadPreview()}>Thử lại đối chiếu</button>}
       {currentPreview && !status && !requestId && (() => {
@@ -295,9 +311,6 @@ export function UploadPreviewControls({ draft, selection, connection, connection
         };
         const verdict = (item: typeof items[number]) => item.code === 'ready' ? 'Sẵn sàng' : item.code === 'conflict' ? <>Xung đột<small> Maximo đã đổi sau khi lưu nháp. Mở WO để cập nhật nháp.</small></>
           : item.code === 'invalid_changes' ? 'Thay đổi không hợp lệ' : item.code === 'incomplete_schedule' ? missingText(item) : 'Không có thay đổi';
-        const show = (field: typeof editableFields[number], value: string | null | undefined) =>
-          field === 'assignedto' || field === 'estdur' ? value ?? '—' : displayDate(value ?? null, timezone);
-        const changedFields = editableFields.filter((field) => items.some((item) => item.changes[field] !== undefined));
         return <>
           <div className={styles.previewSummary}>
             <p role="status">{`${items.length} WO · ${changeCount} thay đổi${allReady ? '' : ` · ${blocked} WO cần xử lý`}`}</p>
@@ -305,36 +318,28 @@ export function UploadPreviewControls({ draft, selection, connection, connection
               ? <button className={styles.primary} disabled={busy} onClick={() => void submitOrRecover()}><UploadIcon />{allReady ? buttonLabel : `Gửi ${readyCount} WO, bỏ qua ${blocked} WO`}</button>
               : <button className={styles.primary} disabled>Upload chưa khả dụng</button>}
           </div>
-          <div className={styles.tableWrap}><table className={styles.changeTable} aria-label="Thay đổi sẽ ghi"><thead><tr><th>WO</th>{changedFields.map((field) => <th key={field}>{labels[field]}</th>)}<th>Trạng thái</th></tr></thead>
+          <div className={styles.tableWrap}><table className={styles.uploadTable} aria-label="Thay đổi sẽ ghi"><thead><tr><th>WO</th><th>Trạng thái</th><th>Thay đổi (hiện tại → mới)</th></tr></thead>
             <tbody>{items.map((item) => <tr key={`${item.site_id}:${item.workorder_id}`}><th scope="row">{wonum(item)}</th>
-              {changedFields.map((field) => <td key={field}>{item.changes[field] === undefined ? <span className={styles.changeOld}>{show(field, item.before[field])}</span>
-                : <><strong>{show(field, item.changes[field])}</strong>{item.before[field] ? <small className={styles.changeOld}>Hiện tại: {show(field, item.before[field])}</small> : null}</>}</td>)}
-              <td data-code={item.code}><span className={styles.changeStatus} data-ready={item.code === 'ready' || undefined}>{verdict(item)}</span></td></tr>)}</tbody></table></div>
+              <td data-code={item.code}><span className={styles.changeStatus} data-ready={item.code === 'ready' || undefined}>{verdict(item)}</span></td>
+              <td><ChangeList item={item} timezone={timezone} /></td></tr>)}</tbody></table></div>
           {!currentPreview.send_enabled && <p role="status">Maximo chưa thay đổi. Upload chưa mở vì chưa hoàn tất kiểm chứng cập nhật Maximo.</p>}
           {currentPreview.send_enabled && !allReady && <p role="status">{readyCount > 0 ? `${blocked} WO cần xử lý sẽ không được gửi và vẫn ở trong nháp.` : 'Chưa có WO nào gửi được. Sửa các WO cần xử lý rồi đối chiếu lại.'}</p>}
         </>;
       })()}
       {showReceiptRecovery && !busy && <p role="status">Kết quả yêu cầu chưa xác định; dữ liệu nháp được giữ nguyên.</p>}
       {status && <>
-        {uploadAll && <p role="status">Tiến độ: {counts.confirmed ?? 0}/{status.items.length} WO đã xác nhận.</p>}
-        <h4>Kết quả từng WO</h4>
-        <div className={styles.resultGroups} aria-label="Tóm tắt kết quả">
-          <span data-tone="success">Hoàn tất <b>{counts.confirmed ?? 0}</b></span>
-          <span data-tone="danger">Lỗi / xung đột <b>{(counts.failed ?? 0) + (counts.conflict ?? 0)}</b></span>
-          <span data-tone="warning">Cần đối chiếu <b>{pending + sending + unknown}</b></span>
-        </div>
-        <ul>{Object.entries(counts).filter(([, count]) => (count ?? 0) > 0).map(([state, count]) =>
-          <li key={state}>{stateLabels[state as keyof typeof stateLabels]}: {count}</li>)}</ul>
-        <div className={styles.tableWrap}><table><thead><tr><th>WO</th><th>Trạng thái</th><th>Ghi chú</th><th>Cập nhật</th></tr></thead>
-          <tbody>{status.items.map((item) => <tr key={item.item_id}><th>{selection.find((row) => row.site_id === item.site_id && row.workorder_id === item.workorder_id)?.wonum ?? '—'}</th>
-            <td>{stateLabels[item.state]}</td><td>{item.readback_mismatch?.length
+        <div className={styles.tableWrap}><table className={styles.uploadTable} aria-label="Kết quả từng WO"><thead><tr><th>WO</th><th>Trạng thái</th><th>Thay đổi (hiện tại → mới)</th><th>Ghi chú</th></tr></thead>
+          <tbody>{status.items.map((item) => { const sent = (workflow?.preview ?? preview)?.items.find((row) => row.site_id === item.site_id && row.workorder_id === item.workorder_id);
+            return <tr key={item.item_id}><th scope="row">{selection.find((row) => row.site_id === item.site_id && row.workorder_id === item.workorder_id)?.wonum ?? '—'}</th>
+            <td><span className={styles.uploadState} data-state={item.state}>{stateLabels[item.state]}</span></td>
+            <td>{sent ? <ChangeList item={sent} timezone={timezone} /> : '—'}</td><td>{item.readback_mismatch?.length
               ? `Maximo giữ khác giá trị đã gửi: ${item.readback_mismatch.map((entry) =>
                 `${fieldLabel(entry.field)} ${shownValue(entry.field, entry.actual, timezone)} (gửi ${shownValue(entry.field, entry.expected, timezone)})`).join('; ')}. Maximo đã nhận các trường khác; nháp chỉ giữ phần chưa ghi được để gửi lại.`
               : item.duration_result?.code === 'pm_duration_recalculated'
                 ? `Maximo đã tính lại Duration: ${item.duration_result.expected ?? '—'} → ${item.duration_result.actual ?? '—'} giờ.`
                 : item.rejection
                   ? `Maximo từ chối, chưa ghi gì: ${item.rejection.message ?? 'không có mô tả'}${item.rejection.code ? ` (${item.rejection.code})` : ''}. WO vẫn ở trong nháp.`
-                  : '—'}</td><td>{new Intl.DateTimeFormat('vi-VN', { timeZone: timezone, dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.updated_at))}</td></tr>)}</tbody></table></div>
+                  : item.state === 'confirmed' ? 'Đọc lại khớp' : '—'}</td></tr>; })}</tbody></table></div>
         {status.source_finalized ? <p role="status">Các thay đổi đã được xác nhận trong Maximo; đang cập nhật dữ liệu trên bảng.</p>
           : status.items.every((item) => ['confirmed', 'failed', 'conflict'].includes(item.state))
             ? <p role="status">{status.source_settled ? `${(counts.confirmed ?? 0) > 0 ? `${counts.confirmed} WO đã xác nhận đã ra khỏi nháp. ` : ''}WO chưa xong vẫn ở trong nháp; đóng bảng này để xem lại.` : 'Nháp vừa được sửa trong lúc upload nên chưa được cập nhật; mở lại nháp để kiểm tra.'}</p>
