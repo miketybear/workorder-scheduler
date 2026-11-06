@@ -23,7 +23,7 @@ export function PicSelect({ label, value, pics, names, disabled, onChange }:
   </span>;
 }
 
-export function DurationInput({ label, value, disabled, onChange }:
-  { label: string; value: string; disabled: boolean; onChange: (hours: string) => void }) {
-  return <input type="text" inputMode="decimal" aria-label={label} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value.trim())} />;
+export function DurationInput({ label, value, disabled, title, onChange }:
+  { label: string; value: string; disabled: boolean; title?: string; onChange: (hours: string) => void }) {
+  return <input type="text" inputMode="decimal" aria-label={label} value={value} disabled={disabled} title={title} onChange={(event) => onChange(event.target.value.trim())} />;
 }

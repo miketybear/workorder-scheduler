@@ -53,6 +53,13 @@ it('exits fullscreen on Escape while preserving search and loaded rows', async (
   expect(screen.getByRole('button', { name: 'WO-REAL' })).toBeVisible();
 });
 
+it('locks inline Duration on a WO with child WOs', async () => {
+  await inlineSetup([orderWith({ haschildren: true })]);
+  const input = screen.getByLabelText(/^Sửa nhanh WO-REAL Est. Duration/);
+  expect(input).toBeDisabled();
+  expect(input).toHaveAttribute('title', 'WO có WO con: Maximo tự tính Duration.');
+});
+
 it('preserves selected rows and inline edits while toggling fullscreen both ways', async () => {
   await inlineSetup([orderWith({})]);
   fireEvent.change(screen.getByLabelText(/^Sửa nhanh WO-REAL Est. Duration/), { target: { value: '12' } });

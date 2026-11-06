@@ -460,7 +460,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
     setInline((previous) => {
       const value = shown(source, marker && !marker.baseline_changed ? marker.changes : {}, previous[key] ?? {}, grant.timezone)[field];
       if (!value) return previous;
-      return selectedKeys.filter((target) => target !== key && visibleKeys.has(target) && rawByKey.has(target)).reduce((acc, target) => {
+      return selectedKeys.filter((target) => target !== key && visibleKeys.has(target) && rawByKey.has(target)
+        && !(field === 'estdur' && rawByKey.get(target)!.haschildren)).reduce((acc, target) => {
         const order = rawByKey.get(target)!; const plan = chosenPlan(order, choices[target]);
         return stage(acc, target, field, value, shown(order, plan && !plan.baseline_changed ? plan.changes : {}, {}, grant.timezone)[field]);
       }, previous);
@@ -1018,7 +1019,8 @@ export function WorkOrders({ active = true, autoRetrieve = false, headerSlot = n
                 };
                 return <>
                   <td data-nav="estdur" data-label="Duration (giờ)" data-draft={touched('estdur') || changed(['estdur'])} onKeyDown={onKey('estdur')}>
-                    <DurationInput label={`Sửa nhanh ${row.wonum} Est. Duration${pending('estdur')}`} value={stagedRow.estdur ?? view.estdur ?? ''} disabled={inlineBusy}
+                    <DurationInput label={`Sửa nhanh ${row.wonum} Est. Duration${pending('estdur')}`} value={stagedRow.estdur ?? view.estdur ?? ''} disabled={inlineBusy || !!raw.haschildren}
+                      title={raw.haschildren ? 'WO có WO con: Maximo tự tính Duration.' : undefined}
                       onChange={(hours) => stageCell(key, 'estdur', hours, shown(raw, marker && !marker.baseline_changed ? marker.changes : {}, {}, grant.timezone).estdur)} />
                     {(touched('estdur') || changed(['estdur'])) && <small>Nháp</small>}
                   </td>

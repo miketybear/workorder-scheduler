@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Khóa Duration của WO có con trên bảng list — 2026-11-06
+
+- [x] Ô Duration sửa nhanh trên bảng list bị khóa với WO có WO con, và Ctrl+D không điền xuống các WO đó; trước đây chỉ panel chi tiết và Batch planner khóa. Backend vẫn từ chối.
+- Bằng chứng: vitest `locks inline Duration on a WO with child WOs`.
+
 ## Resource timeline mở được khi Maximo có assignment qua đêm — 2026-11-06
 
 - [x] Assignment có giờ công kéo qua nửa đêm không còn chặn cả timeline; toàn bộ laborhrs tính cho ngày bắt đầu (quyết định của chủ dự án 2026-11-06).
