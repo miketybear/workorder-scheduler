@@ -53,6 +53,7 @@ def test_preview_warning_requires_ready_pm_actual_schedule_change():
     "case,expected",
     [
         ("derived", "confirmed"),
+        ("parent", "confirmed"),
         ("explicit", "failed"),
         ("explicit-noop", "confirmed"),
         ("timeout", "failed"),
@@ -68,11 +69,14 @@ def test_preview_warning_requires_ready_pm_actual_schedule_change():
 )
 def test_pm_duration_classification_and_pinned_finalization(case, expected):
     async def scenario():
-        async with committed_database() if case == "derived" else database() as sessions:
+        durable = case in {"derived", "parent"}
+        async with committed_database() if durable else database() as sessions:
             user, other, connections = await seed(sessions)
             current = scheduled(
                 snapshot(connections[0]), case if case in {"CM", "CFT", "REC"} else "PM"
             )
+            if case == "parent":
+                current = replace(scheduled(snapshot(connections[0]), "CM"), has_children=True)
             changes = ScheduleChanges(schedstart="2026-10-30T07:37:13+07:00")
             if case == "explicit":
                 changes = ScheduleChanges(schedstart=changes.schedstart, estdur=26)

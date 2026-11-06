@@ -41,6 +41,7 @@ class WorkOrder(BaseModel):
     targcompdate: AwareDatetime
     istask: bool
     parent: str | None = None
+    haschildren: bool = False
 
     @field_validator("workorderid", mode="before")
     @classmethod
@@ -54,7 +55,7 @@ SELECT = (
     "siteid,workorderid,wonum,bdpocdiscipline,description,worktype,wolo10,location,"
     "rel.LOCHIERARCHY{systemid},schedstart,schedfinish,actstart,actfinish,status,"
     "wopriority,wopriority_description,lead,assignedto,estdur,targstartdate,"
-    "targcompdate,istask,parent"
+    "targcompdate,istask,parent,haschildren"
 )
 
 
@@ -112,7 +113,7 @@ def map_work_order(raw: dict) -> WorkOrder:
     rows = hierarchy if isinstance(hierarchy, list) else [] if hierarchy is None else [hierarchy]
     if any(not isinstance(row, dict) for row in rows):
         raise MaximoReadError("Invalid System ID")
-    # A location may sit in several systems. This is display data: one such WO must not fail the list.
+    # A location may sit in several systems. Display data: one such WO must not fail the list.
     systems = sorted({str(row["systemid"]) for row in rows if row.get("systemid")})
     try:
         return WorkOrder.model_validate({**raw, "systemid": ", ".join(systems) or None})

@@ -70,3 +70,18 @@ def test_old_pic_field_name_is_rejected_like_any_unknown_field():
         ScheduleChanges.model_validate({"assignedtechname": "DEMO"})
     assert ScheduleChanges.model_validate({"assignedto": "DEMO"}).assignedto == "DEMO"
     assert "assignedtechname" not in WorkOrderBaseline.model_fields
+
+
+def test_duration_is_refused_only_on_a_work_order_with_children(baseline):
+    changes = ScheduleChanges(estdur="20")
+    with pytest.raises(ValueError, match="children"):
+        build_changes(baseline, changes, set(), has_children=True)
+    assert "estdur" in build_changes(baseline, changes, set())
+
+
+def test_a_parent_keeps_its_dates_and_an_unchanged_duration(baseline):
+    start = datetime.fromisoformat("2030-01-02T06:30:00+07:00")
+    finish = datetime.fromisoformat("2030-01-03T16:00:00+07:00")
+    changes = ScheduleChanges(schedstart=start, schedfinish=finish, estdur=baseline.estdur)
+    values = build_changes(baseline, changes, set(), has_children=True)
+    assert set(values) == {"schedstart", "schedfinish"}

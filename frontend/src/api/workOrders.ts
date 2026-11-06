@@ -16,7 +16,7 @@ export const columns = [
   ['workorderid', 'WOID'],
 ] as const;
 type Field = typeof columns[number][0];
-export type WorkOrder = Record<Field, string | null> & { siteid: string; wonum: string; workorderid: string; worktype: string; status: string; targcompdate: string; wopriority: number | null; drafts?: PlanningMarker[]; allocation_summary?:AllocationSummary };
+export type WorkOrder = Record<Field, string | null> & { siteid: string; wonum: string; workorderid: string; worktype: string; status: string; targcompdate: string; wopriority: number | null; haschildren?: boolean; drafts?: PlanningMarker[]; allocation_summary?:AllocationSummary };
 export type WorkOrderFilter = { connection_id: string; discipline: string; target_from: string; target_before: string };
 export type BacklogReadiness = 'all'|'ready'|'missing';
 export type BacklogCounts = { backlog:number; completed:number; ready:number; missing:number };

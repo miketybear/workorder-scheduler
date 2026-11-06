@@ -36,7 +36,11 @@ class ScheduleChanges(BaseModel):
 
 
 def build_changes(
-    baseline: WorkOrderBaseline, changes: ScheduleChanges, allowed_pics: set[str]
+    baseline: WorkOrderBaseline,
+    changes: ScheduleChanges,
+    allowed_pics: set[str],
+    *,
+    has_children: bool = False,
 ) -> dict[str, str | datetime | Decimal]:
     """Validate against a current, scoped upstream baseline; this function never sends a write."""
     values = changes.model_dump(exclude_unset=True, exclude={"change_target"})
@@ -45,6 +49,10 @@ def build_changes(
             raise ValueError("Target changes require explicit intent")
         if baseline.worktype.upper() in {"PM", "CFT"}:
             raise ValueError("Target dates cannot be changed for PM or CFT")
+    # Owner decision 2026-11-05: a Maximo automation script derives a parent's duration from
+    # its child WOs, so a value sent here would not last.
+    if has_children and "estdur" in values and values["estdur"] != baseline.estdur:
+        raise ValueError("Duration of a work order with children is set by Maximo")
     if "assignedto" in values and values["assignedto"] not in allowed_pics:
         raise ValueError("PIC is not in the permitted crew")
     for start_field, finish_field in (

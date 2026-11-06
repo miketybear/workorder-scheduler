@@ -585,3 +585,11 @@ it('disables deleting the draft while an upload outcome is unknown', async () =>
   expect(screen.queryByRole('button', { name: 'Xác nhận xóa nháp' })).not.toBeInTheDocument();
   expect(deleteDraft).not.toHaveBeenCalled();
 });
+
+it('locks Duration on a work order with children and leaves the schedule editable', async () => {
+  vi.mocked(getDetail).mockResolvedValue({ ...detail, item: { ...detail.item, haschildren: true } });
+  render(<DraftEditor {...props} />);
+  expect(await screen.findByLabelText('Est. Duration')).toHaveAttribute('readonly');
+  expect(screen.getByText(/Maximo tự tính Duration/)).toBeInTheDocument();
+  expect(screen.getByLabelText('Scheduled Start')).not.toHaveAttribute('readonly');
+});

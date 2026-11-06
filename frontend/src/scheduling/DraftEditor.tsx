@@ -197,6 +197,10 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
     if (target(field) && (['PM', 'CFT'].includes(detail.baseline.worktype.toUpperCase()) || !changes.change_target)) {
       return <label key={field} className={styles.readOnlyField}>{labels[field]}<input aria-label={labels[field]} readOnly value={displayDate(detail.baseline[field], timezone)} /></label>;
     }
+    if (field === 'estdur' && detail.item.haschildren) {
+      return <label key={field} className={styles.readOnlyField}><span>{labels[field]} · Tự tính</span><input aria-label={labels[field]} readOnly value={detail.baseline.estdur ?? ''} />
+        <small>WO có WO con: Maximo tự tính Duration.{changes.estdur !== undefined ? ' Nháp còn Duration cũ, không gửi được; bấm Khôi phục rồi sửa lại.' : ''}</small></label>;
+    }
     if (field === 'schedstart' || field === 'targstartdate' || field === 'targcompdate') {
       const current = changes[field] ?? detail.baseline[field];
       return <div key={field} className={`${styles.dateField} ${className ?? ''}`}>
@@ -268,7 +272,7 @@ export function DraftEditor({ selection, scope, writable, suspended, active = tr
                 setChanges({ schedstart: pmRestoreOrigin.schedstart, schedfinish: pmRestoreOrigin.schedfinish }); setError('');
                 setNotice('Đã chuẩn bị hai ngày lịch gốc. Duration hiện tại được giữ nguyên; hãy lưu nháp và upload qua preview.');
               }}>Khôi phục ngày lịch gốc</button>
-              <button className={styles.tertiary} disabled={!durationRestoreAvailable || busy || suspended || uploadLocked || !writable} onClick={() => {
+              <button className={styles.tertiary} disabled={!durationRestoreAvailable || !!detail.item.haschildren || busy || suspended || uploadLocked || !writable} onClick={() => {
                 if (pmRestoreOrigin?.estdur === null || pmRestoreOrigin?.estdur === undefined) return;
                 setChanges({ estdur: pmRestoreOrigin.estdur }); setError('');
                 setNotice('Đã chuẩn bị Duration gốc. Hai ngày lịch hiện tại được giữ nguyên; hãy lưu nháp và upload qua preview.');

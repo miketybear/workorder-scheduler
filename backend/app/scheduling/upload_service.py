@@ -121,7 +121,12 @@ def validate_current(item, current):
         return "conflict", {}
     try:
         changes = ScheduleChanges.model_validate(item.proposal)
-        values = build_changes(current.baseline, changes, set(current.allowed_pics))
+        values = build_changes(
+            current.baseline,
+            changes,
+            set(current.allowed_pics),
+            has_children=current.has_children,
+        )
         # Serialize through Pydantic to preserve Decimal and aware datetime semantics.
         serialized = changes.model_dump(mode="json", exclude_unset=True)
         shown, invalid = {field: serialized[field] for field in values}, False
@@ -486,7 +491,10 @@ async def readback_state(db, actor_id, item, reader, *, known_write_success=Fals
             observed = WorkOrderBaseline.model_validate(pinned.details["observed"])
             if (
                 not pinned.details.get("known_write_success")
-                or not pm_schedule_change(evidence.before, evidence.changes)
+                or not (
+                    pm_schedule_change(evidence.before, evidence.changes)
+                    or current.has_children
+                )
                 or "estdur" in evidence.changes
                 or not valid_duration(observed.estdur)
                 or observed.model_copy(update={"estdur": expected.estdur}) != expected
@@ -498,7 +506,14 @@ async def readback_state(db, actor_id, item, reader, *, known_write_success=Fals
             return await readback_mismatch(db, actor_id, item, observed, current.baseline)
         if (
             known_write_success
-            and pm_schedule_change(evidence.before, evidence.changes)
+            and (
+                pm_schedule_change(evidence.before, evidence.changes)
+                # Maximo also recalculates a parent's duration from its children on date changes.
+                or (
+                    current.has_children
+                    and {"schedstart", "schedfinish"} & evidence.changes.keys()
+                )
+            )
             and current.baseline.estdur != expected.estdur
         ):
             duration_only = (

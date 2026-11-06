@@ -29,6 +29,7 @@ def restored_item(item, current):
             current.baseline,
             ScheduleChanges.model_validate(item.changes),
             set(current.allowed_pics),
+            has_children=current.has_children,
         )
         valid = True
     except ValueError:
@@ -263,7 +264,12 @@ async def persist(request, payload, draft_id=None):
                 rebased = payload.rebase and item.baseline != fresh
                 if item.baseline != fresh and not payload.rebase:
                     raise HTTPException(409, "Draft baseline changed; start a new draft")
-                if not build_changes(current.baseline, payload.changes, set(current.allowed_pics)):
+                if not build_changes(
+                    current.baseline,
+                    payload.changes,
+                    set(current.allowed_pics),
+                    has_children=current.has_children,
+                ):
                     raise ValueError("Empty changes")
                 if rebased:
                     previous = digest(item.baseline)

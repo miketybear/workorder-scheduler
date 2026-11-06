@@ -208,3 +208,126 @@ def test_rejection_message_is_bounded_and_drops_urls():
     assert "http" not in message and len(message) == 300
     assert rejection_message("not json") is None
     assert rejection_message('{"Error": {"reasonCode": "X"}}') is None
+
+
+def two_step_transport(monkeypatch, second=None, fresh_change=None):
+    import uuid
+    from types import SimpleNamespace
+
+    from app.maximo import sender as module
+    from app.scheduling.changes import WorkOrderBaseline
+    from app.scheduling.drafts import WorkOrderKey
+
+    baseline = WorkOrderBaseline(
+        worktype="CM",
+        estdur=15,
+        assignedto="LAMTH",
+        schedstart="2026-11-01T06:30:00+07:00",
+        schedfinish="2026-11-02T16:00:00+07:00",
+    )
+    key = WorkOrderKey(uuid.uuid4(), "BD1", "1")
+    transport = module.NativeTestTransport(None, None, key.connection_id, "E&I", None)
+    transport.attempt_id = uuid.uuid4()
+    transport.evidence[key] = SimpleNamespace(
+        worktype="CM", baseline=baseline, rowstamp_candidate="10", resource_id="res"
+    )
+    sent = []
+
+    async def authorize():
+        return object()
+
+    async def pics(*_):
+        return frozenset()
+
+    async def post(config, resource, body, transaction_id=None):
+        sent.append((body, str(transaction_id or transport.attempt_id)))
+        transport.outcome = {
+            "transaction_id": sent[-1][1],
+            "status": 204,
+            "ibm_reason_code": None,
+            "ibm_conflict_object": None,
+        }
+        if len(sent) == 2 and second:
+            transport.outcome["status"] = 400
+            raise second
+
+    async def probe(*_, **__):
+        held = baseline.model_copy(
+            update={"schedfinish": datetime.fromisoformat(sent[0][0]["schedfinish"])}
+        )
+        return SimpleNamespace(
+            baseline=held.model_copy(update=fresh_change or {}),
+            rowstamp_candidate="11",
+            resource_id="res",
+        )
+
+    transport.authorize, transport._post = authorize, post
+    monkeypatch.setattr(module, "read_pics", pics)
+    monkeypatch.setattr(module, "probe_contract", probe)
+    return transport, key, sent
+
+
+LATER = {
+    "schedstart": "2026-11-03T06:30:00+07:00",
+    "schedfinish": "2026-11-04T16:00:00+07:00",
+}
+
+
+def test_a_later_schedule_sends_finish_first_then_the_rest_on_the_fresh_rowstamp(monkeypatch):
+    import asyncio
+
+    transport, key, sent = two_step_transport(monkeypatch)
+    asyncio.run(transport.write(key, "10", LATER))
+    assert [sorted(body) for body, _ in sent] == [
+        ["_rowstamp", "schedfinish"],
+        ["_rowstamp", "schedstart"],
+    ]
+    assert [body["_rowstamp"] for body, _ in sent] == ["10", "11"]
+    assert sent[0][1] != sent[1][1]
+    assert [step["fields"] for step in transport.outcome["steps"]] == [
+        ["schedfinish"],
+        ["schedstart"],
+    ]
+
+
+def test_an_overlapping_schedule_stays_one_post(monkeypatch):
+    import asyncio
+
+    transport, key, sent = two_step_transport(monkeypatch)
+    overlap = {**LATER, "schedstart": "2026-11-02T06:30:00+07:00"}
+    asyncio.run(transport.write(key, "10", overlap))
+    assert len(sent) == 1 and set(sent[0][0]) == {"schedstart", "schedfinish", "_rowstamp"}
+
+
+def test_an_earlier_schedule_sends_start_first():
+    from types import SimpleNamespace
+
+    from app.maximo.sender import first_date_field
+
+    held = SimpleNamespace(
+        schedstart=datetime.fromisoformat("2026-11-10T06:30:00+07:00"),
+        schedfinish=datetime.fromisoformat("2026-11-11T16:00:00+07:00"),
+    )
+    new_start = datetime.fromisoformat("2026-11-01T06:30:00+07:00")
+    new_finish = datetime.fromisoformat("2026-11-02T16:00:00+07:00")
+    assert first_date_field(held, new_start, new_finish) == "schedstart"
+
+
+def test_a_rejected_second_post_returns_for_read_back_and_records_both_steps(monkeypatch):
+    import asyncio
+
+    from app.scheduling.upload_service import WriteRejected
+
+    transport, key, sent = two_step_transport(monkeypatch, second=WriteRejected())
+    asyncio.run(transport.write(key, "10", LATER))
+    assert len(sent) == 2
+    assert [step["status"] for step in transport.outcome["steps"]] == [204, 400]
+
+
+def test_a_change_between_the_posts_stops_the_second(monkeypatch):
+    import asyncio
+
+    transport, key, sent = two_step_transport(monkeypatch, fresh_change={"assignedto": "OTHER"})
+    asyncio.run(transport.write(key, "10", LATER))
+    assert len(sent) == 1
+    assert transport.outcome["status"] == 204

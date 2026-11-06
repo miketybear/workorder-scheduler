@@ -27,6 +27,8 @@ Mỗi mục ghi đang chờ ai: `[sẵn sàng]`, `[chủ dự án]`, `[IT]`, `[M
 
 - [ ] Đối chiếu metadata `lochierarchy.systemid` và thêm fixtures đã redaction từ response live Onshore test. (L2183, L2203, L2205)
 
+- [ ] Preview liệt kê WO con sẽ đổi ngày theo WO cha.
+
 ### Tính năng P1 còn lại của workbook
 
 - [ ] Scheduled WO: lọc theo schedule, status và scope. (L2626)

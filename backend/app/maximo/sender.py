@@ -3,6 +3,7 @@
 import json
 import math
 import re
+import uuid
 from decimal import Decimal
 
 import httpx
@@ -54,6 +55,21 @@ def rejection_message(payload):
         return None
     cleaned = re.sub(r"https?://\S+", "", message)
     return " ".join("".join(c if c.isprintable() else " " for c in cleaned).split())[:300] or None
+
+
+def first_date_field(baseline, start, finish):
+    """The date Maximo must take first when the new schedule clears the one it holds.
+
+    Maximo checks each date against the other one it holds, whatever the JSON order
+    (BMXAA4589E on H14311007, 2026-11-05). Sent one at a time, the same move is accepted.
+    """
+    if not (start and finish and baseline.schedstart and baseline.schedfinish):
+        return None
+    if start >= baseline.schedfinish:
+        return "schedfinish"
+    if finish <= baseline.schedstart:
+        return "schedstart"
+    return None
 
 
 class NativeTestTransport:
@@ -139,7 +155,13 @@ class NativeTestTransport:
         await self.authorize()
         self.evidence[key] = evidence
         return CurrentWorkOrder(
-            key, evidence.wonum, self.discipline, token, evidence.baseline, pics
+            key,
+            evidence.wonum,
+            self.discipline,
+            token,
+            evidence.baseline,
+            pics,
+            has_children=order.haschildren,
         )
 
     async def write(self, key, revision, changes):
@@ -196,7 +218,61 @@ class NativeTestTransport:
             await self.authorize()
         except (HTTPException, MaximoReadError):
             raise WriteRejected() from None
-        await self._post(config, evidence.resource_id, {**payload, "_rowstamp": revision})
+        first = first_date_field(evidence.baseline, proposal.schedstart, proposal.schedfinish)
+        if first is None:
+            await self._post(config, evidence.resource_id, {**payload, "_rowstamp": revision})
+            return
+        await self._post(
+            config, evidence.resource_id, {first: payload[first], "_rowstamp": revision}
+        )
+        steps = [self.step_record([first])]
+        self.outcome["steps"] = steps
+        # From here Maximo holds the first date, so every stop below returns to the caller's
+        # read-back, which reports what was taken and keeps the rest in the draft.
+        try:
+            fresh = await self.fresh_evidence(config, key, evidence.worktype)
+        except (HTTPException, MaximoReadError):
+            return
+        moved = evidence.baseline.model_copy(update={first: getattr(proposal, first)})
+        ignored = {"estdur"}  # Maximo may recalculate it when a date changes.
+        token = fresh.rowstamp_candidate
+        if (
+            fresh.baseline.model_dump(exclude=ignored) != moved.model_dump(exclude=ignored)
+            or not token
+            or not re.fullmatch(r"[1-9][0-9]{0,29}", token)
+        ):
+            return
+        rest = {field: value for field, value in payload.items() if field != first}
+        transaction_id = uuid.uuid5(self.attempt_id, "second-date")
+        try:
+            await self._post(
+                config, fresh.resource_id, {**rest, "_rowstamp": token}, transaction_id
+            )
+        except (ConditionalConflict, WriteRejected):
+            pass
+        finally:
+            if self.outcome and self.outcome.get("transaction_id") == str(transaction_id):
+                steps.append(self.step_record(list(rest)))
+                self.outcome["steps"] = steps
+
+    async def fresh_evidence(self, config, key, worktype):
+        await self.authorize()
+        return await probe_contract(
+            self.client,
+            config,
+            key.site_id,
+            key.workorder_id,
+            self.discipline,
+            operator_worktype=worktype,
+        )
+
+    def step_record(self, fields):
+        return {
+            "fields": fields,
+            "transaction_id": self.outcome["transaction_id"],
+            "status": self.outcome["status"],
+            "ibm_reason_code": self.outcome["ibm_reason_code"],
+        }
 
     async def write_supname(self, resource_id, revision, supname):
         """Workflow-route flow only: set an empty SUPNAME, conditional on the rowstamp that was
@@ -215,7 +291,8 @@ class NativeTestTransport:
             raise WriteRejected() from None
         await self._post(config, resource_id, {"supname": supname, "_rowstamp": str(revision)})
 
-    async def _post(self, config, resource_id, body):
+    async def _post(self, config, resource_id, body, transaction_id=None):
+        transaction_id = str(transaction_id or self.attempt_id)
         try:
             async with self.client.stream(
                 "POST",
@@ -226,7 +303,7 @@ class NativeTestTransport:
                     "apikey": config.api_key.get_secret_value(),
                     "Accept": "application/json",
                     "x-method-override": "PATCH",
-                    "transactionid": str(self.attempt_id),
+                    "transactionid": transaction_id,
                 },
                 follow_redirects=False,
                 timeout=config.timeout_seconds,
@@ -241,7 +318,7 @@ class NativeTestTransport:
         except httpx.HTTPError:
             raise UncertainWrite() from None
         self.outcome = {
-            "transaction_id": str(self.attempt_id),
+            "transaction_id": transaction_id,
             "status": status,
             "ibm_reason_code": ibm_reason_code(error),
             "ibm_conflict_object": ibm_conflict_object(error),

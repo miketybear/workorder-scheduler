@@ -27,6 +27,7 @@ class CurrentWorkOrder:
     allowed_pics: frozenset[str]
     # Display-only PERSON names; never part of authorization or the baseline token.
     pic_names: dict[str, str] = field(default_factory=dict, compare=False, hash=False)
+    has_children: bool = False
 
 
 ReadCurrent = Callable[[WorkOrderKey], Awaitable[CurrentWorkOrder]]
@@ -63,7 +64,9 @@ async def create_draft(
     Caller owns the transaction and obtains this snapshot from the scoped Maximo reader.
     """
     await require_scope(db, user_id, current.key, current.discipline, write=True)
-    if not build_changes(current.baseline, changes, set(current.allowed_pics)):
+    if not build_changes(
+        current.baseline, changes, set(current.allowed_pics), has_children=current.has_children
+    ):
         raise ValueError("Draft must contain at least one changed field")
     draft = Draft(owner_id=user_id, connection_id=current.key.connection_id)
     db.add(draft)

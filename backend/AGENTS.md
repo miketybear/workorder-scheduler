@@ -89,6 +89,7 @@ WO revision/ETag and uploads remain pending. See ../docs/person-access.md and ..
 - Only allow schedstart, schedfinish, assignedto (the PIC), estdur and explicitly requested
   targstartdate/targcompdate. Do not send status, discipline or arbitrary browser-supplied fields.
 - Reject target updates for PM/CFT on the server even if the UI is bypassed.
+- Reject estdur changes on a WO with child WOs (haschildren) on the server.
 - Upload only when current Maximo values merged with draft changes have non-empty schedstart,
   schedfinish and assignedto. Saving incomplete drafts remains allowed. Preview and the final
   pre-send check reject incomplete WOs with incomplete_schedule and report missing schedule/PIC;

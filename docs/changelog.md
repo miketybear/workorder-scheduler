@@ -2,6 +2,20 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Dời lịch vượt lịch cũ không còn bị BMXAA4589E — 2026-11-06
+
+- [x] Khi Start mới ≥ Finish đang có, app gửi Finish trước; khi Finish mới ≤ Start đang có, gửi Start trước; các trường còn lại đi ở POST thứ hai sau khi đọc lại rowstamp. Lịch chồng nhau vẫn một POST.
+- [x] Dừng trước POST thứ hai nếu WO bị đổi ở trường khác giữa hai bước; POST thứ hai bị từ chối thì đọc lại, báo thất bại và chỉ giữ trong nháp trường chưa ghi. Audit ghi từng bước, mỗi POST một transaction id.
+- Bằng chứng: pytest với Maximo giả lập; hai POST thẳng trên Onshore test H14311007 ngày 2026-11-05. Giới hạn: bản này chưa chạy qua app với Maximo thật; chiều dời về trước (gửi Start trước) chưa thử live.
+
+## Khóa Duration trên WO có WO con — 2026-11-05
+
+- [x] Quyết định của chủ dự án: autoscript Maximo tự tính Duration của WO cha, nên chỉ WO không có WO con mới được sửa Duration. WO cha vẫn được đổi ngày; WO con không phải task đổi theo ở phía Maximo.
+- [x] Backend từ chối Duration trên WO có con khi lưu nháp, preview và ngay trước khi gửi; giao diện khóa ô này, áp dụng nhóm bỏ qua các WO đó.
+- [x] Đổi ngày WO cha mà Maximo tính lại Duration vẫn được xác nhận và ghi audit, không còn bị coi là lệch.
+- Bằng chứng live trên Onshore test (POST thẳng theo yêu cầu, không qua app): P13471269 về Duration 10 = tổng 2 WO con và 2 WO con đổi theo cùng giây; WO con P13471178 nhận Finish + Duration trong một payload, WO cha P13471177 21 → 29, khôi phục về 21. `PATCH` thật trả 501.
+- Giới hạn: bản này chưa thử với Maximo thật. Nháp cũ có Duration trên WO cha phải Khôi phục rồi sửa lại.
+
 ## WO lỗi không còn chặn WO khác khi upload — 2026-11-05
 
 - [x] Quyết định của chủ dự án: bỏ qua WO chưa gửi được, lỗi một WO không dừng các WO khác, kết quả chưa rõ vẫn dừng. WO đã xác nhận ra khỏi nháp; WO Maximo nhận một phần chỉ còn phần chưa ghi.

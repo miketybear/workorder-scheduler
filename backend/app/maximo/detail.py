@@ -212,5 +212,12 @@ def current_snapshot(
     )
     # Collection ETags are not record revisions. Leave revision unset until verified on test.
     return CurrentWorkOrder(
-        key, order.wonum, order.bdpocdiscipline, None, baseline, pics, pic_names or {}
+        key,
+        order.wonum,
+        order.bdpocdiscipline,
+        None,
+        baseline,
+        pics,
+        pic_names or {},
+        order.haschildren,
     )

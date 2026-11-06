@@ -149,7 +149,12 @@ async def persist_batch(request, payload, draft_id=None):
             code = "baseline_changed"
         else:
             try:
-                if not build_changes(current.baseline, edit.changes, set(current.allowed_pics)):
+                if not build_changes(
+                    current.baseline,
+                    edit.changes,
+                    set(current.allowed_pics),
+                    has_children=current.has_children,
+                ):
                     code = "empty_changes"
             except ValueError:
                 code = "invalid_changes"

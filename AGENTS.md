@@ -189,6 +189,10 @@ Additional domain modules in component instructions remain planned.
   be sent does not block the others. Preview names each skipped WO and why, the planner confirms the
   count, a failed or conflicting WO does not stop later sends, and an unknown outcome stops them.
   Confirmed WOs leave the draft; a WO Maximo only partly took keeps just the fields it did not take.
+  Owner decision 2026-11-05: estdur may change only on a WO without child WOs (a Maximo automation
+  script derives a parent's duration). A parent's dates may change; its child WOs follow in Maximo.
+  A move clearing the held schedule takes two writes in date order under one audited intent; Maximo
+  may hold only the first date if the second write fails, which is reported as partial.
 - A task may be assigned on the Resource timeline only when Maximo already holds schedstart, schedfinish and
   assignedto, on days inside that schedule in the connection timezone. Rechecked before saving and before send.
   The PIC need not be an assignee: it only warns.
