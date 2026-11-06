@@ -16,8 +16,8 @@ function ChangeList({ item, timezone }: { item: Pick<UploadPreviewItem, 'before'
   const fields = editableFields.filter((field) => item.changes[field] !== undefined);
   if (!fields.length) return <span className={styles.changeOld}>—</span>;
   return <ul className={styles.changeList}>{fields.map((field) => <li key={field}>
-    <span className={styles.changeField}>{labels[field]}</span> <span className={styles.changeOld}>{shownValue(field, item.before[field] ?? null, timezone)}</span>
-    {' → '}<strong>{shownValue(field, item.changes[field] ?? null, timezone)}</strong></li>)}</ul>;
+    <span className={styles.changeField}>{labels[field]}</span><span><span className={styles.changeOld}>{item.before[field] ? shownValue(field, item.before[field] ?? null, timezone) : '—'}</span>
+    {' → '}<strong>{shownValue(field, item.changes[field] ?? null, timezone)}</strong></span></li>)}</ul>;
 }
 export type UploadConnection ={ label: string; system: 'onshore' | 'offshore'; environment: 'test' | 'production' };
 export type FinalizedUpload = { draft_id: string; version: number; items: { site_id: string; workorder_id: string; restore_source: { before: Baseline } | null }[] };

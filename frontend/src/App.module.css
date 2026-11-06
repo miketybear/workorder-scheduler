@@ -571,3 +571,8 @@ td input[readonly] { cursor: not-allowed; }
 .uploadState[data-state="sending"] { background: var(--tag-blue-bg); color: var(--tag-blue-ink); }
 .uploadState[data-state="failed"], .uploadState[data-state="conflict"] { background: color-mix(in srgb, var(--error) 14%, transparent); color: var(--error); }
 .uploadState[data-state="unknown"] { background: var(--tag-warm-bg); color: var(--tag-warm-ink); }
+.changeList li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.changeList .changeOld { display: inline; margin: 0; }
+.changeList strong { font-weight: 600; white-space: nowrap; }
+.uploadTable tbody th { width: 140px; white-space: nowrap; font-weight: 600; background: transparent; }
+.uploadTable td:nth-child(2) { width: 150px; }
