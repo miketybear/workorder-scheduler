@@ -86,15 +86,8 @@ async def read_load(client, settings, laborcodes, date_from, date_before, timezo
                     and (scheduled >= start or (finish is not None and finish > start))
                 ):
                     continue
-                if (
-                    hours > 0
-                    and finish is not None
-                    and scheduled.astimezone(zone).date() != finish.astimezone(zone).date()
-                ):
-                    raise MaximoReadError(
-                        "Cross-day Maximo assignment has no verified daily hours; "
-                        "capacity is incomplete"
-                    )
+                # Owner decision 2026-11-06: an assignment that runs past midnight counts all of
+                # its hours on its start day, as Maximo-created assignments often do.
                 data = {
                     "assignment_id": aid,
                     "laborcode": labor,

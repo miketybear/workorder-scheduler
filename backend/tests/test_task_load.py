@@ -92,6 +92,32 @@ def test_task_parent_duplicates_are_deduped_without_status_or_discipline_filter(
     run(scenario())
 
 
+def test_cross_day_assignment_counts_all_hours_on_its_start_day():
+    overnight = row(
+        scheduledate="2026-10-01T15:46:59+07:00",
+        finishdate="2026-10-02T01:46:59+07:00",
+        laborhrs=10,
+    )
+
+    async def scenario():
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json={"member": [root(100, overnight)]})
+            )
+        ) as client:
+            result = await read_load(
+                client,
+                config(task_load_contract="bdsched_assignment_test"),
+                {"LAB"},
+                date(2026, 10, 1),
+                date(2026, 10, 3),
+                "Asia/Ho_Chi_Minh",
+            )
+        assert result["1"]["date"] == date(2026, 10, 1) and result["1"]["minutes"] == 600
+
+    run(scenario())
+
+
 @pytest.mark.parametrize(
     "bad", [row(laborhrs=-1), row(scheduledate="2026-10-01T06:00:00"), row(laborhrs="NaN")]
 )

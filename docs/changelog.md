@@ -2,6 +2,11 @@
 
 Việc đã xong kèm bằng chứng, mới nhất ở trên. Lịch sử trước 2026-10-29 ở [todos-archive-2026-10-29.md](todos-archive-2026-10-29.md).
 
+## Resource timeline mở được khi Maximo có assignment qua đêm — 2026-11-06
+
+- [x] Assignment có giờ công kéo qua nửa đêm không còn chặn cả timeline; toàn bộ laborhrs tính cho ngày bắt đầu (quyết định của chủ dự án 2026-11-06).
+- Bằng chứng: pytest `test_cross_day_assignment_counts_all_hours_on_its_start_day`; quét Onshore test thấy nhiều assignment như vậy tạo trực tiếp trong Maximo (vd P13471425 HAIDQ 10h). Giới hạn: tải ngày sau có thể thấp hơn thực tế.
+
 ## Dời lịch vượt lịch cũ không còn bị BMXAA4589E — 2026-11-06
 
 - [x] Khi Start mới ≥ Finish đang có, app gửi Finish trước; khi Finish mới ≤ Start đang có, gửi Start trước; các trường còn lại đi ở POST thứ hai sau khi đọc lại rowstamp. Lịch chồng nhau vẫn một POST.
